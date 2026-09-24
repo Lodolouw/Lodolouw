@@ -993,19 +993,30 @@ function WormAttacks.Ambush(E, token)
 	wormErupt(E, token, spot, recovery(E, a.Exposed))
 end
 
--- Where a breach goes: a straight strip through its quarry, with the quarry
--- in the middle of the part its body comes down on. Nil if there isn't room.
-local function breachPlan(E)
+-- Where a leap from A lands if it's aimed at `aim`: its head comes down
+-- Overshoot studs PAST its quarry, so they end up under its body, not beside
+-- its nose. Never off the sand; never shorter than a real leap.
+local function breachLanding(E, A, aim)
 	local a = E.def.Attacks.Breach
+	local dir = unitOr(flat(aim - A), E.facing)
+	local want = math.clamp(flatDistance(aim, A) + a.Overshoot, 55, a.Length)
+	local _, tOut = rayCircle(E, A, dir, E.def.Leash)
+	local len = math.max(math.min(want, tOut or 0), 0)
+	return Vector3.new(A.X, E.floorY, A.Z) + dir * len, len
+end
+
+-- Where the first leap takes off: back along the line from its quarry, far
+-- enough that it arcs right over them. Nil if there isn't room on the sand.
+local function breachPlan(E)
 	local aim = targetPosition(E)
 	if not aim then
 		return nil
 	end
 	local dir = unitOr(flat(aim - E.pos), E.facing)
 	local leash = E.def.Leash - 6
-	local A = aim - dir * (a.Length * (1 - a.Body / 2))
+	local A = aim - dir * math.clamp(flatDistance(aim, E.pos), 45, 80)
 	if flat(A - E.home).Magnitude > leash then
-		-- the launch point is off the sand: start it where the line comes onto the sand
+		-- the take-off point is off the sand: start where the line comes onto it
 		local tIn = rayCircle(E, A, dir, leash)
 		if not tIn then
 			return nil
@@ -1013,65 +1024,123 @@ local function breachPlan(E)
 		A = A + dir * math.max(tIn, 0)
 	end
 	A = Vector3.new(A.X, E.floorY, A.Z)
-	local _, tOut = rayCircle(E, A, dir, E.def.Leash)
-	local len = math.min(a.Length, tOut or 0)
+	local B, len = breachLanding(E, A, aim)
 	if len < 50 then
 		return nil
 	end
-	return A, A + dir * len, dir, aim
+	return A, B
 end
 
--- BREACH: it swims to the start of the strip, leaps out in a great arc and
--- crashes down along it, then lies stuck (EXPOSED) before sliding back under
--- at the far end. The strip is far too long to outrun: get off it sideways.
-function WormAttacks.Breach(E, token)
+-- One leap. `from` = where it takes off (nil for the first: it swims round
+-- behind its quarry first). While it's in the air the landing FOLLOWS its
+-- quarry, until Lock of the way through - then it's committed (the strip
+-- flashes on screen). Its body comes down along the last BodyLength studs of
+-- the leap. The last leap leaves it stuck there, EXPOSED; a leap with another
+-- to follow goes straight back under. Returns where it went under (nil if
+-- the fight moved on).
+local function breachLeap(E, token, from, tell, last)
 	local a = E.def.Attacks.Breach
-	local A, B, dir, aim = breachPlan(E)
-	if not A then
-		return
+	local A, B
+	if from then
+		local aim = targetPosition(E)
+		if not aim then
+			return nil
+		end
+		A = from
+		B = breachLanding(E, A, aim)
+	else
+		A, B = breachPlan(E)
+		if not A then
+			return nil
+		end
 	end
-	E.facing = dir
-	local t0 = wormAction(E, "Breach", a.Flight)
+	E.facing = unitOr(flat(B - A), E.facing)
+	local t0 = wormAction(E, "Breach", last and 1 or 0) -- (ActN: 1 = the last leap)
 	setSlot(E, 1, A)
 	setSlot(E, 2, B)
-	E.motion = { from = E.pos, to = A, t0 = t0, t1 = t0 + a.Tell * 0.8 }
-	if not waitUntil(E, token, t0 + a.Tell) then
-		return
-	end
-	-- out of the sand: anyone right on the launch point is thrown
-	hitArea(E, A, a.Launch, math.floor(a.Damage * 0.6), a.Knockback * 0.6, nil, true)
-	local land = t0 + a.Tell + a.Flight
-	E.motion = { from = A, to = B, t0 = now(), t1 = land }
-	if not waitUntil(E, token, land) then
-		return
+	E.motion = { from = E.pos, to = A, t0 = t0, t1 = t0 + tell * 0.8 }
+	if not waitUntil(E, token, t0 + tell) then
+		return nil
 	end
 	E.motion = nil
-	-- its body comes down along the last part of the strip (Body = how much of it)
-	local tail = A + (B - A) * (1 - a.Body)
+	-- out of the sand: anyone right on the take-off point is thrown
+	hitArea(E, A, a.Launch, math.floor(a.Damage * 0.6), a.Knockback * 0.6, nil, true)
+	local launch = t0 + tell
+	local land = launch + a.Flight
+	local lockAt = launch + a.Flight * a.Lock
+	local sent = 0
+	while now() < lockAt do
+		if not valid(E, token) then
+			return nil
+		end
+		local aim = targetPosition(E)
+		if aim then
+			B = breachLanding(E, A, aim)
+			if now() - sent >= 0.05 then
+				sent = now()
+				E.model:SetAttribute(SLOTS[2], B) -- every screen redraws the strip where it's heading
+			end
+		end
+		E.pos = A:Lerp(B, math.clamp((now() - launch) / a.Flight, 0, 1))
+		task.wait()
+	end
+	-- committed
+	E.model:SetAttribute(SLOTS[2], B)
+	E.motion = { from = E.pos, to = B, t0 = now(), t1 = land }
+	if not waitUntil(E, token, land) then
+		return nil
+	end
+	E.motion = nil
+	local dir = unitOr(flat(B - A), E.facing)
+	E.facing = dir
+	local tail = B - dir * math.min(a.BodyLength, flatDistance(A, B))
 	hitLine(E, tail, B, a.Width / 2, a.Damage, a.Knockback)
-	-- stuck: you can punch it where it came down nearest its quarry
-	local along = math.clamp(flat(aim - tail):Dot(dir), 0, flatDistance(tail, B))
-	E.pos = tail + dir * along
-	surface(E, true)
-	local slideAt = land + recovery(E, a.Stuck)
+	local slideAt
+	if last then
+		-- stuck: you can punch it where it came down nearest its quarry
+		local aim = targetPosition(E) or B
+		E.pos = tail + dir * math.clamp(flat(aim - tail):Dot(dir), 0, flatDistance(tail, B))
+		surface(E, true)
+		slideAt = land + recovery(E, a.Stuck)
+	else
+		E.pos = B
+		slideAt = land + 0.2
+	end
 	E.model:SetAttribute("ActT", slideAt) -- when it starts sliding back under
 	if not waitUntil(E, token, slideAt) then
-		return
+		return nil
 	end
 	surface(E, false)
-	local slid = now() + a.Slide
+	local slid = now() + (last and a.Slide or a.Slide * 0.5)
 	E.motion = { from = E.pos, to = B, t0 = now(), t1 = slid }
 	if not waitUntil(E, token, slid) then
-		return
+		return nil
 	end
 	E.motion = nil
 	E.pos = B
+	return B
 end
 
--- COIL: it swims under you and its body bursts up in a ring round you, with a
--- gap, then tightens. Its body hurts to cross (you're thrown clear, outward);
--- whoever is still inside when it closes is crushed. Then it rears up in the
--- middle, EXPOSED.
+-- BREACH: one leap in phase one; in phase two it goes straight back up for
+-- another (Leaps), each one aimed at its quarry again.
+function WormAttacks.Breach(E, token)
+	local a = E.def.Attacks.Breach
+	local leaps = (type(a.Leaps) == "table" and (a.Leaps[E.phase] or a.Leaps[1])) or 1
+	local from = nil
+	for i = 1, leaps do
+		from = breachLeap(E, token, from, (i == 1) and a.Tell or a.ChainTell, i == leaps)
+		if not from then
+			return
+		end
+	end
+end
+
+-- COIL: it circles its quarry under the sand, then its body bursts up in a
+-- CLOSED ring round them with its head reared overhead, and tightens. Its body
+-- throws anyone who touches it back to the side they came from - only a roll
+-- (untouchable for a moment) gets you through it. Whoever is still inside when
+-- it closes is crushed as the head strikes down; then it lies coiled there,
+-- EXPOSED, until it dives.
 function WormAttacks.Coil(E, token)
 	local a = E.def.Attacks.Coil
 	local aim = targetPosition(E)
@@ -1079,41 +1148,36 @@ function WormAttacks.Coil(E, token)
 		return
 	end
 	local C = inLeash(E, aim, a.Radius)
-	local gapYaw = E.rng:NextNumber() * math.pi * 2 -- which way the way out faces
-	local t0 = wormAction(E, "Coil", gapYaw)
+	local t0 = wormAction(E, "Coil", nil)
 	setSlot(E, 1, C)
-	E.motion = { from = E.pos, to = C, t0 = t0, t1 = t0 + a.Tell }
+	-- (each screen draws it circling; here it just heads for the ring)
+	local edge = C + unitOr(flat(E.pos - C), E.facing) * a.Radius
+	E.motion = { from = E.pos, to = edge, t0 = t0, t1 = t0 + a.Tell * 0.5 }
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return
 	end
 	E.motion = nil
 	E.pos = C
-	E.coil = {
-		center = C,
-		t0 = t0 + a.Tell,
-		a = a,
-		gapYaw = gapYaw,
-		length = a.Radius * (2 * math.pi - math.rad(a.Gap)), -- its body, round the ring
-		hit = {},
-	}
+	E.coil = { center = C, t0 = t0 + a.Tell, a = a, next = {} }
 	if not waitUntil(E, token, t0 + a.Tell + a.Close) then
 		return
 	end
 	E.coil = nil
 	hitArea(E, C, a.Crush + a.Wall / 2, a.Damage, a.Knockback)
-	wormErupt(E, token, C, recovery(E, a.Exposed))
+	surface(E, true)
+	waitUntil(E, token, now() + recovery(E, a.Exposed))
 end
 
 -- How far out the coil is `t` seconds into its tightening: slow at first, so
--- there's time to reach the gap, then fast.
+-- there's time to line up a roll, then fast.
 local function coilRadius(c, t)
 	local u = math.clamp((t - c.t0) / c.a.Close, 0, 1)
 	return c.a.Radius - (c.a.Radius - c.a.Crush) * u * u
 end
 
--- Every frame of a coil: anyone its body passes over (outside the gap) is hit
--- once and thrown outward. As it tightens the ring gets shorter than its body,
--- so the gap closes up by itself.
+-- Every frame of a coil: its body is a wall. Touch it and you're hurt and
+-- thrown back to the side you were on (again, if you touch it again). Rolling
+-- through it - untouchable for the length of the roll - is the way out.
 local function stepCoil(E, t)
 	local c = E.coil
 	if t < c.t0 then
@@ -1121,19 +1185,15 @@ local function stepCoil(E, t)
 	end
 	local a = c.a
 	local r = coilRadius(c, t)
-	local gap = 2 * math.pi - math.min(2 * math.pi, c.length / r)
 	for _, p in ipairs(fightersIn(E)) do
-		if not c.hit[p] then
-			local root = rootOf(p)
-			local off = flat(root.Position - c.center)
-			if math.abs(off.Magnitude - r) <= a.Wall / 2 + PLAYER_RADIUS then
-				local ang = math.atan2(off.X, off.Z)
-				local fromGap = math.abs((ang - c.gapYaw + math.pi) % (2 * math.pi) - math.pi)
-				if fromGap > gap / 2 then
-					c.hit[p] = true
-					CombatService.DamagePlayer(p, a.WallDamage, root.Position, knockbackFrom(c.center, root, a.Knockback * 0.6))
-				end
-			end
+		local root = rootOf(p)
+		local off = flat(root.Position - c.center)
+		local d = off.Magnitude
+		if math.abs(d - r) <= a.Wall / 2 + PLAYER_RADIUS and t >= (c.next[p] or 0) and not CombatService.IsInvulnerable(p) then
+			c.next[p] = t + 0.8
+			local side = (d >= r) and 1 or -1 -- out if you were outside it, in if inside
+			local push = unitOr(off, Vector3.new(0, 0, 1)) * side
+			CombatService.DamagePlayer(p, a.WallDamage, root.Position, push * a.Knockback * 0.7 + Vector3.new(0, 16, 0))
 		end
 	end
 end
@@ -1185,17 +1245,27 @@ function WormAttacks.TailLash(E, token)
 	end
 	E.motion = nil
 	E.pos = anchor
-	E.lash = {
-		anchor = anchor, from = from, to = to, lastYaw = from,
-		t0 = t0 + a.Tell, time = a.Time,
-		reach = a.Reach, width = a.Width, height = a.Height,
-		damage = a.Damage, knockback = a.Knockback, hit = {},
-	}
-	if not waitUntil(E, token, t0 + a.Tell + a.Time) then
-		return
+	-- phase two: it sweeps straight back again (Sweeps)
+	local sweeps = (type(a.Sweeps) == "table" and (a.Sweeps[E.phase] or a.Sweeps[1])) or 1
+	local pause = a.Pause or 0.25
+	for i = 1, sweeps do
+		local s0 = t0 + a.Tell + (i - 1) * (a.Time + pause)
+		local f, g = from, to
+		if i % 2 == 0 then
+			f, g = to, from
+		end
+		E.lash = {
+			anchor = anchor, from = f, to = g, lastYaw = f,
+			t0 = s0, time = a.Time,
+			reach = a.Reach, width = a.Width, height = a.Height,
+			damage = a.Damage, knockback = a.Knockback, hit = {},
+		}
+		if not waitUntil(E, token, s0 + a.Time + ((i < sweeps) and pause or 0)) then
+			return
+		end
 	end
 	E.lash = nil
-	waitUntil(E, token, t0 + a.Tell + a.Time + 0.45) -- the tail drops back under
+	waitUntil(E, token, now() + 0.45) -- the tail drops back under
 end
 
 -- The tail's angle `u` of the way through its sweep (eased in and out; BossClient
@@ -1869,7 +1939,9 @@ local function build(floorId, homePart)
 
 	local home = homePart.Position
 	local floorY = home.Y
-	local height = def.Size * 0.85
+	-- (the worm's is lower: most of it is under the sand, and you have to be able
+	-- to punch it from down in a crater or the whirlpool's bowl)
+	local height = def.Size * ((def.Body == "Worm") and 0.5 or 0.85)
 
 	local model = Instance.new("Model")
 	model.Name = "Boss_" .. def.Short

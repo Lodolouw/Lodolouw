@@ -115,3 +115,27 @@ boss arena" — that's your teleport hook once the arena place/area exists.
   block correctly matched with `end`), and every RemoteEvent/RemoteFunction
   name, CollectionService tag, instance attribute, and part name referenced
   across files was cross-checked to match exactly.
+
+## The Spire's second floor: Mireworm (the Sunken Dunes)
+
+Mireworm doesn't reuse any of Gloomgut's attacks. It lives under the sand and
+hunts by sound: running on sand is loud, stone is quiet, standing still is
+silent. Its cycle is hunt (under the sand, untouchable) -> strike -> exposed
+(hit it now) -> dive.
+
+- **Where the numbers are:** `Config.Bosses[2]` - `Hunt`, `Lure` (thumpers),
+  `Whirlpool` (phase two), `Scars` (how long torn-up sand lasts) and `Attacks`.
+- **Server:** `BossService` - `wormBrain` and the `WormAttacks` table (Ambush,
+  Breach, Coil, Devour, TailLash, Tremor, Undermine, and Charge for thumpers).
+  Gloomgut still runs on `brain` and `Attacks`, untouched.
+- **Arena:** `DunesBuilder` - the fighting floor is Terrain sand (so it can be
+  torn up), three thumpers (tag `DuneThumper`), five platforms that crack and
+  shatter (tag `DunePlatform`).
+- **Drawing:** `BossClient` - the "MIREWORM: the hunt" section. Craters,
+  trenches, fissures and the phase-two bowl are carved into the Terrain on each
+  player's own screen and slide back after `Scars.Last` seconds; hits are always
+  decided by the server.
+- **Optional sounds** (SoundService): Worm Music, Worm Rise, Worm Charge,
+  Worm Erupt, Worm Slam, Worm Sweep, Worm Wail, Worm Devour, Worm Crack,
+  Worm Death, Thumper, and a looping Worm Rumble. Missing ones borrow
+  Gloomgut's.

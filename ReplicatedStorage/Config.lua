@@ -555,40 +555,53 @@ Config.Bosses = {
 			Damage = 28, Radius = 16, Knockback = 60, Exposed = 1.3,
 		},
 
-		-- PHASE TWO: the seal caves in and the middle of the arena becomes a
-		-- whirlpool of sand that drags you toward the pit. Standing at the bottom
-		-- of it burns. (The pull is on your screen; the damage is the server's.)
+		-- PHASE TWO: the seal caves in and the middle of the arena collapses into
+		-- a real bowl of sand that drags you down toward the pit at the bottom,
+		-- which burns. (The pull is on your screen; the damage is the server's.)
 		Whirlpool = {
 			Radius = 34, -- how far out the pull reaches (the seal's size)
-			Pull = { 3, 8 }, -- studs a second: at the edge, and near the middle
+			Depth = 5, -- how deep the bowl sinks at its middle
+			Pull = { 5, 11 }, -- studs a second: at the edge, and near the middle (you run 16-24)
 			PitRadius = 8, -- the bottom of the pit
 			PitDamage = 6, PitTick = 0.5,
 		},
 
+		-- THE SAND IT TEARS UP. Where it bursts out, crashes down or cracks the
+		-- floor, the sand really opens up (craters, trenches, fissures - on your
+		-- screen, and you walk in them). This is how long before it slides back.
+		Scars = { Last = 7 },
+
 		-- Its attacks. Tell = the warning before it lands (always longer than
 		-- your roll's 0.5s). Exposed = how long it stays out of the sand after,
 		-- which is your chance to hit it. Sand = true: only used on someone
-		-- standing on sand (it can't come up through stone).
+		-- standing on sand (it can't come up through stone). Anything given as
+		-- { a, b } is { phase one, phase two }.
 		Attacks = {
-			-- AMBUSH: the ridge races after you, stops, the sand under you bulges
-			-- and cracks... and it bursts up where you stood. Move or roll off the bulge.
+			-- AMBUSH: its back races after you through the sand, stops, the ground
+			-- heaves up under you... and it bursts out where you stood. Move or roll off it.
 			Ambush = { StalkSpeed = 44, StalkTime = 2.2, Lock = 0.65, Radius = 10, Damage = 30, Knockback = 70, Exposed = 1.6, Phase = 1, Weight = 6, Sand = true },
-			-- BREACH: it leaps out of the sand in a great arc and crashes down along
-			-- the dark strip marked on the floor. Get off the strip SIDEWAYS - it's
-			-- far too long to outrun. Afterwards it lies there stuck for a moment.
-			Breach = { Tell = 1.0, Flight = 1.2, Length = 110, Body = 0.65, Width = 14, Launch = 12, Height = 36, Damage = 32, Knockback = 60, Stuck = 2.6, Slide = 0.9, Phase = 1, Weight = 4 },
-			-- COIL: its body bursts up in a ring round you and tightens. Get out
-			-- through the gap before it closes (or roll through its body - that
-			-- hurts less than staying inside for the crush).
-			Coil = { Tell = 0.9, Radius = 24, Crush = 6, Close = 1.8, Gap = 95, Wall = 10, WallDamage = 16, Damage = 38, Knockback = 55, Exposed = 1.8, Phase = 1, Weight = 4, Sand = true },
-			-- DEVOUR: a sinkhole spins open under you and drags you toward its
-			-- middle, then its maw bursts up out of it. Run outward, or get on stone.
-			Devour = { Tell = 1.5, Radius = 18, Pull = { 5, 10 }, Bite = 9, Damage = 36, Knockback = 50, Exposed = 1.6, Phase = 1, Weight = 4, Sand = true },
+			-- BREACH: it leaps out of the sand in a great arc, and while it's in the
+			-- air the strip it'll crash down on FOLLOWS YOU. Lock = how far through
+			-- the leap it stops following (the strip flashes): roll then. Its body
+			-- carves a trench where it lands, and it lies there stuck for a moment.
+			-- In phase two it leaps again straight away (Leaps).
+			Breach = { Tell = 1.0, Flight = 1.25, Lock = 0.62, Length = 120, Overshoot = 16, BodyLength = 72, Width = 14, Launch = 12, Height = 38,
+				Damage = 32, Knockback = 60, Stuck = 2.6, Slide = 0.9, Leaps = { 1, 2 }, ChainTell = 0.5, Phase = 1, Weight = 4 },
+			-- COIL: it circles you under the sand, then its body bursts up in a
+			-- CLOSED ring round you with its head reared over you, and tightens.
+			-- There's no gap: touching its body throws you back the way you came.
+			-- The only way out is to ROLL through it. At the end the head strikes down.
+			Coil = { Tell = 1.1, Radius = 22, Crush = 9, Close = 1.7, Wall = 10, WallDamage = 18, Damage = 40, Knockback = 55, Exposed = 1.8, Phase = 1, Weight = 4, Sand = true },
+			-- DEVOUR: a sinkhole spins open under you - the sand really sinks - and
+			-- drags you toward its middle, then its maw bursts up out of it. Roll
+			-- (you can't be dragged in the air) or get on stone.
+			Devour = { Tell = 1.5, Radius = 18, Depth = 6, Pull = { 6, 12 }, Bite = 10, Damage = 36, Knockback = 50, Exposed = 1.6, Phase = 1, Weight = 4, Sand = true },
 			-- TAIL LASH: its tail rips up out of the sand BEHIND you and sweeps
-			-- round in a wide arc. Roll through it, jump it, or be out of reach.
-			TailLash = { Tell = 0.85, Behind = 10, Reach = 26, Sweep = 220, Time = 0.55, Width = 5, Height = 5, Damage = 24, Knockback = 64, Phase = 1, Weight = 4 },
-			-- TREMOR: it thrashes underground and the whole sand floor quakes, a
-			-- few times in a row. Be on stone, or be in the air when each one hits.
+			-- round in a wide arc - and in phase two, straight back again (Sweeps).
+			-- Roll through it, jump it, or be out of reach.
+			TailLash = { Tell = 0.85, Behind = 10, Reach = 26, Sweep = 220, Time = 0.55, Sweeps = { 1, 2 }, Pause = 0.25, Width = 5, Height = 5, Damage = 24, Knockback = 64, Phase = 1, Weight = 4 },
+			-- TREMOR: it thrashes underground, the whole sand floor quakes and
+			-- cracks open, a few times in a row. Be on stone, or in the air when each one hits.
 			Tremor = { Tell = 1.3, Quakes = 3, Gap = 0.95, Damage = 12, Knockback = 22, Phase = 1, Weight = 3 },
 			-- UNDERMINE (phase two): you're hiding on stone? It circles under the
 			-- platform, the cracks glow... and it bursts up through it. The stone is

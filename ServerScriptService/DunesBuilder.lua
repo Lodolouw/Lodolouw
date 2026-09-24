@@ -29,7 +29,8 @@
 	    ArenaAmbience script on each player's screen)
 
 	Main calls DunesBuilder.Build() once at startup, right after the lobby.
-	The dunes are smooth Terrain sand; everything else is ordinary Parts.
+	The dunes and the floor you fight on are smooth Terrain sand (so the worm
+	can tear craters in the floor); everything else is ordinary Parts.
 ]]
 
 local Workspace = game:GetService("Workspace")
@@ -314,8 +315,21 @@ end
 -- The floor you fight on
 ----------------------------------------------------------------------
 local function buildFloor()
-	-- one great disc of sand, top at y = 0, reaching under the dunes and cliffs
-	cylinder("SandFloor", 12, 560, CFrame.new(at(0, -6, 0)), SAND, Mat.Sand)
+	-- One great disc of sand, top at y = 0, reaching under the dunes and cliffs.
+	-- It's Terrain, like the dunes, so the two meet without a seam - and so
+	-- Mireworm can really tear it up in the fight: BossClient opens craters,
+	-- trenches and the phase-two pit in it on each player's screen (and fills
+	-- them back in). 16 studs thick, lined up with Terrain's 4-stud grid so the
+	-- top is perfectly flat. (If Terrain isn't available, a plain Part instead.)
+	local made = false
+	if terrain then
+		made = pcall(function()
+			terrain:FillCylinder(CFrame.new(at(0, -8, 0)), 16, 280, Mat.Sand)
+		end)
+	end
+	if not made then
+		cylinder("SandFloor", 12, 560, CFrame.new(at(0, -6, 0)), SAND, Mat.Sand)
+	end
 
 	-- Ripples blown into the sand: rows of long low streaks lying across the wind,
 	-- each row wandering a little, so the floor reads as sand rather than a plate.
