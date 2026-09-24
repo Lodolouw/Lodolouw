@@ -459,26 +459,37 @@ local function stoneWall(w)
 		slab(spread() * (length - 6), 6 + rng:NextNumber() * (size.Y - 12), 2.5 + rng:NextNumber() * 2.5,
 			1.6 + rng:NextNumber() * 1.4, 0.45 + rng:NextNumber() * 0.3, rng:NextNumber() < 0.6 and dark or light)
 	end
-	-- The moss: the round green blobs along the wall (all the same, in a row)
-	-- are hidden, and each becomes a flat patch of pixel moss lying on the
-	-- stone - a ragged cluster, every one a different shape, with a few
-	-- strands trailing down from it.
+	-- The moss: the round green blobs the builder puts along the wall (the
+	-- same size, stepping up in the same staircase every few studs) are
+	-- hidden, and moss grows naturally instead: ragged patches of pixel moss
+	-- at random spots, most of them low down where it's damp, some bunched
+	-- into little colonies, with strands trailing down from a few.
 	local mossName = "^" .. w.Name .. "_Moss%d+$"
 	for _, blob in ipairs(w.Parent:GetChildren()) do
 		if blob:IsA("BasePart") and string.match(blob.Name, mossName) then
 			blob.Transparency = 1
-			local u = (blob.Position - at):Dot(along)
-			local y = blob.Position.Y - (at.Y - size.Y / 2) -- (up from the wall's foot)
-			local spreadW = 3 + rng:NextNumber() * 4
-			for _ = 1, rng:NextInteger(6, 11) do
-				local sz = 0.8 + rng:NextNumber() * 1.4
-				slab(u + spread() * spreadW, y + spread() * spreadW * 0.7, sz, sz * (0.6 + rng:NextNumber() * 0.6),
-					0.25, GRASS[rng:NextInteger(1, #GRASS)])
-			end
-			for _ = 1, rng:NextInteger(1, 3) do
-				local su, len = u + spread() * spreadW, 1.5 + rng:NextNumber() * 4
-				slab(su, y - len / 2 - 0.5, 0.45, len, 0.2, GRASS[rng:NextInteger(2, #GRASS)])
-			end
+		end
+	end
+	local function patch(u, y, reach)
+		for _ = 1, rng:NextInteger(4, 10) do
+			local sz = 0.6 + rng:NextNumber() * 1.3
+			slab(u + spread() * reach * 2, y + spread() * reach * 1.2, sz, sz * (0.5 + rng:NextNumber() * 0.7),
+				0.25, GRASS[rng:NextInteger(1, #GRASS)])
+		end
+		if rng:NextNumber() < 0.4 then
+			local len = 1.5 + rng:NextNumber() * 5
+			slab(u + spread() * reach, y - len / 2 - 0.4, 0.4, len, 0.2, GRASS[rng:NextInteger(2, #GRASS)])
+		end
+	end
+	for _ = 1, math.floor(length / 22) do
+		local u = spread() * (length - 8)
+		-- (low heights far more likely: the square of a random number leans low)
+		local y = 4 + (rng:NextNumber() ^ 2) * (size.Y - 10)
+		local reach = 1.5 + rng:NextNumber() * 2.5
+		patch(u, y, reach)
+		-- sometimes a smaller patch or two grows nearby
+		for _ = 1, (rng:NextNumber() < 0.45) and rng:NextInteger(1, 2) or 0 do
+			patch(u + spread() * 14, math.max(3, y + spread() * 8), reach * 0.6)
 		end
 	end
 end

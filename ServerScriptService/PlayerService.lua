@@ -243,7 +243,8 @@ local function zoneAt(position)
 	local half = Config.Yard.PadSize / 2
 	for i = 1, #Config.Zones do
 		local c = Config.zonePosition(i)
-		if math.abs(position.X - c.X) <= half and math.abs(position.Z - c.Z) <= half and position.Y < 14 then
+		-- (measured from the pad's own ground: the terrace's pads are a step up)
+		if math.abs(position.X - c.X) <= half and math.abs(position.Z - c.Z) <= half and position.Y > c.Y - 3 and position.Y < c.Y + 14 then
 			return i
 		end
 	end

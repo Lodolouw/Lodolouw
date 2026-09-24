@@ -381,6 +381,11 @@ end
 -- Ground, walls, decoration
 ----------------------------------------------------------------------
 local WALL_HEIGHT = 46
+-- The castle reaches further south than it's wide, to hold the training
+-- yard's raised second tier: its south wall sits this much beyond the
+-- other three (which stay 118 studs out from the middle).
+local SOUTH_EXT = 56
+local SOUTH_WALL = 118 + SOUTH_EXT
 
 -- A tall stone castle wall segment between two points: crenellated merlons
 -- along the top, and moss/ivy climbing the inner face. Much taller than a
@@ -480,7 +485,7 @@ local LAMPS = {
 local function buildGround(parent)
 	local g = folder(parent, "Ground")
 
-	part(g, "Island", V3(236, 6, 236), CFrame.new(0, -3, 0), RGB(96, 192, 84), Mat.Plastic, {
+	part(g, "Island", V3(236, 6, 236 + SOUTH_EXT), CFrame.new(0, -3, SOUTH_EXT / 2), RGB(96, 192, 84), Mat.Plastic, {
 		TopSurface = Enum.SurfaceType.Studs,
 	})
 
@@ -566,15 +571,15 @@ local function buildGround(parent)
 	-- Boundary walls (the north wall has a gap for the bridge to the Spire)
 	wall(g, "WallNorthW", V3(-120, 0, -118), V3(-16, 0, -118))
 	wall(g, "WallNorthE", V3(16, 0, -118), V3(120, 0, -118))
-	wall(g, "WallSouth", V3(-120, 0, 118), V3(120, 0, 118))
-	wall(g, "WallWest", V3(-118, 0, -120), V3(-118, 0, 120))
-	wall(g, "WallEast", V3(118, 0, -120), V3(118, 0, 120))
+	wall(g, "WallSouth", V3(-120, 0, SOUTH_WALL), V3(120, 0, SOUTH_WALL))
+	wall(g, "WallWest", V3(-118, 0, -120), V3(-118, 0, SOUTH_WALL + 2))
+	wall(g, "WallEast", V3(118, 0, -120), V3(118, 0, SOUTH_WALL + 2))
 
 	-- Each wall's crenellation spacing is worked out along its own length, so
 	-- the merlon pattern doesn't necessarily land exactly where two walls
 	-- meet - leaving a gap of open sky right at the corner. Drop an explicit
 	-- merlon at each of the four corners to close that up.
-	for i, c in ipairs({ { -119, -119 }, { 119, -119 }, { -119, 119 }, { 119, 119 } }) do
+	for i, c in ipairs({ { -119, -119 }, { 119, -119 }, { -119, SOUTH_WALL + 1 }, { 119, SOUTH_WALL + 1 } }) do
 		part(g, "WallCornerMerlon" .. i, V3(7, 6, 7), CFrame.new(c[1], WALL_HEIGHT + 3, c[2]), RGB(110, 112, 118), Mat.Cobblestone)
 	end
 
@@ -845,20 +850,38 @@ local FLOWER_PATCHES = {
 	{ -65, 25 }, { 65, 25 },
 }
 
+-- Everything that stood along the old south strip (behind the first row of
+-- pads) moves back into the new strip behind the terrace
+local function shiftSouth(list, zAt)
+	for _, e in ipairs(list) do
+		if e[zAt] > 95 then
+			e[zAt] = e[zAt] + SOUTH_EXT
+		end
+	end
+end
+shiftSouth(TREES, 2)
+shiftSouth(NEW_TREES, 3)
+shiftSouth(ROCKS, 2)
+shiftSouth(BUSHES, 2)
+shiftSouth(FLOWER_PATCHES, 2)
+
 local function buildDecor(parent)
 	local d = folder(parent, "CastleAndNature")
 
 	-- Castle: towers on the four corners (red/blue roofs alternating)
 	cornerTower(d, -112, -112, BANNER_RED)
 	cornerTower(d, 112, -112, BANNER_BLUE)
-	cornerTower(d, -112, 112, BANNER_BLUE)
-	cornerTower(d, 112, 112, BANNER_RED)
+	cornerTower(d, -112, SOUTH_WALL - 6, BANNER_BLUE)
+	cornerTower(d, 112, SOUTH_WALL - 6, BANNER_RED)
 
 	-- Banners and torches on the inside of each wall. Inner faces sit 3
 	-- studs in from each wall's centre line.
-	local N, S, W, E = -114.6, 114.6, -114.6, 114.6
+	local N, S, W, E = -114.6, SOUTH_WALL - 3.4, -114.6, 114.6
 	for i, x in ipairs({ -100, -80, 80, 100 }) do
 		banner(d, V3(x, 32, N), V3(0, 0, 1), i % 2 == 0 and BANNER_BLUE or BANNER_RED)
+	end
+	for i, x in ipairs({ -90, -45, 45, 90 }) do
+		banner(d, V3(x, 32, S), V3(0, 0, -1), i % 2 == 0 and BANNER_RED or BANNER_BLUE)
 	end
 	for _, x in ipairs({ -72, -56, 56, 72 }) do -- clear of the gate towers
 		wallTorch(d, V3(x, 16, N), V3(0, 0, 1))
@@ -866,7 +889,7 @@ local function buildDecor(parent)
 	for _, x in ipairs({ -68, -22, 22, 68 }) do
 		wallTorch(d, V3(x, 16, S), V3(0, 0, -1))
 	end
-	for _, z in ipairs({ -65, -5, 35, 85 }) do
+	for _, z in ipairs({ -65, -5, 35, 85, 125, 155 }) do
 		wallTorch(d, V3(W, 16, z), V3(1, 0, 0))
 		wallTorch(d, V3(E, 16, z), V3(-1, 0, 0))
 	end
@@ -1503,6 +1526,13 @@ local LOOKS = {
 	{ torsoMat = Mat.Basalt, torso = RGB(58, 46, 48), headMat = Mat.Basalt, head = RGB(70, 54, 54), postMat = Mat.Slate, post = RGB(44, 38, 42) },
 	{ torsoMat = Mat.Slate, torso = RGB(38, 26, 66), headMat = Mat.Slate, head = RGB(30, 22, 54), postMat = Mat.Metal, post = RGB(34, 30, 48) },
 	{ torsoMat = Mat.Metal, torso = RGB(255, 214, 92), headMat = Mat.Metal, head = RGB(255, 226, 130), postMat = Mat.Metal, post = RGB(236, 190, 70) },
+	-- the upper tier
+	{ torsoMat = Mat.SmoothPlastic, torso = RGB(90, 200, 70), headMat = Mat.SmoothPlastic, head = RGB(130, 235, 95), postMat = Mat.Metal, post = RGB(52, 72, 56) }, -- Ooze
+	{ torsoMat = Mat.Sandstone, torso = RGB(220, 180, 110), headMat = Mat.Sandstone, head = RGB(236, 204, 136), postMat = Mat.Wood, post = RGB(140, 100, 64) }, -- Dune
+	{ torsoMat = Mat.Glass, torso = RGB(255, 140, 210), headMat = Mat.Glass, head = RGB(255, 186, 232), postMat = Mat.Marble, post = RGB(214, 150, 200) }, -- Crystal
+	{ torsoMat = Mat.Metal, torso = RGB(60, 80, 124), headMat = Mat.Metal, head = RGB(84, 112, 164), postMat = Mat.Metal, post = RGB(40, 50, 80) }, -- Storm
+	{ torsoMat = Mat.Slate, torso = RGB(170, 32, 32), headMat = Mat.Slate, head = RGB(204, 44, 40), postMat = Mat.Basalt, post = RGB(60, 22, 22) }, -- Dragon
+	{ torsoMat = Mat.SmoothPlastic, torso = RGB(40, 30, 92), headMat = Mat.SmoothPlastic, head = RGB(64, 44, 134), postMat = Mat.Metal, post = RGB(26, 20, 48) }, -- Cosmic
 }
 
 -- Small neon bits circling a point (animated client-side)
@@ -1630,25 +1660,147 @@ local function buildDummy(dummy, zi, zone, O)
 		l.Parent = torso
 		cylinder(dummy, "Beam", 40, 1.4, O * CFrame.new(0, yb + 20, 0), col, Mat.Neon, { Transparency = 0.75, CanCollide = false, CanQuery = false })
 		orbiters(dummy, 5, 8.5, 110, orbitCenter, RGB(255, 245, 200), 1.4, false)
+	elseif zi >= 7 then
+		-- the upper tier: every one glows in its colour...
+		local l = Instance.new("PointLight")
+		l.Color = col
+		l.Range = 26
+		l.Brightness = 1.6
+		l.Parent = torso
+		if zi == 7 then
+			-- Ooze (Gloomgut's slime): a puddle round its feet, slime dripping
+			-- off its arms, bubbles floating round it
+			cylinder(dummy, "SlimePuddle", 0.25, 12, O * CFrame.new(0, y0 + 0.2, 0), RGB(90, 220, 70), Mat.Neon, { Transparency = 0.35, CanCollide = false })
+			for _, dx in ipairs({ -4.6, -2.4, 2.8, 4.8 }) do
+				local len = 1.2 + math.abs(dx) * 0.3
+				part(body, "SlimeDrip", V3(0.6, len, 0.6), O * CFrame.new(dx, yb + 8.2 - 0.6 - len / 2, -0.2), RGB(120, 255, 90), Mat.Neon, { CanCollide = false })
+			end
+			orbiters(dummy, 4, 6.5, 50, orbitCenter, RGB(160, 255, 120), 1.2, false)
+		elseif zi == 8 then
+			-- Dune (Mireworm's sands): a sand swirl round it, and a little
+			-- sandworm arching out of the ground behind it
+			for k = 0, 6 do
+				local t = k / 6
+				local pos = V3(-4 + t * 8, yb + 1 + math.sin(t * math.pi) * 9, -3.5)
+				ball(dummy, "WormArc", 2.4 - t * 0.9, O * CFrame.new(pos), (k % 2 == 0) and RGB(196, 150, 96) or RGB(170, 124, 80), Mat.Sandstone, { CanCollide = false })
+			end
+			orbiters(dummy, 6, 7, 60, orbitCenter, RGB(240, 200, 130), 1.1, true)
+		elseif zi == 9 then
+			-- Crystal: pink crystal spires round its base
+			for k = 1, 6 do
+				local a = math.rad(k * 60)
+				local pos = V3(math.cos(a) * 5.4, yb + 2.2, math.sin(a) * 5.4)
+				local axis = V3(math.sin(a), 0, -math.cos(a))
+				local h = 3.5 + (k % 3) * 1.5
+				part(dummy, "Crystal" .. k, V3(1.2, h, 1.2), O * CFrame.new(pos) * CFrame.fromAxisAngle(axis, math.rad(16)), RGB(255, 150, 220), Mat.Neon, { Transparency = 0.2 })
+			end
+			orbiters(dummy, 4, 7.5, 70, orbitCenter, RGB(255, 200, 240), 1.2, true)
+		elseif zi == 10 then
+			-- Storm: a zigzag bolt of lightning over its head, sparks whirling fast
+			local pts = { V3(0, 13.5, 0), V3(1.2, 15.2, 0), V3(-0.8, 16.6, 0), V3(1, 18.4, 0), V3(-0.4, 20, 0) }
+			for k = 1, #pts - 1 do
+				local a, b = O * CFrame.new(pts[k] + V3(0, yb, 0)), O * CFrame.new(pts[k + 1] + V3(0, yb, 0))
+				local mid = (a.Position + b.Position) / 2
+				part(dummy, "Bolt", V3(0.5, 0.5, (b.Position - a.Position).Magnitude), CFrame.lookAt(mid, b.Position), RGB(200, 240, 255), Mat.Neon, { CanCollide = false })
+			end
+			orbiters(dummy, 6, 7, 200, orbitCenter, RGB(160, 220, 255), 0.8, true)
+		elseif zi == 11 then
+			-- Dragon: horns, wings and fire from its head
+			for _, sx in ipairs({ -1, 1 }) do
+				part(body, "Horn", V3(0.6, 2.4, 0.6), O * CFrame.new(sx * 1.2, yb + 13.4, 0) * CFrame.Angles(0, 0, math.rad(-sx * 20)), RGB(240, 220, 180), Mat.SmoothPlastic)
+				part(body, "Wing", V3(5.5, 4, 0.3), O * CFrame.new(sx * 4.6, yb + 9.4, -2) * CFrame.Angles(0, math.rad(sx * 25), math.rad(sx * 18)), RGB(120, 20, 24), Mat.SmoothPlastic, { CanCollide = false })
+			end
+			local fire = Instance.new("Fire")
+			fire.Size = 6
+			fire.Heat = 9
+			fire.Color = col
+			fire.SecondaryColor = RGB(255, 200, 60)
+			fire.Parent = head
+			orbiters(dummy, 3, 7, 90, orbitCenter, RGB(255, 140, 60), 1.2, true)
+		elseif zi == 12 then
+			-- Cosmic: a ring of starlight round it, little planets orbiting,
+			-- and a beam of light into the sky
+			local ring = cylinder(dummy, "StarRing", 0.3, 9, O * CFrame.new(0, yb + 7, 0) * CFrame.Angles(math.rad(20), 0, 0), RGB(200, 180, 255), Mat.Neon, { CanCollide = false, Transparency = 0.2 })
+			fx(ring, { SpinSpeed = 30 })
+			orbiters(dummy, 3, 9, 50, orbitCenter, RGB(255, 180, 120), 1.8, false)
+			orbiters(dummy, 5, 6, 130, orbitCenter + V3(0, 3, 0), RGB(255, 255, 255), 0.6, true)
+			cylinder(dummy, "Beam", 40, 1.4, O * CFrame.new(0, yb + 20, 0), col, Mat.Neon, { Transparency = 0.75, CanCollide = false, CanQuery = false })
+		end
 	end
 end
 
 local function buildYard(parent)
 	local yard = folder(parent, "TrainingYard")
 	local pad = Config.Yard.PadSize
+	local Y = Config.Yard
+
+	-- The upper tier: a raised stone terrace behind the first row, for the
+	-- pads past the first PerRow, with a grand staircase across its whole
+	-- front (shallow half-stud steps, easy to walk up), a low crenellated
+	-- parapet round its back and sides, and braziers at its front corners.
+	if #Config.Zones > Y.PerRow then
+		local c2 = Config.zonePosition(Y.PerRow + 1)
+		local H = Y.TierHeight
+		local halfW = (Y.PerRow / 2) * Y.Spacing - Y.Spacing / 2 + pad / 2 + 10 -- the pads, plus a margin
+		local front, back = c2.Z - pad / 2 - 8, c2.Z + pad / 2 + 12
+		local stone, stoneDark, trim = RGB(150, 146, 156), RGB(112, 108, 120), RGB(214, 170, 70)
+		part(yard, "Terrace", V3(halfW * 2, H, back - front), CFrame.new(0, H / 2, (front + back) / 2), stone, Mat.Slate)
+		part(yard, "TerraceTop", V3(halfW * 2, 0.3, back - front), CFrame.new(0, H + 0.15, (front + back) / 2), RGB(96, 106, 132), Mat.Slate)
+		part(yard, "TerraceTrim", V3(halfW * 2 + 0.4, 0.4, 0.6), CFrame.new(0, H + 0.2, front - 0.1), trim, Mat.Metal, { CanCollide = false })
+		-- the grand staircase
+		local steps = math.floor(H / 0.5)
+		local depth = 0.95
+		for k = 1, steps do
+			local h = k * 0.5
+			local z = front - (steps - k + 0.5) * depth
+			part(yard, "Stair", V3(halfW * 2, h, depth + 0.02), CFrame.new(0, h / 2, z), (k % 2 == 0) and stone or stoneDark, Mat.Slate)
+		end
+		-- the parapet: back and sides, with merlons
+		local function parapet(a, b)
+			local mid, len = (a + b) / 2, (b - a).Magnitude
+			local alongX = math.abs(b.X - a.X) > math.abs(b.Z - a.Z)
+			part(yard, "Parapet", alongX and V3(len, 1.6, 1.2) or V3(1.2, 1.6, len), CFrame.new(mid.X, H + 1.1, mid.Z), stoneDark, Mat.Slate)
+			for t = 2, len - 2, 5 do
+				local p = a + (b - a).Unit * t
+				part(yard, "ParapetMerlon", V3(1.6, 1.2, 1.6), CFrame.new(p.X, H + 2.5, p.Z), stone, Mat.Slate)
+			end
+		end
+		parapet(V3(-halfW, 0, back - 0.6), V3(halfW, 0, back - 0.6))
+		parapet(V3(-halfW + 0.6, 0, front + 2), V3(-halfW + 0.6, 0, back - 0.6))
+		parapet(V3(halfW - 0.6, 0, front + 2), V3(halfW - 0.6, 0, back - 0.6))
+		-- braziers at the front corners, burning
+		for _, sx in ipairs({ -1, 1 }) do
+			local bx, bz = sx * (halfW - 3), front + 2.5
+			part(yard, "BrazierBase", V3(3, 1, 3), CFrame.new(bx, H + 0.5, bz), stoneDark, Mat.Slate)
+			part(yard, "BrazierPost", V3(1.4, 5, 1.4), CFrame.new(bx, H + 3.5, bz), stone, Mat.Slate)
+			local bowl = cylinder(yard, "BrazierBowl", 1.2, 3.6, CFrame.new(bx, H + 6.6, bz), RGB(58, 58, 66), Mat.Metal)
+			local fire = Instance.new("Fire")
+			fire.Size = 5
+			fire.Heat = 8
+			fire.Color = RGB(255, 140, 40)
+			fire.SecondaryColor = RGB(255, 220, 90)
+			fire.Parent = bowl
+			local light = Instance.new("PointLight")
+			light.Color = RGB(255, 170, 90)
+			light.Range = 24
+			light.Brightness = 1.4
+			light.Parent = bowl
+		end
+	end
 
 	for zi, zone in ipairs(Config.Zones) do
 		local c = Config.zonePosition(zi)
 		local col = zone.color
+		local gy = c.Y -- the ground this pad stands on
 
 		-- The pad players stand on
-		part(yard, "Pad" .. zi, V3(pad, 0.5, pad), CFrame.new(c.X, 0.85, c.Z), RGB(44, 48, 66), Mat.Metal)
-		part(yard, "PadGlow" .. zi, V3(pad - 4, 0.15, pad - 4), CFrame.new(c.X, 1.175, c.Z), col, Mat.Neon, { Transparency = 0.4 })
+		part(yard, "Pad" .. zi, V3(pad, 0.5, pad), CFrame.new(c.X, gy + 0.85, c.Z), RGB(44, 48, 66), Mat.Metal)
+		part(yard, "PadGlow" .. zi, V3(pad - 4, 0.15, pad - 4), CFrame.new(c.X, gy + 1.175, c.Z), col, Mat.Neon, { Transparency = 0.4 })
 		local edge = pad / 2 - 0.5
-		part(yard, "EdgeN" .. zi, V3(pad, 0.2, 1), CFrame.new(c.X, 1.2, c.Z - edge), col, Mat.Neon, { CanCollide = false })
-		part(yard, "EdgeS" .. zi, V3(pad, 0.2, 1), CFrame.new(c.X, 1.2, c.Z + edge), col, Mat.Neon, { CanCollide = false })
-		part(yard, "EdgeW" .. zi, V3(1, 0.2, pad - 2), CFrame.new(c.X - edge, 1.2, c.Z), col, Mat.Neon, { CanCollide = false })
-		part(yard, "EdgeE" .. zi, V3(1, 0.2, pad - 2), CFrame.new(c.X + edge, 1.2, c.Z), col, Mat.Neon, { CanCollide = false })
+		part(yard, "EdgeN" .. zi, V3(pad, 0.2, 1), CFrame.new(c.X, gy + 1.2, c.Z - edge), col, Mat.Neon, { CanCollide = false })
+		part(yard, "EdgeS" .. zi, V3(pad, 0.2, 1), CFrame.new(c.X, gy + 1.2, c.Z + edge), col, Mat.Neon, { CanCollide = false })
+		part(yard, "EdgeW" .. zi, V3(1, 0.2, pad - 2), CFrame.new(c.X - edge, gy + 1.2, c.Z), col, Mat.Neon, { CanCollide = false })
+		part(yard, "EdgeE" .. zi, V3(1, 0.2, pad - 2), CFrame.new(c.X + edge, gy + 1.2, c.Z), col, Mat.Neon, { CanCollide = false })
 
 		-- The dummy stands at the back of its pad, facing north (toward the player)
 		local dz = c.Z + 6
@@ -1656,33 +1808,89 @@ local function buildYard(parent)
 		dummy.Name = "Dummy" .. zi
 		dummy:SetAttribute("ZoneIndex", zi)
 		dummy.Parent = yard
-		local O = CFrame.new(c.X, 0, dz) * CFrame.Angles(0, math.pi, 0)
+		local O = CFrame.new(c.X, gy, dz) * CFrame.Angles(0, math.pi, 0)
 		buildDummy(dummy, zi, zone, O)
 		CollectionService:AddTag(dummy, "Dummy")
 
-		-- Multiplier sign. Kept to a short MaxDistance on purpose: the 6 pads
-		-- sit only 32 studs apart, so anything much bigger and several signs
-		-- are in camera range at once and stack into an unreadable jumble
-		-- when the yard is viewed from a distance or end-on. Short range means
-		-- you only ever see the sign for the pad you're actually near.
-		local anchor = anchorPart(yard, "SignAnchor" .. zi, CFrame.new(c.X, 21, dz))
-		-- (sized in studs, like the other signs: readable up close without
-		-- filling your screen, and smaller the further away you are)
+		-- Multiplier sign: a black box with a white border (the game's look),
+		-- sized in studs so it's readable up close without filling the screen.
+		-- Kept to a short MaxDistance on purpose: the pads sit only 32 studs
+		-- apart, so you only ever see the sign for the pad you're near.
+		local anchor = anchorPart(yard, "SignAnchor" .. zi, CFrame.new(c.X, gy + 21, dz))
 		local bb = billboard(anchor, "ZoneSign", UDim2.fromScale(300 * SIGN_STUDS_PER_PIXEL, 150 * SIGN_STUDS_PER_PIXEL), 50)
 		bb:SetAttribute("ZoneIndex", zi)
-		billLabel(bb, "Mult", "x" .. Config.formatMult(zone.mult), col, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.5))
-		billLabel(bb, "Name", zone.name, RGB(255, 255, 255), UDim2.fromScale(0, 0.5), UDim2.fromScale(1, 0.25))
-		local status = billLabel(bb, "Status", zone.level <= 1 and "UNLOCKED" or ("Needs Level " .. zone.level), RGB(120, 255, 160), UDim2.fromScale(0, 0.75), UDim2.fromScale(1, 0.25))
+		local box = Instance.new("Frame")
+		box.Name = "Box"
+		box.BackgroundColor3 = RGB(12, 10, 20)
+		box.BackgroundTransparency = 0.15
+		box.Size = UDim2.fromScale(1, 1)
+		box.ZIndex = 0
+		box.Parent = bb
+		local boxEdge = Instance.new("UIStroke")
+		boxEdge.Color = RGB(255, 255, 255)
+		boxEdge.Thickness = 3
+		boxEdge.Parent = box
+		billLabel(bb, "Mult", "x" .. Config.formatMult(zone.mult), col, UDim2.fromScale(0.05, 0.04), UDim2.fromScale(0.9, 0.46))
+		billLabel(bb, "Name", zone.name, RGB(255, 255, 255), UDim2.fromScale(0.05, 0.5), UDim2.fromScale(0.9, 0.24))
+		local status = billLabel(bb, "Status", zone.level <= 1 and "UNLOCKED" or ("Needs Level " .. zone.level), RGB(120, 255, 160), UDim2.fromScale(0.05, 0.74), UDim2.fromScale(0.9, 0.22))
 		status.Name = "Status"
 		CollectionService:AddTag(bb, "ZoneSign")
 	end
 
-	-- Yard banner
-	for _, sx in ipairs({ -30, 30 }) do
-		part(yard, "BannerPost", V3(2, 24, 2), CFrame.new(sx, 12, 100), RGB(120, 84, 52), Mat.Wood)
+	-- The way in: a stone archway over the path from the plaza, with a
+	-- pixel-style sign board hung in it (instead of the old plank on posts)
+	local AZ = Y.CenterZ - pad / 2 - 9 -- just in front of the first row
+	local archStone, archDark, gold = RGB(150, 146, 156), RGB(104, 100, 112), RGB(214, 170, 70)
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * 12
+		part(yard, "ArchBase", V3(4.4, 2, 4.4), CFrame.new(x, 1, AZ), archDark, Mat.Slate)
+		part(yard, "ArchPillar", V3(3.4, 17, 3.4), CFrame.new(x, 10.5, AZ), archStone, Mat.Slate)
+		part(yard, "ArchCap", V3(4.4, 1.2, 4.4), CFrame.new(x, 19.6, AZ), archDark, Mat.Slate)
+		part(yard, "ArchFinial", V3(1.6, 1.6, 1.6), CFrame.new(x, 21.2, AZ) * CFrame.Angles(math.rad(45), 0, math.rad(45)), gold, Mat.Neon, { CanCollide = false })
+		-- a torch on the plaza side of each pillar
+		local torchAt = V3(x, 13, AZ - 1.7)
+		part(yard, "ArchTorchHolder", V3(0.8, 2.2, 0.8), CFrame.new(torchAt), RGB(58, 58, 66), Mat.Metal, { CanCollide = false })
+		local torchHead = part(yard, "ArchTorch", V3(1, 0.8, 1), CFrame.new(torchAt + V3(0, 1.4, 0)), RGB(60, 40, 30), Mat.Wood, { CanCollide = false })
+		local fire = Instance.new("Fire")
+		fire.Size = 3
+		fire.Heat = 6
+		fire.Color = RGB(255, 140, 40)
+		fire.SecondaryColor = RGB(255, 220, 90)
+		fire.Parent = torchHead
 	end
-	part(yard, "BannerBoard", V3(64, 9, 1.5), CFrame.new(0, 21, 100), RGB(176, 96, 78), Mat.WoodPlanks)
-	titleSign(yard, CFrame.new(0, 21, 98), "TRAINING YARD", "Stand on a pad and click to train", RGB(255, 214, 80), 460, 90)
+	part(yard, "ArchBeam", V3(28, 2.4, 3), CFrame.new(0, 20.4, AZ), archDark, Mat.Slate)
+	for _, sx in ipairs({ -1, 1 }) do
+		part(yard, "ArchChain", V3(0.3, 2.2, 0.3), CFrame.new(sx * 7, 18.1, AZ), RGB(58, 58, 66), Mat.Metal, { CanCollide = false })
+	end
+	local board = part(yard, "YardSign", V3(18, 4.6, 0.8), CFrame.new(0, 14.7, AZ), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
+	part(yard, "YardSignTrim", V3(18.8, 5.4, 0.6), CFrame.new(0, 14.7, AZ), gold, Mat.Metal, { CanCollide = false })
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local sg = Instance.new("SurfaceGui")
+		sg.Name = "YardSignText"
+		sg.Face = face
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		sg.PixelsPerStud = 40
+		sg.LightInfluence = 0
+		sg.Parent = board
+		local title = Instance.new("TextLabel")
+		title.BackgroundTransparency = 1
+		title.Position = UDim2.fromScale(0.04, 0.08)
+		title.Size = UDim2.fromScale(0.92, 0.52)
+		title.Font = FONT
+		title.TextScaled = true
+		title.Text = "TRAINING YARD"
+		title.TextColor3 = RGB(254, 231, 97)
+		title.Parent = sg
+		local sub = Instance.new("TextLabel")
+		sub.BackgroundTransparency = 1
+		sub.Position = UDim2.fromScale(0.08, 0.62)
+		sub.Size = UDim2.fromScale(0.84, 0.28)
+		sub.Font = FONT
+		sub.TextScaled = true
+		sub.Text = "Stand on a pad and click to train"
+		sub.TextColor3 = RGB(255, 255, 255)
+		sub.Parent = sg
+	end
 end
 
 ----------------------------------------------------------------------
@@ -2907,8 +3115,11 @@ local function wallFootRocks(parent)
 		local alongX = side % 2 == 0
 		local out = (side < 2) and 1 or -1
 		local isNorth = alongX and out < 0
+		local isSouth = alongX and out > 0
+		local shift = isSouth and SOUTH_EXT or 0 -- (the south wall sits further out)
 		local t = -WALL_OUTER - 4
-		while t < WALL_OUTER + 4 do
+		local tEnd = alongX and (WALL_OUTER + 4) or (WALL_OUTER + SOUTH_EXT + 4)
+		while t < tEnd do
 			local w = 9 + rnd() * 7
 			local skip = isNorth and math.abs(t) < 17 -- the stairs' abutment goes out here
 			if not skip then
@@ -2916,13 +3127,13 @@ local function wallFootRocks(parent)
 				local d = 6 + rnd() * 5
 				local o = WALL_OUTER + d * 0.35 + rnd() * 2
 				local y = -2 + rnd() * 3
-				local pos = alongX and V3(t, y, out * o) or V3(out * o, y, t)
+				local pos = alongX and V3(t, y, out * o + shift) or V3(out * o, y, t)
 				boulder(pos, alongX and V3(w, h, d) or V3(d, h, w), (rnd() - 0.5) * 0.6)
 				-- a smaller rock tumbled in front of every other one
 				if rnd() < 0.55 then
 					local s2 = 3.5 + rnd() * 3.5
 					local o2 = o + d * 0.5 + rnd() * 1.5
-					local pos2 = alongX and V3(t + (rnd() - 0.5) * w * 0.6, -3 + rnd() * 2, out * o2) or V3(out * o2, -3 + rnd() * 2, t + (rnd() - 0.5) * w * 0.6)
+					local pos2 = alongX and V3(t + (rnd() - 0.5) * w * 0.6, -3 + rnd() * 2, out * o2 + shift) or V3(out * o2, -3 + rnd() * 2, t + (rnd() - 0.5) * w * 0.6)
 					boulder(pos2, V3(s2 * 1.3, s2, s2), rnd() * math.pi)
 				end
 			end
@@ -2944,7 +3155,7 @@ local function buildMountain(parent)
 	local m = folder(parent, "MountainAndMist")
 
 	-- under the lobby (flush with the castle walls at the top)
-	squareMountain(m, 0, 0, 122, 122, -6, 5)
+	squareMountain(m, 0, SOUTH_EXT / 2, 122, 122 + SOUTH_EXT / 2, -6, 5)
 	wallFootRocks(m)
 	-- under the Spire's crag, across the chasm
 	roundMountain(m, 0, SPIRE_Z, SPIRE_ROCK_R + 2, -26, 4)

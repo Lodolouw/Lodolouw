@@ -15,9 +15,14 @@ arena will plug in later.
 - **Talisman Workbench** — craft 6 talismans from coins + materials, equip up
   to 3 at once for stat bonuses
 - **Prestige Shrine** — reset Power/Coins/Upgrades for permanent multipliers
-- **Training Yard** — 6 practice-dummy pads (Straw → Iron → Frost → Ember →
-  Void → Celestial), each with its own look, particle effects, and a Power
-  multiplier sign; click/tap to train, or toggle Auto Train
+- **Training Yard** — 12 practice-dummy pads in two rows, entered through a
+  stone archway with a pixel sign. The first row (Straw → Iron → Frost →
+  Ember → Void → Celestial) is on the ground; the second (Ooze → Dune →
+  Crystal → Storm → Dragon → Cosmic, levels 55–105) stands a step up on a
+  raised stone terrace behind it, reached by a grand staircase. Each dummy
+  has its own look, effects and a Power multiplier sign; click/tap to train,
+  or toggle Auto Train. (Rows, spacing and the terrace's height are in
+  `Config.Yard`; the castle's south wall sits further out to hold it all.)
 - **Tall mossy castle walls** — a much taller stone perimeter wall than a
   typical starter lobby, with crenellated merlons on top, moss patches
   climbing the inner face, and ivy strands hanging down. All Parts, no

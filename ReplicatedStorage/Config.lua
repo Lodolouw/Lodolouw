@@ -57,9 +57,12 @@ function Config.comboMult(count)
 end
 
 Config.Yard = {
-	CenterZ = 75, -- z position of the row of pads
+	CenterZ = 75, -- z position of the first row of pads
 	Spacing = 32, -- distance between pad centres
 	PadSize = 24, -- pad is PadSize x PadSize studs
+	PerRow = 6, -- pads in a row; the next ones start a new row...
+	RowGap = 44, -- ...this much further back (south)...
+	TierHeight = 5, -- ...and a step up, on a raised stone terrace
 }
 
 ----------------------------------------------------------------------
@@ -105,16 +108,26 @@ Config.Zones = {
 	{ id = "Ember", name = "Ember Dummy", mult = 5, level = 20, color = Color3.fromRGB(255, 120, 45) },
 	{ id = "Void", name = "Void Dummy", mult = 8, level = 30, color = Color3.fromRGB(175, 95, 255) },
 	{ id = "Celestial", name = "Celestial Dummy", mult = 10, level = 45, color = Color3.fromRGB(255, 215, 70) },
+	-- the upper tier
+	{ id = "Ooze", name = "Ooze Dummy", mult = 14, level = 55, color = Color3.fromRGB(120, 255, 90) },
+	{ id = "Dune", name = "Dune Dummy", mult = 19, level = 64, color = Color3.fromRGB(240, 196, 120) },
+	{ id = "Crystal", name = "Crystal Dummy", mult = 25, level = 73, color = Color3.fromRGB(255, 120, 200) },
+	{ id = "Storm", name = "Storm Dummy", mult = 33, level = 82, color = Color3.fromRGB(120, 200, 255) },
+	{ id = "Dragon", name = "Dragon Dummy", mult = 44, level = 92, color = Color3.fromRGB(255, 70, 60) },
+	{ id = "Cosmic", name = "Cosmic Dummy", mult = 60, level = 105, color = Color3.fromRGB(150, 110, 255) },
 }
 for _, zone in ipairs(Config.Zones) do
 	zone.req = Config.powerForLevel(zone.level)
 end
 
--- World position of the centre of pad number `index`
+-- World position of the centre of pad number `index` (Y is the ground it
+-- stands on: 0 for the first row, TierHeight up for the terrace behind it)
 function Config.zonePosition(index)
-	local n = #Config.Zones
-	local x = (index - (n + 1) / 2) * Config.Yard.Spacing
-	return Vector3.new(x, 0, Config.Yard.CenterZ)
+	local Y = Config.Yard
+	local row = math.floor((index - 1) / Y.PerRow)
+	local col = (index - 1) % Y.PerRow + 1
+	local x = (col - (Y.PerRow + 1) / 2) * Y.Spacing
+	return Vector3.new(x, row * Y.TierHeight, Y.CenterZ + row * Y.RowGap)
 end
 
 ----------------------------------------------------------------------
