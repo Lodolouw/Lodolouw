@@ -9,15 +9,11 @@
 	   shakes - and it all breaks away into the fight. About 2.4 seconds: the
 	   boss is still waking up the whole time (it can't attack while it does).
 
-	2) THE SOUL BREAKS - when you die, your red heart appears in the middle of
-	   the screen, cracks in two and shatters (Undertale), just before YOU DIED.
-
 	3) THE BOSSES TALK - an Undertale-style box under the boss bar with the
 	   boss's portrait: it greets you, mocks you, gloats, and has last words.
 
 	Only on your own screen. Config.Retro.Intro = false turns the splash off,
-	Config.Retro.SoulBreak = false the heart, Config.Retro.BossTalk = false
-	the talking.
+	Config.Retro.BossTalk = false the talking.
 ]]
 
 local Players = game:GetService("Players")
@@ -315,48 +311,8 @@ for _, m in ipairs(CollectionService:GetTagged("Boss")) do
 end
 CollectionService:GetInstanceAddedSignal("Boss"):Connect(watchBoss)
 
-----------------------------------------------------------------------
--- 2) The SOUL breaks when you die
-----------------------------------------------------------------------
-local function soulBreak()
-	if R.SoulBreak == false then
-		return
-	end
-	local gui = new("ScreenGui", { Name = "SoulBreak", IgnoreGuiInset = true, ResetOnSpawn = false, DisplayOrder = 1050 }, playerGui)
-	gui:SetAttribute("RetroSkip", true)
-	local function half(rows)
-		return sprite(rows, SOUL_INK, gui, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromScale(0.1, 0.1) })
-	end
-	-- the two halves of the heart, split down a zigzag
-	local left = half({ ".OO....", "ORRO...", "ORRRO..", "ORRR...", ".ORRO..", "..OR...", "...O..." })
-	local right = half({ "....OO.", "...rRO.", "...RRRO", "...RRrO", "....rO.", "...RO..", "...O..." })
-	task.wait(0.5)
-	sound("UI Blip")
-	tween(left, 0.25, { Position = UDim2.new(0.5, -10, 0.45, 0) })
-	tween(right, 0.25, { Position = UDim2.new(0.5, 10, 0.45, 0) })
-	task.wait(0.6)
-	left.Visible, right.Visible = false, false
-	-- shards
-	for i = 1, 8 do
-		local a = i / 8 * math.pi * 2
-		local shard = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RED, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(10, 10) }, gui)
-		tween(shard, 1, { Position = UDim2.new(0.5, math.cos(a) * 120, 0.45, math.sin(a) * 80 + 140), BackgroundTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	end
-	task.wait(1.1)
-	gui:Destroy()
-end
-local function onCharacter(char)
-	local hum = char:WaitForChild("Humanoid", 10)
-	if hum then
-		hum.Died:Connect(function()
-			task.spawn(soulBreak)
-		end)
-	end
-end
-if player.Character then
-	task.spawn(onCharacter, player.Character)
-end
-player.CharacterAdded:Connect(onCharacter)
+-- (When you die, the heart on your HP bar cracks and shatters - Hud does
+-- that - and YOU DIED shows in the middle; nothing more is needed here.)
 
 ----------------------------------------------------------------------
 -- 3) THE BOSSES TALK (like Undertale's): a black box under the boss bar,
