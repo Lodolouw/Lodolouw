@@ -583,6 +583,17 @@ local function hitTarget(player, model, damage, weight)
 	if model:GetAttribute("Invulnerable") then
 		damage = 0
 	end
+	-- A boss with IFrames shrugs off hits for that long after each one lands
+	-- (whoever threw them), so you can't just hold the button down.
+	local iframes = tonumber(model:GetAttribute("IFrames"))
+	if iframes and damage > 0 then
+		local t = os.clock()
+		if t < (model:GetAttribute("IFramesUntil") or 0) then
+			damage = 0
+		else
+			model:SetAttribute("IFramesUntil", t + iframes)
+		end
+	end
 	local floorHp = model:GetAttribute("MinHealth") or 0
 	local before = model:GetAttribute("Health") or 0
 	local hp = math.max(math.min(before, floorHp), before - damage)

@@ -2223,6 +2223,7 @@ local function build(floorId, homePart)
 	if E.worm then
 		E.under = true
 		E.noise = {}
+		model:SetAttribute("IFrames", def.IFrames) -- (CombatService: hits shrugged off after each one)
 		-- its whole body is its hitbox, not just its middle (see bodyNear)
 		if CombatService and CombatService.SetTargetShape then
 			CombatService.SetTargetShape(model, function(from)

@@ -534,6 +534,9 @@ Config.Bosses = {
 		-- (You can only hurt it while it's out of the sand, so every window counts.)
 		HealthPunches = 34,
 		PartyScale = 0.62,
+		-- after each punch that lands it shrugs off every other punch for this
+		-- many seconds (from anyone) - bigger = fewer hits land, a harder fight
+		IFrames = 0.6,
 		StudioFairFight = true,
 
 		Size = 30, -- a vast creature - half again as wide as Gloomgut
