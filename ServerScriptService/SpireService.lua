@@ -27,6 +27,18 @@ local remotes = {}
 local lastTravel = {} -- [player] = os.clock() of the last trip, to stop spamming
 local TRAVEL_COOLDOWN = 1.5
 
+-- Is the boss of this floor awake and fighting? (You can't walk out on a
+-- fight: you win it, or it wins.)
+local FIGHTING = { Waking = true, Fighting = true, Transition = true }
+local function fightOn(floorId)
+	for _, boss in ipairs(CollectionService:GetTagged("Boss")) do
+		if boss:GetAttribute("Floor") == floorId and FIGHTING[boss:GetAttribute("State")] then
+			return true
+		end
+	end
+	return false
+end
+
 local function firstTagged(tag)
 	return CollectionService:GetTagged(tag)[1]
 end
@@ -267,6 +279,9 @@ local function travel(player, action, floorId)
 		if not player:GetAttribute("SpireFloor") then
 			return false, "You're not in the Spire."
 		end
+		if fightOn(player:GetAttribute("SpireFloor")) then
+			return false, "You can't leave in the middle of a fight!"
+		end
 		local back = firstTagged("SpireReturn")
 		if not back then
 			return false, "Can't find the way back."
@@ -276,6 +291,11 @@ local function travel(player, action, floorId)
 			return false, "You can't travel right now."
 		end
 		player:SetAttribute("SpireFloor", nil)
+		-- out of the arena: patched up, back to full health
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health > 0 then
+			hum.Health = hum.MaxHealth
+		end
 		remotes.SpireEvent:FireClient(player, "Arrived", "The Spire", nil)
 		return true
 	end
@@ -296,7 +316,10 @@ local function hookExit(prompt)
 	end
 	hooked[prompt] = true
 	prompt.Triggered:Connect(function(player)
-		if player:GetAttribute("SpireFloor") then
+		local floorId = player:GetAttribute("SpireFloor")
+		if floorId and fightOn(floorId) then
+			remotes.SpireEvent:FireClient(player, "Message", "You can't leave in the middle of a fight!")
+		elseif floorId then
 			remotes.SpireEvent:FireClient(player, "ConfirmLeave")
 		end
 	end)
@@ -310,7 +333,7 @@ function SpireService.Start()
 	local folder = Instance.new("Folder")
 	folder.Name = "SpireRemotes"
 	local event = Instance.new("RemoteEvent")
-	event.Name = "SpireEvent" -- server -> client: ("OpenMenu") / ("Arrived", areaName, bossName) / ("ConfirmLeave")
+	event.Name = "SpireEvent" -- server -> client: ("OpenMenu") / ("Arrived", areaName, bossName) / ("ConfirmLeave") / ("Message", text)
 	event.Parent = folder
 	local fn = Instance.new("RemoteFunction")
 	fn.Name = "SpireTravel" -- client -> server: ("enter", floorId) / ("leave") -> ok, message

@@ -638,8 +638,23 @@ end
 local yesBtn = dialogButton("Leave", 0.28, RGB(90, 40, 60))
 local noBtn = dialogButton("Stay", 0.72, C.row)
 
+-- (the boss of your floor is awake: you can't walk out on a fight)
+local function fightOn(floorId)
+	for _, boss in ipairs(game:GetService("CollectionService"):GetTagged("Boss")) do
+		local state = boss:GetAttribute("State")
+		if boss:GetAttribute("Floor") == floorId and (state == "Waking" or state == "Fighting" or state == "Transition") then
+			return true
+		end
+	end
+	return false
+end
+
 local function askLeave()
 	if travelling or not player:GetAttribute("SpireFloor") then
+		return
+	end
+	if fightOn(player:GetAttribute("SpireFloor")) then
+		showMessage("You can't leave in the middle of a fight!")
 		return
 	end
 	local f = Config.Spire.Floors[player:GetAttribute("SpireFloor")]
@@ -699,6 +714,8 @@ SpireEvent.OnClientEvent:Connect(function(kind, a, b)
 		end
 	elseif kind == "ConfirmLeave" then
 		askLeave()
+	elseif kind == "Message" and type(a) == "string" then
+		showMessage(a)
 	end
 end)
 

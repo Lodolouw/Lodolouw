@@ -568,7 +568,7 @@ local function clearWorm(E)
 	if not E.worm then
 		return
 	end
-	E.swim, E.coil, E.lash = nil, nil, nil
+	E.swim, E.coil, E.lash, E.circle = nil, nil, nil, nil
 	E.model:SetAttribute("ActT", nil)
 end
 
@@ -684,6 +684,7 @@ end
 -- setAction, plus clearing the worm's own extra timing attribute
 local function wormAction(E, name, number)
 	E.model:SetAttribute("ActT", nil)
+	E.diving, E.lie, E.coilRest = nil, nil, nil -- (each move's hitbox: see bodyNear)
 	return setAction(E, name, number)
 end
 
@@ -972,12 +973,15 @@ end
 -- in after its head, and it carries on from there. You can still land a hit
 -- in the first half.
 local DIVE_AHEAD = 18
+local HUMP_EVERY = 62 -- (studs it swims between arches of its back: see growHumps)
 local function wormDive(E, token)
 	local H = E.def.Hunt
 	E.track, E.motion, E.swim = false, nil, nil
 	local into = sandSpot(E, E.pos + E.facing * DIVE_AHEAD, E.pos, 4)
 	local t0 = wormAction(E, "Dive", H.DiveTime)
 	setSlot(E, 1, into) -- (every screen draws it plunging in here)
+	E.diving = { from = E.pos, to = into, t0 = t0, T = H.DiveTime }
+	E.lastHump = (E.odo or 0) - HUMP_EVERY * 0.5 -- (its back arches up soon after it goes under)
 	E.motion = { from = E.pos, to = into, t0 = t0, t1 = t0 + H.DiveTime }
 	if not waitUntil(E, token, t0 + H.DiveTime * 0.5) then
 		return false
@@ -1108,6 +1112,7 @@ local function breachLeap(E, token, from, tell, last)
 	end
 	E.facing = unitOr(flat(B - A), E.facing)
 	local t0 = wormAction(E, "Breach", last and 1 or 0) -- (ActN: 1 = the last leap)
+	E.lie, E.humpsUntil = nil, t0 + tell -- (its back arches as it lines up, under the sand)
 	setSlot(E, 1, A)
 	setSlot(E, 2, B)
 	E.motion = { from = E.pos, to = A, t0 = t0, t1 = t0 + tell * 0.8 }
@@ -1147,6 +1152,8 @@ local function breachLeap(E, token, from, tell, last)
 	E.facing = dir
 	local tail = B - dir * math.min(a.BodyLength, flatDistance(A, B))
 	hitLine(E, tail, B, a.Width / 2, a.Damage, a.Knockback)
+	-- (lying in its trench: its hitbox is its body along the trench - see bodyNear)
+	E.lie = { A = A, dir = dir, len = flatDistance(A, B), BL = a.BodyLength, slide = last and a.Slide or a.Slide * 0.5 }
 	local slideAt
 	if last then
 		-- stuck: you can punch it where it came down nearest its quarry
@@ -1163,6 +1170,7 @@ local function breachLeap(E, token, from, tell, last)
 		return nil
 	end
 	surface(E, false)
+	E.lie.slideAt = now()
 	local slid = now() + (last and a.Slide or a.Slide * 0.5)
 	E.motion = { from = E.pos, to = B, t0 = now(), t1 = slid }
 	if not waitUntil(E, token, slid) then
@@ -1202,13 +1210,12 @@ function WormAttacks.Coil(E, token)
 	local C = inLeash(E, aim, a.Radius)
 	local t0 = wormAction(E, "Coil", nil)
 	setSlot(E, 1, C)
-	-- (each screen draws it circling; here it just heads for the ring)
-	local edge = C + unitOr(flat(E.pos - C), E.facing) * a.Radius
-	E.motion = { from = E.pos, to = edge, t0 = t0, t1 = t0 + a.Tell * 0.5 }
+	-- it circles you under the sand (every screen draws it where it really is)
+	E.circle = { C = C, r = a.Radius, t0 = t0, speed = math.pi * 2 * 0.94 / a.Tell }
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return
 	end
-	E.motion = nil
+	E.circle = nil
 	E.pos = C
 	E.coil = { center = C, t0 = t0 + a.Tell, a = a, next = {} }
 	if not waitUntil(E, token, t0 + a.Tell + a.Close) then
@@ -1216,6 +1223,7 @@ function WormAttacks.Coil(E, token)
 	end
 	E.coil = nil
 	hitArea(E, C, a.Crush + a.Wall / 2, a.Damage, a.Knockback)
+	E.coilRest = { C = C, r = a.Crush, g = a.Wall + 2 } -- (lying coiled: see bodyNear)
 	surface(E, true)
 	waitUntil(E, token, now() + recovery(E, a.Exposed))
 end
@@ -1406,12 +1414,11 @@ function WormAttacks.Undermine(E, token)
 	local t0 = wormAction(E, "Undermine", st.radius)
 	setSlot(E, 1, center)
 	glowCracks(st)
-	local edge = center + unitOr(flat(E.pos - center), E.facing) * (st.radius + 8)
-	E.motion = { from = E.pos, to = edge, t0 = t0, t1 = t0 + a.Tell * 0.3 }
+	E.circle = { C = center, r = st.radius + 8, t0 = t0, speed = 3.2 } -- (round under the platform)
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return
 	end
-	E.motion = nil
+	E.circle = nil
 	breakStone(E, st)
 	hitArea(E, center, st.radius, a.Damage, a.Knockback)
 	wormErupt(E, token, center, recovery(E, a.Exposed))
@@ -1597,43 +1604,170 @@ local function stepRumble(E, t)
 	end
 end
 
--- ITS BODY, FOR PUNCHES: the path its head has just come along, BODY_REACH
--- studs of it (its body follows exactly that path - BossClient draws it so),
--- and wherever it is standing now. A punch lands if it reaches any of it.
-local BODY_REACH = 90
+-- ITS BODY, FOR PUNCHES. You can hit whatever of it you can see, where you
+-- see it - and nothing else. So for each thing it does, its hitbox is the
+-- shape BossClient draws it in:
+--   * swimming: only the arches of its back breaking the sand. Where those
+--     arches come up is decided HERE (growHumps) and sent to every screen
+--     ("Humps", in "Odo" - how far it has swum), so what you see is exactly
+--     what you can hit. Its body under the sand between them can't be hit.
+--   * up out of the sand (bursting up, its armour cracking): its body
+--     standing out of the hole
+--   * diving: the arc from the hole it stood in to the one it plunges into,
+--     emptying as it pours in
+--   * lying in its trench after a breach: its body along the trench,
+--     shortening as it slides away
+--   * lying coiled: the ring, and its head in the middle
+--   * the tail lash: just its tail, whipping round (lashAngle)
+-- When none of it is showing, there's nothing to hit.
+local BODY_LEN, HUMP_LEN = 100, 38 -- (the same as BossClient's: nose to tail, one arch)
+
+-- the path its head has come along, measured in studs swum (its "odometer")
 local function trackBody(E)
 	local tr = E.trail
 	local last = tr and tr[#tr]
 	if not last or (last.p - E.pos).Magnitude > 40 then
 		E.trail = { { p = E.pos, d = 0 } } -- (it came up somewhere else: start afresh)
-	elseif (last.p - E.pos).Magnitude >= 2 then
-		tr[#tr + 1] = { p = E.pos, d = last.d + (E.pos - last.p).Magnitude }
-		while #tr > 2 and tr[#tr].d - tr[2].d > BODY_REACH do
+		E.humps, E.lastHump, E.odo = {}, nil, 0
+		return
+	end
+	E.odo = last.d + (E.pos - last.p).Magnitude
+	if E.odo - last.d >= 2 then
+		tr[#tr + 1] = { p = E.pos, d = E.odo }
+		while #tr > 2 and E.odo - tr[2].d > BODY_LEN + HUMP_LEN do
 			table.remove(tr, 1)
 		end
 	end
 end
 
--- the point of its body nearest `from`, and how thick it is there
+-- where the path was `odo` studs into it (on the sand)
+local function trailPoint(E, odo)
+	local tr = E.trail
+	if odo >= (tr[#tr].d) then
+		return E.pos
+	end
+	for i = #tr, 2, -1 do
+		if tr[i - 1].d <= odo then
+			local a, b = tr[i - 1], tr[i]
+			return a.p:Lerp(b.p, (odo - a.d) / math.max(b.d - a.d, 1e-3))
+		end
+	end
+	return tr[1].p
+end
+
+-- Arches of its back as it swims: a new one every so often (more often when
+-- it's closing in), fixed where they come up - its body threads through each.
+local function growHumps(E, t)
+	E.humps = E.humps or {}
+	local odo = E.odo or 0
+	local changed = false
+	for i = #E.humps, 1, -1 do
+		if odo - E.humps[i] > BODY_LEN + HUMP_LEN then
+			table.remove(E.humps, i)
+			changed = true
+		end
+	end
+	local act = E.model:GetAttribute("Action")
+	local every = nil
+	if E.under then
+		if act == "Burrow" then
+			every = HUMP_EVERY
+		elseif act == "Ambush" and E.model:GetAttribute("ActA") == nil then
+			every = 42 -- (racing after you)
+		elseif act == "Breach" and t < (E.humpsUntil or 0) then
+			every = 30 -- (lining up to leap)
+		elseif act == "Coil" and E.circle then
+			every = 24 -- (circling you)
+		elseif act == "Undermine" and E.circle then
+			every = 26 -- (circling under the platform)
+		end
+	end
+	if every and odo - (E.lastHump or -math.huge) >= every then
+		E.lastHump = odo
+		E.humps[#E.humps + 1] = odo + 1
+		changed = true
+	end
+	if changed then
+		local list = {}
+		for i, h in ipairs(E.humps) do
+			list[i] = string.format("%.1f", h)
+		end
+		E.model:SetAttribute("Humps", table.concat(list, ","))
+	end
+end
+
+-- the nearest point to `from` on the flat line a-b
+local function nearestOn(a, b, from)
+	local ab = flat(b - a)
+	local len = ab.Magnitude
+	if len < 0.01 then
+		return a
+	end
+	return a + ab / len * math.clamp(flat(from - a):Dot(ab / len), 0, len)
+end
+
 local function bodyNear(E, from)
-	local fromFlat = flat(from)
-	local best = E.pos + Vector3.new(0, E.height / 2, 0)
-	local bestGap = flatDistance(from, E.pos) - E.def.Size / 2
-	local radius = E.def.Size / 2
-	local thick = E.def.Size * 0.32
-	local tr = E.trail or {}
-	for i = 2, #tr do
-		local a, b = tr[i - 1].p, tr[i].p
-		local ab = flat(b - a)
-		local len = ab.Magnitude
-		local on = a
-		if len > 0.01 then
-			on = a + ab / len * math.clamp((fromFlat - flat(a)):Dot(ab / len), 0, len)
-		end
-		local gap = flatDistance(from, on) - thick
+	local t = now()
+	local act = E.model:GetAttribute("Action")
+	local best, bestGap, radius = nil, math.huge, 0
+	local function consider(point, r)
+		local gap = flatDistance(from, point) - r
 		if gap < bestGap then
-			best, bestGap, radius = Vector3.new(on.X, E.floorY + 2, on.Z), gap, thick
+			best, bestGap, radius = Vector3.new(point.X, E.floorY + 3, point.Z), gap, r
 		end
+	end
+	local thick = E.def.Size * 0.32 -- (half its girth)
+	if act == "Erupt" or act == "Break" then
+		consider(nearestOn(E.pos, E.pos + E.facing * 10, from), thick)
+	elseif act == "Dive" and E.diving then
+		local D = E.diving
+		local k = (t - D.t0) / D.T
+		if k < 0.75 then
+			consider(nearestOn(D.from, D.to, from), thick * 0.9)
+		elseif k < 1 then
+			consider(D.to, thick * 0.7)
+		end
+	elseif act == "Breach" and E.lie then
+		local L = E.lie
+		local head = L.len
+		if L.slideAt then
+			head = L.len + math.clamp((t - L.slideAt) / L.slide, 0, 1) * (L.BL + 12)
+		end
+		local x0, x1 = math.max(head - L.BL, 0), math.min(head, L.len)
+		if x1 > x0 then
+			consider(nearestOn(L.A + L.dir * x0, L.A + L.dir * x1, from), thick * 0.9)
+		end
+	elseif act == "Coil" and E.coilRest and not E.coil then
+		local c = E.coilRest
+		local off = flat(from - c.C)
+		local dir = off.Magnitude > 0.01 and off.Unit or E.facing
+		consider(c.C + dir * c.r, c.g / 2)
+		consider(c.C, c.g * 0.6) -- (its head, struck down in the middle)
+	elseif act == "TailLash" and E.lash then
+		local L = E.lash
+		local u = math.clamp((t - L.t0) / L.time, 0, 1)
+		for i = 1, 10 do
+			local x = i / 10
+			local yaw = lashAngle(L.from, L.to, u, x)
+			consider(L.anchor + Vector3.new(math.sin(yaw), 0, math.cos(yaw)) * (x * L.reach), x < 0.35 and 5 or 2.5)
+		end
+	end
+	-- the arches of its back, where they break the sand (only the middle of
+	-- each arch is above it)
+	if E.under and E.trail and E.humps then
+		local odo = E.odo or 0
+		for _, h in ipairs(E.humps) do
+			local lo = math.max(h + HUMP_LEN / 6, odo - BODY_LEN)
+			local hi = math.min(h + HUMP_LEN * 5 / 6, odo)
+			local x = lo
+			while x <= hi do
+				consider(trailPoint(E, x), thick * 0.8)
+				x = x + 3
+			end
+		end
+	end
+	if not best then
+		return E.pos - Vector3.new(0, 1000, 0), 0 -- (nothing of it showing: nothing to hit)
 	end
 	return best, radius
 end
@@ -1643,7 +1777,23 @@ local function stepWorm(E, dt)
 	local t = now()
 	watchFeet(E, t)
 	listen(E, dt)
-	if E.motion then
+	if E.circle then
+		-- circling a spot under the sand: from wherever it was, out (or in) onto
+		-- the circle over a moment, and round
+		local c = E.circle
+		if not c.ang0 then
+			local off = flat(E.pos - c.C)
+			c.ang0 = off.Magnitude > 1 and math.atan2(off.X, off.Z) or math.atan2(E.facing.X, E.facing.Z)
+			c.r0 = off.Magnitude
+		end
+		local e = t - c.t0
+		local k = math.clamp(e / 0.3, 0, 1)
+		local r = c.r0 + (c.r - c.r0) * (k * k * (3 - 2 * k))
+		local ang = c.ang0 + e * c.speed
+		E.pos = c.C + Vector3.new(math.sin(ang), 0, math.cos(ang)) * r
+		E.facing = Vector3.new(math.cos(ang), 0, -math.sin(ang))
+		setMoving(E, true)
+	elseif E.motion then
 		local m = E.motion
 		local u = math.clamp((t - m.t0) / math.max(m.t1 - m.t0, 1e-3), 0, 1)
 		E.pos = m.from:Lerp(m.to, u)
@@ -1695,6 +1845,7 @@ local function stepWorm(E, dt)
 	end
 	E.pos = inLeash(E, E.pos, 0)
 	trackBody(E)
+	growHumps(E, t)
 	stepRumble(E, t)
 	-- where it is, for every screen: 30 times a second is plenty (each screen
 	-- glides it smoothly between these - see glideWorm in BossClient - and
@@ -1704,6 +1855,7 @@ local function stepWorm(E, dt)
 	if jumped or t - (E.placedAt or -1) >= 1 / 30 then
 		E.placedAt, E.placedPos = t, E.pos
 		place(E)
+		E.model:SetAttribute("Odo", E.odo or 0) -- (before the time: screens read both together)
 		E.model:SetAttribute("PosT", t)
 	end
 	if E.coil then
@@ -1758,7 +1910,8 @@ local function reset(E)
 		-- every platform whole again, and it forgets everything it heard
 		clearWorm(E)
 		restoreStones(E)
-		E.noise, E.pitAt, E.trail = {}, {}, nil
+		E.noise, E.pitAt, E.trail, E.humps = {}, {}, nil, {}
+		E.model:SetAttribute("Humps", "")
 	end
 	E.model:SetAttribute("Invulnerable", true)
 	makeTarget(E, false)

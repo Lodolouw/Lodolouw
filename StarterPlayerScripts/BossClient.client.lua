@@ -2657,7 +2657,7 @@ do
 				-- can ever move, so it's shown as a jump now, not slid across
 				table.clear(snaps)
 			end
-			snaps[#snaps + 1] = { t = stamp, p = ground }
+			snaps[#snaps + 1] = { t = stamp, p = ground, o = tonumber(B.model:GetAttribute("Odo")) }
 			while #snaps > 40 do
 				table.remove(snaps, 1)
 			end
@@ -2671,16 +2671,22 @@ do
 		if #snaps == 0 then
 			return ground
 		end
+		-- (how far it had swum, on the server, at the moment it's drawn: the
+		-- arches of its back are placed by that - see stepHumps)
 		if at <= snaps[1].t then
+			B.sodo = snaps[1].o
 			return snaps[1].p
 		end
 		for i = #snaps, 2, -1 do
 			local a = snaps[i - 1]
 			if at >= a.t then
 				local b = snaps[i]
-				return a.p:Lerp(b.p, clamp((at - a.t) / math.max(b.t - a.t, 1e-3), 0, 1))
+				local k = clamp((at - a.t) / math.max(b.t - a.t, 1e-3), 0, 1)
+				B.sodo = (a.o and b.o) and a.o + (b.o - a.o) * k or b.o
+				return a.p:Lerp(b.p, k)
 			end
 		end
+		B.sodo = snaps[#snaps].o
 		return snaps[#snaps].p
 	end
 
@@ -2775,17 +2781,47 @@ do
 
 	-- New arches as it swims, old ones gone once its tail is through them, and
 	-- sand pouring off its back where it breaks the surface.
+	-- Where the arches of its back come up is BossService's to decide (it's
+	-- where you can hit it: see bodyNear there) - its "Humps", in how far it
+	-- has swum - so every screen draws them in the same place.
+	local OWN_HUMPS = {} -- (none now: BossService places every arch)
 	function stepHumps(B)
-		local humps = B.humps
-		for i = #humps, 1, -1 do
-			if B.odo - humps[i].o > BODY_LEN + HUMP_LEN then
-				table.remove(humps, i)
+		local list = B.model:GetAttribute("Humps")
+		if type(list) == "string" and B.sodo and not OWN_HUMPS[B.action] then
+			-- (its odometer on your screen vs the server's - eased, so the arches
+			-- sit still instead of shivering by a stud as your screen counts)
+			local shift = B.odo - B.sodo
+			if not B.humpShift or math.abs(shift - B.humpShift) > 8 then
+				B.humpShift = shift
+			end
+			B.humpShift = B.humpShift + (shift - B.humpShift) * 0.1
+			shift = B.humpShift
+			local humps = {}
+			for h in string.gmatch(list, "[^,]+") do
+				local o = tonumber(h)
+				if o then
+					humps[#humps + 1] = { o = o + shift }
+				end
+			end
+			B.humps = humps
+			B.lastHump = B.odo
+		else
+			if B.fromServer then
+				B.humps = {} -- (its own arches from here, starting clean)
+			end
+			local humps = B.humps
+			for i = #humps, 1, -1 do
+				if B.odo - humps[i].o > BODY_LEN + HUMP_LEN then
+					table.remove(humps, i)
+				end
+			end
+			if B.humpEvery and B.odo - (B.lastHump or -math.huge) >= B.humpEvery then
+				B.lastHump = B.odo
+				table.insert(humps, { o = B.odo + 1 })
 			end
 		end
-		if B.humpEvery and B.odo - (B.lastHump or -math.huge) >= B.humpEvery then
-			B.lastHump = B.odo
-			table.insert(humps, { o = B.odo + 1 })
-		end
+		B.fromServer = type(list) == "string" and B.sodo ~= nil and not OWN_HUMPS[B.action]
+		local humps = B.humps
 		if not B.humpDust then
 			B.humpDust = {}
 			for i = 1, 4 do
@@ -3692,11 +3728,8 @@ do
 		end
 		local lap = math.pi * 2 * 0.94
 		if t < a.Tell then
-			local ang = B.coilAng + clamp(t / a.Tell, 0, 1) * lap
-			-- (from wherever it was, out or in onto its circle round you over a moment)
-			local r = lerp(B.coilFromR or a.Radius, a.Radius, smooth(clamp(t / 0.3, 0, 1)))
-			P.override = C + V3(math.sin(ang), 0, math.cos(ang)) * r
-			P.facing = V3(math.cos(ang), 0, -math.sin(ang))
+			-- circling you under the sand (BossService moves it round: its body
+			-- follows exactly where it has been)
 			underPose(B, P, 1.3, 24)
 			P.stage = "circle"
 			return
@@ -3755,18 +3788,7 @@ do
 
 	-- Circling under a platform, its back arching out all the way round it.
 	function Poses.Undermine(B, t, P)
-		local m = B.model
-		local C = m:GetAttribute("ActA")
-		if typeof(C) == "Vector3" then
-			if not B.underAng then
-				local off = flat(B.vpos - C)
-				B.underAng = math.atan2(off.X, off.Z)
-			end
-			local r = (tonumber(m:GetAttribute("ActN")) or 10) + 8
-			local ang = B.underAng + t * 3.2
-			P.override = C + V3(math.sin(ang), 0, math.cos(ang)) * r
-			P.facing = V3(math.cos(ang), 0, -math.sin(ang))
-		end
+		-- (BossService moves it round under the platform: its body follows)
 		underPose(B, P, 1.1, 26)
 	end
 
