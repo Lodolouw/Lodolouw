@@ -918,49 +918,162 @@ end
 -- Sell Shop (west side, faces east)
 ----------------------------------------------------------------------
 local function buildSellShop(parent)
+	-- The Sell Shop: a market stall. Timber posts, a striped awning with a
+	-- scalloped edge, lanterns hanging at the front, a panelled back wall with
+	-- shelves of loot crates (each with its gem glowing on top) and potion
+	-- bottles, sacks of goods, barrels brimming with ore, an open treasure
+	-- chest spilling gold, and brass scales on the counter. The counter is
+	-- kept low and the shopkeeper stands on a step behind it, so you see him.
+	-- Faces the plaza (local +Z).
 	local m = folder(parent, "SellShop")
 	local O = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(90), 0)
 	local wood = RGB(150, 106, 68)
+	local timber = RGB(120, 80, 50)
+	local woodDark = RGB(96, 64, 42)
+	local red, white = RGB(226, 62, 68), RGB(252, 246, 236)
+	local coinGold = RGB(255, 205, 60)
+	local deco = { CanCollide = false } -- (little things you don't bump into)
 
+	-- Floor, with a darker trim round its edge
+	part(m, "FloorTrim", V3(27, 0.5, 21), O * CFrame.new(0, 0.25, 0), woodDark, Mat.Wood)
 	part(m, "Floor", V3(26, 0.8, 20), O * CFrame.new(0, 0.4, 0), wood, Mat.WoodPlanks)
+
+	-- Back wall: plaster above, wooden panelling below
 	part(m, "BackWall", V3(24, 17, 1.5), O * CFrame.new(0, 9.3, -8), RGB(240, 228, 200))
+	part(m, "Wainscot", V3(23.6, 5, 0.4), O * CFrame.new(0, 3.3, -7.1), RGB(168, 120, 76), Mat.WoodPlanks, deco)
+	part(m, "WainscotRail", V3(23.6, 0.5, 0.6), O * CFrame.new(0, 5.9, -7), timber, Mat.Wood, deco)
 	for _, sx in ipairs({ -11.5, 11.5 }) do
-		part(m, "PostBack", V3(1.6, 15, 1.6), O * CFrame.new(sx, 8.3, -8), RGB(120, 80, 50), Mat.Wood)
-		part(m, "PostFront", V3(1.6, 15, 1.6), O * CFrame.new(sx, 8.3, 8), RGB(120, 80, 50), Mat.Wood)
+		part(m, "PostBack", V3(1.6, 15, 1.6), O * CFrame.new(sx, 8.3, -8), timber, Mat.Wood)
+		part(m, "PostFront", V3(1.6, 15, 1.6), O * CFrame.new(sx, 8.3, 8), timber, Mat.Wood)
+		part(m, "PostFoot", V3(2.2, 1, 2.2), O * CFrame.new(sx, 1.3, 8), woodDark, Mat.Wood, deco)
+		part(m, "PostCap", V3(2.2, 0.6, 2.2), O * CFrame.new(sx, 15.9, 8), coinGold, Mat.Metal, deco)
 	end
 
-	-- Striped awning
+	-- Striped awning, and a scalloped edge hanging along its front
 	for i = 1, 10 do
 		local x = -10.8 + (i - 1) * 2.4
-		local c = (i % 2 == 1) and RGB(226, 62, 68) or RGB(252, 246, 236)
+		local c = (i % 2 == 1) and red or white
 		part(m, "Awning" .. i, V3(2.4, 0.7, 18), O * CFrame.new(x, 15.4, 0.5) * CFrame.Angles(math.rad(12), 0, 0), c)
+		-- (the awning's front edge sits at y 13.5, z 9.3)
+		part(m, "Scallop", V3(2.4, 1, 0.3), O * CFrame.new(x, 12.75, 9.35), c, Mat.SmoothPlastic, deco)
+		part(m, "ScallopTip", V3(1.4, 0.5, 0.3), O * CFrame.new(x, 12, 9.35), c, Mat.SmoothPlastic, deco)
 	end
 
-	-- Counter
-	part(m, "CounterFront", V3(20, 4.4, 3), O * CFrame.new(0, 3, 5.5), RGB(168, 120, 76), Mat.WoodPlanks)
-	local top = part(m, "Counter", V3(21.5, 0.7, 4.4), O * CFrame.new(0, 5.5, 5.5), RGB(204, 150, 98), Mat.WoodPlanks)
-
-	-- Shelf with colour-coded loot crates
-	part(m, "Shelf", V3(18, 1, 2.5), O * CFrame.new(0, 7.5, -6.4), wood, Mat.WoodPlanks)
-	for i, mat in ipairs(Config.Materials) do
-		part(m, "Crate" .. i, V3(3, 2.6, 2.2), O * CFrame.new(-6 + (i - 1) * 4, 9.3, -6.4), mat.color, Mat.Plastic)
+	-- Lanterns hanging from the front posts
+	for _, sx in ipairs({ -11.5, 11.5 }) do
+		local dir = sx > 0 and 1 or -1
+		part(m, "LanternArm", V3(2, 0.3, 0.3), O * CFrame.new(sx + dir * 1.2, 11.6, 8.9), woodDark, Mat.Wood, deco)
+		part(m, "LanternCap", V3(1.4, 0.35, 1.4), O * CFrame.new(sx + dir * 2, 10.9, 8.9), RGB(50, 50, 62), Mat.Metal, deco)
+		local lantern = part(m, "Lantern", V3(1, 1.3, 1), O * CFrame.new(sx + dir * 2, 10.05, 8.9), RGB(255, 208, 130), Mat.Neon, deco)
+		part(m, "LanternBase", V3(1.3, 0.3, 1.3), O * CFrame.new(sx + dir * 2, 9.3, 8.9), RGB(50, 50, 62), Mat.Metal, deco)
+		local light = Instance.new("PointLight")
+		light.Color = RGB(255, 200, 130)
+		light.Range = 12
+		light.Brightness = 0.8
+		light.Parent = lantern
 	end
+
+	-- Counter: low enough to see the shopkeeper over it, with planked panels
+	part(m, "CounterFront", V3(20, 3.2, 3), O * CFrame.new(0, 2.4, 5.5), RGB(168, 120, 76), Mat.WoodPlanks)
+	local top = part(m, "Counter", V3(21.5, 0.7, 4.4), O * CFrame.new(0, 4.35, 5.5), RGB(204, 150, 98), Mat.WoodPlanks)
+	for _, px in ipairs({ -10, -3.4, 3.4, 10 }) do
+		part(m, "CounterPlank", V3(0.6, 3.2, 0.3), O * CFrame.new(px, 2.4, 7.05), woodDark, Mat.Wood, deco)
+	end
+	part(m, "CounterTrim", V3(21.5, 0.25, 0.25), O * CFrame.new(0, 4.05, 7.75), coinGold, Mat.Metal, deco)
+	-- the step the shopkeeper stands on
+	part(m, "KeeperStep", V3(10, 0.6, 5), O * CFrame.new(0, 1.1, 0.5), woodDark, Mat.Wood)
 
 	-- Coin stacks on the counter
-	local stacks = { { -7, 4 }, { -4.6, 3 }, { 7, 5 } }
-	for i, s in ipairs(stacks) do
-		for k = 1, s[2] do
-			cylinder(m, "Coin" .. i .. "_" .. k, 0.4, 2.4, O * CFrame.new(s[1], 5.85 + 0.2 + (k - 1) * 0.42, 5.4), RGB(255, 205, 60), Mat.Metal)
+	local COUNTER_TOP = 4.7
+	local stacks = { { -7, 4 }, { -4.6, 3 }, { 7.4, 5 } }
+	for i, st in ipairs(stacks) do
+		for k = 1, st[2] do
+			cylinder(m, "Coin" .. i .. "_" .. k, 0.4, 2.4, O * CFrame.new(st[1], COUNTER_TOP + 0.2 + (k - 1) * 0.42, 5.4), coinGold, Mat.Metal, deco)
+		end
+	end
+	-- Brass scales, weighing a gem against a coin
+	local brass = RGB(214, 170, 70)
+	local SX = 3.2
+	cylinder(m, "ScaleBase", 0.3, 1.8, O * CFrame.new(SX, COUNTER_TOP + 0.15, 5.2), brass, Mat.Metal, deco)
+	part(m, "ScalePost", V3(0.3, 2.6, 0.3), O * CFrame.new(SX, COUNTER_TOP + 1.6, 5.2), brass, Mat.Metal, deco)
+	part(m, "ScaleBeam", V3(3.6, 0.25, 0.25), O * CFrame.new(SX, COUNTER_TOP + 2.9, 5.2) * CFrame.Angles(0, 0, math.rad(6)), brass, Mat.Metal, deco)
+	for _, side in ipairs({ -1, 1 }) do
+		local py = COUNTER_TOP + 1.5 + side * 0.18
+		part(m, "ScaleString", V3(0.08, 1.3, 0.08), O * CFrame.new(SX + side * 1.7, py + 0.75, 5.2), brass, Mat.Metal, deco)
+		cylinder(m, "ScalePan", 0.15, 1.4, O * CFrame.new(SX + side * 1.7, py, 5.2), brass, Mat.Metal, deco)
+	end
+	part(m, "ScaleGem", V3(0.6, 0.6, 0.6), O * CFrame.new(SX - 1.7, COUNTER_TOP + 1.7, 5.2) * CFrame.Angles(math.rad(45), 0, math.rad(45)), RGB(44, 232, 245), Mat.Neon, deco)
+	cylinder(m, "ScaleCoin", 0.2, 0.9, O * CFrame.new(SX + 1.7, COUNTER_TOP + 1.8, 5.2), coinGold, Mat.Metal, deco)
+
+	-- Shelf of loot crates: wooden crates banded in each loot's colour, the
+	-- loot's gem glowing on top
+	part(m, "Shelf", V3(18, 1, 2.5), O * CFrame.new(0, 7.5, -6.4), wood, Mat.WoodPlanks)
+	for i, mat in ipairs(Config.Materials) do
+		local x = -6 + (i - 1) * 4
+		part(m, "Crate" .. i, V3(3, 2.6, 2.2), O * CFrame.new(x, 9.3, -6.4), RGB(168, 120, 76), Mat.WoodPlanks)
+		part(m, "CrateBand", V3(3.1, 0.5, 2.3), O * CFrame.new(x, 9.3, -6.4), mat.color, Mat.SmoothPlastic, deco)
+		part(m, "CrateGem", V3(0.9, 0.9, 0.9), O * CFrame.new(x, 11.2, -6.4) * CFrame.Angles(math.rad(45), math.rad(20), math.rad(45)), mat.color, Mat.Neon, deco)
+	end
+	-- a higher shelf of potion bottles
+	part(m, "PotionShelf", V3(16, 0.5, 1.8), O * CFrame.new(0, 13, -6.9), wood, Mat.WoodPlanks, deco)
+	local POTIONS = { RGB(228, 59, 68), RGB(44, 232, 245), RGB(99, 199, 77), RGB(181, 80, 136), RGB(254, 174, 52), RGB(0, 153, 219) }
+	for i, c in ipairs(POTIONS) do
+		local x = -6.25 + (i - 1) * 2.5
+		local h = (i % 2 == 0) and 1.6 or 1.2
+		cylinder(m, "Potion", h, 0.9, O * CFrame.new(x, 13.25 + h / 2, -6.9), c, Mat.Neon, { CanCollide = false, Transparency = 0.15 })
+		cylinder(m, "PotionNeck", 0.5, 0.4, O * CFrame.new(x, 13.25 + h + 0.25, -6.9), RGB(192, 203, 220), Mat.Glass, deco)
+		cylinder(m, "PotionCork", 0.3, 0.45, O * CFrame.new(x, 13.25 + h + 0.6, -6.9), RGB(184, 111, 80), Mat.Wood, deco)
+	end
+
+	-- Sacks of goods behind the counter, tied at the top
+	for i, sp in ipairs({ { -9, -3.5, 2.8 }, { -7.2, -5, 2.3 }, { 9.2, -4, 2.6 } }) do
+		ball(m, "Sack", sp[3], O * CFrame.new(sp[1], 0.8 + sp[3] * 0.42, sp[2]), RGB(196, 170, 120), Mat.Fabric, deco)
+		cylinder(m, "SackTie", 0.35, 0.8, O * CFrame.new(sp[1], 0.8 + sp[3] * 0.85, sp[2]), RGB(120, 80, 50), Mat.Fabric, deco)
+		if i == 1 then
+			ball(m, "SackCoins", 1.4, O * CFrame.new(sp[1], 0.8 + sp[3] * 0.95, sp[2]), coinGold, Mat.Metal, deco)
 		end
 	end
 
-	avatarNPC(m, NPC_MODELS.Shopkeeper, "Shopkeeper", facingCustomer(O, 0, 0.5), 0.8, function()
-		npc(m, O, 0, 0.5, RGB(206, 60, 60), RGB(250, 240, 220))
+	-- Barrels brimming with ore at the front corners
+	for bi, bx in ipairs({ -12.6, 12.6 }) do
+		local B = O * CFrame.new(bx, 0.8, 10.6)
+		cylinder(m, "Barrel", 3, 2.6, B * CFrame.new(0, 1.5, 0), RGB(150, 100, 60), Mat.WoodPlanks)
+		for _, by in ipairs({ 0.5, 2.5 }) do
+			cylinder(m, "BarrelBand", 0.3, 2.75, B * CFrame.new(0, by, 0), RGB(58, 58, 66), Mat.Metal, deco)
+		end
+		for k = 1, 5 do
+			local mat = Config.Materials[((k + bi) % #Config.Materials) + 1]
+			local a = k / 5 * math.pi * 2
+			part(m, "Ore", V3(0.8, 0.8, 0.8), B * CFrame.new(math.cos(a) * 0.6, 3.1 + (k % 2) * 0.3, math.sin(a) * 0.6) * CFrame.Angles(a, a * 2, 0), mat.color, Mat.Neon, deco)
+		end
+	end
+
+	-- An open treasure chest spilling coins, out front on the left
+	local C = O * CFrame.new(-8.4, 0.8, 11) * CFrame.Angles(0, math.rad(20), 0)
+	part(m, "Chest", V3(3.2, 1.8, 2.2), C * CFrame.new(0, 0.9, 0), RGB(140, 90, 52), Mat.WoodPlanks, deco)
+	for _, bx in ipairs({ -1.1, 1.1 }) do
+		part(m, "ChestBand", V3(0.3, 1.9, 2.3), C * CFrame.new(bx, 0.9, 0), coinGold, Mat.Metal, deco)
+	end
+	part(m, "ChestLid", V3(3.2, 0.4, 2.2), C * CFrame.new(0, 2.6, -1.4) * CFrame.Angles(math.rad(-70), 0, 0), RGB(140, 90, 52), Mat.WoodPlanks, deco)
+	local hoard = part(m, "ChestGold", V3(2.8, 0.8, 1.9), C * CFrame.new(0, 1.75, 0), coinGold, Mat.Neon, deco)
+	part(m, "ChestGoldTop", V3(1.8, 0.5, 1.2), C * CFrame.new(-0.2, 2.35, 0.1), coinGold, Mat.Neon, deco)
+	local glow = Instance.new("PointLight")
+	glow.Color = coinGold
+	glow.Range = 9
+	glow.Brightness = 1
+	glow.Parent = hoard
+	for k = 1, 4 do
+		local a = k * 1.7
+		cylinder(m, "SpiltCoin", 0.2, 0.9, C * CFrame.new(math.cos(a) * 2.4, 0.1, 1.3 + math.sin(a) * 0.8) * CFrame.Angles(0, 0, math.rad(8 * k)), coinGold, Mat.Metal, deco)
+	end
+
+	avatarNPC(m, NPC_MODELS.Shopkeeper, "Shopkeeper", facingCustomer(O, 0, 0.5), 1.4, function()
+		npc(m, O * CFrame.new(0, 0.6, 0), 0, 0.5, RGB(206, 60, 60), RGB(250, 240, 220))
 	end)
 
 	-- Sign + spinning coin
 	titleSign(m, O * CFrame.new(0, 21.5, 2), "SELL SHOP", "Turn loot into coins", RGB(255, 214, 80), 340, 80)
-	local coin = part(m, "BigCoin", V3(0.9, 7, 7), O * CFrame.new(0, 28.5, 2) * CFrame.Angles(0, math.rad(90), 0), RGB(255, 205, 60), Mat.Metal, {
+	local coin = part(m, "BigCoin", V3(0.9, 7, 7), O * CFrame.new(0, 28.5, 2) * CFrame.Angles(0, math.rad(90), 0), coinGold, Mat.Metal, {
 		Shape = Enum.PartType.Cylinder,
 		CanCollide = false,
 	})
@@ -1074,12 +1187,13 @@ local function buildUpgradeShop(parent)
 	cylinder(m, "AnnexSpot", 0.3, 1.4, O * CFrame.new(AX - 1.5, 9.6, AZ - 1), white, Mat.SmoothPlastic)
 	local annexWin = part(m, "AnnexWindow", V3(1.8, 1.8, 0.4), O * CFrame.new(AX, 4.6, AZ + 3.55), RGB(255, 206, 120), Mat.Neon, { Transparency = 0.15 })
 
-	-- The toad sits out front on the right, beside the door, leaving the spot
-	-- where players teleport in (straight in front) clear. The "Open
-	-- Upgrades" prompt hangs on an invisible marker right by him.
-	local top = anchorPart(m, "PromptSpot", O * CFrame.new(4.5, 3, 9))
-	avatarNPC(m, NPC_MODELS.Toad, "Toad", facingCustomer(O, 4.5, 9), 0.8, function()
-		npc(m, O, 0, 7.3, RGB(90, 160, 90), RGB(200, 50, 44))
+	-- The toad sits right in the middle, out front of the stem, facing the
+	-- path. Players teleporting in land a few studs in front of him, on the
+	-- welcome mat (Hud's station spot, local z = 13). The "Open Upgrades"
+	-- prompt hangs on an invisible marker right by him.
+	local top = anchorPart(m, "PromptSpot", O * CFrame.new(0, 3, 9.5))
+	avatarNPC(m, NPC_MODELS.Toad, "Toad", facingCustomer(O, 0, 8.6), 0.8, function()
+		npc(m, O, 0, 8.6, RGB(90, 160, 90), RGB(200, 50, 44))
 	end)
 
 	-- Crate and sack by the annex
@@ -1116,7 +1230,7 @@ local function buildUpgradeShop(parent)
 	part(m, "Mat", V3(10, 0.3, 4), O * CFrame.new(0, 0.95, 11.6), RGB(90, 170, 255), Mat.Neon, { Transparency = 0.35, CanCollide = false })
 
 	addPrompt(top, "Upgrades", "Open Upgrades", "Upgrade Shop", 14)
-	autoZone(m, O * CFrame.new(3, 4, 11), V3(16, 8, 10), "Panel", "Upgrades")
+	autoZone(m, O * CFrame.new(0, 4, 12), V3(16, 8, 10), "Panel", "Upgrades")
 end
 
 ----------------------------------------------------------------------
