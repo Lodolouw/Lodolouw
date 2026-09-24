@@ -656,10 +656,12 @@ end
 -- MIREWORM: THE HUNTER UNDER THE SAND  (any boss with Body = "Worm")
 ----------------------------------------------------------------------
 -- Gloomgut fights on the surface and trades blows with you. Mireworm doesn't:
--- it swims under the sand, where nothing can touch it, and only comes up to
--- strike. Its fight goes round and round like this:
+-- it swims under the sand and comes up to strike. Wherever you can see it -
+-- its head, its body, the ridge of its back through the sand - you can punch
+-- it (its whole body is its hitbox: see bodyNear). Its fight goes round and
+-- round like this:
 --
---     hunt (under the sand)  ->  strike  ->  EXPOSED (hit it now!)  ->  dive
+--     hunt (under the sand)  ->  strike  ->  up out of the sand  ->  dive
 --
 -- * It hunts whoever is making the most noise (see listen below).
 -- * While it hunts under the sand, the ground bucks round its ridge and hurts
@@ -669,13 +671,14 @@ end
 -- None of Gloomgut's attacks are used; its own are in WormAttacks below.
 local WormAttacks = {}
 
--- Out of the sand and punchable (true), or under it and untouchable (false).
--- Under the sand it isn't a target at all, so punches don't lock onto it.
+-- Out of the sand (true) or under it (false). Either way you can punch it:
+-- its head and neck when it's up, the ridge of its back through the sand
+-- when it's under - and all through a dive.
 local function surface(E, up)
 	E.under = not up
 	E.model:SetAttribute("Submerged", not up)
-	E.model:SetAttribute("Invulnerable", not up)
-	makeTarget(E, up)
+	E.model:SetAttribute("Invulnerable", false)
+	makeTarget(E, true)
 end
 
 -- setAction, plus clearing the worm's own extra timing attribute
@@ -1594,6 +1597,47 @@ local function stepRumble(E, t)
 	end
 end
 
+-- ITS BODY, FOR PUNCHES: the path its head has just come along, BODY_REACH
+-- studs of it (its body follows exactly that path - BossClient draws it so),
+-- and wherever it is standing now. A punch lands if it reaches any of it.
+local BODY_REACH = 90
+local function trackBody(E)
+	local tr = E.trail
+	local last = tr and tr[#tr]
+	if not last or (last.p - E.pos).Magnitude > 40 then
+		E.trail = { { p = E.pos, d = 0 } } -- (it came up somewhere else: start afresh)
+	elseif (last.p - E.pos).Magnitude >= 2 then
+		tr[#tr + 1] = { p = E.pos, d = last.d + (E.pos - last.p).Magnitude }
+		while #tr > 2 and tr[#tr].d - tr[2].d > BODY_REACH do
+			table.remove(tr, 1)
+		end
+	end
+end
+
+-- the point of its body nearest `from`, and how thick it is there
+local function bodyNear(E, from)
+	local fromFlat = flat(from)
+	local best = E.pos + Vector3.new(0, E.height / 2, 0)
+	local bestGap = flatDistance(from, E.pos) - E.def.Size / 2
+	local radius = E.def.Size / 2
+	local thick = E.def.Size * 0.32
+	local tr = E.trail or {}
+	for i = 2, #tr do
+		local a, b = tr[i - 1].p, tr[i].p
+		local ab = flat(b - a)
+		local len = ab.Magnitude
+		local on = a
+		if len > 0.01 then
+			on = a + ab / len * math.clamp((fromFlat - flat(a)):Dot(ab / len), 0, len)
+		end
+		local gap = flatDistance(from, on) - thick
+		if gap < bestGap then
+			best, bestGap, radius = Vector3.new(on.X, E.floorY + 2, on.Z), gap, thick
+		end
+	end
+	return best, radius
+end
+
 local function stepWorm(E, dt)
 	local def = E.def
 	local t = now()
@@ -1650,6 +1694,7 @@ local function stepWorm(E, dt)
 		E.pos, E.motion, E.swim = E.home, nil, nil -- (a broken position: back to the middle)
 	end
 	E.pos = inLeash(E, E.pos, 0)
+	trackBody(E)
 	stepRumble(E, t)
 	-- where it is, for every screen: 30 times a second is plenty (each screen
 	-- glides it smoothly between these - see glideWorm in BossClient - and
@@ -1713,7 +1758,7 @@ local function reset(E)
 		-- every platform whole again, and it forgets everything it heard
 		clearWorm(E)
 		restoreStones(E)
-		E.noise, E.pitAt = {}, {}
+		E.noise, E.pitAt, E.trail = {}, {}, nil
 	end
 	E.model:SetAttribute("Invulnerable", true)
 	makeTarget(E, false)
@@ -2025,6 +2070,12 @@ local function build(floorId, homePart)
 	if E.worm then
 		E.under = true
 		E.noise = {}
+		-- its whole body is its hitbox, not just its middle (see bodyNear)
+		if CombatService and CombatService.SetTargetShape then
+			CombatService.SetTargetShape(model, function(from)
+				return bodyNear(E, from)
+			end)
+		end
 		-- the pit at the middle (the whirlpool in phase two)
 		for _, h in ipairs(CollectionService:GetTagged("DuneSinkhole")) do
 			if h:GetAttribute("Floor") == floorId and h:IsA("BasePart") then

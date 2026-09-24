@@ -357,6 +357,28 @@ local function targetRadius(model)
 	return model:GetAttribute("HitRadius") or 3
 end
 
+-- A long target (Mireworm) can tell us its shape: a function that gives the
+-- point of its body nearest a spot, and how thick it is there. Then a punch
+-- lands wherever you hit its body, not just near its middle. Anything that
+-- doesn't (Gloomgut, the dummies) is judged from its middle as always.
+local shapes = setmetatable({}, { __mode = "k" })
+function CombatService.SetTargetShape(model, nearest)
+	shapes[model] = nearest
+end
+
+-- where on a target a punch from `from` meets it, and its thickness there
+local function aimAt(model, from)
+	local shape = shapes[model]
+	if shape then
+		local ok, point, radius = pcall(shape, from)
+		if ok and typeof(point) == "Vector3" then
+			return point, radius or targetRadius(model)
+		end
+	end
+	local cf = targetPivot(model)
+	return cf and cf.Position, targetRadius(model)
+end
+
 -- The enemy your punch lands on: the closest one in reach that's in front
 -- of you (within a cone round the way your character is facing). Punching
 -- the air hits nothing.
@@ -368,11 +390,11 @@ local function nearestTarget(root)
 	local best, bestDist = nil, math.huge
 	for model in pairs(targets) do
 		if model.Parent and (model:GetAttribute("Health") or 0) > 0 then
-			local cf = targetPivot(model)
+			local cf, radius = aimAt(model, root.Position)
 			if cf then
 				local flat = Vector3.new(cf.X - root.Position.X, 0, cf.Z - root.Position.Z)
 				local centre = flat.Magnitude
-				local d = centre - targetRadius(model)
+				local d = centre - radius
 				local dy = math.abs(cf.Y - root.Position.Y)
 				-- right up against it counts from any angle; otherwise it must be in front
 				local inFront = centre < 0.01 or d < 1 or facing:Dot(flat.Unit) >= PUNCH_CONE
@@ -567,7 +589,9 @@ local function hitTarget(player, model, damage, weight)
 	damage = math.max(0, before - hp)
 	model:SetAttribute("Health", math.max(0, hp))
 	updateTargetBar(model)
-	local cf = targetPivot(model)
+	local _, root0 = charParts(player)
+	local at = aimAt(model, root0 and root0.Position or Vector3.new())
+	local cf = at and CFrame.new(at)
 	local killed = hp <= 0
 	weight = math.clamp(weight or 1, 1, 3)
 	send(player, "Hit", cf and cf.Position or Vector3.new(), damage, killed, weight)
@@ -681,9 +705,9 @@ local function onAction(player, action, arg, swing)
 			end
 			local target = nil
 			if locked and targets[locked] and locked.Parent and (locked:GetAttribute("Health") or 0) > 0 then
-				local cf = targetPivot(locked)
+				local cf, radius = aimAt(locked, atRoot.Position)
 				if cf then
-					local d = (Vector3.new(cf.X, 0, cf.Z) - Vector3.new(atRoot.Position.X, 0, atRoot.Position.Z)).Magnitude - targetRadius(locked)
+					local d = (Vector3.new(cf.X, 0, cf.Z) - Vector3.new(atRoot.Position.X, 0, atRoot.Position.Z)).Magnitude - radius
 					if d <= CC.PunchRange and math.abs(cf.Y - atRoot.Position.Y) < 12 then
 						target = locked
 					end
