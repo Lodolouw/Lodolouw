@@ -455,12 +455,29 @@ end
 -- reads as a little flashbulb up close. Kept small and dim on purpose for a
 -- cozy look instead of a lit-up road.
 local function lamp(parent, x, z)
+	-- A street lantern: a stepped stone foot, a dark iron post with gold
+	-- collars, and a little lantern on top - a glowing core inside a cage of
+	-- four bars, under a stepped roof with a gold finial. Kept small and warm
+	-- on purpose: Neon glows at full brightness whatever the lighting, so a
+	-- big one reads as a flashbulb up close.
 	local m = Instance.new("Model")
 	m.Name = "Lamp"
 	m.Parent = parent
-	part(m, "Post", V3(1.2, 11, 1.2), CFrame.new(x, 5.5, z), RGB(60, 60, 74), Mat.Metal)
-	part(m, "Cap", V3(2.4, 0.6, 2.4), CFrame.new(x, 12.9, z), RGB(50, 50, 62), Mat.Metal)
-	local bulb = ball(m, "Bulb", 1.7, CFrame.new(x, 12, z), RGB(255, 208, 130), Mat.Neon)
+	local stoneDark, iron, gold = RGB(96, 100, 116), RGB(52, 54, 68), RGB(214, 170, 70)
+	part(m, "Foot", V3(2.6, 0.8, 2.6), CFrame.new(x, 0.4, z), stoneDark, Mat.Slate)
+	part(m, "Foot2", V3(1.9, 0.6, 1.9), CFrame.new(x, 1.1, z), RGB(130, 134, 150), Mat.Slate)
+	part(m, "Post", V3(1, 9.6, 1), CFrame.new(x, 6.2, z), iron, Mat.Metal)
+	for _, y in ipairs({ 3.2, 10.4 }) do
+		part(m, "Collar", V3(1.5, 0.4, 1.5), CFrame.new(x, y, z), gold, Mat.Metal, { CanCollide = false })
+	end
+	part(m, "LanternFloor", V3(2.3, 0.3, 2.3), CFrame.new(x, 11.15, z), iron, Mat.Metal)
+	for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+		part(m, "LanternBar", V3(0.3, 1.9, 0.3), CFrame.new(x + c[1] * 0.95, 12.25, z + c[2] * 0.95), iron, Mat.Metal, { CanCollide = false })
+	end
+	local bulb = part(m, "Bulb", V3(1.3, 1.5, 1.3), CFrame.new(x, 12.2, z), RGB(255, 208, 130), Mat.Neon, { CanCollide = false })
+	part(m, "Roof", V3(2.7, 0.4, 2.7), CFrame.new(x, 13.4, z), iron, Mat.Metal)
+	part(m, "Roof2", V3(1.8, 0.4, 1.8), CFrame.new(x, 13.8, z), iron, Mat.Metal)
+	part(m, "Finial", V3(0.7, 0.7, 0.7), CFrame.new(x, 14.35, z) * CFrame.Angles(0, math.rad(45), 0), gold, Mat.Metal, { CanCollide = false })
 	local light = Instance.new("PointLight")
 	light.Range = 15
 	light.Brightness = 0.75
@@ -562,6 +579,18 @@ local function buildGround(parent)
 	end
 	cylinder(g, "PlazaMid", 0.7, 38, CFrame.new(0, 0.35, 0), RGB(232, 214, 178), Mat.Plastic)
 	cylinder(g, "PlazaInner", 0.8, 30, CFrame.new(0, 0.4, 0), RGB(214, 190, 148), Mat.Plastic)
+	-- gold tiles set round the middle ring, and pointing out the four ways
+	for i = 0, 31 do
+		local a = (i + 0.5) / 32 * math.pi * 2
+		part(g, "PlazaInlay", V3(1.2, 0.1, 1.2), CFrame.new(math.cos(a) * 16.9, 0.72, math.sin(a) * 16.9) * CFrame.Angles(0, -a, 0), RGB(214, 170, 70), Mat.Metal, { CanCollide = false })
+	end
+	for i = 0, 3 do
+		local a = i * math.pi / 2
+		for k = 0, 2 do
+			local r = 20.2 + k * 1.2
+			part(g, "PlazaPointer", V3(1.2 - k * 0.3, 0.1, 1.2 - k * 0.3), CFrame.new(math.cos(a + math.pi / 4) * r, 0.62, math.sin(a + math.pi / 4) * r) * CFrame.Angles(0, math.rad(45), 0), RGB(214, 170, 70), Mat.Metal, { CanCollide = false })
+		end
+	end
 
 	-- Training yard slab
 	part(g, "YardSlab", V3(204, 0.6, 46), CFrame.new(0, 0.3, 75), RGB(86, 96, 122), Mat.Plastic, {
@@ -1509,6 +1538,46 @@ local function buildShrine(parent)
 	end
 
 	cylinder(m, "Beam", 22, 1.6, CFrame.new(0, 15, 0), RGB(255, 170, 240), Mat.Neon, { Transparency = 0.7, CanCollide = false, CanQuery = false })
+
+	-- The temple round it: gold rims on the steps, rune tiles set in the
+	-- lowest step, each pillar on a stepped plinth with a gold band, fluting
+	-- and a capital, lintels joining the pillar tops into a square frame
+	-- with cloth hangings, and a ring of gold runes turning over the crystal.
+	local marble, marbleDark, gold, cloth = RGB(236, 226, 206), RGB(196, 186, 172), RGB(255, 200, 60), RGB(181, 80, 136)
+	local deco = { CanCollide = false }
+	cylinder(m, "Tier1Rim", 0.3, 24.4, O * CFrame.new(0, 1.55, 0), gold, Mat.Metal, deco)
+	cylinder(m, "Tier2Rim", 0.3, 17.9, O * CFrame.new(0, 2.75, 0), gold, Mat.Metal, deco)
+	for i = 0, 11 do
+		local a = math.rad(i * 30 + 15)
+		part(m, "RuneTile", V3(1.2, 0.2, 1.2), O * CFrame.new(math.cos(a) * 10.4, 1.65, math.sin(a) * 10.4) * CFrame.Angles(0, -a, 0), (i % 2 == 0) and gold or RGB(214, 110, 255), Mat.Neon, deco)
+	end
+	for k = 0, 3 do
+		local a = math.rad(45 + k * 90)
+		local px, pz = math.cos(a) * 10, math.sin(a) * 10
+		part(m, "Plinth", V3(4, 1, 4), CFrame.new(px, 2.1, pz), marbleDark, Mat.Marble)
+		part(m, "Plinth2", V3(3.2, 0.6, 3.2), CFrame.new(px, 2.9, pz), marble, Mat.Marble)
+		part(m, "PillarBand", V3(2.8, 0.4, 2.8), CFrame.new(px, 3.9, pz), gold, Mat.Metal, deco)
+		for _, f in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+			part(m, "Flute", V3(f[1] ~= 0 and 0.2 or 0.5, 9, f[2] ~= 0 and 0.2 or 0.5), CFrame.new(px + f[1] * 1.2, 9, pz + f[2] * 1.2), marbleDark, Mat.Marble, deco)
+		end
+		part(m, "Capital", V3(3.6, 0.8, 3.6), CFrame.new(px, 14.2, pz), marbleDark, Mat.Marble)
+	end
+	-- lintels round the top, with a gold trim, and hangings between the pillars
+	local L = math.cos(math.rad(45)) * 10
+	for _, e in ipairs({ { 0, L, true }, { 0, -L, true }, { L, 0, false }, { -L, 0, false } }) do
+		local size = e[3] and V3(L * 2 + 3.4, 1.2, 1.6) or V3(1.6, 1.2, L * 2 + 3.4)
+		part(m, "Lintel", size, CFrame.new(e[1], 16.2, e[2]), marble, Mat.Marble)
+		part(m, "LintelTrim", size + V3(0.1, -0.9, 0.1), CFrame.new(e[1], 15.75, e[2]), gold, Mat.Metal, deco)
+		local hang = e[3] and V3(4, 3.6, 0.2) or V3(0.2, 3.6, 4)
+		part(m, "Hanging", hang, CFrame.new(e[1], 13.8, e[2]), cloth, Mat.Fabric, deco)
+		part(m, "HangingTrim", hang + V3(0.05, -3.3, 0.05), CFrame.new(e[1], 12.1, e[2]), gold, Mat.Metal, deco)
+	end
+	for k = 1, 8 do
+		local phase = (k - 1) * 45
+		local ra = math.rad(phase)
+		local rune = part(m, "Rune" .. k, V3(0.7, 0.7, 0.7), CFrame.new(math.cos(ra) * 4.5, 18.4, math.sin(ra) * 4.5) * CFrame.Angles(math.rad(45), 0, math.rad(45)), gold, Mat.Neon, deco)
+		fx(rune, { OrbitRadius = 4.5, OrbitSpeed = 35, OrbitCenter = V3(0, 18.4, 0), Phase = phase, SpinSpeed = 90 })
+	end
 
 	titleSign(m, CFrame.new(0, 24, 0), "PRESTIGE", "Reset for permanent bonuses", RGB(255, 214, 80), 340, 100)
 

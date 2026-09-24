@@ -494,6 +494,32 @@ local function stoneWall(w)
 	end
 end
 
+-- CHUNKY STONES on the sides of a stone block (the forge's walls, its
+-- chimney and furnace): little stones standing out of each face, in the
+-- stone's darker and lighter shades
+local function studStones(p, density)
+	local cf, size = p.CFrame, p.Size
+	local dark, light = shadesOf(p.Color)
+	local faces = {
+		{ cf.RightVector, size.X / 2, cf.LookVector, size.Z },
+		{ -cf.RightVector, size.X / 2, cf.LookVector, size.Z },
+		{ cf.LookVector, size.Z / 2, cf.RightVector, size.X },
+		{ -cf.LookVector, size.Z / 2, cf.RightVector, size.X },
+	}
+	for _, f in ipairs(faces) do
+		local n, half, along, width = f[1], f[2], f[3], f[4]
+		for _ = 1, math.floor(width * size.Y / (density or 10)) do
+			local w, h = 1.2 + rng:NextNumber() * 1.6, 0.8 + rng:NextNumber() * 0.9
+			if w < width - 1 and h < size.Y - 1 then
+				local depth = 0.2 + rng:NextNumber() * 0.2
+				local at = cf.Position + n * (half + depth / 2 - 0.05) + along * (spread() * (width - w - 0.6)) + cf.UpVector * (spread() * (size.Y - h - 0.6))
+				block(V3(w, h, depth), rng:NextNumber() < 0.6 and dark or light).CFrame = CFrame.lookAt(at, at + n)
+			end
+		end
+	end
+end
+local FORGE_STONE = { BackWall = true, SideWallL = true, SideWallR = true, FrontWallL = true, FrontWallR = true, Chimney = true, Furnace = true }
+
 -- PIXEL FLAMES in place of the old smoky fire: a stack of glowing cubes
 -- that flickers, in the fire's own colours (the blue ones stay blue)
 local flames = {}
@@ -750,6 +776,14 @@ local function dressLobby(lobby)
 			end
 		end
 	end
+	local forge = lobby:FindFirstChild("CraftBench")
+	if forge and D.Walls ~= false then
+		for _, p in ipairs(forge:GetChildren()) do
+			if p:IsA("BasePart") and FORGE_STONE[p.Name] then
+				pcall(studStones, p, 9)
+			end
+		end
+	end
 	if D.Flames ~= false then
 		for _, d in ipairs(lobby:GetDescendants()) do
 			if d:IsA("Fire") then
@@ -808,7 +842,8 @@ local function bubbleFor(head)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "DummyTalk"
 	bb.Size = UDim2.fromScale(15, 3.6)
-	bb.StudsOffset = V3(0, 5.5, 0)
+	-- (beside its head, not above it: above is where its multiplier sign hangs)
+	bb.StudsOffset = V3(9, 0.5, 0)
 	bb.MaxDistance = 70
 	bb.LightInfluence = 0
 	bb.Enabled = false
@@ -846,10 +881,16 @@ local function speak(zi, text)
 	end
 	if talking and talking.zi ~= zi and talkers[talking.zi] then
 		talkers[talking.zi].bb.Enabled = false
+		if talkers[talking.zi].sign then
+			talkers[talking.zi].sign.Enabled = true
+		end
 	end
 	t.txt.Text = text
 	t.txt.MaxVisibleGraphemes = 0
 	t.bb.Enabled = true
+	if t.sign then
+		t.sign.Enabled = false -- (the sign steps aside while it talks; the banner shows its multiplier)
+	end
 	talking = { zi = zi, start = os.clock(), letters = utf8.len(text) or #text, shown = 0, hideAt = math.huge }
 end
 local function findTalkers(lobby)
@@ -859,7 +900,8 @@ local function findTalkers(lobby)
 		local head = d and d:FindFirstChild("Head", true)
 		if head then
 			local bb, txt = bubbleFor(head)
-			talkers[zi] = { bb = bb, txt = txt }
+			local anchor = yard:FindFirstChild("SignAnchor" .. zi)
+			talkers[zi] = { bb = bb, txt = txt, sign = anchor and anchor:FindFirstChild("ZoneSign") }
 		end
 	end
 end
@@ -899,6 +941,9 @@ local function stepTalk(now)
 		end
 		if now > talking.hideAt or (zi ~= talking.zi) then
 			t.bb.Enabled = false
+			if t.sign then
+				t.sign.Enabled = true
+			end
 			talking = nil
 		end
 	end
