@@ -173,3 +173,9 @@ It also uses pixel fonts (nothing below `MinText`), a 32-colour palette with
 banded gradients, a clean screen (no scanlines) and a title screen on joining,
 with the Undertale encounter flash into the game. Every piece is switched in
 `Config.Retro` (`On = false` puts the old look back).
+
+Your health is **the heart** (in `Hud`, tuned in `Config.Heart`): red liquid
+inside a pixel heart, measured by how much of it is full. A hit makes it
+slosh, spill drops over the rim and shake; a flask pours it back in; low on
+health it beats and blinks red; at zero it cracks in two and shatters, and
+forms again when you respawn.

@@ -470,6 +470,17 @@ Config.Retro = {
 	Blip = "UI Blip", -- a short blip on clicks, if you add a Sound with this name to SoundService
 }
 
+-- THE HEART: your health on screen, as red liquid inside a pixel heart (Hud).
+Config.Heart = {
+	Pixel = 5, -- screen pixels per pixel of the heart (bigger = a bigger heart)
+	Drain = 1.2, -- how fast it drains after a hit (a whole heart a second, x this)
+	Fill = 0.5, -- how fast it fills when you heal
+	Slosh = 1.6, -- how wildly the liquid can slosh
+	Drops = 36, -- drops spilled per whole heart lost (a hit spills at least 3...)
+	MaxDrops = 12, -- ...and at most this many
+	Low = 0.25, -- below this much health it beats and its outline blinks red
+}
+
 -- the lobby's music: the name of a Sound in SoundService
 Config.LobbyMusic = "Dreaming in the city"
 

@@ -1061,52 +1061,9 @@ local barText = text({
 	Parent = barBack,
 }, { stroke(3) })
 
--- HP bar, just above the level bar, with your Power underneath it (like the
--- "Damage" line in other games). Health comes from your character, so it
--- already includes the Vigor talisman and will matter once bosses hit back.
-local hpBack = create("Frame", {
-	Name = "HealthBar",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -92),
-	Size = UDim2.fromOffset(320, 32),
-	BackgroundColor3 = RGB(50, 16, 20),
-	BackgroundTransparency = 0.1,
-	Parent = root,
-}, { corner(8), border(3.5) })
-
-local hpFill = create("Frame", {
-	Size = UDim2.fromScale(1, 1),
-	BackgroundColor3 = C.red,
-	BorderSizePixel = 0,
-	Parent = hpBack,
-}, { corner(8), gradient({ RGB(255, 95, 95), RGB(200, 30, 40) }, 90) })
-
-local hpText = text({
-	Size = UDim2.fromScale(1, 1),
-	Text = "100/100",
-	TextSize = 22,
-	ZIndex = 2,
-	Parent = hpBack,
-}, { stroke(3) })
-
-text({
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(0, -2, 0.5, 0),
-	Size = UDim2.fromOffset(44, 44),
-	Text = "❤️",
-	TextSize = 36,
-	Parent = hpBack,
-})
-
-local powerText = text({
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 1, 2),
-	Size = UDim2.fromOffset(320, 24),
-	Text = "Power: 0",
-	TextSize = 22,
-	TextColor3 = RGB(110, 190, 255),
-	Parent = hpBack,
-}, { stroke(3) })
+-- Your HP is THE HEART (see below, once we can find your character); your
+-- Power sits beside it.
+local powerText
 
 -- Finding your character means searching through its parts, and several loops
 -- below want it on every frame. Look it up once and keep it until you respawn.
@@ -1128,21 +1085,349 @@ local function characterBits()
 	return cachedHum, cachedRoot, cachedChar, cachedAnimator
 end
 
--- The health bar, redrawn only when your health has actually moved
-local shownHealth = nil
-RunService.Heartbeat:Connect(function()
-	local hum = characterBits()
-	if not hum or hum.MaxHealth <= 0 then
-		return
+-- THE HEART: your health is the red liquid inside a pixel-art heart, just
+-- above the level bar. Take a hit and it sloshes, drops spill out over the
+-- rim and the heart shakes; drink a flask and it pours back in; low on health
+-- it beats and blinks red; and when it runs dry the heart cracks in two and
+-- shatters (like the SOUL in Undertale) - and forms again when you're back.
+-- The level is measured by how much of the heart is full, not how high:
+-- half your health really is half the heart. Tuning: Config.Heart.
+do
+	local H = Config.Heart or {}
+	local PX = H.Pixel or 5 -- screen pixels per pixel of the heart
+	-- the heart: "O" its outline, "." inside (where the liquid goes)
+	local SHAPE = {
+		"  OOOO   OOOO  ",
+		" O....O O....O ",
+		"O......O......O",
+		"O.............O",
+		"O.............O",
+		"O.............O",
+		" O...........O ",
+		"  O.........O  ",
+		"   O.......O   ",
+		"    O.....O    ",
+		"     O...O     ",
+		"      O.O      ",
+		"       O       ",
+	}
+	local ROWS, COLS = #SHAPE, #SHAPE[1]
+	local MID = (COLS + 1) / 2
+	local OUTLINE = RGB(24, 20, 37)
+	local GLASS = RGB(38, 43, 68)
+	local LIQUID = RGB(228, 59, 68)
+	local SURFACE = RGB(246, 117, 122)
+	local DEEP = RGB(162, 38, 51)
+	local BUBBLE = RGB(255, 190, 190)
+	local HURT = RGB(255, 0, 68)
+	local WHITE = RGB(255, 255, 255)
+	local LOW = H.Low or 0.25 -- below this much health it beats and blinks
+	local BASE_Y = -66
+
+	local vessel = create("Frame", {
+		Name = "HeartVessel",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, BASE_Y),
+		Size = UDim2.fromOffset(COLS * PX, ROWS * PX),
+		BackgroundTransparency = 1,
+		Parent = root,
+	})
+	local beat = create("UIScale", { Parent = vessel })
+	-- (its own look: the retro restyler leaves every piece of it alone)
+	local function own(inst)
+		inst:SetAttribute("RetroSkip", true)
+		return inst
 	end
-	local fraction = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-	if shownHealth and math.abs(fraction - shownHealth) < 0.001 then
-		return
+	own(vessel)
+	-- two halves (split down a zigzag through the middle), for when it breaks
+	local halves = {}
+	for i = 1, 2 do
+		halves[i] = own(create("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = vessel }))
 	end
-	shownHealth = fraction
-	hpFill.Size = UDim2.fromScale(fraction, 1)
-	hpText.Text = math.ceil(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-end)
+	local function pixel(parent, x, y, color, z)
+		return own(create("Frame", {
+			BorderSizePixel = 0,
+			BackgroundColor3 = color,
+			Position = UDim2.fromOffset((x - 1) * PX, (y - 1) * PX),
+			Size = UDim2.fromOffset(PX, PX),
+			ZIndex = z,
+			Parent = parent,
+		}))
+	end
+
+	-- every square of it; "layer" = how high a square sits above the bottom tip
+	local bottomRow = 0
+	for y = 1, ROWS do
+		if string.find(SHAPE[y], ".", 1, true) then
+			bottomRow = y
+		end
+	end
+	local cells, outline, byCol, perLayer = {}, {}, {}, {}
+	local LAYERS = 0
+	for y = 1, ROWS do
+		for x = 1, COLS do
+			local ch = string.sub(SHAPE[y], x, x)
+			if ch ~= " " then
+				local half = (x < MID or (x == MID and y % 2 == 1)) and halves[1] or halves[2]
+				if ch == "O" then
+					table.insert(outline, pixel(half, x, y, OUTLINE, 3))
+				else
+					local c = { f = pixel(half, x, y, GLASS, 2), x = x, layer = bottomRow - y, color = GLASS }
+					c.f.BackgroundTransparency = 0.15
+					table.insert(cells, c)
+					byCol[x] = byCol[x] or {}
+					byCol[x][c.layer] = c
+					perLayer[c.layer] = (perLayer[c.layer] or 0) + 1
+					LAYERS = math.max(LAYERS, c.layer + 1)
+				end
+			end
+		end
+	end
+	-- the shine on the glass
+	for _, g in ipairs({ { 3, 3 }, { 4, 3 }, { 3, 4 } }) do
+		pixel(halves[1], g[2], g[1], WHITE, 4).BackgroundTransparency = 0.45
+	end
+
+	-- how high the liquid stands (in layers) when `f` of the heart is full
+	local function heightFor(f)
+		local want = f * #cells
+		for L = 0, LAYERS - 1 do
+			local n = perLayer[L] or 0
+			if want <= n then
+				return L + (n > 0 and want / n or 0)
+			end
+			want = want - n
+		end
+		return LAYERS
+	end
+
+	-- the HP numbers on its left
+	local hpText = text({
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0.5, -(COLS * PX) / 2 - 10, 1, BASE_Y - ROWS * PX / 2),
+		Size = UDim2.fromOffset(170, 30),
+		RichText = true,
+		Text = "",
+		TextSize = 24,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Parent = root,
+	}, { stroke(3) })
+	-- your Power on its right
+	powerText = text({
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0.5, (COLS * PX) / 2 + 10, 1, BASE_Y - ROWS * PX / 2),
+		Size = UDim2.fromOffset(220, 30),
+		Text = "Power: 0",
+		TextSize = 22,
+		TextColor3 = RGB(110, 190, 255),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = root,
+	}, { stroke(3) })
+
+	-- drops of it (spilled, poured in) and shards (when it breaks)
+	local drops = {}
+	local function drop(x, y, vx, vy, color, size, life, into)
+		local f = own(create("Frame", {
+			BorderSizePixel = 0,
+			BackgroundColor3 = color,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(size, size),
+			Position = UDim2.fromOffset(x, y),
+			ZIndex = 5,
+			Parent = vessel,
+		}))
+		table.insert(drops, { f = f, x = x, y = y, vx = vx, vy = vy, age = 0, life = life, into = into })
+	end
+	local surfaceY -- (set every frame: where the top of the liquid is, in pixels)
+
+	local shown, target = 1, 1 -- how full it's drawn / how full it should be
+	local amp, clock, shake, flash = 0, 0, 0, 0
+	local broken = nil -- seconds since it broke (nil: whole)
+	local bubble = nil
+	local nextBubble = 1
+	local lastHum, lastText = nil, nil
+	local outlineColor = OUTLINE
+
+	local function spill(loss)
+		local n = math.clamp(math.floor(loss * (H.Drops or 36) + 0.5), 3, H.MaxDrops or 12)
+		for _ = 1, n do
+			local x = (MID - 4 + math.random() * 8) * PX
+			local side = math.random() < 0.5 and -1 or 1
+			drop(x, surfaceY or PX * 3, side * (40 + math.random() * 70), -(90 + math.random() * 90),
+				math.random() < 0.3 and SURFACE or LIQUID, PX * (0.6 + math.random() * 0.5), 0.9 + math.random() * 0.3)
+		end
+	end
+	local function pour(gain)
+		local n = math.clamp(math.floor(gain * 20 + 0.5), 3, 8)
+		for i = 1, n do
+			drop((MID - 0.5 + (math.random() - 0.5) * 1.2) * PX, -PX * (2 + i * 1.6), 0, 60, LIQUID, PX * 0.7, 2, true)
+		end
+	end
+	local function shatter()
+		broken = 0
+		flash = 0.12
+	end
+	local function mend()
+		broken = nil
+		for i, h in ipairs(halves) do
+			h.Visible = true
+			h.Position = UDim2.fromOffset(0, 0)
+		end
+		shown = 0 -- (and it fills back up, poured in)
+		pour(1)
+	end
+
+	RunService.RenderStepped:Connect(function(dt)
+		dt = math.min(dt, 0.1)
+		clock = clock + dt
+		local hum = characterBits()
+		if hum and hum.MaxHealth > 0 then
+			local f = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+			local words = '<font color="#FEE761">HP</font> ' .. math.ceil(math.max(hum.Health, 0)) .. "/" .. math.floor(hum.MaxHealth)
+			if words ~= lastText then
+				lastText = words
+				hpText.Text = words
+			end
+			if hum ~= lastHum then
+				-- a new you (respawned): no spilling over the change
+				lastHum = hum
+				target = f
+				if broken and f > 0 then
+					mend()
+				end
+			elseif f < target - 0.001 then
+				-- a hit: it sloshes, spills, shakes and flashes
+				local loss = target - f
+				target = f
+				amp = math.min(H.Slosh or 1.6, amp + 0.5 + loss * 4)
+				shake, flash = 1, 0.09
+				spill(loss)
+				if f <= 0 and not broken then
+					shatter()
+				end
+			elseif f > target + 0.001 then
+				local gain = f - target
+				target = f
+				if gain > 0.03 then
+					pour(gain)
+				end
+				if broken and f > 0 then
+					mend()
+				end
+			end
+		end
+
+		-- the level catches up: drains fast, fills slower
+		if shown > target then
+			shown = math.max(target, shown - dt * (H.Drain or 1.2))
+		elseif shown < target then
+			shown = math.min(target, shown + dt * (H.Fill or 0.5))
+		end
+		amp = amp * math.exp(-2.5 * dt)
+		local h = heightFor(shown)
+		surfaceY = (bottomRow + 1 - h) * PX
+
+		-- the liquid, square by square (only the ones that change are touched)
+		local calm = math.min(1, h * 2, (LAYERS - h) * 1.5)
+		local tilt = amp * 0.6 * math.sin(clock * 6)
+		local filled = {}
+		for _, c in ipairs(cells) do
+			local wave = amp * math.sin(c.x * 0.8 + clock * 9) + tilt * (c.x - MID) / MID + 0.12 * math.sin(c.x * 0.7 + clock * 3)
+			filled[c] = h > 0.02 and c.layer + 0.5 < h + wave * calm
+		end
+		-- a bubble now and then, rising through it
+		if not bubble and clock > nextBubble and h > 2 then
+			local col = math.random(MID - 3, MID + 3)
+			bubble = { x = col, layer = 0, t = 0 }
+		end
+		if bubble then
+			bubble.t = bubble.t + dt
+			if bubble.t > 0.12 then
+				bubble.t = 0
+				bubble.layer = bubble.layer + 1
+			end
+			local c = byCol[bubble.x] and byCol[bubble.x][bubble.layer]
+			if not c or not filled[c] then
+				bubble = nil
+				nextBubble = clock + 0.8 + math.random() * 1.6
+			end
+		end
+		for _, c in ipairs(cells) do
+			local color = GLASS
+			if filled[c] then
+				local above = byCol[c.x][c.layer + 1]
+				if not above or not filled[above] then
+					color = SURFACE
+				elseif c.layer <= 1 then
+					color = DEEP
+				else
+					color = LIQUID
+				end
+				if bubble and bubble.x == c.x and bubble.layer == c.layer then
+					color = BUBBLE
+				end
+			end
+			if color ~= c.color then
+				c.color = color
+				c.f.BackgroundColor3 = color
+				c.f.BackgroundTransparency = (color == GLASS) and 0.15 or 0
+			end
+		end
+
+		-- the outline: a white flash when hit; beating and blinking red when low
+		flash = math.max(0, flash - dt)
+		local low = target > 0 and target < LOW and not broken
+		local pulse = low and math.max(0, math.sin(clock * (target < LOW / 2 and 11 or 7))) ^ 6 or 0
+		local want = flash > 0 and WHITE or (pulse > 0.3 and HURT or OUTLINE)
+		if want ~= outlineColor then
+			outlineColor = want
+			for _, o in ipairs(outline) do
+				o.BackgroundColor3 = want
+			end
+		end
+		beat.Scale = 1 + 0.1 * pulse
+		shake = math.max(0, shake - dt * 3.5)
+		local sx, sy = (math.random() - 0.5) * 8 * shake, (math.random() - 0.5) * 8 * shake
+		vessel.Position = UDim2.new(0.5, math.floor(sx), 1, BASE_Y + math.floor(sy))
+
+		-- breaking: the halves part along the crack... then it shatters
+		if broken then
+			broken = broken + dt
+			if broken < 0.6 then
+				local gap = math.min(broken * 12, 3)
+				halves[1].Position = UDim2.fromOffset(-gap, 0)
+				halves[2].Position = UDim2.fromOffset(gap, 0)
+			elseif halves[1].Visible then
+				halves[1].Visible, halves[2].Visible = false, false
+				for i = 1, 10 do
+					local a = (i / 10) * math.pi * 2
+					drop(MID * PX, ROWS * PX * 0.45, math.cos(a) * (60 + math.random() * 60), -60 - math.random() * 80,
+						(i % 3 == 0) and OUTLINE or LIQUID, PX * 1.3, 1.2)
+				end
+			end
+		end
+
+		-- the drops: flung out and falling; poured ones vanish into the liquid
+		for i = #drops, 1, -1 do
+			local d = drops[i]
+			d.age = d.age + dt
+			d.vy = d.vy + 520 * dt
+			d.x, d.y = d.x + d.vx * dt, d.y + d.vy * dt
+			local gone = d.age >= d.life or (d.into and d.y >= (surfaceY or 0))
+			if gone then
+				if d.into then
+					amp = math.min(H.Slosh or 1.6, amp + 0.15)
+				end
+				d.f:Destroy()
+				table.remove(drops, i)
+			else
+				d.f.Position = UDim2.fromOffset(math.floor(d.x), math.floor(d.y))
+				local fade = d.into and 0 or math.clamp((d.age - (d.life - 0.3)) / 0.3, 0, 1)
+				d.f.BackgroundTransparency = fade
+			end
+		end
+	end)
+end
 
 -- Big "LEVEL UP!" popup in the upper middle of the screen
 local levelUpLabel = text({
