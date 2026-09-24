@@ -763,6 +763,41 @@ table.insert(steppers, function(now)
 	end
 end)
 
+-- THE PATHS: cobblestones. The slab turns to dark mortar and rows of
+-- cobbles are laid on it, staggered like real paving, each a little
+-- different in size and shade, with moss in some of the gaps; the curbs go
+-- dark stone. (Paper-thin and not solid: walking on it is unchanged.)
+local PATHS = {
+	PathEastWest = true, PathToForge = true, PathRoadToPlaza = true, PathForgeSide = true,
+	PathBehindForge = true, PathToGate = true, StairLanding = true, PathToYard = true,
+}
+local COBBLES = { RGB(139, 155, 180), RGB(192, 203, 220), RGB(139, 155, 180), RGB(160, 170, 192) }
+local function cobble(slab)
+	local size, top = slab.Size, slab.Position.Y + slab.Size.Y / 2
+	slab.Color = RGB(90, 105, 136)
+	local cell = 2.2
+	local nx, nz = math.floor(size.X / cell), math.floor(size.Z / cell)
+	for iz = 0, nz - 1 do
+		local shift = (iz % 2 == 0) and 0 or cell / 2
+		for ix = 0, nx - 1 do
+			local x = -size.X / 2 + (ix + 0.5) * cell + shift
+			local z = -size.Z / 2 + (iz + 0.5) * cell
+			if math.abs(x) < size.X / 2 - 0.9 then
+				local at = V3(slab.Position.X + x, top + 0.04, slab.Position.Z + z)
+				if rng:NextNumber() < 0.06 then
+					block(V3(0.8, 0.12, 0.8), GRASS[rng:NextInteger(1, #GRASS)]).CFrame = CFrame.new(at)
+				else
+					local w, d = cell - 0.35 - rng:NextNumber() * 0.4, cell - 0.35 - rng:NextNumber() * 0.4
+					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
+				end
+			end
+		end
+		if iz % 8 == 7 then
+			task.wait()
+		end
+	end
+end
+
 -- all of it, once the lobby's here
 local function dressLobby(lobby)
 	if D.On == false then
@@ -773,6 +808,18 @@ local function dressLobby(lobby)
 		for _, w in ipairs(ground:GetChildren()) do
 			if w:IsA("BasePart") and string.match(w.Name, "^Wall%a+$") then
 				pcall(stoneWall, w)
+			end
+		end
+	end
+	local ground0 = lobby:FindFirstChild("Ground")
+	if ground0 and D.Paths ~= false then
+		for _, p in ipairs(ground0:GetChildren()) do
+			if p:IsA("BasePart") then
+				if PATHS[p.Name] then
+					pcall(cobble, p)
+				elseif p.Name == "Curb" then
+					p.Color = RGB(58, 68, 102)
+				end
 			end
 		end
 	end
