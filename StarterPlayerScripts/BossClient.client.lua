@@ -5062,10 +5062,11 @@ if type(LOBBY_MUSIC) == "string" then
 end
 -- (shuffled: a different order every time you join; after the last song
 -- it shuffles again, never starting on the song that just played)
+local shuffleRng = Random.new() -- (a fresh random seed every time you join)
 local function shuffle(list, notFirst)
 	local out = table.clone(list)
 	for i = #out, 2, -1 do
-		local j = math.random(i)
+		local j = shuffleRng:NextInteger(1, i)
 		out[i], out[j] = out[j], out[i]
 	end
 	if notFirst and #out > 1 and out[1] == notFirst then
