@@ -971,11 +971,121 @@ task.spawn(dressLobby, lobby)
 -- everything you stand on are untouched). They may arrive a little later
 -- (they stream in), so each is dressed whenever it appears, bit by bit.
 local ARENAS = { SlimeArena = true, DuneArena = true }
+-- ARENA DETAIL: dripping slime or sand-crust on the pillars, moss and
+-- stones round their feet, grass or dry tufts on the ground, and the air
+-- full of drifting spores or dust. The same "random" on every screen.
+local function arenaDetail(arena, slime)
+	local cf, size = arena:GetBoundingBox()
+	local center = cf.Position
+	local floorY = center.Y - size.Y / 2
+	local accent = slime and RGB(120, 255, 90) or RGB(234, 212, 170)
+	local deep = slime and RGB(62, 137, 72) or RGB(184, 111, 80)
+	-- the pillars: every tall part, round or square
+	local pillars = {}
+	for _, p in ipairs(arena:GetDescendants()) do
+		if p:IsA("BasePart") and p.Transparency < 0.5 then
+			local round = p:IsA("Part") and p.Shape == Enum.PartType.Cylinder
+			local h = round and p.Size.X or p.Size.Y
+			local r = round and p.Size.Y / 2 or math.min(p.Size.X, p.Size.Z) / 2
+			if h >= 14 and r >= 1.5 and r <= 9 and (round or p.Size.Y > p.Size.X * 2) then
+				table.insert(pillars, { part = p, h = h, r = r })
+			end
+		end
+	end
+	for i, pl in ipairs(pillars) do
+		if i > 80 then
+			break
+		end
+		local c = pl.part.Position
+		local bottom, top = c.Y - pl.h / 2, c.Y + pl.h / 2
+		-- streaks running down from the top (glowing slime, or sand crust)
+		for _ = 1, rng:NextInteger(3, 6) do
+			local a = rng:NextNumber() * math.pi * 2
+			local dir = V3(math.cos(a), 0, math.sin(a))
+			local len = 2 + rng:NextNumber() * pl.h * 0.45
+			local at = V3(c.X, top - len / 2 - rng:NextNumber() * 2, c.Z) + dir * (pl.r + 0.1)
+			block(V3(0.5 + rng:NextNumber() * 0.4, len, 0.3), rng:NextNumber() < 0.6 and accent or deep, slime and Enum.Material.Neon or nil, slime and 0.15 or 0).CFrame = CFrame.lookAt(at, at + dir)
+			if slime then
+				block(V3(0.7, 0.7, 0.4), accent, Enum.Material.Neon).CFrame = CFrame.lookAt(at - V3(0, len / 2 + 0.3, 0), at - V3(0, len / 2 + 0.3, 0) + dir)
+			end
+		end
+		-- chunky stones standing out, and moss round the foot
+		for _ = 1, rng:NextInteger(4, 8) do
+			local a = rng:NextNumber() * math.pi * 2
+			local dir = V3(math.cos(a), 0, math.sin(a))
+			local at = V3(c.X, bottom + 2 + rng:NextNumber() * (pl.h - 4), c.Z) + dir * (pl.r + 0.15)
+			local dark, light = shadesOf(pl.part.Color)
+			block(V3(1 + rng:NextNumber() * 1.4, 0.7 + rng:NextNumber() * 0.8, 0.35), rng:NextNumber() < 0.6 and dark or light).CFrame = CFrame.lookAt(at, at + dir)
+		end
+		for _ = 1, rng:NextInteger(3, 6) do
+			local a = rng:NextNumber() * math.pi * 2
+			local d = pl.r + 0.3 + rng:NextNumber() * 1.2
+			local w = 0.5 + rng:NextNumber() * 0.8
+			block(V3(w, 0.4 + rng:NextNumber() * 0.8, w), slime and GRASS[rng:NextInteger(1, #GRASS)] or deep).CFrame =
+				CFrame.new(V3(c.X + math.cos(a) * d, bottom + 0.3, c.Z + math.sin(a) * d))
+		end
+	end
+	-- the ground: grass, flowers and little mushrooms (or dry desert tufts)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { arena, Workspace:FindFirstChildOfClass("Terrain") }
+	local reach = math.min(size.X, size.Z) / 2
+	for i = 1, (D.ArenaGrass or 260) do
+		local a, d = rng:NextNumber() * math.pi * 2, math.sqrt(rng:NextNumber()) * reach
+		local from = V3(center.X + math.cos(a) * d, center.Y + size.Y / 2 + 5, center.Z + math.sin(a) * d)
+		local hit = Workspace:Raycast(from, V3(0, -(size.Y + 30), 0), params)
+		if hit and hit.Normal.Y > 0.85 then
+			local at = hit.Position
+			local c = hit.Instance:IsA("BasePart") and hit.Instance.Color or RGB(0, 0, 0)
+			local green = c.G > c.R * 1.1 and c.G > c.B
+			if slime and green then
+				local roll = rng:NextNumber()
+				if roll < 0.15 then
+					-- a little pixel mushroom
+					block(V3(0.3, 0.8, 0.3), RGB(234, 212, 170)).CFrame = CFrame.new(at + V3(0, 0.4, 0))
+					block(V3(1, 0.4, 1), rng:NextNumber() < 0.5 and RGB(228, 59, 68) or RGB(181, 80, 136)).CFrame = CFrame.new(at + V3(0, 0.95, 0))
+				elseif roll < 0.3 then
+					block(V3(0.2, 0.8, 0.2), GRASS[2]).CFrame = CFrame.new(at + V3(0, 0.4, 0))
+					block(V3(0.5, 0.5, 0.5), PETALS[rng:NextInteger(1, #PETALS)]).CFrame = CFrame.new(at + V3(0, 0.95, 0))
+				else
+					for _ = 1, rng:NextInteger(2, 3) do
+						local h, w = 0.5 + rng:NextNumber() * 0.7, 0.3 + rng:NextNumber() * 0.2
+						block(V3(w, h, w), GRASS[rng:NextInteger(1, #GRASS)]).CFrame = CFrame.new(at + V3(spread() * 0.9, h / 2, spread() * 0.9))
+					end
+				end
+			elseif not slime and rng:NextNumber() < 0.45 then
+				-- dry desert tufts on the sand
+				for _ = 1, rng:NextInteger(2, 4) do
+					local h = 0.4 + rng:NextNumber() * 0.9
+					block(V3(0.25, h, 0.25), rng:NextNumber() < 0.5 and RGB(194, 133, 105) or RGB(228, 166, 114)).CFrame =
+						CFrame.new(at + V3(spread() * 1.2, h / 2, spread() * 1.2)) * CFrame.Angles(spread() * 0.6, 0, spread() * 0.6)
+				end
+			end
+		end
+		if i % 40 == 0 then
+			task.wait()
+		end
+	end
+	-- the air: spores (or dust) drifting up all over the arena
+	sparks(V3(center.X, floorY, center.Z), reach * 0.85, 1, 26, slime and { accent, RGB(200, 255, 150), RGB(255, 255, 255) } or { accent, RGB(254, 231, 97), RGB(255, 255, 255) }, D.ArenaMotes or 70, 0.35)
+	-- bubbles rising out of the slime pools
+	if slime then
+		for _, p in ipairs(arena:GetDescendants()) do
+			if p:IsA("BasePart") and p.Name == "SlimePool" then
+				sparks(p.Position, p.Size.Y * 0.4, 0.3, 5, { accent, RGB(200, 255, 150) }, 16, 0.6)
+			end
+		end
+	end
+end
+
 local function dressArena(arena)
 	if W.Arenas == false then
 		return
 	end
 	restyleAll(arena)
+	if D.On ~= false then
+		pcall(arenaDetail, arena, arena.Name == "SlimeArena")
+	end
 	if D.Flames ~= false then
 		for _, d in ipairs(arena:GetDescendants()) do
 			if d:IsA("Fire") then
@@ -1030,7 +1140,10 @@ RunService.RenderStepped:Connect(function(dt)
 		stepClock = stepClock + dt
 		if stepClock - stepAt >= 1 / 12 then
 			stepAt = stepClock
-			steppers[1]() -- (the flames)
+			local step = 1 / 12
+			for k = 1, 3 do -- (the flames, the smoke and the rising sparks)
+				steppers[k](os.clock(), step)
+			end
 			flushMoves()
 		end
 		return
