@@ -284,31 +284,58 @@ new("UIStroke", { Color = WHITE, Thickness = 2, ApplyStrokeMode = Enum.ApplyStro
 local badgeScale = new("UIScale", {}, badge)
 local gearScale = new("UIScale", {}, gearBtn)
 
--- the window: Minecraft Dungeons-style - you on the left (your real avatar,
--- turning slowly, with your four slots beside you), your items in the
--- middle, and the item you're looking at in full on the right
+-- the window: Minecraft Dungeons-style - it takes the whole screen: a deep,
+-- warm dark backdrop, you standing big in a spotlight on the left with your
+-- gear floating round you, your items in the middle, and the item you're
+-- looking at, huge, on the right. No boxes - everything floats.
 local WOOD, WOOD_DARK, WOOD_EDGE = RGB(46, 30, 34), RGB(30, 20, 24), RGB(150, 110, 60)
-local TILE, TILE_HOVER = RGB(62, 42, 46), RGB(88, 62, 64)
+local TILE, TILE_HOVER = RGB(52, 36, 40), RGB(84, 60, 62)
 local dim = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = BLACK, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 1 }, scaler)
-local win = box(scaler, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromOffset(1120, 640), Visible = false, ZIndex = 2, BackgroundColor3 = WOOD_DARK }, WOOD_EDGE, 4)
+local win = new("Frame", { BackgroundColor3 = RGB(40, 22, 26), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 2, Active = true }, scaler)
+new("UIGradient", { Rotation = 90, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(74, 36, 40)), ColorSequenceKeypoint.new(0.55, RGB(38, 22, 28)), ColorSequenceKeypoint.new(1, RGB(16, 10, 14)) }) }, win)
 local winScale = new("UIScale", {}, win)
-local title = text(win, { Text = "INVENTORY", TextSize = 30, Position = UDim2.fromOffset(20, 10), Size = UDim2.fromOffset(400, 40), TextColor3 = GOLD, ZIndex = 3 })
+-- faint pixel blocks drifting in the backdrop, and a dark vignette at the edges
+do
+	local rnd = Random.new(11)
+	for _ = 1, 26 do
+		local size = rnd:NextInteger(40, 120)
+		new("Frame", {
+			BorderSizePixel = 0,
+			BackgroundColor3 = rnd:NextNumber() < 0.5 and RGB(90, 48, 52) or RGB(20, 12, 16),
+			BackgroundTransparency = 0.82 + rnd:NextNumber() * 0.12,
+			Position = UDim2.new(rnd:NextNumber(), -size / 2, rnd:NextNumber(), -size / 2),
+			Size = UDim2.fromOffset(size, size),
+			ZIndex = 2,
+		}, win)
+	end
+	for _, v in ipairs({ { 0, 0, 1, 0.16, 90, false }, { 0, 0.84, 1, 0.16, 90, true }, { 0, 0, 0.1, 1, 0, false }, { 0.9, 0, 0.1, 1, 0, true } }) do
+		local f = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = BLACK, Position = UDim2.fromScale(v[1], v[2]), Size = UDim2.fromScale(v[3], v[4]), ZIndex = 2 }, win)
+		new("UIGradient", { Rotation = v[5], Transparency = NumberSequence.new(v[6] and 1 or 0.35, v[6] and 0.35 or 1) }, f)
+	end
+end
+
+-- the top bar: your coins, the title, and the way out
+local topBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, 70), ZIndex = 3 }, win)
+local coinIcon = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = GOLD, Position = UDim2.fromOffset(40, 22), Size = UDim2.fromOffset(26, 26), Rotation = 45, ZIndex = 4 }, topBar)
+new("UIStroke", { Color = INK, Thickness = 3 }, coinIcon)
+local coinText = text(topBar, { Text = "0", TextSize = 30, TextColor3 = GOLD, Position = UDim2.fromOffset(80, 16), Size = UDim2.fromOffset(240, 40), ZIndex = 4, TextStrokeTransparency = 0.4, TextStrokeColor3 = INK })
+local title = text(topBar, { Text = "INVENTORY", TextSize = 30, TextColor3 = WHITE, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.22), Size = UDim2.fromOffset(400, 40), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
 if TITLE_FACE then
 	title.FontFace = TITLE_FACE
-	title.TextSize = 22
+	title.TextSize = 24
 end
-local bagCount = text(win, { Text = "0/60", TextSize = 20, TextColor3 = GREY, Position = UDim2.new(1, -260, 0, 14), Size = UDim2.fromOffset(190, 30), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
-local closeBtn = button(win, "X", RED, { Position = UDim2.new(1, -52, 0, 12), Size = UDim2.fromOffset(36, 36), TextSize = 24, ZIndex = 3 })
+local bagCount = text(topBar, { Text = "0/60", TextSize = 20, TextColor3 = GREY, Position = UDim2.new(1, -330, 0, 20), Size = UDim2.fromOffset(240, 30), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+local closeBtn = button(topBar, "X", RGB(30, 20, 24), { Position = UDim2.new(1, -74, 0, 14), Size = UDim2.fromOffset(46, 46), TextSize = 28, ZIndex = 5 })
 
-local function panel(x, w)
-	return box(win, { Position = UDim2.fromOffset(x, 60), Size = UDim2.fromOffset(w, 564), BackgroundColor3 = WOOD, ZIndex = 2 }, WOOD_EDGE, 2)
-end
-
--- LEFT: you
-local left = panel(16, 330)
-local view = new("ViewportFrame", { BackgroundColor3 = RGB(24, 16, 20), BorderSizePixel = 0, Position = UDim2.fromOffset(90, 16), Size = UDim2.fromOffset(150, 250), Ambient = RGB(170, 160, 170), LightColor = RGB(255, 240, 220), LightDirection = Vector3.new(-1, -1, -1), ZIndex = 3 }, left)
-new("UIStroke", { Color = RGB(74, 52, 56), Thickness = 2 }, view)
-local viewCam = new("Camera", { FieldOfView = 32 }, view)
+-- LEFT: you, big, in a spotlight
+local left = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 30, 0, 80), Size = UDim2.new(0.36, -30, 1, -100), ZIndex = 3 }, win)
+local spot = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(255, 210, 160), BackgroundTransparency = 0.9, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromScale(0.7, 0.7), SizeConstraint = Enum.SizeConstraint.RelativeXX, ZIndex = 3 }, left)
+new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, spot)
+new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.6, 0.7), NumberSequenceKeypoint.new(1, 1) }) }, spot)
+local shadow = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = BLACK, BackgroundTransparency = 0.55, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.7), Size = UDim2.new(0.34, 0, 0, 34), ZIndex = 3 }, left)
+new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, shadow)
+local view = new("ViewportFrame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.02), Size = UDim2.fromScale(0.62, 0.7), Ambient = RGB(190, 170, 170), LightColor = RGB(255, 236, 210), LightDirection = Vector3.new(-0.6, -1, -0.8), ZIndex = 4 }, left)
+local viewCam = new("Camera", { FieldOfView = 30 }, view)
 view.CurrentCamera = viewCam
 local world = new("WorldModel", {}, view)
 local avatar, avatarAngle = nil, 0
@@ -328,7 +355,7 @@ local function buildAvatar()
 			return
 		end
 		for _, d in ipairs(copy:GetDescendants()) do
-			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") or d:IsA("ParticleEmitter") then
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("BillboardGui") then
 				d:Destroy()
 			elseif d:IsA("BasePart") then
 				d.Anchored = true
@@ -339,51 +366,54 @@ local function buildAvatar()
 		avatar = copy
 	end)
 end
+-- the four slots float round you, two each side
 local SLOT_AT = {
-	Weapon = UDim2.fromOffset(12, 40),
-	Helmet = UDim2.fromOffset(12, 140),
-	Chest = UDim2.fromOffset(248, 40),
-	Boots = UDim2.fromOffset(248, 140),
+	Weapon = UDim2.new(0, 0, 0.08, 0),
+	Helmet = UDim2.new(0, 0, 0.3, 0),
+	Chest = UDim2.new(1, -104, 0.08, 0),
+	Boots = UDim2.new(1, -104, 0.3, 0),
 }
 local wornSlots = {}
--- the level and gear power badges
-local function badgeBox(x, label)
-	local b = box(left, { Position = UDim2.fromOffset(x, 282), Size = UDim2.fromOffset(140, 84), BackgroundColor3 = WOOD_DARK, ZIndex = 3 }, WOOD_EDGE, 2)
-	text(b, { Text = label, TextSize = 14, TextColor3 = GREY, Size = UDim2.new(1, 0, 0, 26), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
-	return text(b, { Text = "0", TextSize = 34, TextColor3 = WHITE, Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 48), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
+-- the level and power badges, like MCD's hexagons
+local function badgeBox(pos, label, color)
+	local b = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(24, 16, 20), AnchorPoint = Vector2.new(0.5, 0.5), Position = pos, Size = UDim2.fromOffset(92, 92), Rotation = 45, ZIndex = 4 }, left)
+	new("UIStroke", { Color = color, Thickness = 3 }, b)
+	local inner = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = pos, Size = UDim2.fromOffset(110, 92), ZIndex = 5 }, left)
+	text(inner, { Text = label, TextSize = 14, TextColor3 = GREY, Size = UDim2.new(1, 0, 0, 30), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
+	return text(inner, { Text = "0", TextSize = 34, TextColor3 = color, Position = UDim2.fromOffset(0, 28), Size = UDim2.new(1, 0, 0, 44), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 })
 end
-local levelText = badgeBox(16, "LEVEL")
-local powerText = badgeBox(174, "GEAR POWER")
-local statsBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 380), Size = UDim2.new(1, -32, 0, 130), ZIndex = 3 }, left)
-new("UIGridLayout", { CellSize = UDim2.fromOffset(146, 22), CellPadding = UDim2.fromOffset(6, 3), SortOrder = Enum.SortOrder.LayoutOrder }, statsBox)
-local setsBox = text(left, { Text = "", TextSize = 15, TextColor3 = GREEN, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(16, 490), Size = UDim2.new(1, -32, 0, 64), ZIndex = 3 })
+local levelText = badgeBox(UDim2.new(0, 56, 0.58, 0), "LEVEL", RGB(254, 231, 97))
+local powerText = badgeBox(UDim2.new(1, -56, 0.58, 0), "POWER", RGB(44, 232, 245))
+local statsBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 10, 0.76, 0), Size = UDim2.new(1, -20, 0, 80), ZIndex = 4 }, left)
+new("UIGridLayout", { CellSize = UDim2.new(0.33, -6, 0, 24), CellPadding = UDim2.fromOffset(6, 4), SortOrder = Enum.SortOrder.LayoutOrder }, statsBox)
+local setsBox = text(left, { Text = "", TextSize = 16, TextColor3 = GREEN, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 10, 0.92, 0), Size = UDim2.new(1, -20, 0, 40), ZIndex = 4 })
 
 -- MIDDLE: your items
-local middle = panel(362, 424)
-local tabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 12), Size = UDim2.new(1, -24, 0, 46), ZIndex = 3 }, middle)
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center }, tabs)
+local middle = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.36, 10, 0, 80), Size = UDim2.new(0.3, -10, 1, -100), ZIndex = 3 }, win)
+local tabs = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 48), ZIndex = 3 }, middle)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center, HorizontalAlignment = Enum.HorizontalAlignment.Center }, tabs)
 local grid = new("ScrollingFrame", {
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
-	Position = UDim2.fromOffset(12, 68),
-	Size = UDim2.new(1, -24, 0, 440),
+	Position = UDim2.fromOffset(0, 60),
+	Size = UDim2.new(1, 0, 1, -110),
 	ScrollBarThickness = 6,
 	ScrollBarImageColor3 = WOOD_EDGE,
 	CanvasSize = UDim2.new(),
 	AutomaticCanvasSize = Enum.AutomaticSize.Y,
 	ZIndex = 3,
 }, middle)
-new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 10), PaddingBottom = UDim.new(0, 6) }, grid)
-local gridLayout = new("UIGridLayout", { CellSize = UDim2.fromOffset(88, 88), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
-local status = text(middle, { Text = "", TextSize = 17, TextColor3 = GREY, Position = UDim2.fromOffset(14, 514), Size = UDim2.new(1, -28, 0, 40), ZIndex = 3, TextWrapped = true })
+new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 12), PaddingBottom = UDim.new(0, 8) }, grid)
+local gridLayout = new("UIGridLayout", { CellSize = UDim2.fromOffset(112, 112), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }, grid)
+local status = text(middle, { Text = "", TextSize = 17, TextColor3 = GREY, Position = UDim2.new(0, 4, 1, -44), Size = UDim2.new(1, -8, 0, 40), ZIndex = 3, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center })
 
--- RIGHT: the item you're looking at
-local right = panel(802, 302)
-local detail = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 14), Size = UDim2.new(1, -32, 0, 470), ZIndex = 3 }, right)
-local actions = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 500), Size = UDim2.new(1, -24, 0, 50), ZIndex = 3 }, right)
-local wearBtn = button(actions, "WEAR", GREEN, { Size = UDim2.fromOffset(90, 44), Visible = false, ZIndex = 4, TextSize = 18 })
-local lockBtn = button(actions, "LOCK", SLOT, { Position = UDim2.fromOffset(96, 0), Size = UDim2.fromOffset(84, 44), Visible = false, ZIndex = 4, TextSize = 18 })
-local salvageBtn = button(actions, "SALVAGE", RGB(162, 38, 51), { Position = UDim2.fromOffset(186, 0), Size = UDim2.fromOffset(92, 44), Visible = false, ZIndex = 4, TextSize = 16 })
+-- RIGHT: the item you're looking at, big
+local right = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.66, 20, 0, 80), Size = UDim2.new(0.34, -60, 1, -100), ZIndex = 3 }, win)
+local detail = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -70), ZIndex = 3 }, right)
+local actions = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 1, -60), Size = UDim2.new(1, 0, 0, 56), ZIndex = 3 }, right)
+local wearBtn = button(actions, "WEAR", GREEN, { Size = UDim2.new(0.34, -6, 0, 52), Visible = false, ZIndex = 4, TextSize = 22 })
+local lockBtn = button(actions, "LOCK", RGB(30, 20, 24), { Position = UDim2.new(0.34, 0, 0, 0), Size = UDim2.new(0.3, -6, 0, 52), Visible = false, ZIndex = 4, TextSize = 20 })
+local salvageBtn = button(actions, "SALVAGE", RGB(122, 30, 40), { Position = UDim2.new(0.64, 0, 0, 0), Size = UDim2.new(0.36, 0, 0, 52), Visible = false, ZIndex = 4, TextSize = 18 })
 
 ----------------------------------------------------------------------
 -- The item card
@@ -522,9 +552,12 @@ local function renderDetail(uid)
 		return o
 	end
 	-- the big icon
-	local top = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 112), LayoutOrder = nextO(), ZIndex = 4 }, detail)
-	local frame = box(top, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(108, 108), BackgroundColor3 = TILE, ZIndex = 4 }, rarity.color, 3)
-	paintRarity(frame:FindFirstChildOfClass("UIStroke"), "Color", def.rarity)
+	local top = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 170), LayoutOrder = nextO(), ZIndex = 4 }, detail)
+	-- the item itself, huge and floating, with a glow of its rarity behind it
+	local glow = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rarity.color, BackgroundTransparency = 0.8, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(170, 170), ZIndex = 4 }, top)
+	new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, glow)
+	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }) }, glow)
+	local frame = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(160, 160), ZIndex = 5 }, top)
 	local big = itemIcon(def)
 	for _, px in ipairs(big:GetDescendants()) do
 		if px:IsA("Frame") then
@@ -533,10 +566,10 @@ local function renderDetail(uid)
 	end
 	big.Parent = frame
 	-- name, rarity chip, level, stars
-	local name = text(detail, { Text = string.upper(def.name), TextSize = 22, TextWrapped = true, Size = UDim2.new(1, 0, 0, 24), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextO(), ZIndex = 4 })
+	local name = text(detail, { Text = string.upper(def.name), TextSize = 30, TextWrapped = true, Size = UDim2.new(1, 0, 0, 30), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextO(), ZIndex = 4, TextStrokeTransparency = 0.3, TextStrokeColor3 = INK })
 	if TITLE_FACE then
 		name.FontFace = TITLE_FACE
-		name.TextSize = 15
+		name.TextSize = 22
 	end
 	paintRarity(name, "TextColor3", def.rarity)
 	local chipRow = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 24), LayoutOrder = nextO(), ZIndex = 4 }, detail)
@@ -790,7 +823,7 @@ local function drawLeft()
 		local def = rec and Items.ById[rec.id]
 		local b = slotFrame(left, def, def and uid)
 		b.Position = SLOT_AT[slot]
-		b.Size = UDim2.fromOffset(70, 70)
+		b.Size = UDim2.fromOffset(104, 104)
 		if not def then
 			local ghost = icon(slot, RGB(74, 52, 56), RGB(74, 52, 56))
 			ghost.Parent = b
@@ -844,6 +877,7 @@ function redraw()
 		end
 	end
 	bagCount.Text = Items.count(data) .. "/" .. Items.BagSize .. " ITEMS"
+	coinText.Text = Config.format(data.Coins or 0)
 	bagCount.TextColor3 = Items.count(data) >= Items.BagSize and RED or GREY
 	if tab == "Chests" then
 		local any = false
@@ -980,7 +1014,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if win.Visible and avatar then
 		avatarAngle = avatarAngle + dt * 0.6
 		local c = CFrame.new(0, 0.4, 0)
-		viewCam.CFrame = CFrame.lookAt((c * CFrame.Angles(0, avatarAngle, 0) * CFrame.new(0, 0.6, 11)).Position, c.Position)
+		viewCam.CFrame = CFrame.lookAt((c * CFrame.Angles(0, math.sin(avatarAngle * 0.5) * 0.6, 0) * CFrame.new(0, 0.8, 12)).Position, c.Position)
 	end
 end)
 
@@ -993,8 +1027,8 @@ local function openWindow()
 	end
 	win.Visible, dim.Visible = true, true
 	buildAvatar()
-	winScale.Scale = 0.85
-	tween(winScale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back)
+	winScale.Scale = 1.04
+	tween(winScale, 0.25, { Scale = 1 }, Enum.EasingStyle.Quad)
 	dim.BackgroundTransparency = 1
 	tween(dim, 0.2, { BackgroundTransparency = 0.5 })
 	sound("Click", 0.5, 0.9)
