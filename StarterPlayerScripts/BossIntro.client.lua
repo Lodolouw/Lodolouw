@@ -69,7 +69,9 @@ local function label(parent, text, props)
 		Font = Enum.Font.Arcade,
 	}, parent)
 	for k, v in pairs(props or {}) do
-		l[k] = v
+		if k ~= "Big" then -- (ours, not a real property: the chunky title font)
+			l[k] = v
+		end
 	end
 	if props and props.Big and TITLE_FACE then
 		l.FontFace = TITLE_FACE
@@ -289,7 +291,18 @@ local function watchBoss(model)
 		local floor = player:GetAttribute("SpireFloor")
 		local def = floor and Config.Bosses and Config.Bosses[floor]
 		if def then
-			task.spawn(playIntro, def)
+			task.spawn(function()
+				local ok, err = pcall(playIntro, def)
+				if not ok then
+					-- (never leave the screen dimmed if something went wrong)
+					warn("[BossIntro] " .. tostring(err))
+					local left = playerGui:FindFirstChild("BossIntro")
+					if left then
+						left:Destroy()
+					end
+					playing = false
+				end
+			end)
 		end
 	end)
 end

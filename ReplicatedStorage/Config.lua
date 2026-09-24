@@ -826,4 +826,39 @@ Config.Combat = {
 	}, -- the practice slime takes about this many hits at the recommended level
 }
 
+-- The bosses in the game's look: every colour that paints a boss (its body,
+-- its underside, its eyes, its glow...) snapped to the same 32-colour
+-- pixel-art palette as the menus and the lobby. Only how they look - the
+-- fights are exactly the same. (Config.Retro.BossPalette = false: off.)
+if Config.Retro and Config.Retro.On ~= false and Config.Retro.BossPalette ~= false then
+	local RGB = Color3.fromRGB
+	local PALETTE = {
+		RGB(190, 74, 47), RGB(215, 118, 67), RGB(234, 212, 170), RGB(228, 166, 114),
+		RGB(184, 111, 80), RGB(115, 62, 57), RGB(62, 39, 49), RGB(162, 38, 51),
+		RGB(228, 59, 68), RGB(247, 118, 34), RGB(254, 174, 52), RGB(254, 231, 97),
+		RGB(99, 199, 77), RGB(62, 137, 72), RGB(38, 92, 66), RGB(25, 60, 62),
+		RGB(18, 78, 137), RGB(0, 153, 219), RGB(44, 232, 245), RGB(255, 255, 255),
+		RGB(192, 203, 220), RGB(139, 155, 180), RGB(90, 105, 136), RGB(58, 68, 102),
+		RGB(38, 43, 68), RGB(24, 20, 37), RGB(255, 0, 68), RGB(104, 56, 108),
+		RGB(181, 80, 136), RGB(246, 117, 122), RGB(232, 183, 150), RGB(194, 133, 105),
+	}
+	local function snap(c)
+		local best, bestD = c, math.huge
+		for _, p in ipairs(PALETTE) do
+			local d = (c.R - p.R) ^ 2 * 0.3 + (c.G - p.G) ^ 2 * 0.59 + (c.B - p.B) ^ 2 * 0.11
+			if d < bestD then
+				best, bestD = p, d
+			end
+		end
+		return best
+	end
+	for _, def in pairs(Config.Bosses or {}) do
+		for k, v in pairs(def) do
+			if typeof(v) == "Color3" then
+				def[k] = snap(v)
+			end
+		end
+	end
+end
+
 return Config

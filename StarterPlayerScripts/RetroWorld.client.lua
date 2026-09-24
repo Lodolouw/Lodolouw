@@ -965,6 +965,45 @@ if W.Flavour ~= false then
 	findSpots(lobby)
 end
 task.spawn(dressLobby, lobby)
+
+-- THE BOSS ARENAS get the same look: palette colours, flat materials and
+-- pixel flames (only how they look, only on your screen - the fights and
+-- everything you stand on are untouched). They may arrive a little later
+-- (they stream in), so each is dressed whenever it appears, bit by bit.
+local ARENAS = { SlimeArena = true, DuneArena = true }
+local function dressArena(arena)
+	if W.Arenas == false then
+		return
+	end
+	restyleAll(arena)
+	if D.Flames ~= false then
+		for _, d in ipairs(arena:GetDescendants()) do
+			if d:IsA("Fire") then
+				pcall(pixelFlame, d)
+			elseif d:IsA("Smoke") then
+				pcall(pixelSmoke, d)
+			end
+		end
+	end
+	arena.DescendantAdded:Connect(function(d)
+		task.defer(function()
+			pcall(restyle, d)
+			if d:IsA("Fire") then
+				pcall(pixelFlame, d)
+			end
+		end)
+	end)
+end
+for _, c in ipairs(Workspace:GetChildren()) do
+	if ARENAS[c.Name] then
+		task.spawn(dressArena, c)
+	end
+end
+Workspace.ChildAdded:Connect(function(c)
+	if ARENAS[c.Name] then
+		task.spawn(dressArena, c)
+	end
+end)
 if W.DummyTalk ~= false then
 	task.spawn(findTalkers, lobby)
 end
@@ -986,6 +1025,13 @@ RunService.RenderStepped:Connect(function(dt)
 	if not here then
 		if saying then
 			hush()
+		end
+		-- (in an arena: its pixel flames still flicker)
+		stepClock = stepClock + dt
+		if stepClock - stepAt >= 1 / 12 then
+			stepAt = stepClock
+			steppers[1]() -- (the flames)
+			flushMoves()
 		end
 		return
 	end
