@@ -995,11 +995,12 @@ local prestigeText = statRow(BUTTON_ICON_IMAGES.Prestige ~= "" and BUTTON_ICON_I
 -- HUD: hint banner, goal bar, right-side controls
 ----------------------------------------------------------------------
 -- Hint: white text on a dark strip that fades out at both ends
+-- (kept narrow enough to stay clear of the player list in the top right)
 local hintBanner = create("Frame", {
 	Name = "HintBanner",
 	AnchorPoint = Vector2.new(0.5, 0),
 	Position = UDim2.new(0.5, 0, 0, 56),
-	Size = UDim2.fromOffset(860, 52),
+	Size = UDim2.fromOffset(620, 52),
 	BackgroundColor3 = C.ink,
 	BackgroundTransparency = 0.45,
 	BorderSizePixel = 0,
@@ -1019,7 +1020,7 @@ local hint = text({
 	Name = "Hint",
 	Size = UDim2.fromScale(1, 1),
 	Text = "Loading...",
-	TextSize = 30,
+	TextSize = 26,
 	TextWrapped = true,
 	Parent = hintBanner,
 }, { stroke(3) })

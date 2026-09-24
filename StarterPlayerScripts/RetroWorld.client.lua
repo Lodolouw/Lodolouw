@@ -15,6 +15,11 @@
 	    a black box types a line about it at the bottom of the screen, with
 	    a blip a letter (Undertale)
 	  * A WARMER, PUNCHIER GRADE - only while you're in the lobby
+	  * DETAIL - stone courses and chunky stones on the castle walls, pixel
+	    flames and smoke in place of the old fire effects, grass and flowers
+	    on the lawns, glowing pylons and sparks round the training pads,
+	    sparks at the shrine, voxel clouds and flocks of birds circling the
+	    island, and a beacon of light rising from the Spire's peak
 
 	SAFE BY DESIGN: all of it happens on your own screen only, and it only ever
 	changes how things LOOK - colours and materials. Nothing is moved, nothing
@@ -371,6 +376,380 @@ if W.Grade ~= false then
 end
 
 ----------------------------------------------------------------------
+-- DETAIL: the lobby dressed up - far more to look at, all in the same
+-- chunky pixel style, and all of it things you can't touch
+----------------------------------------------------------------------
+local D = W.Detail or {}
+local rng = Random.new(9241) -- (the same "random" on every screen: everyone sees the same lobby)
+local detail = Instance.new("Folder")
+detail.Name = "Detail"
+detail.Parent = mine
+local steppers = {} -- the moving detail: each is run 12 times a second
+local moveParts, moveCFs = {}, {}
+local function move(p, cf)
+	moveParts[#moveParts + 1] = p
+	moveCFs[#moveCFs + 1] = cf
+end
+-- everything that moved this step, in one go
+local function flushMoves()
+	if #moveParts == 0 then
+		return
+	end
+	local ok = pcall(function()
+		Workspace:BulkMoveTo(moveParts, moveCFs, Enum.BulkMoveMode.FireCFrameChanged)
+	end)
+	if not ok then
+		for i, p in ipairs(moveParts) do
+			p.CFrame = moveCFs[i]
+		end
+	end
+	table.clear(moveParts)
+	table.clear(moveCFs)
+end
+local function block(size, color, material, transparency)
+	local p = ghost(size, color, material or Enum.Material.SmoothPlastic)
+	p.Transparency = transparency or 0
+	p.Parent = detail
+	return p
+end
+local function spread()
+	return rng:NextNumber() - 0.5
+end
+
+-- the palette's greys, dark to light: the stone's shading steps
+local GREYS = {
+	RGB(24, 20, 37), RGB(38, 43, 68), RGB(58, 68, 102), RGB(90, 105, 136),
+	RGB(139, 155, 180), RGB(192, 203, 220), RGB(255, 255, 255),
+}
+local function shadesOf(c)
+	local best, bestD = 4, math.huge
+	for i, g in ipairs(GREYS) do
+		local d = (c.R - g.R) ^ 2 + (c.G - g.G) ^ 2 + (c.B - g.B) ^ 2
+		if d < bestD then
+			best, bestD = i, d
+		end
+	end
+	return GREYS[math.max(best - 1, 1)], GREYS[math.min(best + 1, #GREYS)]
+end
+
+-- THE CASTLE WALLS: a dark stone plinth, lines of brick courses, a light
+-- ledge along the top, and chunky stones standing out of the face
+local function stoneWall(w)
+	local size, at = w.Size, w.Position
+	local alongX = size.X > size.Z
+	local length = alongX and size.X or size.Z
+	local half = (alongX and size.Z or size.X) / 2
+	-- (the face you see: the side toward the middle of the island)
+	local n = alongX and V3(0, 0, at.Z > 0 and -1 or 1) or V3(at.X > 0 and -1 or 1, 0, 0)
+	local along = alongX and V3(1, 0, 0) or V3(0, 0, 1)
+	local face = at - V3(0, size.Y / 2, 0) + n * half
+	local dark, light = shadesOf(w.Color)
+	local function slab(u, y, len, h, depth, color)
+		local p = block(alongX and V3(len, h, depth) or V3(depth, h, len), color)
+		p.CFrame = CFrame.new(face + along * u + V3(0, y, 0) + n * (depth / 2 - 0.05))
+	end
+	slab(0, 2, length, 4, 0.8, dark)
+	for y = 9, size.Y - 5, 7 do
+		slab(0, y, length, 0.35, 0.3, dark)
+	end
+	slab(0, size.Y - 0.8, length, 1.2, 0.9, light)
+	for _ = 1, math.floor(length / 5) do
+		slab(spread() * (length - 6), 6 + rng:NextNumber() * (size.Y - 12), 2.5 + rng:NextNumber() * 2.5,
+			1.6 + rng:NextNumber() * 1.4, 0.45 + rng:NextNumber() * 0.3, rng:NextNumber() < 0.6 and dark or light)
+	end
+end
+
+-- PIXEL FLAMES in place of the old smoky fire: a stack of glowing cubes
+-- that flickers, in the fire's own colours (the blue ones stay blue)
+local flames = {}
+local function pixelFlame(fire)
+	local holder = fire.Parent
+	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not fire.Enabled then
+		return
+	end
+	local s = math.clamp(fire.Size / 3, 0.5, 5)
+	local c1, c2 = snap(fire.Color), snap(fire.SecondaryColor)
+	local f = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), s = s, cubes = {} }
+	for i, spec in ipairs({ { 0.9, c1, 0.35 }, { 0.7, c1, 0.95 }, { 0.55, c2, 1.45 }, { 0.38, c2, 1.9 }, { 0.22, RGB(255, 255, 255), 2.25 } }) do
+		local w = spec[1] * s
+		table.insert(f.cubes, { part = block(V3(w, w, w), spec[2], Enum.Material.Neon), h = spec[3] * s, i = i })
+	end
+	fire.Enabled = false
+	fire:GetPropertyChangedSignal("Enabled"):Connect(function()
+		if fire.Enabled then
+			fire.Enabled = false
+		end
+	end)
+	table.insert(flames, f)
+end
+table.insert(steppers, function()
+	for _, f in ipairs(flames) do
+		for _, c in ipairs(f.cubes) do
+			local j = 0.12 * f.s * (c.i / 3)
+			local up = (math.random() < 0.3) and 0.18 * f.s or 0
+			move(c.part, CFrame.new(f.at + V3(math.random(-1, 1) * j, c.h + up, math.random(-1, 1) * j)))
+			if c.i == 5 then
+				c.part.Transparency = math.random() < 0.35 and 1 or 0
+			end
+		end
+	end
+end)
+
+-- PIXEL SMOKE: grey cubes that puff out, grow and fade as they rise
+local smokes = {}
+local function pixelSmoke(sm)
+	local holder = sm.Parent
+	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not sm.Enabled then
+		return
+	end
+	sm.Enabled = false
+	local puff = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), bits = {} }
+	for i = 1, 5 do
+		puff.bits[i] = { part = block(V3(1, 1, 1), snap(sm.Color), nil, 0.3), t = i / 5, dx = spread() }
+	end
+	table.insert(smokes, puff)
+end
+table.insert(steppers, function(_, step)
+	for _, puff in ipairs(smokes) do
+		for _, b in ipairs(puff.bits) do
+			b.t = b.t + step / 4
+			if b.t > 1 then
+				b.t, b.dx = b.t - 1, spread()
+			end
+			local size = 1 + b.t * 2.6
+			b.part.Size = V3(size, size, size)
+			b.part.Transparency = 0.25 + b.t * 0.75
+			move(b.part, CFrame.new(puff.at + V3(b.dx * 2 + b.t * 3, b.t * 12, b.dx)))
+		end
+	end
+end)
+
+-- RISING SPARKS: little glowing cubes floating up from a spot and fading
+local risers = {}
+local function sparks(center, radius, fromY, toY, colors, count, size)
+	for i = 1, count do
+		table.insert(risers, {
+			part = block(V3(size, size, size), colors[(i % #colors) + 1], Enum.Material.Neon),
+			center = center, radius = radius, fromY = fromY, toY = toY,
+			t = rng:NextNumber(), speed = 0.25 + rng:NextNumber() * 0.25, off = V3(spread(), 0, spread()) * 2 * radius,
+		})
+	end
+end
+table.insert(steppers, function(_, step)
+	for _, r in ipairs(risers) do
+		r.t = r.t + step * r.speed
+		if r.t > 1 then
+			r.t = 0
+			r.off = V3(spread(), 0, spread()) * 2 * r.radius
+		end
+		r.part.Transparency = r.t > 0.7 and (r.t - 0.7) / 0.3 or 0
+		move(r.part, CFrame.new(r.center + r.off + V3(0, r.fromY + (r.toY - r.fromY) * r.t, 0)))
+	end
+end)
+
+-- THE TRAINING PADS: a glowing pylon at each corner, and sparks in the pad's colour
+local pylons = {}
+local function dressPad(glow)
+	local c, color = glow.Position, snap(glow.Color)
+	local half = glow.Size.X / 2 + 3.2
+	local _, lightStone = shadesOf(RGB(90, 105, 136))
+	for _, k in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+		local base = V3(c.X + k[1] * half, c.Y - 0.3, c.Z + k[2] * half)
+		block(V3(1.6, 3, 1.6), RGB(58, 68, 102)).CFrame = CFrame.new(base + V3(0, 1.5, 0))
+		block(V3(2, 0.5, 2), lightStone).CFrame = CFrame.new(base + V3(0, 3.2, 0))
+		table.insert(pylons, { part = block(V3(0.9, 0.9, 0.9), color, Enum.Material.Neon), at = base + V3(0, 4.4, 0), phase = rng:NextNumber() * 6 })
+	end
+	sparks(c, glow.Size.X / 2 - 1, 0.5, 9, { color, RGB(255, 255, 255) }, 6, 0.35)
+end
+table.insert(steppers, function(now)
+	for _, p in ipairs(pylons) do
+		local bob = math.floor((math.sin(now * 2.5 + p.phase) + 1) * 2) * 0.12
+		move(p.part, CFrame.new(p.at + V3(0, bob, 0)) * CFrame.Angles(0, math.floor(now * 4) * math.pi / 8, 0))
+	end
+end)
+
+-- GRASS AND FLOWERS: little pixel tufts across the lawns
+local GRASS = { RGB(99, 199, 77), RGB(62, 137, 72), RGB(38, 92, 66) }
+local PETALS = { RGB(246, 117, 122), RGB(254, 231, 97), RGB(255, 255, 255), RGB(44, 232, 245), RGB(181, 80, 136) }
+local function plantGrass(lobby)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { lobby }
+	for i = 1, (D.Grass or 320) do
+		local x, z = spread() * 224, spread() * 224
+		local hit = Workspace:Raycast(V3(x, 40, z), V3(0, -60, 0), params)
+		local c = hit and hit.Instance.Color
+		-- (only on the grass: flat, at ground level and green)
+		if hit and hit.Normal.Y > 0.9 and hit.Position.Y < 3 and c.G > c.R * 1.15 and c.G > c.B * 1.1 then
+			local at = hit.Position
+			if rng:NextNumber() < 0.25 then
+				block(V3(0.2, 0.8, 0.2), GRASS[2]).CFrame = CFrame.new(at + V3(0, 0.4, 0))
+				block(V3(0.5, 0.5, 0.5), PETALS[rng:NextInteger(1, #PETALS)]).CFrame = CFrame.new(at + V3(0, 0.95, 0))
+			else
+				for _ = 1, rng:NextInteger(2, 3) do
+					local h = 0.5 + rng:NextNumber() * 0.7
+					local w = 0.3 + rng:NextNumber() * 0.2
+					block(V3(w, h, w), GRASS[rng:NextInteger(1, #GRASS)]).CFrame = CFrame.new(at + V3(spread() * 0.9, h / 2, spread() * 0.9))
+				end
+			end
+		end
+		if i % 40 == 0 then
+			task.wait()
+		end
+	end
+end
+
+-- VOXEL CLOUDS drifting slowly round the island
+local clouds = {}
+local function makeClouds(center)
+	for _ = 1, (D.Clouds or 14) do
+		local cl = { center = center, ang = rng:NextNumber() * math.pi * 2, r = 170 + rng:NextNumber() * 200, y = 85 + rng:NextNumber() * 70, speed = 0.006 + rng:NextNumber() * 0.01, cubes = {} }
+		for j = 1, rng:NextInteger(5, 9) do
+			local size = V3(10 + rng:NextNumber() * 14, 6 + rng:NextNumber() * 6, 10 + rng:NextNumber() * 14)
+			table.insert(cl.cubes, {
+				part = block(size, j % 3 == 0 and RGB(192, 203, 220) or RGB(255, 255, 255)),
+				off = V3(spread() * 30, size.Y / 2 + rng:NextNumber() * 6, spread() * 18),
+			})
+		end
+		table.insert(clouds, cl)
+	end
+end
+table.insert(steppers, function(now)
+	for _, cl in ipairs(clouds) do
+		local a = cl.ang + now * cl.speed
+		local frame = CFrame.new(cl.center + V3(math.cos(a) * cl.r, cl.y, math.sin(a) * cl.r)) * CFrame.Angles(0, -a, 0)
+		for _, c in ipairs(cl.cubes) do
+			move(c.part, frame * CFrame.new(c.off))
+		end
+	end
+end)
+
+-- BIRDS: little flocks flapping round over the castle in V-formations
+local flocks = {}
+local function makeBirds(center)
+	for f = 1, (D.Birds or 3) do
+		local flock = { center = center, r = 60 + f * 28, y = 58 + f * 12, speed = ((f % 2 == 0) and -1 or 1) * (0.1 + f * 0.02), phase = f * 2.1, members = {} }
+		for b = 1, 5 do
+			local rank = math.ceil((b - 1) / 2)
+			table.insert(flock.members, {
+				body = block(V3(0.9, 0.6, 1.6), RGB(38, 43, 68)),
+				w1 = block(V3(1.8, 0.2, 0.9), RGB(58, 68, 102)),
+				w2 = block(V3(1.8, 0.2, 0.9), RGB(58, 68, 102)),
+				slot = V3(((b % 2 == 0) and 1 or -1) * rank * 3, 0, rank * 3),
+				flap = rng:NextInteger(0, 3),
+			})
+		end
+		table.insert(flocks, flock)
+	end
+end
+table.insert(steppers, function(now)
+	for i, fl in ipairs(flocks) do
+		local a = fl.phase + now * fl.speed
+		local pos = fl.center + V3(math.cos(a) * fl.r, fl.y + math.sin(now * 0.5 + i) * 3, math.sin(a) * fl.r)
+		local heading = V3(-math.sin(a), 0, math.cos(a)) * (fl.speed > 0 and 1 or -1)
+		local frame = CFrame.lookAt(pos, pos + heading)
+		for _, m in ipairs(fl.members) do
+			local cf = frame * CFrame.new(m.slot)
+			local up = (math.floor(now * 6) + m.flap) % 2 == 0 and 0.55 or -0.35
+			move(m.body, cf)
+			move(m.w1, cf * CFrame.new(-1.2, 0, 0) * CFrame.Angles(0, 0, -up))
+			move(m.w2, cf * CFrame.new(1.2, 0, 0) * CFrame.Angles(0, 0, up))
+		end
+	end
+end)
+
+-- THE SPIRE'S BEACON: a pillar of light from its peak into the sky, with
+-- runes turning round it - you can see where the bosses are from anywhere
+local beacon = nil
+local function raiseBeacon(spire)
+	local top, glowColor = nil, RGB(44, 232, 245)
+	for _, p in ipairs(spire:GetDescendants()) do
+		if p:IsA("BasePart") and p.Transparency < 1 then
+			local y = p.Position.Y + p.Size.Y / 2
+			if not top or y > top.Y then
+				top = V3(p.Position.X, y, p.Position.Z)
+			end
+			if p.Material == Enum.Material.Neon then
+				glowColor = p.Color
+			end
+		end
+	end
+	if not top then
+		return
+	end
+	glowColor = snap(glowColor)
+	local function pillar(width, transparency)
+		local p = block(V3(420, width, width), glowColor, Enum.Material.Neon, transparency)
+		p.Shape = Enum.PartType.Cylinder
+		p.CFrame = CFrame.new(top + V3(0, 210, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		return p
+	end
+	beacon = { core = pillar(3, 0.45), halo = pillar(8, 0.85), top = top, runes = {} }
+	for i = 1, 10 do
+		beacon.runes[i] = block(V3(1.3, 1.3, 1.3), i % 2 == 0 and glowColor or RGB(255, 255, 255), Enum.Material.Neon)
+	end
+end
+table.insert(steppers, function(now)
+	if not beacon then
+		return
+	end
+	local pulse = math.floor(now * 3) % 2 == 0
+	beacon.core.Transparency = pulse and 0.4 or 0.5
+	local turn = math.floor(now * 6) * (math.pi / 24)
+	for i, r in ipairs(beacon.runes) do
+		local a = turn + i / #beacon.runes * math.pi * 2
+		local bob = math.floor(math.sin(now * 2 + i) * 2 + 0.5) * 0.3
+		move(r, CFrame.new(beacon.top + V3(math.cos(a) * 9, 5 + bob, math.sin(a) * 9)) * CFrame.Angles(0, -a, math.pi / 4))
+	end
+end)
+
+-- all of it, once the lobby's here
+local function dressLobby(lobby)
+	if D.On == false then
+		return
+	end
+	local ground = lobby:FindFirstChild("Ground")
+	if ground and D.Walls ~= false then
+		for _, w in ipairs(ground:GetChildren()) do
+			if w:IsA("BasePart") and string.match(w.Name, "^Wall%a+$") then
+				pcall(stoneWall, w)
+			end
+		end
+	end
+	if D.Flames ~= false then
+		for _, d in ipairs(lobby:GetDescendants()) do
+			if d:IsA("Fire") then
+				pcall(pixelFlame, d)
+			elseif d:IsA("Smoke") then
+				pcall(pixelSmoke, d)
+			end
+		end
+	end
+	local yard = lobby:FindFirstChild("TrainingYard")
+	if yard and D.Pads ~= false then
+		for _, p in ipairs(yard:GetChildren()) do
+			if p:IsA("BasePart") and string.match(p.Name, "^PadGlow%d+$") then
+				pcall(dressPad, p)
+			end
+		end
+	end
+	if D.Shrine ~= false then
+		local at = (Config.Stations and Config.Stations.Prestige) or V3()
+		sparks(at, 9, 3, 18, { RGB(254, 231, 97), RGB(246, 117, 122), RGB(255, 255, 255) }, 10, 0.4)
+	end
+	local center = V3(0, 0, -10)
+	makeClouds(center)
+	makeBirds(center)
+	local spire = lobby:FindFirstChild("Spire")
+	if spire and D.Beacon ~= false then
+		pcall(raiseBeacon, spire)
+	end
+	if (D.Grass or 320) > 0 then
+		plantGrass(lobby)
+	end
+end
+
+----------------------------------------------------------------------
 -- Go
 ----------------------------------------------------------------------
 local lobby = Workspace:WaitForChild("Lobby", 60)
@@ -386,6 +765,7 @@ end)
 if W.Flavour ~= false then
 	findSpots(lobby)
 end
+task.spawn(dressLobby, lobby)
 local spawnPad = lobby:FindFirstChild("LobbySpawn", true)
 if W.SaveStar ~= false and spawnPad and spawnPad:IsA("BasePart") then
 	buildStar(spawnPad.Position + V3(0, 7.5, 0))
@@ -438,9 +818,14 @@ RunService.RenderStepped:Connect(function(dt)
 			local bob = math.floor(math.sin(now * 2) * 3 + 0.5) * 0.15
 			local c = CFrame.new(star.center + V3(0, bob, 0)) * CFrame.Angles(0, turn, 0)
 			for _, cube in ipairs(star.cubes) do
-				cube.part.CFrame = c * CFrame.new(cube.offset)
+				move(cube.part, c * CFrame.new(cube.offset))
 			end
 		end
+		-- and all the moving detail
+		for _, fn in ipairs(steppers) do
+			fn(now, step)
+		end
+		flushMoves()
 	end
 
 	-- flavour text: the nearest place you've walked up to that hasn't

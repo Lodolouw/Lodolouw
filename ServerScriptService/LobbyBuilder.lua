@@ -5,7 +5,7 @@
 	  * toy-brick island, paths, walls, trees, lamps
 	  * Sell Shop, Upgrade Shop (mushroom house), Armory (blacksmith forge), Prestige Shrine
 	  * Training Yard: six practice-dummy pads with multiplier signs
-	  * an inert "Boss Arena - coming soon" gate (no arena yet, as requested)
+	  * the castle gate, and the stairs and bridge up to the Spire (the boss floors)
 
 	Coordinates: the island is 240x240 studs centred on (0,0,0), ground top at y = 0.
 	North is -Z. Spawn is south of the shrine, the training yard is at the south end.
@@ -1524,7 +1524,9 @@ local function buildYard(parent)
 		-- when the yard is viewed from a distance or end-on. Short range means
 		-- you only ever see the sign for the pad you're actually near.
 		local anchor = anchorPart(yard, "SignAnchor" .. zi, CFrame.new(c.X, 21, dz))
-		local bb = billboard(anchor, "ZoneSign", UDim2.fromOffset(300, 150), 50)
+		-- (sized in studs, like the other signs: readable up close without
+		-- filling your screen, and smaller the further away you are)
+		local bb = billboard(anchor, "ZoneSign", UDim2.fromScale(300 * SIGN_STUDS_PER_PIXEL, 150 * SIGN_STUDS_PER_PIXEL), 50)
 		bb:SetAttribute("ZoneIndex", zi)
 		billLabel(bb, "Mult", "x" .. Config.formatMult(zone.mult), col, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.5))
 		billLabel(bb, "Name", zone.name, RGB(255, 255, 255), UDim2.fromScale(0, 0.5), UDim2.fromScale(1, 0.25))
@@ -2192,7 +2194,7 @@ local function buildSpire(parent)
 	crackLight.Parent = crack
 	local doorGlow = part(t, "DoorGlowFloor", V3(10, 0.1, 12), CFrame.new(0, gy + 0.06, DZ + 6), SPIRE_GLOW, Mat.Neon, { CanCollide = false, CanQuery = false, Transparency = 0.8 })
 	pulse(doorGlow, 0.6, 0.72, 0.9)
-	t:FindFirstChild("GateDoor"):SetAttribute("Destination", "TODO: the Spire's boss floors")
+	t:FindFirstChild("GateDoor"):SetAttribute("Destination", "The Spire's boss floors")
 
 	-- rune above the arches, battlements and a jagged crest on top
 	local R = CFrame.new(0, gy + 45, FZ)

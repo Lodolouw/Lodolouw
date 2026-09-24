@@ -178,7 +178,11 @@ The lobby wears the same look (`RetroWorld`, `Config.Retro.World`): its
 colours snapped to the menus' palette, realistic textures turned to flat
 colour, pixel motes drifting around you, a spinning pixel save star over the
 spawn, and Undertale-style lines typed out when you walk up to a shop, the
-shrine, the yard or the Spire. It only changes how things look, only on your
+shrine, the yard or the Spire. It also dresses the lobby with detail: stone
+courses and chunky stones on the walls, pixel flames and smoke in place of
+the old fire effects, grass and flowers, pylons and sparks round the training
+pads, sparks at the shrine, voxel clouds, flocks of birds, and a beacon of
+light from the Spire's peak. It only changes how things look, only on your
 screen: nothing is moved, nothing solid changes, and the people, the dummies
 and the boss arenas are left alone.
 

@@ -480,6 +480,18 @@ Config.Retro = {
 		Repeat = 150, -- seconds before the same place talks again
 		Grade = true, -- a slightly warmer, punchier colour grade in the lobby
 		-- Lines = { SellShop = "* your own line" }, -- (to change what a place says)
+		-- more to look at (all of it can't be touched or stood on)
+		Detail = {
+			On = true,
+			Walls = true, -- stone courses and chunky stones on the castle walls
+			Flames = true, -- pixel flames and smoke instead of the old fire effects
+			Pads = true, -- glowing pylons and rising sparks round the training pads
+			Shrine = true, -- sparks rising round the prestige shrine
+			Beacon = true, -- a pillar of light from the Spire's peak into the sky
+			Grass = 320, -- tufts of grass and flowers scattered on the lawns (0 = none)
+			Clouds = 14, -- voxel clouds drifting round the island (0 = none)
+			Birds = 3, -- flocks of pixel birds circling the castle (0 = none)
+		},
 	},
 }
 
