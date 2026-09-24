@@ -15,10 +15,18 @@
 	    Resetting  everyone in the arena died or left: it sinks back and heals.
 	    Dead       killed. Rewards are paid; it returns once the arena is empty.
 
+	Two ways of fighting live in here:
+	    Gloomgut (and any boss without Body = "Worm") fights on the surface:
+	        brain() and the Attacks table.
+	    Mireworm (Body = "Worm") hunts from under the sand: wormBrain() and the
+	        WormAttacks table, further down. The two never share an attack.
+
 	Attributes on the boss model, for BossClient:
 	    State, Phase, Health, MaxHealth, Moving
 	    Action, ActionId, ActionStart (server time), ActA/ActB/ActC (positions),
 	    ActN (a number), ActK (how many of the ActA..C slots are filled so far)
+	    Mireworm also: Submerged (under the sand), ActT (a second moment in an
+	    action, server time)
 ]]
 
 local Players = game:GetService("Players")
@@ -189,17 +197,17 @@ local function findStones(floorId)
 				center = ok and cf and cf.Position or nil
 			end
 			if center then
-				list[#list + 1] = { center = center, radius = pm:GetAttribute("Radius") or 10 }
+				list[#list + 1] = { center = center, radius = pm:GetAttribute("Radius") or 10, model = pm }
 			end
 		end
 	end
 	return list
 end
 
--- the stone platform a spot is on, if it's on one
+-- the stone platform a spot is on, if it's on one (a shattered one is just sand)
 local function stoneUnder(E, pos)
 	for _, st in ipairs(E.stones or {}) do
-		if flatDistance(pos, st.center) <= st.radius then
+		if not st.broken and flatDistance(pos, st.center) <= st.radius then
 			return st
 		end
 	end
@@ -438,19 +446,10 @@ function Attacks.Spit(E, token)
 end
 
 -- Leans back, then hurls itself at where you were when it committed.
--- (Mireworm does it underground: it dives in the second half of the tell and
--- can't be hit until it bursts back out at the far end.)
 function Attacks.Lunge(E, token)
 	local a = E.def.Attacks.Lunge
-	local burrows = E.def.Body == "Worm"
 	E.track = true
 	local t0 = setAction(E, "Lunge", nil)
-	if burrows then
-		if not waitUntil(E, token, t0 + a.Tell * 0.6) then
-			return
-		end
-		E.model:SetAttribute("Invulnerable", true) -- under the sand
-	end
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return
 	end
@@ -466,11 +465,6 @@ function Attacks.Lunge(E, token)
 	if fromHome.Magnitude > E.def.Leash then
 		to = E.home + fromHome.Unit * E.def.Leash
 	end
-	-- you're on stone: it can't come up under you, so it comes up beside it
-	local stone = burrows and stoneUnder(E, to)
-	if stone then
-		to = besideStone(E, stone, to, from, 6)
-	end
 	local travel = math.max(0.25, flatDistance(to, from) / a.Speed)
 	E.facing = dir
 	E.model:SetAttribute("ActN", travel)
@@ -479,17 +473,14 @@ function Attacks.Lunge(E, token)
 	local start = now()
 	local struck = {}
 	E.motion = { from = from, to = to, t0 = start, t1 = start + travel }
-	E.sweep = { radius = E.def.Size / 2 + 0.5, damage = a.Damage, knockback = a.Knockback, hit = struck, fromBelow = burrows }
+	E.sweep = { radius = E.def.Size / 2 + 0.5, damage = a.Damage, knockback = a.Knockback, hit = struck }
 	if not waitUntil(E, token, start + travel) then
 		return
 	end
 	E.motion, E.sweep = nil, nil
 	E.pos = to
-	if burrows then
-		E.model:SetAttribute("Invulnerable", false) -- out of the sand: fair game again
-	end
 	-- the landing splashes anyone it didn't already run through
-	hitArea(E, to, a.Splash, a.Damage, a.Knockback, struck, burrows)
+	hitArea(E, to, a.Splash, a.Damage, a.Knockback, struck)
 	waitUntil(E, token, start + travel + recovery(E, a.Recovery))
 end
 
@@ -569,6 +560,21 @@ end
 ----------------------------------------------------------------------
 -- The fight's big moments
 ----------------------------------------------------------------------
+-- Mireworm's half-finished business (a coil closing, a tail mid-sweep...),
+-- dropped when the fight turns, it dies or it goes back to sleep. Does nothing
+-- for Gloomgut. keepLure = a thumper someone struck is still to be answered.
+local function clearWorm(E, keepLure)
+	if not E.worm then
+		return
+	end
+	E.swim, E.coil, E.lash = nil, nil, nil
+	E.stunned = false
+	if not keepLure then
+		E.lure = nil
+	end
+	E.model:SetAttribute("ActT", nil)
+end
+
 -- The shell breaks at half health: untouchable while it happens, everyone near
 -- is thrown back, and phase two begins.
 local function breakShell(E, token)
@@ -578,6 +584,12 @@ local function breakShell(E, token)
 	E.model:SetAttribute("MinHealth", nil)
 	E.model:SetAttribute("Invulnerable", true)
 	E.track, E.chase, E.motion, E.sweep = false, false, nil, nil
+	if E.worm then
+		-- (it's always out of the sand when this happens: you only hurt it out there)
+		clearWorm(E)
+		E.under = false
+		E.model:SetAttribute("Submerged", false)
+	end
 	setState(E, "Transition")
 	local t0 = setAction(E, "Break", def.BreakTime)
 	if not waitUntil(E, token, t0 + def.BreakTime * 0.35) then
@@ -643,6 +655,939 @@ local function makeTarget(E, on)
 	end
 end
 
+----------------------------------------------------------------------
+-- MIREWORM: THE HUNTER UNDER THE SAND  (any boss with Body = "Worm")
+----------------------------------------------------------------------
+-- Gloomgut fights on the surface and trades blows with you. Mireworm doesn't:
+-- it swims under the sand, where nothing can touch it, and only comes up to
+-- strike. Its fight goes round and round like this:
+--
+--     hunt (under the sand)  ->  strike  ->  EXPOSED (hit it now!)  ->  dive
+--
+-- * It hunts whoever is making the most noise (see listen below).
+-- * Striking a thumper drags it across the arena at the sound. A stone
+--   platform in the way stops it dead: it rams the stone and lies dazed.
+-- * In phase two the caved-in seal becomes a whirlpool, and it starts
+--   bursting up through the platforms people hide on.
+-- None of Gloomgut's attacks are used; its own are in WormAttacks below.
+local WormAttacks = {}
+
+-- Out of the sand and punchable (true), or under it and untouchable (false).
+-- Under the sand it isn't a target at all, so punches don't lock onto it.
+local function surface(E, up)
+	E.under = not up
+	E.model:SetAttribute("Submerged", not up)
+	E.model:SetAttribute("Invulnerable", not up)
+	makeTarget(E, up)
+end
+
+-- setAction, plus clearing the worm's own extra timing attribute
+local function wormAction(E, name, number)
+	E.model:SetAttribute("ActT", nil)
+	return setAction(E, name, number)
+end
+
+-- the same spot, kept on the sand it can reach (inside its leash)
+local function inLeash(E, pos, margin)
+	local off = flat(pos - E.home)
+	local max = E.def.Leash - (margin or 0)
+	if off.Magnitude > max then
+		off = off.Unit * max
+	end
+	return Vector3.new(E.home.X + off.X, E.floorY, E.home.Z + off.Z)
+end
+
+-- a spot it can burst up at: never through stone (on the sand beside it instead)
+local function sandSpot(E, pos, toward, extra)
+	local st = stoneUnder(E, pos)
+	if st then
+		pos = besideStone(E, st, pos, toward, extra)
+	end
+	return inLeash(E, pos, 4)
+end
+
+-- feet on the floor (not jumping). On stone you're 1.7 studs up, which the
+-- callers that care about stone check for themselves.
+local function grounded(E, root, above)
+	return root.Position.Y - (E.floorY + STAND_HEIGHT) < (above or 1.2)
+end
+
+-- where along a ray from `origin` (flat direction `dir`) it crosses a circle
+-- round the arena's middle: returns the distances in and out, or nil if it misses
+local function rayCircle(E, origin, dir, radius)
+	local rel = flat(origin - E.home)
+	local b = rel:Dot(dir)
+	local c = rel:Dot(rel) - radius * radius
+	local disc = b * b - c
+	if disc < 0 then
+		return nil
+	end
+	local s = math.sqrt(disc)
+	return -b - s, -b + s
+end
+
+-- Everyone within `halfWidth` of the line from a to b takes the hit, thrown
+-- sideways off it (the breach: its whole body coming down along the sand).
+local function hitLine(E, a, b, halfWidth, damage, knockback)
+	local ab = flat(b - a)
+	local len = ab.Magnitude
+	local dir = unitOr(ab, E.facing)
+	for _, p in ipairs(fightersIn(E)) do
+		local root = rootOf(p)
+		if root then
+			local along = math.clamp(flat(root.Position - a):Dot(dir), 0, len)
+			local closest = a + dir * along
+			if flatDistance(root.Position, closest) <= halfWidth + PLAYER_RADIUS then
+				CombatService.DamagePlayer(p, damage, closest, knockbackFrom(closest, root, knockback))
+			end
+		end
+	end
+end
+
+----------------------------------------------------------------------
+-- How it hunts: by sound
+----------------------------------------------------------------------
+-- Every frame each fighter makes some noise: running on sand is loud (rolling
+-- is louder still - you're moving faster), moving on stone is quiet, standing
+-- still or being in the air is silent. Noise fades over Hunt.NoiseFade seconds.
+local function listen(E, dt)
+	local H = E.def.Hunt
+	local fade = math.exp(-dt / (H.NoiseFade or 2.5))
+	local old = E.noise or {}
+	local heard = {}
+	for _, p in ipairs(fightersIn(E)) do
+		local root = rootOf(p)
+		local n = (old[p] or 0) * fade
+		if root and grounded(E, root, 2.5) then
+			local speed = flat(root.AssemblyLinearVelocity).Magnitude
+			local loud = stoneUnder(E, root.Position) and (H.StoneNoise or 0.25) or 1
+			n = n + (speed / 16) * loud * dt
+		end
+		heard[p] = n
+	end
+	E.noise = heard -- (anyone who left or died is forgotten)
+end
+
+-- Its quarry: the loudest fighter. It sticks with the one it's after unless
+-- someone else is a lot louder; if nobody is making a sound at all it feels
+-- for whoever is nearest.
+local function pickQuarry(E)
+	local list = fightersIn(E)
+	if #list == 0 then
+		E.target = nil
+		return nil
+	end
+	local noise = E.noise or {}
+	local loudest, loudN = nil, -1
+	for _, p in ipairs(list) do
+		if (noise[p] or 0) > loudN then
+			loudest, loudN = p, noise[p] or 0
+		end
+	end
+	local current = E.target
+	local stillHere = current and table.find(list, current)
+	if stillHere and (noise[current] or 0) * 1.5 + 0.2 >= loudN then
+		return current
+	end
+	if loudN < 0.15 then
+		if stillHere then
+			return current
+		end
+		local bestD = math.huge
+		for _, p in ipairs(list) do
+			local d = flatDistance(rootOf(p).Position, E.pos)
+			if d < bestD then
+				loudest, bestD = p, d
+			end
+		end
+	end
+	E.target, E.targetSince = loudest, now()
+	return loudest
+end
+
+----------------------------------------------------------------------
+-- The stone platforms: they crack, and they can shatter
+----------------------------------------------------------------------
+local CRACK_GLOW = Color3.fromRGB(255, 120, 50)
+
+-- remembers how a platform's part looked, so a reset can put it back
+local function remember(st, p)
+	st.saved = st.saved or {}
+	if not st.saved[p] then
+		st.saved[p] = { Transparency = p.Transparency, CanCollide = p.CanCollide, CanQuery = p.CanQuery, Material = p.Material, Color = p.Color }
+	end
+end
+
+-- the cracks across its top glow like embers: this one is about to go
+local function glowCracks(st)
+	for _, p in ipairs(st.model:GetDescendants()) do
+		if p:IsA("BasePart") and p.Name == "PlatformCrack" then
+			remember(st, p)
+			p.Material = Enum.Material.Neon
+			p.Color = CRACK_GLOW
+		end
+	end
+end
+
+-- gone for the rest of the fight (BossClient throws the rubble about)
+local function breakStone(E, st)
+	if st.broken then
+		return
+	end
+	st.broken = true
+	st.model:SetAttribute("Broken", true)
+	for _, p in ipairs(st.model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			remember(st, p)
+			p.Transparency = 1
+			p.CanCollide = false
+			p.CanQuery = false
+		end
+	end
+end
+
+-- rammed: one more crack, and after Lure.Cracks of them it shatters
+local function crackStone(E, st)
+	st.cracks = (st.cracks or 0) + 1
+	st.model:SetAttribute("Cracks", st.cracks)
+	glowCracks(st)
+	if st.cracks >= (E.def.Lure.Cracks or 2) then
+		breakStone(E, st)
+	end
+end
+
+-- every platform whole again (when it goes back to sleep)
+local function restoreStones(E)
+	for _, st in ipairs(E.stones or {}) do
+		for p, saved in pairs(st.saved or {}) do
+			if p.Parent then
+				for prop, value in pairs(saved) do
+					p[prop] = value
+				end
+			end
+		end
+		st.saved, st.broken, st.cracks = nil, false, 0
+		st.model:SetAttribute("Broken", nil)
+		st.model:SetAttribute("Cracks", nil)
+	end
+end
+
+-- the first unbroken stone on the straight line from `from` to `to`, and how
+-- far along the line it starts (for the charge at a thumper)
+local function firstStoneOnPath(E, from, to, pad)
+	local seg = flat(to - from)
+	local len = seg.Magnitude
+	if len < 1 then
+		return nil
+	end
+	local dir = seg.Unit
+	local best, bestAt = nil, math.huge
+	for _, st in ipairs(E.stones or {}) do
+		if not st.broken then
+			local rel = flat(st.center - from)
+			local along = rel:Dot(dir)
+			local side = (rel - dir * along).Magnitude
+			local r = st.radius + pad
+			if side < r and along > 0 then
+				local enter = along - math.sqrt(r * r - side * side)
+				if enter < len and enter < bestAt then
+					best, bestAt = st, math.max(enter, 0)
+				end
+			end
+		end
+	end
+	return best, bestAt
+end
+
+----------------------------------------------------------------------
+-- Coming up, going down, and the hunt
+----------------------------------------------------------------------
+-- Bursts up out of the sand at `spot` and stays out for `seconds`, turning to
+-- face its quarry: the window to punch it. (Whatever brought it up has already
+-- done its damage.)
+local function wormErupt(E, token, spot, seconds)
+	E.motion, E.swim = nil, nil
+	E.pos = spot
+	local aim = targetPosition(E)
+	if aim and flatDistance(aim, spot) > 1 then
+		E.facing = unitOr(flat(aim - spot), E.facing)
+	end
+	local t0 = wormAction(E, "Erupt", seconds)
+	setSlot(E, 1, spot)
+	surface(E, true)
+	E.track = true
+	local ok = waitUntil(E, token, t0 + seconds)
+	E.track = false
+	return ok
+end
+
+-- Head-first back under the sand. You can still land a hit in the first half.
+local function wormDive(E, token)
+	local H = E.def.Hunt
+	E.track, E.motion, E.swim = false, nil, nil
+	local t0 = wormAction(E, "Dive", H.DiveTime)
+	if not waitUntil(E, token, t0 + H.DiveTime * 0.5) then
+		return false
+	end
+	surface(E, false)
+	return waitUntil(E, token, t0 + H.DiveTime)
+end
+
+-- Swims after its quarry for a while (Hunt.Time), striking sooner if it gets
+-- close. A struck thumper cuts the hunt short.
+local function wormHunt(E, token)
+	local H = E.def.Hunt
+	local span = H.Time[E.phase] or H.Time[1]
+	local t0 = wormAction(E, "Burrow", nil)
+	local untilT = t0 + span[1] + E.rng:NextNumber() * (span[2] - span[1])
+	E.swim = { speed = H.SwimSpeed[E.phase] or H.SwimSpeed[1] }
+	while now() < untilT do
+		if not valid(E, token) then
+			return false
+		end
+		if E.lure then
+			break
+		end
+		pickQuarry(E)
+		local aim = targetPosition(E)
+		if aim and now() - t0 > 0.6 and flatDistance(aim, E.pos) <= H.StrikeRange then
+			break
+		end
+		task.wait()
+	end
+	E.swim = nil
+	return valid(E, token)
+end
+
+----------------------------------------------------------------------
+-- Its attacks
+----------------------------------------------------------------------
+-- AMBUSH: the ridge races after you, then stops; the sand under you bulges for
+-- Lock seconds (the mark) and it bursts up there. Anyone on stone is safe.
+function WormAttacks.Ambush(E, token)
+	local a = E.def.Attacks.Ambush
+	local t0 = wormAction(E, "Ambush", nil)
+	E.swim = { speed = a.StalkSpeed }
+	while now() < t0 + a.StalkTime do
+		if not valid(E, token) then
+			return
+		end
+		local aim = targetPosition(E)
+		if not aim or flatDistance(aim, E.pos) < 5 then
+			break
+		end
+		task.wait()
+	end
+	E.swim = nil
+	local aim = targetPosition(E) or E.pos
+	local spot = sandSpot(E, aim, E.pos, a.Radius)
+	local eruptAt = now() + a.Lock
+	E.motion = { from = E.pos, to = spot, t0 = now(), t1 = eruptAt - 0.1 }
+	E.model:SetAttribute("ActN", eruptAt) -- (before the slot: the client reads it when the slot arrives)
+	setSlot(E, 1, spot)
+	if not waitUntil(E, token, eruptAt) then
+		return
+	end
+	E.motion = nil
+	hitArea(E, spot, a.Radius, a.Damage, a.Knockback, nil, true)
+	wormErupt(E, token, spot, recovery(E, a.Exposed))
+end
+
+-- Where a breach goes: a straight strip through its quarry, with the quarry
+-- in the middle of the part its body comes down on. Nil if there isn't room.
+local function breachPlan(E)
+	local a = E.def.Attacks.Breach
+	local aim = targetPosition(E)
+	if not aim then
+		return nil
+	end
+	local dir = unitOr(flat(aim - E.pos), E.facing)
+	local leash = E.def.Leash - 6
+	local A = aim - dir * (a.Length * (1 - a.Body / 2))
+	if flat(A - E.home).Magnitude > leash then
+		-- the launch point is off the sand: start it where the line comes onto the sand
+		local tIn = rayCircle(E, A, dir, leash)
+		if not tIn then
+			return nil
+		end
+		A = A + dir * math.max(tIn, 0)
+	end
+	A = Vector3.new(A.X, E.floorY, A.Z)
+	local _, tOut = rayCircle(E, A, dir, E.def.Leash)
+	local len = math.min(a.Length, tOut or 0)
+	if len < 50 then
+		return nil
+	end
+	return A, A + dir * len, dir, aim
+end
+
+-- BREACH: it swims to the start of the strip, leaps out in a great arc and
+-- crashes down along it, then lies stuck (EXPOSED) before sliding back under
+-- at the far end. The strip is far too long to outrun: get off it sideways.
+function WormAttacks.Breach(E, token)
+	local a = E.def.Attacks.Breach
+	local A, B, dir, aim = breachPlan(E)
+	if not A then
+		return
+	end
+	E.facing = dir
+	local t0 = wormAction(E, "Breach", a.Flight)
+	setSlot(E, 1, A)
+	setSlot(E, 2, B)
+	E.motion = { from = E.pos, to = A, t0 = t0, t1 = t0 + a.Tell * 0.8 }
+	if not waitUntil(E, token, t0 + a.Tell) then
+		return
+	end
+	-- out of the sand: anyone right on the launch point is thrown
+	hitArea(E, A, a.Launch, math.floor(a.Damage * 0.6), a.Knockback * 0.6, nil, true)
+	local land = t0 + a.Tell + a.Flight
+	E.motion = { from = A, to = B, t0 = now(), t1 = land }
+	if not waitUntil(E, token, land) then
+		return
+	end
+	E.motion = nil
+	-- its body comes down along the last part of the strip (Body = how much of it)
+	local tail = A + (B - A) * (1 - a.Body)
+	hitLine(E, tail, B, a.Width / 2, a.Damage, a.Knockback)
+	-- stuck: you can punch it where it came down nearest its quarry
+	local along = math.clamp(flat(aim - tail):Dot(dir), 0, flatDistance(tail, B))
+	E.pos = tail + dir * along
+	surface(E, true)
+	local slideAt = land + recovery(E, a.Stuck)
+	E.model:SetAttribute("ActT", slideAt) -- when it starts sliding back under
+	if not waitUntil(E, token, slideAt) then
+		return
+	end
+	surface(E, false)
+	local slid = now() + a.Slide
+	E.motion = { from = E.pos, to = B, t0 = now(), t1 = slid }
+	if not waitUntil(E, token, slid) then
+		return
+	end
+	E.motion = nil
+	E.pos = B
+end
+
+-- COIL: it swims under you and its body bursts up in a ring round you, with a
+-- gap, then tightens. Its body hurts to cross (you're thrown clear, outward);
+-- whoever is still inside when it closes is crushed. Then it rears up in the
+-- middle, EXPOSED.
+function WormAttacks.Coil(E, token)
+	local a = E.def.Attacks.Coil
+	local aim = targetPosition(E)
+	if not aim then
+		return
+	end
+	local C = inLeash(E, aim, a.Radius)
+	local gapYaw = E.rng:NextNumber() * math.pi * 2 -- which way the way out faces
+	local t0 = wormAction(E, "Coil", gapYaw)
+	setSlot(E, 1, C)
+	E.motion = { from = E.pos, to = C, t0 = t0, t1 = t0 + a.Tell }
+	if not waitUntil(E, token, t0 + a.Tell) then
+		return
+	end
+	E.motion = nil
+	E.pos = C
+	E.coil = {
+		center = C,
+		t0 = t0 + a.Tell,
+		a = a,
+		gapYaw = gapYaw,
+		length = a.Radius * (2 * math.pi - math.rad(a.Gap)), -- its body, round the ring
+		hit = {},
+	}
+	if not waitUntil(E, token, t0 + a.Tell + a.Close) then
+		return
+	end
+	E.coil = nil
+	hitArea(E, C, a.Crush + a.Wall / 2, a.Damage, a.Knockback)
+	wormErupt(E, token, C, recovery(E, a.Exposed))
+end
+
+-- How far out the coil is `t` seconds into its tightening: slow at first, so
+-- there's time to reach the gap, then fast.
+local function coilRadius(c, t)
+	local u = math.clamp((t - c.t0) / c.a.Close, 0, 1)
+	return c.a.Radius - (c.a.Radius - c.a.Crush) * u * u
+end
+
+-- Every frame of a coil: anyone its body passes over (outside the gap) is hit
+-- once and thrown outward. As it tightens the ring gets shorter than its body,
+-- so the gap closes up by itself.
+local function stepCoil(E, t)
+	local c = E.coil
+	if t < c.t0 then
+		return
+	end
+	local a = c.a
+	local r = coilRadius(c, t)
+	local gap = 2 * math.pi - math.min(2 * math.pi, c.length / r)
+	for _, p in ipairs(fightersIn(E)) do
+		if not c.hit[p] then
+			local root = rootOf(p)
+			local off = flat(root.Position - c.center)
+			if math.abs(off.Magnitude - r) <= a.Wall / 2 + PLAYER_RADIUS then
+				local ang = math.atan2(off.X, off.Z)
+				local fromGap = math.abs((ang - c.gapYaw + math.pi) % (2 * math.pi) - math.pi)
+				if fromGap > gap / 2 then
+					c.hit[p] = true
+					CombatService.DamagePlayer(p, a.WallDamage, root.Position, knockbackFrom(c.center, root, a.Knockback * 0.6))
+				end
+			end
+		end
+	end
+end
+
+-- DEVOUR: a sinkhole spins open under you and drags you toward its middle (the
+-- drag happens on your own screen, in BossClient), then its maw bursts up out
+-- of it. Anyone on stone is out of reach of both.
+function WormAttacks.Devour(E, token)
+	local a = E.def.Attacks.Devour
+	local aim = targetPosition(E)
+	if not aim then
+		return
+	end
+	local C = inLeash(E, aim, 4)
+	local t0 = wormAction(E, "Devour", nil)
+	setSlot(E, 1, C)
+	E.motion = { from = E.pos, to = C, t0 = t0, t1 = t0 + math.min(0.6, a.Tell * 0.5) }
+	if not waitUntil(E, token, t0 + a.Tell) then
+		return
+	end
+	E.motion = nil
+	hitArea(E, C, a.Bite, a.Damage, a.Knockback, nil, true)
+	wormErupt(E, token, C, recovery(E, a.Exposed))
+end
+
+-- TAIL LASH: its tail rips up out of the sand behind its quarry (behind the
+-- way they're facing) and sweeps round in a wide arc. The worm itself stays
+-- under - there's nothing to punch after this one.
+function WormAttacks.TailLash(E, token)
+	local a = E.def.Attacks.TailLash
+	local root = E.target and rootOf(E.target)
+	local aim = targetPosition(E)
+	if not (root and aim) then
+		return
+	end
+	local look = unitOr(flat(root.CFrame.LookVector), unitOr(flat(aim - E.pos), E.facing))
+	local anchor = sandSpot(E, aim - look * a.Behind, aim, 4)
+	local toQuarry = flat(aim - anchor)
+	local mid = math.atan2(toQuarry.X, toQuarry.Z)
+	local spin = (E.rng:NextNumber() < 0.5) and 1 or -1
+	local half = math.rad(a.Sweep) / 2
+	local from, to = mid - spin * half, mid + spin * half
+	local t0 = wormAction(E, "TailLash", nil)
+	setSlot(E, 1, anchor)
+	setSlot(E, 2, Vector3.new(from, to, 0)) -- (not a place: the sweep's start and end angles)
+	E.motion = { from = E.pos, to = anchor, t0 = t0, t1 = t0 + a.Tell * 0.6 }
+	if not waitUntil(E, token, t0 + a.Tell) then
+		return
+	end
+	E.motion = nil
+	E.pos = anchor
+	E.lash = {
+		anchor = anchor, from = from, to = to, lastYaw = from,
+		t0 = t0 + a.Tell, time = a.Time,
+		reach = a.Reach, width = a.Width, height = a.Height,
+		damage = a.Damage, knockback = a.Knockback, hit = {},
+	}
+	if not waitUntil(E, token, t0 + a.Tell + a.Time) then
+		return
+	end
+	E.lash = nil
+	waitUntil(E, token, t0 + a.Tell + a.Time + 0.45) -- the tail drops back under
+end
+
+-- The tail's angle `u` of the way through its sweep (eased in and out; BossClient
+-- uses exactly the same curve to draw it).
+local function lashYaw(L, u)
+	u = math.clamp(u, 0, 1)
+	return L.from + (L.to - L.from) * (u * u * (3 - 2 * u))
+end
+
+-- Every frame of a tail lash: anyone the tail swept past since last frame is
+-- hit, unless they jumped over it.
+local function stepLash(E, t)
+	local L = E.lash
+	local u = (t - L.t0) / L.time
+	if u < 0 then
+		return
+	end
+	local yaw = lashYaw(L, u)
+	local spin = (L.to >= L.from) and 1 or -1
+	local a1 = L.lastYaw
+	L.lastYaw = yaw
+	for _, p in ipairs(fightersIn(E)) do
+		if not L.hit[p] then
+			local root = rootOf(p)
+			local off = flat(root.Position - L.anchor)
+			local d = off.Magnitude
+			local above = root.Position.Y - (E.floorY + STAND_HEIGHT)
+			if d <= L.reach + PLAYER_RADIUS and above < L.height * 0.8 then
+				local ang = math.atan2(off.X, off.Z)
+				local slack = (L.width / 2 + PLAYER_RADIUS) / math.max(d, 1)
+				-- how far past the tail's last position you are, the way it's sweeping
+				local past = ((ang - a1) * spin + slack) % (2 * math.pi)
+				if past <= (yaw - a1) * spin + 2 * slack then
+					L.hit[p] = true
+					local sideways = Vector3.new(math.cos(ang), 0, -math.sin(ang)) * spin
+					CombatService.DamagePlayer(p, L.damage, root.Position, sideways * L.knockback + Vector3.new(0, L.knockback * 0.3, 0))
+				end
+			end
+		end
+	end
+end
+
+-- TREMOR: it thrashes underground and the whole sand floor quakes, Quakes
+-- times. Anyone on stone, or in the air at the moment of a quake, is fine.
+function WormAttacks.Tremor(E, token)
+	local a = E.def.Attacks.Tremor
+	local t0 = wormAction(E, "Tremor", nil)
+	for i = 1, a.Quakes do
+		if not waitUntil(E, token, t0 + a.Tell + (i - 1) * a.Gap) then
+			return
+		end
+		for _, p in ipairs(fightersIn(E)) do
+			local root = rootOf(p)
+			if root and not stoneUnder(E, root.Position) and grounded(E, root, 1.2) then
+				CombatService.DamagePlayer(p, a.Damage, root.Position, Vector3.new(0, a.Knockback, 0))
+			end
+		end
+	end
+	waitUntil(E, token, t0 + a.Tell + (a.Quakes - 1) * a.Gap + 0.5)
+end
+
+-- UNDERMINE (phase two): its quarry is hiding on stone. It circles under the
+-- platform while the cracks glow, then bursts up through it: the platform is
+-- gone for the rest of the fight, and so is anyone still standing on it.
+function WormAttacks.Undermine(E, token)
+	local a = E.def.Attacks.Undermine
+	local aim = targetPosition(E)
+	local st = aim and stoneUnder(E, aim)
+	if not st then
+		return
+	end
+	local center = Vector3.new(st.center.X, E.floorY, st.center.Z)
+	local t0 = wormAction(E, "Undermine", st.radius)
+	setSlot(E, 1, center)
+	glowCracks(st)
+	local edge = center + unitOr(flat(E.pos - center), E.facing) * (st.radius + 8)
+	E.motion = { from = E.pos, to = edge, t0 = t0, t1 = t0 + a.Tell * 0.3 }
+	if not waitUntil(E, token, t0 + a.Tell) then
+		return
+	end
+	E.motion = nil
+	breakStone(E, st)
+	hitArea(E, center, st.radius, a.Damage, a.Knockback)
+	wormErupt(E, token, center, recovery(E, a.Exposed))
+end
+
+-- LURED: someone struck a thumper. It charges straight at the sound under the
+-- sand. A stone platform in the way stops it dead - it rams the stone (one
+-- more crack in it) and lies DAZED beside it, taking extra damage. Nothing in
+-- the way, and it bursts up under the thumper instead.
+function WormAttacks.Charge(E, token)
+	local L = E.def.Lure
+	local lure = E.lure
+	E.lure = nil
+	if not lure then
+		return
+	end
+	local from = E.pos
+	local dir = unitOr(flat(lure.pos - from), E.facing)
+	local to = from + dir * math.max(flatDistance(lure.pos, from) - 9, 0)
+	local stone, enter = firstStoneOnPath(E, from, to, 2)
+	if stone then
+		to = from + dir * math.max(enter - 2, 0)
+	end
+	to = inLeash(E, to, 0)
+	local travel = math.max(0.35, flatDistance(to, from) / L.ChargeSpeed)
+	E.facing = dir
+	local t0 = wormAction(E, "Charge", travel)
+	setSlot(E, 1, from)
+	if stone then
+		E.model:SetAttribute(SLOTS[3], stone.center) -- (before slot 2: the client reads it then)
+	end
+	setSlot(E, 2, to)
+	E.motion = { from = from, to = to, t0 = t0, t1 = t0 + travel }
+	if not waitUntil(E, token, t0 + travel) then
+		return
+	end
+	E.motion = nil
+	E.pos = to
+	if stone then
+		crackStone(E, stone)
+		E.wary = now() + L.Wary -- it won't fall for that again for a while
+		local stun = L.StunTime[E.phase] or L.StunTime[1]
+		local s0 = wormAction(E, "Stunned", stun)
+		setSlot(E, 1, to)
+		surface(E, true)
+		E.stunned = true
+		waitUntil(E, token, s0 + stun)
+		E.stunned = false
+	else
+		hitArea(E, to, L.Radius, L.Damage, L.Knockback, nil, true)
+		wormErupt(E, token, to, recovery(E, L.Exposed))
+	end
+end
+
+-- Which attack, for where its quarry is standing. A weighted pick, like
+-- Gloomgut's: the same one is less likely twice running and never three times.
+local function wormChoose(E)
+	local aim = targetPosition(E)
+	if not aim then
+		return nil
+	end
+	local quarryOnSand = not stoneUnder(E, aim)
+	local anyOnSand = false
+	for _, p in ipairs(fightersIn(E)) do
+		local root = rootOf(p)
+		if root and not stoneUnder(E, root.Position) then
+			anyOnSand = true
+			break
+		end
+	end
+	local options, total = {}, 0
+	for name, a in pairs(E.def.Attacks) do
+		local ok = WormAttacks[name] ~= nil and (a.Phase or 1) <= E.phase
+		if ok and a.Sand and not quarryOnSand then
+			ok = false -- it can't come up through stone
+		end
+		if ok and name == "Breach" then
+			ok = breachPlan(E) ~= nil
+		elseif ok and name == "Coil" then
+			-- no room for a ring if a platform is in the way
+			for _, st in ipairs(E.stones or {}) do
+				if not st.broken and flatDistance(st.center, aim) < st.radius + a.Radius then
+					ok = false
+				end
+			end
+		elseif ok and name == "Tremor" then
+			ok = anyOnSand
+		elseif ok and name == "Undermine" then
+			ok = not quarryOnSand
+		end
+		if ok then
+			local w = a.Weight or 1
+			if E.history[1] == name then
+				w = (E.history[2] == name) and 0 or w * 0.4
+			end
+			if w > 0 then
+				options[#options + 1] = { name, w }
+				total = total + w
+			end
+		end
+	end
+	table.sort(options, function(x, y)
+		return x[1] < y[1]
+	end)
+	if total <= 0 then
+		return nil
+	end
+	local roll = E.rng:NextNumber() * total
+	for _, o in ipairs(options) do
+		roll = roll - o[2]
+		if roll <= 0 then
+			return o[1]
+		end
+	end
+	return options[#options][1]
+end
+
+-- One go round the worm's cycle: (dive) -> hunt -> strike. A struck thumper
+-- jumps the queue. Returns false once this fight is over (reset, killed, or
+-- the break at half health has taken over).
+local function wormCycle(E, token)
+	if E.phase == 1 and healthShare(E) <= E.def.PhaseAt + 1e-6 then
+		if not breakShell(E, token) then
+			return false
+		end
+	end
+	if not E.under then
+		if not wormDive(E, token) then
+			return false
+		end
+	end
+	if E.lure then
+		WormAttacks.Charge(E, token)
+	else
+		if not wormHunt(E, token) then
+			return false
+		end
+		if not E.lure then
+			pickQuarry(E)
+			local name = wormChoose(E)
+			if name then
+				E.history = { name, E.history[1] }
+				WormAttacks[name](E, token)
+			else
+				task.wait(0.2)
+			end
+		end
+	end
+	return true
+end
+
+-- The worm's fight: round and round the cycle. Each go is protected: if
+-- anything in one attack ever errors, it's reported once in the Output and the
+-- worm simply carries on with its next move, instead of freezing mid-fight.
+local function wormBrain(E, token)
+	clearWorm(E, true) -- (a thumper struck while it slept is still answered)
+	E.under = false -- it starts every fight, and phase two, out of the sand
+	E.model:SetAttribute("Submerged", false)
+	while valid(E, token) and E.state ~= "Dead" do
+		local ok, result = pcall(wormCycle, E, token)
+		if not ok then
+			if not E.warnedError then
+				E.warnedError = true
+				warn("[BossService] " .. E.def.Short .. " hit an error and carried on: " .. tostring(result))
+			end
+			clearWorm(E, true)
+			E.motion = nil
+			task.wait(0.3)
+		elseif not result then
+			return
+		end
+	end
+end
+
+-- Which brain an encounter runs
+local function runBrain(E, token)
+	if E.worm then
+		wormBrain(E, token)
+	else
+		brain(E, token)
+	end
+end
+
+----------------------------------------------------------------------
+-- The worm, every frame
+----------------------------------------------------------------------
+-- The whirlpool (phase two): the pull toward the pit is on each player's own
+-- screen; the pit at the bottom burns, here.
+local function stepWhirlpool(E, t)
+	local W = E.def.Whirlpool
+	if not W or E.phase < 2 or E.state ~= "Fighting" or not E.sink then
+		return
+	end
+	E.pitAt = E.pitAt or {}
+	for _, p in ipairs(fightersIn(E)) do
+		local root = rootOf(p)
+		if flatDistance(root.Position, E.sink) <= W.PitRadius and grounded(E, root, 2)
+			and t - (E.pitAt[p] or -math.huge) >= W.PitTick then
+			E.pitAt[p] = t
+			CombatService.DamagePlayer(p, W.PitDamage, E.sink, nil, true)
+		end
+	end
+end
+
+-- Movement (swimming, or following a charge or a leap exactly), facing, and
+-- the attacks that are live in the world.
+local function stepWorm(E, dt)
+	local def = E.def
+	local t = now()
+	listen(E, dt)
+	if E.motion then
+		local m = E.motion
+		local u = math.clamp((t - m.t0) / math.max(m.t1 - m.t0, 1e-3), 0, 1)
+		E.pos = m.from:Lerp(m.to, u)
+		setMoving(E, false)
+	elseif E.swim then
+		local aim = E.swim.to or targetPosition(E)
+		local moved = false
+		if aim then
+			local gap = flat(aim - E.pos)
+			if gap.Magnitude > 0.5 then
+				local step = math.min(E.swim.speed * dt, gap.Magnitude)
+				local rate = math.rad(def.TurnSpeed[E.phase] or def.TurnSpeed[1])
+				E.facing = turnToward(E.facing, gap.Unit, rate * dt)
+				if gap.Magnitude > 14 then
+					-- far off: it swims the way it faces, so it curves after you
+					E.pos = E.pos + E.facing * step
+				else
+					-- close: straight at you
+					E.pos = E.pos + gap.Unit * step
+				end
+				moved = true
+			end
+		end
+		-- it can't swim through stone: it slides round the edge
+		for _, st in ipairs(E.stones or {}) do
+			if not st.broken then
+				local off = flat(E.pos - st.center)
+				local minD = st.radius + 3
+				if off.Magnitude < minD then
+					E.pos = Vector3.new(st.center.X, E.floorY, st.center.Z) + unitOr(off, E.facing) * minD
+				end
+			end
+		end
+		setMoving(E, moved)
+	else
+		setMoving(E, false)
+		-- out of the sand: it turns to keep facing its quarry
+		local aim = E.track and targetPosition(E)
+		if aim then
+			local want = flat(aim - E.pos)
+			if want.Magnitude > 0.5 then
+				local rate = math.rad(def.TurnSpeed[E.phase] or def.TurnSpeed[1]) * 0.5
+				E.facing = turnToward(E.facing, want.Unit, rate * dt)
+			end
+		end
+	end
+	if E.pos.X ~= E.pos.X or E.pos.Z ~= E.pos.Z then
+		E.pos, E.motion, E.swim = E.home, nil, nil -- (a broken position: back to the middle)
+	end
+	E.pos = inLeash(E, E.pos, 0)
+	place(E)
+	if E.coil then
+		stepCoil(E, t)
+	end
+	if E.lash then
+		stepLash(E, t)
+	end
+	stepWhirlpool(E, t)
+end
+
+----------------------------------------------------------------------
+-- The thumpers (DunesBuilder builds three round the dunes)
+----------------------------------------------------------------------
+local function findThumpers(E)
+	local list = {}
+	for _, tm in ipairs(CollectionService:GetTagged("DuneThumper")) do
+		if tm:GetAttribute("Floor") == E.floor then
+			local prompt = tm:FindFirstChildWhichIsA("ProximityPrompt", true)
+			local ok, cf = pcall(function()
+				return tm:GetPivot()
+			end)
+			if prompt and ok and cf then
+				list[#list + 1] = { model = tm, prompt = prompt, pos = Vector3.new(cf.X, E.floorY, cf.Z), readyAt = 0 }
+			end
+		end
+	end
+	return list
+end
+
+-- Keeps each thumper's prompt honest: hidden while it's cooling down, and
+-- saying so when the worm won't fall for it yet.
+local function stepThumpers(E, t)
+	if not E.thumpers or t < (E.nextThumperLook or 0) then
+		return
+	end
+	E.nextThumperLook = t + 0.25
+	local awake = E.state == "Dormant" or E.state == "Waking" or E.state == "Fighting" or E.state == "Transition"
+	local wary = E.state ~= "Dormant" and t < (E.wary or 0)
+	for _, th in ipairs(E.thumpers) do
+		local on = awake and t >= th.readyAt
+		if th.prompt.Enabled ~= on then
+			th.prompt.Enabled = on
+		end
+		local text = wary and "Thumper (it's wary - wait)" or "Thumper"
+		if th.prompt.ObjectText ~= text then
+			th.prompt.ObjectText = text
+		end
+	end
+end
+
 local function wake(E)
 	if E.state ~= "Dormant" then
 		return
@@ -672,7 +1617,7 @@ local function wake(E)
 		end
 		E.model:SetAttribute("Invulnerable", false)
 		setState(E, "Fighting")
-		brain(E, token)
+		runBrain(E, token)
 	end)
 end
 
@@ -682,6 +1627,12 @@ local function reset(E)
 	local token = E.token
 	E.waves, E.puddles = {}, {}
 	E.motion, E.sweep, E.track, E.chase, E.target = nil, nil, false, false, nil
+	if E.worm then
+		-- every platform whole again, and it forgets everything it heard
+		clearWorm(E)
+		restoreStones(E)
+		E.noise, E.wary, E.pitAt = {}, nil, {}
+	end
 	E.model:SetAttribute("Invulnerable", true)
 	makeTarget(E, false)
 	setState(E, "Resetting")
@@ -710,6 +1661,10 @@ local function die(E)
 	E.token = E.token + 1
 	E.waves, E.puddles = {}, {}
 	E.motion, E.sweep, E.track, E.chase = nil, nil, false, false
+	if E.worm then
+		clearWorm(E)
+		E.model:SetAttribute("Submerged", false)
+	end
 	E.model:SetAttribute("Invulnerable", true)
 	E.model:SetAttribute("Health", 0)
 	makeTarget(E, false)
@@ -970,6 +1925,7 @@ local function build(floorId, homePart)
 		nextWatch = 0,
 		rng = Random.new(),
 		stones = findStones(floorId),
+		worm = def.Body == "Worm", -- fights from under the sand (wormBrain)
 	}
 	E.pos = E.home
 	E.facing = E.homeFacing
@@ -979,9 +1935,54 @@ local function build(floorId, homePart)
 	setState(E, "Dormant")
 	setAction(E, "Dormant", nil)
 
+	if E.worm then
+		E.under = true
+		E.noise = {}
+		-- the pit at the middle (the whirlpool in phase two)
+		for _, h in ipairs(CollectionService:GetTagged("DuneSinkhole")) do
+			if h:GetAttribute("Floor") == floorId and h:IsA("BasePart") then
+				E.sink = Vector3.new(h.Position.X, floorY, h.Position.Z)
+			end
+		end
+		-- the thumpers: strike one and it comes for the sound (and one struck
+		-- while it sleeps wakes it - and it comes straight for the sound)
+		E.thumpers = findThumpers(E)
+		for _, th in ipairs(E.thumpers) do
+			th.prompt.Triggered:Connect(function(player)
+				local t = now()
+				if player:GetAttribute("SpireFloor") ~= floorId or not CombatService.IsFighting(player) or t < th.readyAt then
+					return
+				end
+				th.readyAt = t + E.def.Lure.ThumperCooldown
+				th.model:SetAttribute("StruckAt", t) -- every screen plays the boom
+				th.model:SetAttribute("ReadyAt", th.readyAt)
+				if E.state == "Dormant" then
+					E.lure = { pos = th.pos }
+					wake(E)
+				elseif E.state == "Fighting" and t >= (E.wary or 0) then
+					E.lure = { pos = th.pos }
+				end
+			end)
+		end
+		if #E.thumpers == 0 then
+			warn("[BossService] " .. def.Short .. ": no thumpers found (DunesBuilder builds them) - the fight works without them")
+		end
+	end
+
 	onHit.Event:Connect(function(player, damage, killed)
 		if typeof(player) == "Instance" and player:IsA("Player") then
 			E.participants[player] = true
+		end
+		-- dazed against the stone: every punch lands harder (StunDamage)
+		if E.stunned and not killed and (tonumber(damage) or 0) > 0 then
+			local bonus = math.floor(damage * ((E.def.Lure.StunDamage or 1) - 1))
+			if bonus > 0 then
+				local hp = E.model:GetAttribute("Health") or 0
+				local floorHp = E.model:GetAttribute("MinHealth") or 0
+				local left = math.max(math.min(hp, floorHp), hp - bonus)
+				E.model:SetAttribute("Health", math.max(0, left))
+				killed = left <= 0
+			end
 		end
 		if E.state == "Dormant" then
 			wake(E)
@@ -995,7 +1996,7 @@ local function build(floorId, homePart)
 			local token = E.token
 			task.spawn(function()
 				if breakShell(E, token) then
-					brain(E, token)
+					runBrain(E, token)
 				end
 			end)
 		end
@@ -1030,9 +2031,23 @@ function BossService.Start(combatService, playerService)
 		end
 	end
 
+	local wormWarned = false
 	RunService.Heartbeat:Connect(function(dt)
 		for _, E in pairs(encounters) do
-			if E.state ~= "Dormant" and E.state ~= "Dead" then
+			if E.worm then
+				-- (protected: if anything in the worm's step ever errors, Gloomgut
+				-- and the rest of the frame carry on regardless)
+				local ok, err = pcall(function()
+					if E.state ~= "Dormant" and E.state ~= "Dead" then
+						stepWorm(E, dt)
+					end
+					stepThumpers(E, now())
+				end)
+				if not ok and not wormWarned then
+					wormWarned = true
+					warn("[BossService] " .. E.def.Short .. " step failed: " .. tostring(err))
+				end
+			elseif E.state ~= "Dormant" and E.state ~= "Dead" then
 				stepMovement(E, dt)
 				stepWaves(E)
 				stepPuddles(E)
@@ -1049,5 +2064,6 @@ end
 
 -- For tests: run one attack by name right now.
 BossService._Attacks = Attacks
+BossService._WormAttacks = WormAttacks
 
 return BossService

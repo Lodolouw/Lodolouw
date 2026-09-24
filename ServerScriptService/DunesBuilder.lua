@@ -18,7 +18,10 @@
 	  * "ArenaSpawn"   where you arrive (in this model, Floor = 2)
 	  * "ArenaExit"    the Leave prompt on the gate's golden fog
 	  * "BossHome"     the centre of the pit, Floor = 2
-	  * "DunePlatform" each stone platform (a Model; Radius attribute)
+	  * "DunePlatform" each stone platform (a Model; Radius attribute). In the
+	    fight BossService can crack them and shatter them (Cracks / Broken)
+	  * "DuneThumper"  the three bronze thumpers round the edge (a Model with a
+	    "Strike" prompt): strike one and the worm charges at the sound
 	  * "DuneSinkhole" the centre that collapses in phase 2 (Radius attribute)
 	  * "DuneEdgeWall" the invisible walls round the sand you fight on
 	  * the model itself carries Floor, Center, SandRadius (how far out the worm
@@ -432,6 +435,68 @@ local function buildPlatforms()
 		pm:SetAttribute("Top", 1.7)
 		CollectionService:AddTag(pm, "DunePlatform")
 		pm.Parent = m
+	end
+end
+
+----------------------------------------------------------------------
+-- The thumpers: bronze gongs the old arena's keepers used to call the worm.
+-- Each stands straight out behind a platform, so the worm charging at one
+-- from the middle of the arena runs into the stone on the way.
+----------------------------------------------------------------------
+local THUMPER_ANGLES = { 0.62, 3.45, 5.62 } -- the same angles as platforms 1, 3 and 5
+local THUMPER_R = 112
+local BRONZE = RGB(176, 120, 58)
+local BRONZE_DARK = RGB(120, 78, 38)
+
+local function buildThumpers()
+	for i, a in ipairs(THUMPER_ANGLES) do
+		local tm = Instance.new("Model")
+		tm.Name = "DuneThumper" .. i
+		local p = onRing(THUMPER_R, a, 0)
+		local cf = facingCentre(p) -- -Z looks at the middle of the arena
+		local base = cylinder("ThumperBase", 1.2, 9, cf * CFrame.new(0, 0.6, 0), STONE_DARK, Mat.Sandstone, nil, tm)
+		-- two posts and a lintel: the frame the gong hangs in
+		for _, sx in ipairs({ -1, 1 }) do
+			part("ThumperPost", V3(1.6, 10, 1.6), cf * CFrame.new(sx * 4.8, 6, 0), STONE, Mat.Sandstone, nil, tm)
+			part("ThumperPostCap", V3(2.2, 0.8, 2.2), cf * CFrame.new(sx * 4.8, 11.2, 0), STONE_DARK, Mat.Sandstone, DECOR, tm)
+		end
+		part("ThumperLintel", V3(12.4, 1.2, 1.8), cf * CFrame.new(0, 10.6, 0), STONE_DARK, Mat.Sandstone, nil, tm)
+		-- the gong, facing the pit, on two chains
+		local drumAt = cf * CFrame.new(0, 5.6, 0)
+		local drum = rod("ThumperDrum", (drumAt * CFrame.new(0, 0, 0.45)).Position, (drumAt * CFrame.new(0, 0, -0.45)).Position, 7.6,
+			BRONZE, Mat.Metal, nil, tm)
+		rod("ThumperRim", (drumAt * CFrame.new(0, 0, 0.3)).Position, (drumAt * CFrame.new(0, 0, -0.3)).Position, 8.2, BRONZE_DARK, Mat.Metal, DECOR, tm)
+		-- the coiled worm on its face glows: what the client flashes when it's struck
+		local glow = rod("ThumperGlow", (drumAt * CFrame.new(0, 0, -0.4)).Position, (drumAt * CFrame.new(0, 0, -0.56)).Position, 2.6,
+			RGB(255, 196, 96), Mat.Neon, DECOR, tm)
+		local light = Instance.new("PointLight")
+		light.Color = RGB(255, 190, 110)
+		light.Range = 12
+		light.Brightness = 0.8
+		light.Parent = glow
+		for _, sx in ipairs({ -1, 1 }) do
+			beam("ThumperChain", (cf * CFrame.new(sx * 2.2, 10, 0)).Position, (cf * CFrame.new(sx * 2.2, 9.1, 0)).Position, 0.3, SHADOW, Mat.Metal, DECOR, tm)
+		end
+		-- the beater, leaning on a post
+		beam("ThumperBeater", (cf * CFrame.new(6.4, 0.4, -1.6)).Position, (cf * CFrame.new(5.4, 6.4, -1.2)).Position, 0.5, RGB(96, 70, 48), Mat.Wood, DECOR, tm)
+		ball("ThumperBeaterHead", 1.5, cf * CFrame.new(5.35, 6.7, -1.2), RGB(150, 110, 70), Mat.Fabric, DECOR, tm)
+		-- sand drifted against the base
+		wedge("ThumperDrift", V3(8, 1, 3), cf * CFrame.new(0, 0.5, 5.8) * CFrame.Angles(0, math.pi, 0), SAND, Mat.Sand, DECOR, tm)
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Strike"
+		prompt.ObjectText = "Thumper"
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 12
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = drum
+
+		tm.PrimaryPart = base
+		tm:SetAttribute("Floor", 2)
+		CollectionService:AddTag(tm, "DuneThumper")
+		tm.Parent = m
 	end
 end
 
@@ -1119,6 +1184,7 @@ function DunesBuilder.Build()
 		{ "Floor", buildFloor },
 		{ "Seal at the centre", buildSinkhole },
 		{ "Platforms", buildPlatforms },
+		{ "Thumpers", buildThumpers },
 		{ "Pillars", buildPillars },
 		{ "Ribcage and skull", buildCarcass },
 		{ "Old arches", buildArcade },

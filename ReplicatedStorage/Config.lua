@@ -362,7 +362,7 @@ Config.Spire = {
 			boss = "Mireworm, the Devourer Beneath",
 			area = "The Sunken Dunes",
 			level = 30,
-			blurb = "An arena the desert swallowed whole. Something vast swims beneath the sand - watch the ground, not the sky.",
+			blurb = "An arena the desert swallowed whole. Something vast swims beneath it, hunting by sound. Stone is silent - and a struck thumper lures it.",
 			color = Color3.fromRGB(236, 186, 98),
 			open = true,
 			-- how the arena looks and sounds on your screen while you're in it
@@ -496,9 +496,9 @@ Config.Bosses = {
 	[2] = {
 		Name = "Mireworm, the Devourer Beneath",
 		Short = "Mireworm",
-		-- BossClient builds a segmented worm instead of the slime for anything
-		-- with Body = "Worm" - everything else about it (health, phases, the
-		-- attacks below) works exactly like Gloomgut's, on the same engine.
+		-- Body = "Worm" gives it the worm's body (BossClient) AND the worm's own
+		-- way of fighting (BossService): it lives under the sand and hunts by
+		-- sound. None of Gloomgut's attacks are used - its moves are all below.
 		Body = "Worm",
 		Color = Color3.fromRGB(178, 134, 74), -- its sand-crusted hide
 		DeepColor = Color3.fromRGB(94, 64, 36), -- its underside, in shadow
@@ -508,6 +508,7 @@ Config.Bosses = {
 
 		-- The second boss: a little longer than Gloomgut, and it hits harder,
 		-- but the same "punches at your recommended power" fairness applies.
+		-- (You can only hurt it while it's out of the sand, so every window counts.)
 		HealthPunches = 34,
 		PartyScale = 0.62,
 		StudioFairFight = true,
@@ -517,34 +518,82 @@ Config.Bosses = {
 		WakeTime = 3.2, -- it has further to come, from properly underground
 		WakeSoundLead = 0.6,
 		Leash = 130, -- keeps it inside the SandRadius DunesBuilder marked out for it
-		MoveSpeed = { 18, 27 }, -- a heavy surface crawl - it prefers to travel unseen
-		TurnSpeed = { 260, 380 },
-		Breather = { { 0.3, 0.55 }, { 0.15, 0.4 } },
+		TurnSpeed = { 260, 380 }, -- degrees a second it can turn while it swims, per phase
 
 		PhaseAt = 0.5, -- its armor cracks at half health, and the seal caves in
 		BreakTime = 3.0,
 		BreakShove = 70,
 		BreakReach = 55,
-		Phase2Recovery = 0.72,
+		Phase2Recovery = 0.72, -- phase two: its moments out of the sand are shorter
 		DesperateAt = 0.15,
 		DesperateRecovery = 0.6,
 
+		-- THE HUNT. Between attacks it swims under the sand - you can't hurt it
+		-- there, you only see the ridge it pushes up - and it goes after whoever
+		-- is making the most noise. Running on sand is loud, rolling is louder,
+		-- walking on stone is quiet and standing still is silent.
+		Hunt = {
+			SwimSpeed = { 30, 38 }, -- per phase (nobody runs faster than 24 in here)
+			Time = { { 1.4, 2.4 }, { 0.9, 1.7 } }, -- how long it stalks before it strikes, per phase
+			StrikeRange = 26, -- it strikes sooner once it's this close to its quarry
+			DiveTime = 0.8, -- going back under after it's been out
+			NoiseFade = 2.5, -- seconds a noise takes to fade (bigger = it remembers you longer)
+			StoneNoise = 0.25, -- moving on stone is this much as loud as on sand
+		},
+
+		-- THE THUMPERS. Strike one and it charges at the sound. If a stone
+		-- platform is in the way it rams the stone and is left dazed; if not,
+		-- it bursts up under the thumper - so line it up first.
+		Lure = {
+			ChargeSpeed = 70, -- how fast it charges at the sound
+			StunTime = { 4, 3.2 }, -- dazed after ramming stone, per phase
+			StunDamage = 1.25, -- your punches land this much harder while it's dazed
+			ThumperCooldown = 12, -- seconds before the same thumper can be struck again
+			Wary = 20, -- after being fooled it ignores every thumper for this long
+			Cracks = 2, -- rams a platform can take before it shatters
+			-- nothing in its way: it erupts under the thumper
+			Damage = 28, Radius = 16, Knockback = 60, Exposed = 1.3,
+		},
+
+		-- PHASE TWO: the seal caves in and the middle of the arena becomes a
+		-- whirlpool of sand that drags you toward the pit. Standing at the bottom
+		-- of it burns. (The pull is on your screen; the damage is the server's.)
+		Whirlpool = {
+			Radius = 34, -- how far out the pull reaches (the seal's size)
+			Pull = { 3, 8 }, -- studs a second: at the edge, and near the middle
+			PitRadius = 8, -- the bottom of the pit
+			PitDamage = 6, PitTick = 0.5,
+		},
+
+		-- Its attacks. Tell = the warning before it lands (always longer than
+		-- your roll's 0.5s). Exposed = how long it stays out of the sand after,
+		-- which is your chance to hit it. Sand = true: only used on someone
+		-- standing on sand (it can't come up through stone).
 		Attacks = {
-			-- rears its head out of the sand and crashes down where it stands
-			Slam = { Tell = 0.68, Damage = 26, Radius = 28, Recovery = 0.85, Knockback = 58, Rise = 10, Phase = 1, Range = { 0, 26 }, Weight = 5 },
-			-- a ridge of sand rips outward from it in a ring - roll through it or clear it
-			Wave = { Tell = 0.75, Damage = 20, Speed = 42, Reach = 90, Thickness = 6, Height = 3.6, Recovery = 0.8, Knockback = 46, Phase = 1, Range = { 10, 55 }, Weight = 4 },
-			-- roots and hurls clods of hardened sand: each one leaves a patch of
-			-- churning quicksand that grinds at anyone standing in it
-			Spit = { Tell = 0.6, Damage = 13, Globs = 12, Gap = 0.1, Flight = 0.95, Spread = 18, Radius = 6, Puddle = 6, PuddleTime = 5, PuddleDamage = 2, PuddleTick = 0.55, Recovery = 1.0, Phase = 1, Range = { 14, 110 }, Weight = 4 },
-			-- its signature move: dives under the sand, unseen but for a
-			-- ridge cutting toward you, and erupts wherever you were standing
-			Lunge = { Tell = 0.7, Damage = 30, Speed = 100, MaxDistance = 90, Knockback = 74, Splash = 20, Recovery = 1.05, Phase = 1, Range = { 30, 220 }, Weight = 7 },
-			-- phase two: three surges in a row, closing in between each
-			TripleSlam = { Tell = 0.65, Gap = 0.5, Damage = 24, Radii = { 26, 23, 20 }, Hop = 10, Rise = 9, Recovery = 1.05, Knockback = 50, Phase = 2, Range = { 0, 30 }, Weight = 4 },
-			-- geysers of sand erupt under the party, one after another - the
-			-- Maelstrom; standing still (or stopping to drink) gets you hit
-			Wail = { Tell = 0.6, Rings = 6, Gap = 0.4, Fuse = 1.15, Radius = 13, Geyser = 36, Damage = 26, Recovery = 0.95, Phase = 1, Range = { 0, 200 }, Weight = 3, Knockback = 42 },
+			-- AMBUSH: the ridge races after you, stops, the sand under you bulges
+			-- and cracks... and it bursts up where you stood. Move or roll off the bulge.
+			Ambush = { StalkSpeed = 44, StalkTime = 2.2, Lock = 0.65, Radius = 10, Damage = 30, Knockback = 70, Exposed = 1.6, Phase = 1, Weight = 6, Sand = true },
+			-- BREACH: it leaps out of the sand in a great arc and crashes down along
+			-- the dark strip marked on the floor. Get off the strip SIDEWAYS - it's
+			-- far too long to outrun. Afterwards it lies there stuck for a moment.
+			Breach = { Tell = 1.0, Flight = 1.2, Length = 110, Body = 0.65, Width = 14, Launch = 12, Height = 36, Damage = 32, Knockback = 60, Stuck = 2.6, Slide = 0.9, Phase = 1, Weight = 4 },
+			-- COIL: its body bursts up in a ring round you and tightens. Get out
+			-- through the gap before it closes (or roll through its body - that
+			-- hurts less than staying inside for the crush).
+			Coil = { Tell = 0.9, Radius = 24, Crush = 6, Close = 1.8, Gap = 95, Wall = 10, WallDamage = 16, Damage = 38, Knockback = 55, Exposed = 1.8, Phase = 1, Weight = 4, Sand = true },
+			-- DEVOUR: a sinkhole spins open under you and drags you toward its
+			-- middle, then its maw bursts up out of it. Run outward, or get on stone.
+			Devour = { Tell = 1.5, Radius = 18, Pull = { 5, 10 }, Bite = 9, Damage = 36, Knockback = 50, Exposed = 1.6, Phase = 1, Weight = 4, Sand = true },
+			-- TAIL LASH: its tail rips up out of the sand BEHIND you and sweeps
+			-- round in a wide arc. Roll through it, jump it, or be out of reach.
+			TailLash = { Tell = 0.85, Behind = 10, Reach = 26, Sweep = 220, Time = 0.55, Width = 5, Height = 5, Damage = 24, Knockback = 64, Phase = 1, Weight = 4 },
+			-- TREMOR: it thrashes underground and the whole sand floor quakes, a
+			-- few times in a row. Be on stone, or be in the air when each one hits.
+			Tremor = { Tell = 1.3, Quakes = 3, Gap = 0.95, Damage = 12, Knockback = 22, Phase = 1, Weight = 3 },
+			-- UNDERMINE (phase two): you're hiding on stone? It circles under the
+			-- platform, the cracks glow... and it bursts up through it. The stone is
+			-- gone for the rest of the fight. Get off when the cracks light up.
+			Undermine = { Tell = 1.6, Damage = 30, Knockback = 60, Exposed = 1.6, Phase = 2, Weight = 6 },
 		},
 
 		Reward = { Power = 2.0, FirstClear = 5 },
@@ -557,9 +606,20 @@ Config.Bosses = {
 		Weather = "Sandstorm",
 
 		-- Its sounds: add Sounds with these names to SoundService whenever you
-		-- like. Any you haven't added yet fall back to Gloomgut's ("Boss Slam"...).
-		Sounds = { Wake = "Worm Rise", Slam = "Worm Slam", Wave = "Worm Sweep", Spit = "Worm Spit", Splat = "Worm Splat",
-			Lunge = "Worm Charge", Wail = "Worm Wail", Erupt = "Worm Erupt", Break = "Worm Crack", Death = "Worm Death" },
+		-- like. Any you haven't added yet borrow one of Gloomgut's instead.
+		Sounds = {
+			Wake = "Worm Rise", -- bursting out of the seal when it wakes
+			Dive = "Worm Charge", -- going head-first under the sand (and charging a thumper)
+			Erupt = "Worm Erupt", -- bursting up out of the sand
+			Crash = "Worm Slam", -- its body crashing down (breach, coil, ramming stone)
+			Sweep = "Worm Sweep", -- the tail lash
+			Roar = "Worm Wail", -- the tremor
+			Devour = "Worm Devour", -- the sinkhole opening
+			Break = "Worm Crack", -- its armour blowing off
+			Death = "Worm Death",
+			Thumper = "Thumper", -- the boom when someone strikes a thumper
+			Rumble = "Worm Rumble", -- a LOOPING low rumble, louder the closer it swims to you
+		},
 	},
 }
 
