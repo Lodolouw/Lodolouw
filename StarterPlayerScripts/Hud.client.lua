@@ -898,10 +898,9 @@ local function hudButton(name, icon, colors, order, panelName, stationCFrame)
 	return b
 end
 
-hudButton("Upgrades", "⬆️", { RGB(110, 210, 255), RGB(60, 120, 255) }, 1, "Upgrades", STATION_APPROACH.Upgrades)
-hudButton("Backpack", "🎒", { RGB(120, 230, 130), RGB(40, 160, 90) }, 2, "Backpack") -- just opens your bag, no teleport
--- Armory = your talismans (craft + equip), same panel as before, new look
-hudButton("Armory", "⚔️", { RGB(255, 196, 80), RGB(225, 60, 55) }, 3, "Craft", STATION_APPROACH.Craft)
+-- (Upgrades, Backpack and Armory have no buttons any more: walk up to the
+-- Upgrade Shop, the Sell Shop or the forge to use them. The GEAR button sits
+-- beside STATS - Inventory makes it.)
 local prestigeBtn = hudButton("Stats", "⭐", { RGB(255, 226, 100), RGB(255, 140, 40) }, 4, "Stats") -- your stat points, from anywhere
 
 local badge = text({

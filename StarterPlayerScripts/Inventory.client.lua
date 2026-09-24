@@ -249,24 +249,24 @@ if Workspace.CurrentCamera then
 	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
 end
 
--- the GEAR button, under the four on the left
+-- the GEAR button: a square beside STATS on the left, like the HUD's own
 local gearBtn = new("TextButton", {
 	Name = "GearButton",
 	AutoButtonColor = false,
-	BackgroundColor3 = RGB(58, 68, 102),
+	BackgroundColor3 = RGB(38, 43, 68),
 	BorderSizePixel = 0,
-	Position = UDim2.new(0, 16, 0.44, 127),
-	Size = UDim2.fromOffset(234, 64),
+	Position = UDim2.new(0, 16 + 112 + 10, 0.44, -117),
+	Size = UDim2.fromOffset(112, 112),
 	Text = "",
 }, scaler)
 new("UIStroke", { Color = INK, Thickness = 4, LineJoinMode = Enum.LineJoinMode.Miter, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, gearBtn)
-local gearFace = new("Frame", { BackgroundColor3 = RGB(90, 105, 136), BorderSizePixel = 0, Position = UDim2.fromOffset(5, 4), Size = UDim2.new(1, -10, 1, -11) }, gearBtn)
+local gearFace = new("Frame", { BackgroundColor3 = RGB(90, 105, 136), BorderSizePixel = 0, Position = UDim2.fromOffset(6, 5), Size = UDim2.new(1, -12, 1, -13) }, gearBtn)
+new("UIGradient", { Rotation = 90, Color = ColorSequence.new(RGB(139, 155, 180), RGB(58, 68, 102)) }, gearFace)
 local gearIcon = icon("Chest", RGB(192, 203, 220), GOLD)
-gearIcon.Size = UDim2.fromOffset(44, 44)
-gearIcon.Position = UDim2.new(0, 34, 0.5, 0)
+gearIcon.Size = UDim2.fromOffset(62, 62)
+gearIcon.Position = UDim2.new(0.5, 0, 0, 36)
 gearIcon.Parent = gearFace
-text(gearFace, { Text = "GEAR", TextSize = 32, Position = UDim2.fromOffset(66, 0), Size = UDim2.new(1, -110, 1, 0), TextStrokeTransparency = 0, TextStrokeColor3 = INK })
-text(gearFace, { Text = "[G]", TextSize = 16, TextColor3 = RGB(192, 203, 220), Position = UDim2.new(1, -46, 0, 0), Size = UDim2.fromOffset(40, 50), TextXAlignment = Enum.TextXAlignment.Right })
+text(gearFace, { Text = "Gear", TextSize = 24, Position = UDim2.new(0, 0, 1, -30), Size = UDim2.new(1, 0, 0, 28), TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0, TextStrokeColor3 = INK })
 local badge = new("TextLabel", {
 	BackgroundColor3 = RED,
 	BorderSizePixel = 0,
