@@ -5054,30 +5054,55 @@ end
 -- The lobby's music: plays whenever you're not in a Spire arena, fading out as
 -- you travel in (the arena is silent until its boss wakes) and back in when you
 -- return. It keeps its place, so coming back doesn't restart the song.
+-- Config.LobbyMusic can be one song or a list: a list plays in turn, each
+-- song to its end and then the next, round and round.
 local LOBBY_MUSIC = Config.LobbyMusic or "Dreaming in the city"
+if type(LOBBY_MUSIC) == "string" then
+	LOBBY_MUSIC = { LOBBY_MUSIC }
+end
 local lobbyMusic, lobbyLevel, lobbyVolume = nil, 0, 0.15
+local lobbyTrack = 0
+
+-- start the next song on the list that's actually in SoundService
+local function nextLobbySong()
+	if lobbyMusic then
+		lobbyMusic:Destroy()
+		lobbyMusic = nil
+	end
+	for _ = 1, #LOBBY_MUSIC do
+		lobbyTrack = lobbyTrack % #LOBBY_MUSIC + 1
+		local template = SoundService:FindFirstChild(LOBBY_MUSIC[lobbyTrack])
+		if template and template:IsA("Sound") then
+			lobbyVolume = (Config.Audio and Config.Audio.LobbyMusic) or 0.25
+			local song = template:Clone()
+			song.Name = "LobbyMusicPlaying"
+			song.Looped = #LOBBY_MUSIC == 1 -- (just one song: it loops)
+			song.Volume = lobbyVolume * lobbyLevel
+			song.SoundGroup = soundGroup("Music")
+			song.Parent = SoundService
+			song.Ended:Connect(function()
+				if lobbyMusic == song then
+					task.defer(nextLobbySong)
+				end
+			end)
+			lobbyMusic = song
+			song:Play()
+			return
+		end
+	end
+end
 
 local function stepLobbyMusic(dt)
 	local want = player:GetAttribute("SpireFloor") == nil
 	if want and not lobbyMusic then
-		local template = SoundService:FindFirstChild(LOBBY_MUSIC)
-		if template and template:IsA("Sound") then
-			lobbyVolume = (Config.Audio and Config.Audio.LobbyMusic) or 0.25
-			lobbyMusic = template:Clone()
-			lobbyMusic.Name = "LobbyMusicPlaying"
-			lobbyMusic.Looped = true
-			lobbyMusic.Volume = 0
-			lobbyMusic.SoundGroup = soundGroup("Music")
-			lobbyMusic.Parent = SoundService
-			lobbyMusic:Play()
-		end
+		nextLobbySong()
 	end
 	if not lobbyMusic then
 		return
 	end
 	lobbyLevel = lobbyLevel + ((want and 1 or 0) - lobbyLevel) * math.min(1, dt * (want and 0.5 or 1.2))
 	lobbyMusic.Volume = lobbyVolume * lobbyLevel
-	if want and not lobbyMusic.IsPlaying then
+	if want and not lobbyMusic.IsPlaying and lobbyMusic.TimePosition > 0 then
 		lobbyMusic:Resume()
 	elseif not want and lobbyLevel < 0.01 and lobbyMusic.IsPlaying then
 		lobbyMusic:Pause() -- paused, not stopped: it carries on where it left off

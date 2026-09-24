@@ -520,8 +520,8 @@ Config.Heart = {
 	Low = 0.25, -- below this much health it beats and its outline blinks red
 }
 
--- the lobby's music: the name of a Sound in SoundService
-Config.LobbyMusic = "Dreaming in the city"
+-- the lobby's music: Sounds in SoundService, played in turn (or one name, looped)
+Config.LobbyMusic = { "Lobby1song", "Lobby2song", "Lobby3song" }
 
 -- The mix. Every sound in the game goes through one of three groups, so if an
 -- asset turns out louder or quieter than expected, one number fixes the lot.
@@ -594,7 +594,7 @@ Config.Bosses = {
 		Reward = { Power = 1.5, FirstClear = 4 },
 
 		-- the fight's music: the name of a Sound in SoundService
-		Music = "Boss",
+		Music = "Slime boss song",
 		-- played over the banner when it dies
 		VictorySound = "Victory Is Ours (a) Sting",
 
