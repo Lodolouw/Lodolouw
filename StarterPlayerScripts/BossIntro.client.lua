@@ -12,8 +12,12 @@
 	2) THE SOUL BREAKS - when you die, your red heart appears in the middle of
 	   the screen, cracks in two and shatters (Undertale), just before YOU DIED.
 
+	3) THE BOSSES TALK - an Undertale-style box under the boss bar with the
+	   boss's portrait: it greets you, mocks you, gloats, and has last words.
+
 	Only on your own screen. Config.Retro.Intro = false turns the splash off,
-	Config.Retro.SoulBreak = false the heart.
+	Config.Retro.SoulBreak = false the heart, Config.Retro.BossTalk = false
+	the talking.
 ]]
 
 local Players = game:GetService("Players")
@@ -353,3 +357,179 @@ if player.Character then
 	task.spawn(onCharacter, player.Character)
 end
 player.CharacterAdded:Connect(onCharacter)
+
+----------------------------------------------------------------------
+-- 3) THE BOSSES TALK (like Undertale's): a black box under the boss bar,
+-- its little portrait beside the words, typed out with a blip. It greets
+-- you, mocks you mid-fight, gloats when it hits you hard, changes its tune
+-- in phase two, crows if you fall and gets the last word when it dies.
+----------------------------------------------------------------------
+local LINES = {
+	Gloomgut = {
+		wake = { "* Glorp. Fresh meat wandered into my pool.", "* Another hero? I'll add you to the ooze." },
+		idle = {
+			"* You're squishier than you look.",
+			"* I've digested tougher things than you. Mostly boots.",
+			"* Stand still. It's easier to swallow you that way.",
+			"* Is that a punch? It tickles my insides.",
+			"* Everything ends up in the ooze eventually.",
+		},
+		hit = { "* Ha! Sticky, isn't it?", "* Splat! Right in the face.", "* Did that sting? Good." },
+		phase2 = { "* You... popped me. NOW I'M ANGRY.", "* No more games. Only slime." },
+		win = { "* Glorp glorp. Try again, snack.", "* Back to the ooze with you." },
+		lose = { "* Glorp... I'll... reform... someday...", "* You're... not... squishy... at all..." },
+	},
+	Mireworm = {
+		wake = { "* WHO STIRS THE SANDS?", "* A little morsel, walking on my roof." },
+		idle = {
+			"* I can hear your heartbeat through the sand.",
+			"* Run. It makes the hunt more fun.",
+			"* The dunes remember everyone I've eaten.",
+			"* You are very small. I am very hungry.",
+			"* Beneath you. Behind you. Everywhere.",
+		},
+		hit = { "* CRUNCH. Delicious.", "* The sand swallows the weak.", "* Did you feel the earth move? That was me." },
+		phase2 = { "* MY ARMOUR... YOU'LL PAY FOR THAT.", "* Now the sands will drown you." },
+		win = { "* Another bone for the dunes.", "* The sands keep you now." },
+		lose = { "* The sands... grow... quiet...", "* Impossible... a morsel... beat me..." },
+	},
+}
+
+local talkGui, talkBox, talkText, talkPortrait
+local speaking = nil
+local function buildTalk()
+	talkGui = new("ScreenGui", { Name = "BossTalk", ResetOnSpawn = false, DisplayOrder = 30 }, playerGui)
+	talkGui:SetAttribute("RetroSkip", true)
+	talkBox = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 118),
+		Size = UDim2.fromOffset(620, 86),
+		BackgroundColor3 = BLACK,
+		Visible = false,
+	}, talkGui)
+	new("UIStroke", { Color = WHITE, Thickness = 4, LineJoinMode = Enum.LineJoinMode.Miter }, talkBox)
+	talkText = label(talkBox, "", {
+		Position = UDim2.fromOffset(92, 12),
+		Size = UDim2.new(1, -108, 1, -24),
+		TextScaled = false,
+		TextSize = 24,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextStrokeTransparency = 1,
+	})
+end
+local function say(short, kind)
+	local set = LINES[short]
+	local list = set and set[kind]
+	if not list or R.BossTalk == false then
+		return
+	end
+	if not talkGui then
+		buildTalk()
+	end
+	local text = list[math.random(#list)]
+	if talkPortrait then
+		talkPortrait:Destroy()
+	end
+	local p = PORTRAITS[short]
+	if p then
+		talkPortrait = sprite(p.rows, p.ink, talkBox, { Position = UDim2.fromOffset(12, 11), Size = UDim2.fromOffset(64, 64) })
+	end
+	talkText.Text = text
+	talkText.MaxVisibleGraphemes = 0
+	talkBox.Visible = true
+	local me = {}
+	speaking = me
+	task.spawn(function()
+		local n = utf8.len(text) or #text
+		for i = 1, n do
+			if speaking ~= me then
+				return
+			end
+			talkText.MaxVisibleGraphemes = i
+			if i % 2 == 0 then
+				sound(R.TypeBlip or "UI Blip")
+			end
+			task.wait(1 / 32)
+		end
+		talkText.MaxVisibleGraphemes = -1
+		task.wait(3)
+		if speaking == me then
+			talkBox.Visible = false
+			speaking = nil
+		end
+	end)
+end
+
+-- which boss is yours right now (the one on your floor)
+local current = nil -- { model, short }
+local nextIdle = 0
+local function onMyFloor()
+	local floor = player:GetAttribute("SpireFloor")
+	local def = floor and Config.Bosses and Config.Bosses[floor]
+	return def
+end
+local function watchTalk(model)
+	model:GetAttributeChangedSignal("State"):Connect(function()
+		local def = onMyFloor()
+		if not def then
+			return
+		end
+		local st = model:GetAttribute("State")
+		if st == "Waking" then
+			current = { model = model, short = def.Short }
+			nextIdle = os.clock() + 14
+			task.delay(2.6, say, def.Short, "wake") -- (just after the VS splash)
+		elseif st == "Dead" then
+			say(def.Short, "lose")
+			current = nil
+		elseif st == "Dormant" or st == "Resetting" then
+			current = nil
+		end
+	end)
+	model:GetAttributeChangedSignal("Phase"):Connect(function()
+		local def = onMyFloor()
+		if def and model:GetAttribute("Phase") == 2 then
+			say(def.Short, "phase2")
+			nextIdle = os.clock() + 12
+		end
+	end)
+end
+for _, m in ipairs(CollectionService:GetTagged("Boss")) do
+	watchTalk(m)
+end
+CollectionService:GetInstanceAddedSignal("Boss"):Connect(watchTalk)
+
+-- every so often in the fight, a jab
+RunService.Heartbeat:Connect(function()
+	if current and current.model:GetAttribute("State") == "Fighting" and os.clock() > nextIdle and not speaking then
+		nextIdle = os.clock() + 14 + math.random() * 8
+		say(current.short, "idle")
+	end
+end)
+
+-- a big hit on you: it gloats (not every time); you fall: it crows
+local function watchMyHealth(char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	if not hum then
+		return
+	end
+	local last = hum.Health
+	hum.HealthChanged:Connect(function(h)
+		local lost = last - h
+		last = h
+		if current and h > 0 and lost >= hum.MaxHealth * 0.2 and math.random() < 0.5 and not speaking then
+			say(current.short, "hit")
+		end
+	end)
+	hum.Died:Connect(function()
+		if current then
+			say(current.short, "win")
+		end
+	end)
+end
+if player.Character then
+	task.spawn(watchMyHealth, player.Character)
+end
+player.CharacterAdded:Connect(watchMyHealth)
