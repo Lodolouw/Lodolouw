@@ -643,16 +643,16 @@ Config.Bosses = {
 		-- Its sounds: add Sounds with these names to SoundService whenever you
 		-- like. Any you haven't added yet borrow one of Gloomgut's instead.
 		Sounds = {
-			Wake = "Worm Rise", -- rearing up out of its coils when it wakes
+			Wake = "SandRoar", -- rearing up out of its coils when it wakes
 			Dive = "Worm Charge", -- going head-first under the sand
 			Erupt = "Worm Erupt", -- bursting up out of the sand
 			Crash = "Worm Slam", -- its body crashing down (breach, coil)
-			Sweep = "Worm Sweep", -- the tail lash
-			Roar = "Worm Wail", -- the tremor
+			Sweep = "SandWhip", -- the tail lash
+			Roar = "SandRoar", -- the tremor
 			Devour = "Worm Devour", -- the sinkhole opening
 			Break = "Worm Crack", -- its armour blowing off
 			Death = "Worm Death",
-			Rumble = "Worm Rumble", -- a LOOPING low rumble, louder the closer it swims to you
+			Rumble = "SandRumble", -- a LOOPING low rumble, louder the closer it swims to you
 		},
 	},
 }
