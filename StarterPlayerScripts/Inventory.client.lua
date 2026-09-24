@@ -284,75 +284,106 @@ new("UIStroke", { Color = WHITE, Thickness = 2, ApplyStrokeMode = Enum.ApplyStro
 local badgeScale = new("UIScale", {}, badge)
 local gearScale = new("UIScale", {}, gearBtn)
 
--- the window
+-- the window: Minecraft Dungeons-style - you on the left (your real avatar,
+-- turning slowly, with your four slots beside you), your items in the
+-- middle, and the item you're looking at in full on the right
+local WOOD, WOOD_DARK, WOOD_EDGE = RGB(46, 30, 34), RGB(30, 20, 24), RGB(150, 110, 60)
+local TILE, TILE_HOVER = RGB(62, 42, 46), RGB(88, 62, 64)
 local dim = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = BLACK, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 1 }, scaler)
-local win = box(scaler, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(940, 600), Visible = false, ZIndex = 2 }, WHITE, 4)
+local win = box(scaler, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromOffset(1120, 640), Visible = false, ZIndex = 2, BackgroundColor3 = WOOD_DARK }, WOOD_EDGE, 4)
 local winScale = new("UIScale", {}, win)
-local title = text(win, { Text = "GEAR", TextSize = 30, Position = UDim2.fromOffset(20, 10), Size = UDim2.fromOffset(300, 40), TextColor3 = GOLD, ZIndex = 3 })
+local title = text(win, { Text = "INVENTORY", TextSize = 30, Position = UDim2.fromOffset(20, 10), Size = UDim2.fromOffset(400, 40), TextColor3 = GOLD, ZIndex = 3 })
 if TITLE_FACE then
 	title.FontFace = TITLE_FACE
-	title.TextSize = 24
+	title.TextSize = 22
 end
-local bagCount = text(win, { Text = "0/60", TextSize = 20, TextColor3 = GREY, Position = UDim2.new(1, -250, 0, 14), Size = UDim2.fromOffset(170, 30), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
+local bagCount = text(win, { Text = "0/60", TextSize = 20, TextColor3 = GREY, Position = UDim2.new(1, -260, 0, 14), Size = UDim2.fromOffset(190, 30), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3 })
 local closeBtn = button(win, "X", RED, { Position = UDim2.new(1, -52, 0, 12), Size = UDim2.fromOffset(36, 36), TextSize = 24, ZIndex = 3 })
 
--- left: you
-local left = box(win, { Position = UDim2.fromOffset(16, 60), Size = UDim2.fromOffset(290, 524), BackgroundColor3 = RGB(20, 18, 32), ZIndex = 2 }, DIM, 2)
-text(left, { Text = "WEARING", TextSize = 18, TextColor3 = GREY, Position = UDim2.fromOffset(12, 6), Size = UDim2.fromOffset(200, 24), ZIndex = 3 })
--- a pixel silhouette of you, with the four slots round it
-local SIL = {
-	"....OOOO....", "...OOOOOO...", "...OOOOOO...", "....OOOO....", "..OOOOOOOO..", ".OOOOOOOOOO.",
-	".OO.OOOO.OO.", ".OO.OOOO.OO.", "....OOOO....", "....OO.OO...", "....OO.OO...", "...OOO.OOO..",
-}
-local sil = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(95, 44), Size = UDim2.fromOffset(100, 100), ZIndex = 2 }, left)
-for y = 1, #SIL do
-	for x = 1, #SIL[y] do
-		if string.sub(SIL[y], x, x) == "O" then
-			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(58, 68, 102), Size = UDim2.fromScale(1 / 12 + 0.004, 1 / 12 + 0.004), Position = UDim2.fromScale((x - 1) / 12, (y - 1) / 12), ZIndex = 2 }, sil)
+local function panel(x, w)
+	return box(win, { Position = UDim2.fromOffset(x, 60), Size = UDim2.fromOffset(w, 564), BackgroundColor3 = WOOD, ZIndex = 2 }, WOOD_EDGE, 2)
+end
+
+-- LEFT: you
+local left = panel(16, 330)
+local view = new("ViewportFrame", { BackgroundColor3 = RGB(24, 16, 20), BorderSizePixel = 0, Position = UDim2.fromOffset(90, 16), Size = UDim2.fromOffset(150, 250), Ambient = RGB(170, 160, 170), LightColor = RGB(255, 240, 220), LightDirection = Vector3.new(-1, -1, -1), ZIndex = 3 }, left)
+new("UIStroke", { Color = RGB(74, 52, 56), Thickness = 2 }, view)
+local viewCam = new("Camera", { FieldOfView = 32 }, view)
+view.CurrentCamera = viewCam
+local world = new("WorldModel", {}, view)
+local avatar, avatarAngle = nil, 0
+local function buildAvatar()
+	world:ClearAllChildren()
+	avatar = nil
+	pcall(function()
+		local char = player.Character
+		if not char then
+			return
 		end
-	end
+		local was = char.Archivable
+		char.Archivable = true
+		local copy = char:Clone()
+		char.Archivable = was
+		if not copy then
+			return
+		end
+		for _, d in ipairs(copy:GetDescendants()) do
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") or d:IsA("ParticleEmitter") then
+				d:Destroy()
+			elseif d:IsA("BasePart") then
+				d.Anchored = true
+			end
+		end
+		copy:PivotTo(CFrame.new())
+		copy.Parent = world
+		avatar = copy
+	end)
 end
 local SLOT_AT = {
-	Helmet = UDim2.fromOffset(113, 30),
-	Weapon = UDim2.fromOffset(20, 96),
-	Chest = UDim2.fromOffset(206, 96),
-	Boots = UDim2.fromOffset(113, 160),
+	Weapon = UDim2.fromOffset(12, 40),
+	Helmet = UDim2.fromOffset(12, 140),
+	Chest = UDim2.fromOffset(248, 40),
+	Boots = UDim2.fromOffset(248, 140),
 }
 local wornSlots = {}
-local statsBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 250), Size = UDim2.new(1, -24, 0, 170), ZIndex = 3 }, left)
-new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, statsBox)
-local setsBox = text(left, { Text = "", TextSize = 16, TextColor3 = GREEN, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(12, 430), Size = UDim2.new(1, -24, 0, 84), ZIndex = 3 })
+-- the level and gear power badges
+local function badgeBox(x, label)
+	local b = box(left, { Position = UDim2.fromOffset(x, 282), Size = UDim2.fromOffset(140, 84), BackgroundColor3 = WOOD_DARK, ZIndex = 3 }, WOOD_EDGE, 2)
+	text(b, { Text = label, TextSize = 14, TextColor3 = GREY, Size = UDim2.new(1, 0, 0, 26), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
+	return text(b, { Text = "0", TextSize = 34, TextColor3 = WHITE, Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 48), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
+end
+local levelText = badgeBox(16, "LEVEL")
+local powerText = badgeBox(174, "GEAR POWER")
+local statsBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 380), Size = UDim2.new(1, -32, 0, 130), ZIndex = 3 }, left)
+new("UIGridLayout", { CellSize = UDim2.fromOffset(146, 22), CellPadding = UDim2.fromOffset(6, 3), SortOrder = Enum.SortOrder.LayoutOrder }, statsBox)
+local setsBox = text(left, { Text = "", TextSize = 15, TextColor3 = GREEN, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(16, 490), Size = UDim2.new(1, -32, 0, 64), ZIndex = 3 })
 
--- right: the bag
-local right = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(322, 60), Size = UDim2.fromOffset(602, 524), ZIndex = 2 }, win)
-local tabs = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 38), ZIndex = 2 }, right)
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, tabs)
+-- MIDDLE: your items
+local middle = panel(362, 424)
+local tabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 12), Size = UDim2.new(1, -24, 0, 46), ZIndex = 3 }, middle)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center }, tabs)
 local grid = new("ScrollingFrame", {
-	BackgroundColor3 = RGB(20, 18, 32),
+	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
-	Position = UDim2.fromOffset(0, 48),
-	Size = UDim2.new(1, 0, 0, 400),
-	ScrollBarThickness = 8,
-	ScrollBarImageColor3 = GREY,
+	Position = UDim2.fromOffset(12, 68),
+	Size = UDim2.new(1, -24, 0, 440),
+	ScrollBarThickness = 6,
+	ScrollBarImageColor3 = WOOD_EDGE,
 	CanvasSize = UDim2.new(),
 	AutomaticCanvasSize = Enum.AutomaticSize.Y,
-	ZIndex = 2,
-}, right)
-new("UIStroke", { Color = DIM, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, grid)
-new("UIPadding", { PaddingTop = UDim.new(0, 10), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10) }, grid)
-local gridLayout = new("UIGridLayout", { CellSize = UDim2.fromOffset(64, 64), CellPadding = UDim2.fromOffset(9, 9), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
-local bar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 458), Size = UDim2.new(1, 0, 0, 54), ZIndex = 2 }, right)
-local status = text(bar, { Text = "", TextSize = 18, TextColor3 = GREY, Size = UDim2.new(1, -330, 1, 0), ZIndex = 3, TextWrapped = true })
-local wearBtn = button(bar, "WEAR", GREEN, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -220, 0, 6), Size = UDim2.fromOffset(104, 42), Visible = false, ZIndex = 3 })
-local lockBtn = button(bar, "LOCK", SLOT, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -110, 0, 6), Size = UDim2.fromOffset(100, 42), Visible = false, ZIndex = 3 })
-local salvageBtn = button(bar, "SALVAGE", RGB(162, 38, 51), { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 6), Size = UDim2.fromOffset(104, 42), Visible = false, ZIndex = 3, TextSize = 18 })
+	ZIndex = 3,
+}, middle)
+new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 10), PaddingBottom = UDim.new(0, 6) }, grid)
+local gridLayout = new("UIGridLayout", { CellSize = UDim2.fromOffset(88, 88), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
+local status = text(middle, { Text = "", TextSize = 17, TextColor3 = GREY, Position = UDim2.fromOffset(14, 514), Size = UDim2.new(1, -28, 0, 40), ZIndex = 3, TextWrapped = true })
 
--- the item card (tooltip)
-local tip = box(scaler, { Size = UDim2.fromOffset(320, 100), Visible = false, ZIndex = 50, AutomaticSize = Enum.AutomaticSize.Y }, WHITE, 3)
-local tipEdge = tip:FindFirstChildOfClass("UIStroke")
-new("UIPadding", { PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, tip)
-new("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder }, tip)
-local tipScale = new("UIScale", {}, tip)
+-- RIGHT: the item you're looking at
+local right = panel(802, 302)
+local detail = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 14), Size = UDim2.new(1, -32, 0, 470), ZIndex = 3 }, right)
+local actions = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 500), Size = UDim2.new(1, -24, 0, 50), ZIndex = 3 }, right)
+local wearBtn = button(actions, "WEAR", GREEN, { Size = UDim2.fromOffset(90, 44), Visible = false, ZIndex = 4, TextSize = 18 })
+local lockBtn = button(actions, "LOCK", SLOT, { Position = UDim2.fromOffset(96, 0), Size = UDim2.fromOffset(84, 44), Visible = false, ZIndex = 4, TextSize = 18 })
+local salvageBtn = button(actions, "SALVAGE", RGB(162, 38, 51), { Position = UDim2.fromOffset(186, 0), Size = UDim2.fromOffset(92, 44), Visible = false, ZIndex = 4, TextSize = 16 })
 
 ----------------------------------------------------------------------
 -- The item card
@@ -452,119 +483,108 @@ local function fillCard(card, uid)
 	return rarity
 end
 
-local tipFor = nil
-local function showTip(uid)
-	if not data or not data.Items[uid] then
-		return
-	end
-	local rarity = fillCard(tip, uid)
-	if not rarity then
-		return
-	end
-	paintRarity(tipEdge, "Color", Items.ById[data.Items[uid].id].rarity)
-	if tipFor ~= uid then
-		tipScale.Scale = 0.9
-		tween(tipScale, 0.12, { Scale = 1 }, Enum.EasingStyle.Back)
-	end
-	tipFor = uid
-	tip.Visible = true
-end
-local function hideTip()
-	tip.Visible = false
-	tipFor = nil
-end
-RunService.RenderStepped:Connect(function()
-	if tip.Visible then
-		local m = UserInputService:GetMouseLocation() / uiScale.Scale
-		local size = tip.AbsoluteSize / uiScale.Scale
-		local screen = scaler.AbsoluteSize / uiScale.Scale
-		local x, y = m.X + 24, m.Y + 12
-		if x + size.X > screen.X - 8 then
-			x = m.X - size.X - 16
-		end
-		if y + size.Y > screen.Y - 8 then
-			y = screen.Y - size.Y - 8
-		end
-		tip.Position = UDim2.fromOffset(x, y)
-	end
-	-- SECRET things shimmer through every colour
-	local hue = (os.clock() * 0.35) % 1
-	for inst, prop in pairs(rainbow) do
-		if inst.Parent then
-			inst[prop] = Color3.fromHSV(hue, 0.6, 1)
-		end
-	end
-	-- the badge pulses while chests wait
-	if badge.Visible then
-		badgeScale.Scale = 1 + 0.12 * math.max(0, math.sin(os.clock() * 5))
-	end
-end)
-
 ----------------------------------------------------------------------
--- The slots
+-- The detail panel (right)
 ----------------------------------------------------------------------
 local selected = nil
+local hovered = nil
 local tab = "All"
 local sortMode = 1
 local SORTS = { "RARITY", "LEVEL", "NEWEST" }
 local lastClick = { uid = nil, at = 0 }
-
-local function slotFrame(parent, def, uid)
-	local b = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = SLOT, BorderSizePixel = 0, ZIndex = 3 }, parent)
-	local edge = new("UIStroke", { Thickness = 3, LineJoinMode = Enum.LineJoinMode.Miter, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, b)
-	local sc = new("UIScale", {}, b)
-	if def then
-		paintRarity(edge, "Color", def.rarity)
-		local ic = itemIcon(def)
-		ic.Parent = b
-		-- the rarity gem in the corner
-		local gem = new("Frame", { BorderSizePixel = 0, Size = UDim2.fromOffset(8, 8), Position = UDim2.fromOffset(4, 4), ZIndex = 4 }, b)
-		paintRarity(gem, "BackgroundColor3", def.rarity)
-		local rec = data.Items[uid]
-		local _, stars, perfect = Items.quality(def, rec.r)
-		if stars > 0 then
-			text(b, { Text = string.rep("\u{2605}", stars), TextSize = 12, TextColor3 = GOLD, Position = UDim2.new(0, 3, 1, -15), Size = UDim2.fromOffset(40, 13), ZIndex = 4 })
-		end
-		if perfect then
-			new("UIGradient", { Color = ColorSequence.new(RGB(255, 255, 255), RGB(254, 231, 97)), Rotation = 45 }, edge)
-		end
-		if rec.lock then
-			text(b, { Text = "L", TextSize = 13, TextColor3 = GOLD, Position = UDim2.new(1, -14, 0, 2), Size = UDim2.fromOffset(12, 13), ZIndex = 4 })
-		end
-		if worn(uid) then
-			text(b, { Text = "E", TextSize = 14, TextColor3 = GREEN, Position = UDim2.new(1, -14, 1, -16), Size = UDim2.fromOffset(12, 14), ZIndex = 4 })
-		end
-		if Items.RarityById[def.rarity].rank >= Items.RarityById.Legendary.rank then
-			-- a soft glow behind the good stuff
-			b.BackgroundColor3 = Items.RarityById[def.rarity].color:Lerp(SLOT, 0.8)
-		end
-	else
-		edge.Color = DIM
-	end
-	b.MouseEnter:Connect(function()
-		tween(sc, 0.08, { Scale = 1.08 }, Enum.EasingStyle.Back)
-		b.BackgroundColor3 = SLOT_HOVER
-		sound("Hover", 0.2, 1.4)
-		if uid then
-			showTip(uid)
-		end
-	end)
-	b.MouseLeave:Connect(function()
-		tween(sc, 0.1, { Scale = selected == uid and uid and 1.04 or 1 })
-		b.BackgroundColor3 = (def and Items.RarityById[def.rarity].rank >= 5) and Items.RarityById[def.rarity].color:Lerp(SLOT, 0.8) or SLOT
-		if tipFor == uid then
-			hideTip()
-		end
-	end)
-	return b, sc, edge
-end
+local salvageArmed = nil
 
 local function setStatus(s, color)
 	status.Text = s or ""
 	status.TextColor3 = color or GREY
 end
 
-local salvageArmed = nil
+-- a quick number for how strong your worn gear is, all stats together
+local function gearPower(d)
+	local t = Items.gearStats(d)
+	return math.floor(t.Damage * 2 + t.Crit * 3 + t.Health * 0.5 + t.Defense * 3 + t.Power)
+end
+
+local function renderDetail(uid)
+	detail:ClearAllChildren()
+	local rec = uid and data and data.Items[uid]
+	local def = rec and Items.ById[rec.id]
+	if not def then
+		text(detail, { Text = "* Point at an item\n  to look at it.", TextSize = 20, TextColor3 = DIM, Size = UDim2.new(1, 0, 0, 80), TextWrapped = true, ZIndex = 4 })
+		return
+	end
+	local rarity = Items.RarityById[def.rarity]
+	local _, stars, perfect = Items.quality(def, rec.r)
+	new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, detail)
+	local o = 0
+	local function nextO()
+		o = o + 1
+		return o
+	end
+	-- the big icon
+	local top = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 112), LayoutOrder = nextO(), ZIndex = 4 }, detail)
+	local frame = box(top, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(108, 108), BackgroundColor3 = TILE, ZIndex = 4 }, rarity.color, 3)
+	paintRarity(frame:FindFirstChildOfClass("UIStroke"), "Color", def.rarity)
+	local big = itemIcon(def)
+	for _, px in ipairs(big:GetDescendants()) do
+		if px:IsA("Frame") then
+			px.ZIndex = 6
+		end
+	end
+	big.Parent = frame
+	-- name, rarity chip, level, stars
+	local name = text(detail, { Text = string.upper(def.name), TextSize = 22, TextWrapped = true, Size = UDim2.new(1, 0, 0, 24), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextO(), ZIndex = 4 })
+	if TITLE_FACE then
+		name.FontFace = TITLE_FACE
+		name.TextSize = 15
+	end
+	paintRarity(name, "TextColor3", def.rarity)
+	local chipRow = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 24), LayoutOrder = nextO(), ZIndex = 4 }, detail)
+	local chip = new("TextLabel", { BorderSizePixel = 0, Font = FONT, Text = string.upper(def.rarity), TextSize = 14, TextColor3 = INK, Size = UDim2.fromOffset(96, 22), ZIndex = 5 }, chipRow)
+	paintRarity(chip, "BackgroundColor3", def.rarity)
+	text(chipRow, { Text = string.upper(def.slot) .. "  LV " .. def.level, TextSize = 15, TextColor3 = (Items.gearLevel(data) >= def.level) and GREY or RED, Position = UDim2.fromOffset(104, 0), Size = UDim2.new(1, -104, 1, 0), ZIndex = 5 })
+	text(detail, { Text = string.rep("\u{2605}", stars) .. string.rep("\u{2606}", 3 - stars) .. (perfect and "  PERFECT" or ""), TextSize = 18, TextColor3 = GOLD, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = nextO(), ZIndex = 4 })
+	-- each stat with a bar showing how good its roll is (and vs. what you wear)
+	local wornUid = data.Gear[def.slot]
+	local wornRec = wornUid ~= uid and wornUid and data.Items[wornUid]
+	for _, s in ipairs(Items.Stats) do
+		local range = def.stats[s.id]
+		if range then
+			local v = rec.r[s.id]
+			local row = new("Frame", { Name = "Row", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = nextO(), ZIndex = 4 }, detail)
+			text(row, { Text = Items.formatStat(s.id, v), TextSize = 17, Size = UDim2.new(0.75, 0, 0, 18), ZIndex = 5 })
+			if wornRec then
+				local diff = v - (wornRec.r[s.id] or 0)
+				if diff ~= 0 then
+					text(row, { Text = (diff > 0 and "\u{25B2}+" or "\u{25BC}") .. diff, TextSize = 15, TextColor3 = diff > 0 and GREEN or RED, Position = UDim2.fromScale(0.72, 0), Size = UDim2.new(0.28, 0, 0, 18), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+				end
+			end
+			local track = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(24, 16, 20), Position = UDim2.fromOffset(0, 21), Size = UDim2.new(1, -44, 0, 8), ZIndex = 5 }, row)
+			local span = range[2] - range[1]
+			local q = span > 0 and (v - range[1]) / span or 1
+			local fill = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = q >= 0.9 and GOLD or WHITE, Size = UDim2.new(0, 0, 1, 0), ZIndex = 6 }, track)
+			tween(fill, 0.35, { Size = UDim2.new(math.max(q, 0.04), 0, 1, 0) })
+			text(row, { Text = range[1] .. "-" .. range[2], TextSize = 12, TextColor3 = DIM, Position = UDim2.new(1, -40, 0, 17), Size = UDim2.fromOffset(40, 14), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+		end
+	end
+	-- the set, like enchantments
+	if def.set then
+		local set = Items.Sets[def.set]
+		local _, sets = Items.gearStats(data)
+		local have = sets[def.set] or 0
+		text(detail, { Text = string.upper(set.name) .. " SET  " .. have .. "/4", TextSize = 15, TextColor3 = GREEN, Size = UDim2.new(1, 0, 0, 18), LayoutOrder = nextO(), ZIndex = 4 })
+		for _, b in ipairs(set.bonuses) do
+			local parts = {}
+			for stat, v in pairs(b.stats) do
+				table.insert(parts, Items.formatStat(stat, v))
+			end
+			table.sort(parts)
+			text(detail, { Text = b.need .. ": " .. table.concat(parts, ", "), TextSize = 14, TextColor3 = have >= b.need and GREEN or DIM, TextWrapped = true, Size = UDim2.new(1, 0, 0, 16), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextO(), ZIndex = 4 })
+		end
+	end
+	text(detail, { Text = def.lore, TextSize = 14, TextColor3 = GREY, TextWrapped = true, Size = UDim2.new(1, 0, 0, 16), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextO(), ZIndex = 4 })
+end
+
 local function refreshBar()
 	local rec = selected and data and data.Items[selected]
 	local def = rec and Items.ById[rec.id]
@@ -572,39 +592,111 @@ local function refreshBar()
 	if not def then
 		return
 	end
-	wearBtn.Text = worn(selected) and "TAKE OFF" or "WEAR"
+	wearBtn.Text = worn(selected) and "OFF" or "WEAR"
 	wearBtn.BackgroundColor3 = worn(selected) and SLOT or GREEN
 	lockBtn.Text = rec.lock and "UNLOCK" or "LOCK"
 	local coins = math.floor(Items.RarityById[def.rarity].salvage * def.floor)
-	salvageBtn.Text = salvageArmed == selected and ("SURE? +" .. Config.format(coins)) or "SALVAGE"
-	salvageBtn.TextSize = salvageArmed == selected and 15 or 18
+	salvageBtn.Text = salvageArmed == selected and ("+" .. Config.format(coins) .. "?") or "SALVAGE"
 end
 
--- the chests tab: a card per boss's chest
-local function chestCard(floor, count)
-	local card = box(grid, { BackgroundColor3 = SLOT, ZIndex = 3 }, GOLD, 3)
-	card.LayoutOrder = floor
-	local ic = chestIcon(floor)
-	ic.Size = UDim2.fromScale(0.7, 0.7)
-	ic.Position = UDim2.fromScale(0.5, 0.42)
-	ic.Parent = card
-	text(card, { Text = "x" .. count, TextSize = 18, TextColor3 = GOLD, Position = UDim2.new(1, -40, 1, -20), Size = UDim2.fromOffset(36, 18), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-	local b = new("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 5 }, card)
-	local sc = new("UIScale", {}, card)
+-- what the right panel shows: what you point at, else what you picked
+local function showDetail()
+	renderDetail(hovered or selected)
+end
+local function hideTip()
+	hovered = nil
+	showDetail()
+end
+
+----------------------------------------------------------------------
+-- The tiles
+----------------------------------------------------------------------
+local function slotFrame(parent, def, uid)
+	local b = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = TILE, BorderSizePixel = 0, ZIndex = 4 }, parent)
+	local edge = new("UIStroke", { Thickness = 3, LineJoinMode = Enum.LineJoinMode.Miter, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, b)
+	local sc = new("UIScale", {}, b)
+	local base = TILE
+	if def then
+		paintRarity(edge, "Color", def.rarity)
+		local ic = itemIcon(def)
+		for _, px in ipairs(ic:GetDescendants()) do
+			if px:IsA("Frame") then
+				px.ZIndex = 6
+			end
+		end
+		ic.Parent = b
+		local rec = data.Items[uid]
+		local _, stars, perfect = Items.quality(def, rec.r)
+		if stars > 0 then
+			text(b, { Text = string.rep("\u{2605}", stars), TextSize = 13, TextColor3 = GOLD, Position = UDim2.new(0, 5, 1, -17), Size = UDim2.fromOffset(46, 14), ZIndex = 7 })
+		end
+		if perfect then
+			new("UIGradient", { Color = ColorSequence.new(RGB(255, 255, 255), RGB(254, 231, 97)), Rotation = 45 }, edge)
+		end
+		if rec.lock then
+			text(b, { Text = "L", TextSize = 14, TextColor3 = GOLD, Position = UDim2.new(1, -16, 0, 3), Size = UDim2.fromOffset(12, 14), ZIndex = 7 })
+		end
+		if worn(uid) then
+			local eq = new("TextLabel", { BorderSizePixel = 0, BackgroundColor3 = GREEN, Font = FONT, Text = "E", TextSize = 13, TextColor3 = INK, Position = UDim2.new(1, -20, 1, -20), Size = UDim2.fromOffset(16, 16), ZIndex = 7 }, b)
+			eq.Name = "Worn"
+		end
+		if Items.RarityById[def.rarity].rank >= Items.RarityById.Legendary.rank then
+			base = Items.RarityById[def.rarity].color:Lerp(TILE, 0.78)
+			b.BackgroundColor3 = base
+		end
+	else
+		edge.Color = RGB(74, 52, 56)
+		-- an empty tile: a faint cross, like an empty slot
+		for _, r in ipairs({ 45, -45 }) do
+			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(74, 52, 56), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1.1, 0, 0, 3), Rotation = r, ZIndex = 4 }, b)
+		end
+		b.ClipsDescendants = true
+	end
 	b.MouseEnter:Connect(function()
-		tween(sc, 0.08, { Scale = 1.08 }, Enum.EasingStyle.Back)
+		tween(sc, 0.08, { Scale = 1.07 }, Enum.EasingStyle.Back)
+		b.BackgroundColor3 = TILE_HOVER
+		if uid then
+			sound("Hover", 0.2, 1.4)
+			hovered = uid
+			showDetail()
+		end
+	end)
+	b.MouseLeave:Connect(function()
+		tween(sc, 0.1, { Scale = (selected == uid and uid) and 1.04 or 1 })
+		b.BackgroundColor3 = base
+		if uid and hovered == uid then
+			hovered = nil
+			showDetail()
+		end
+	end)
+	return b, sc, edge
+end
+
+-- the chests tab: a tile per boss's chest
+local openChest -- (set below)
+local function chestCard(floor, count)
+	local card = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = TILE, BorderSizePixel = 0, LayoutOrder = floor, ZIndex = 4 }, grid)
+	new("UIStroke", { Color = GOLD, Thickness = 3, LineJoinMode = Enum.LineJoinMode.Miter, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, card)
+	local ic = chestIcon(floor)
+	for _, px in ipairs(ic:GetDescendants()) do
+		if px:IsA("Frame") then
+			px.ZIndex = 6
+		end
+	end
+	ic.Parent = card
+	text(card, { Text = "x" .. count, TextSize = 18, TextColor3 = GOLD, Position = UDim2.new(1, -44, 1, -22), Size = UDim2.fromOffset(40, 18), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 7 })
+	local sc = new("UIScale", {}, card)
+	card.MouseEnter:Connect(function()
+		tween(sc, 0.08, { Scale = 1.07 }, Enum.EasingStyle.Back)
 		sound("Hover", 0.2, 1.4)
 		setStatus(Items.chestName(floor) .. " - click to open!", GOLD)
 	end)
-	b.MouseLeave:Connect(function()
+	card.MouseLeave:Connect(function()
 		tween(sc, 0.1, { Scale = 1 })
 	end)
-	return b
+	return card
 end
 
-local openChest -- (set below)
-
--- the whole bag, drawn again when something changes
 local function sortedItems()
 	local list = {}
 	for uid, rec in pairs(data.Items) do
@@ -631,6 +723,7 @@ local function sortedItems()
 	return list
 end
 
+-- the tabs: pixel icons, like Minecraft Dungeons'
 local tabButtons = {}
 local function drawTabs()
 	for _, b in ipairs(tabButtons) do
@@ -641,16 +734,31 @@ local function drawTabs()
 	for _, n in pairs(data and data.Chests or {}) do
 		chests = chests + n
 	end
-	local defs = { { "All", "ALL" }, { "Weapon", "WEAPON" }, { "Helmet", "HELMET" }, { "Chest", "CHEST" }, { "Boots", "BOOTS" }, { "Chests", "CHESTS" .. (chests > 0 and (" (" .. chests .. ")") or "") } }
-	for i, t in ipairs(defs) do
-		local on = tab == t[1]
-		local b = button(tabs, t[2], on and RGB(58, 68, 102) or SLOT, { LayoutOrder = i, Size = UDim2.fromOffset(t[1] == "Chests" and 116 or 80, 36), TextSize = 16, ZIndex = 3, TextColor3 = on and GOLD or WHITE })
-		if t[1] == "Chests" and chests > 0 then
-			b.TextColor3 = on and GOLD or RGB(254, 231, 97)
+	local defs = { "All", "Weapon", "Helmet", "Chest", "Boots", "Chests" }
+	for i, id in ipairs(defs) do
+		local on = tab == id
+		local b = button(tabs, id == "All" and "ALL" or "", on and TILE_HOVER or WOOD_DARK, { LayoutOrder = i, Size = UDim2.fromOffset(id == "Chests" and 62 or 46, 42), TextSize = 16, ZIndex = 4, TextColor3 = on and GOLD or WHITE })
+		b:FindFirstChildOfClass("UIStroke").Color = on and GOLD or RGB(74, 52, 56)
+		if id ~= "All" then
+			local ic = id == "Chests" and icon("Treasure", RGB(184, 111, 80), GOLD) or icon(id, on and RGB(192, 203, 220) or GREY, on and GOLD or DIM)
+			ic.Size = UDim2.fromOffset(30, 30)
+			ic.Position = UDim2.new(0, id == "Chests" and 20 or 23, 0.5, 0)
+			for _, px in ipairs(ic:GetDescendants()) do
+				if px:IsA("Frame") then
+					px.ZIndex = 6
+				end
+			end
+			ic.Parent = b
 		end
+		if id == "Chests" and chests > 0 then
+			text(b, { Text = tostring(chests), TextSize = 15, TextColor3 = RGB(254, 231, 97), Position = UDim2.new(1, -22, 0, 2), Size = UDim2.fromOffset(20, 16), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 7 })
+		end
+		b.MouseEnter:Connect(function()
+			setStatus(({ All = "Everything", Weapon = "Weapons", Helmet = "Helmets", Chest = "Chestplates", Boots = "Boots", Chests = "Treasure chests" })[id])
+		end)
 		b.Activated:Connect(function()
-			if tab ~= t[1] then
-				tab = t[1]
+			if tab ~= id then
+				tab = id
 				selected = nil
 				sound("Click", 0.4, 1.1)
 				redraw()
@@ -658,7 +766,11 @@ local function drawTabs()
 		end)
 		table.insert(tabButtons, b)
 	end
-	local sortBtn = button(tabs, "SORT: " .. SORTS[sortMode], SLOT, { LayoutOrder = 20, Size = UDim2.fromOffset(118, 36), TextSize = 14, ZIndex = 3 })
+	local sortBtn = button(tabs, SORTS[sortMode], WOOD_DARK, { LayoutOrder = 20, Size = UDim2.fromOffset(62, 42), TextSize = 12, ZIndex = 4 })
+	sortBtn:FindFirstChildOfClass("UIStroke").Color = RGB(74, 52, 56)
+	sortBtn.MouseEnter:Connect(function()
+		setStatus("Sort by: " .. SORTS[sortMode])
+	end)
 	sortBtn.Activated:Connect(function()
 		sortMode = sortMode % #SORTS + 1
 		sound("Click", 0.4, 1.2)
@@ -667,7 +779,7 @@ local function drawTabs()
 	table.insert(tabButtons, sortBtn)
 end
 
-local function drawWorn()
+local function drawLeft()
 	for _, f in pairs(wornSlots) do
 		f:Destroy()
 	end
@@ -678,9 +790,10 @@ local function drawWorn()
 		local def = rec and Items.ById[rec.id]
 		local b = slotFrame(left, def, def and uid)
 		b.Position = SLOT_AT[slot]
-		b.Size = UDim2.fromOffset(64, 64)
+		b.Size = UDim2.fromOffset(70, 70)
 		if not def then
-			text(b, { Text = string.upper(slot), TextSize = 12, TextColor3 = DIM, Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
+			local ghost = icon(slot, RGB(74, 52, 56), RGB(74, 52, 56))
+			ghost.Parent = b
 		end
 		b.Activated:Connect(function()
 			if def then
@@ -691,33 +804,32 @@ local function drawWorn()
 		end)
 		wornSlots[slot] = b
 	end
-	-- your totals
+	levelText.Text = tostring(Config.levelFromPower(data.Power or 0))
+	powerText.Text = tostring(gearPower(data))
 	for _, c in ipairs(statsBox:GetChildren()) do
 		if c:IsA("TextLabel") then
 			c:Destroy()
 		end
 	end
 	local total, sets = Items.gearStats(data)
-	text(statsBox, { Text = "YOUR GEAR GIVES", TextSize = 16, TextColor3 = GREY, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = 0, ZIndex = 3 })
 	for _, s in ipairs(Items.Stats) do
 		local v = total[s.id]
 		text(statsBox, {
-			Text = Items.formatStat(s.id, v) .. ((s.cap and v >= s.cap) and "  (MAX)" or ""),
-			TextSize = 18,
+			Text = Items.formatStat(s.id, v) .. ((s.cap and v >= s.cap) and " MAX" or ""),
+			TextSize = 15,
 			TextColor3 = v > 0 and WHITE or DIM,
-			Size = UDim2.new(1, 0, 0, 22),
 			LayoutOrder = s.order,
-			ZIndex = 3,
+			ZIndex = 4,
 		})
 	end
 	local setLines = {}
 	for setId, n in pairs(sets) do
 		local set = Items.Sets[setId]
 		if set and n >= 2 then
-			table.insert(setLines, set.name .. " (" .. n .. "/4)")
+			table.insert(setLines, set.name .. " " .. n .. "/4")
 		end
 	end
-	setsBox.Text = #setLines > 0 and ("SET BONUS: " .. table.concat(setLines, ", ")) or ""
+	setsBox.Text = #setLines > 0 and ("SET: " .. table.concat(setLines, ", ")) or ""
 end
 
 function redraw()
@@ -725,7 +837,7 @@ function redraw()
 		return
 	end
 	drawTabs()
-	drawWorn()
+	drawLeft()
 	for _, c in ipairs(grid:GetChildren()) do
 		if c:IsA("GuiObject") then
 			c:Destroy()
@@ -734,14 +846,12 @@ function redraw()
 	bagCount.Text = Items.count(data) .. "/" .. Items.BagSize .. " ITEMS"
 	bagCount.TextColor3 = Items.count(data) >= Items.BagSize and RED or GREY
 	if tab == "Chests" then
-		gridLayout.CellSize = UDim2.fromOffset(100, 100)
 		local any = false
 		for key, n in pairs(data.Chests) do
 			local floor = tonumber(key)
 			if floor and n > 0 then
 				any = true
-				local b = chestCard(floor, n)
-				b.Activated:Connect(function()
+				chestCard(floor, n).Activated:Connect(function()
 					task.spawn(openChest, floor)
 				end)
 			end
@@ -749,58 +859,57 @@ function redraw()
 		if not any then
 			setStatus("* No chests. Beat a boss in the Spire to earn one!")
 		end
-		refreshBar()
-		return
-	end
-	gridLayout.CellSize = UDim2.fromOffset(64, 64)
-	local list = sortedItems()
-	for i, e in ipairs(list) do
-		local b, sc, edge = slotFrame(grid, e.def, e.uid)
-		b.LayoutOrder = i
-		if selected == e.uid then
-			sc.Scale = 1.04
-			edge.Thickness = 5
-		end
-		b.Activated:Connect(function()
-			local now = os.clock()
-			if lastClick.uid == e.uid and now - lastClick.at < 0.35 then
-				-- double-click: wear it (or take it off)
-				lastClick.uid = nil
-				selected = e.uid
-				local slot = worn(e.uid)
-				local ok, msg
-				if slot then
-					ok, msg = ask("UnequipSlot", slot)
-				else
-					ok, msg = ask("EquipItem", e.uid)
-				end
-				if ok then
-					sound("Equip", 0.8)
-				else
-					setStatus(msg, RED)
-				end
-				return
+	else
+		local list = sortedItems()
+		for i, e in ipairs(list) do
+			local b, sc, edge = slotFrame(grid, e.def, e.uid)
+			b.LayoutOrder = i
+			if selected == e.uid then
+				sc.Scale = 1.04
+				edge.Thickness = 5
+				local mark = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = WHITE, Size = UDim2.new(1, 0, 0, 3), Position = UDim2.new(0, 0, 1, 3), ZIndex = 7 }, b)
+				mark.Name = "Selected"
 			end
-			lastClick.uid, lastClick.at = e.uid, now
-			selected = e.uid
-			salvageArmed = nil
-			sound("Click", 0.4)
-			setStatus("")
-			redraw()
-		end)
+			b.Activated:Connect(function()
+				local now = os.clock()
+				if lastClick.uid == e.uid and now - lastClick.at < 0.35 then
+					-- double-click: wear it (or take it off)
+					lastClick.uid = nil
+					selected = e.uid
+					local slot = worn(e.uid)
+					local ok, msg
+					if slot then
+						ok, msg = ask("UnequipSlot", slot)
+					else
+						ok, msg = ask("EquipItem", e.uid)
+					end
+					if ok then
+						sound("Equip", 0.8)
+					else
+						setStatus(msg, RED)
+					end
+					return
+				end
+				lastClick.uid, lastClick.at = e.uid, now
+				selected = e.uid
+				salvageArmed = nil
+				sound("Click", 0.4)
+				setStatus("")
+				redraw()
+			end)
+		end
+		for i = #list + 1, math.max(#list, 16) do
+			slotFrame(grid, nil, nil).LayoutOrder = i
+		end
+		if #list == 0 then
+			setStatus(tab == "All" and "* Your bag is empty. Open a chest!" or "* Nothing for this slot yet.")
+		end
 	end
-	-- empty slots fill out the grid, so you can see how much room is left
-	for i = #list + 1, math.max(#list, 24) do
-		local b = slotFrame(grid, nil, nil)
-		b.LayoutOrder = i
-	end
-	if #list == 0 then
-		setStatus(tab == "All" and "* Your bag is empty. Open a chest!" or "* Nothing for this slot yet.")
-	end
+	showDetail()
 	refreshBar()
 end
 
--- the buttons under the grid
+-- the buttons under the item
 wearBtn.Activated:Connect(function()
 	if not selected then
 		return
@@ -814,7 +923,6 @@ wearBtn.Activated:Connect(function()
 	end
 	if ok then
 		sound("Equip", 0.8)
-		-- the slot on you pops as the piece lands
 		local def = Items.ById[data.Items[selected] and data.Items[selected].id or ""]
 		local w = def and wornSlots[def.slot]
 		if w then
@@ -845,6 +953,7 @@ salvageBtn.Activated:Connect(function()
 	end
 	if salvageArmed ~= selected then
 		salvageArmed = selected
+		setStatus("Click again to salvage it for coins.", GOLD)
 		refreshBar()
 		task.delay(2.5, function()
 			if salvageArmed then
@@ -866,6 +975,15 @@ salvageBtn.Activated:Connect(function()
 	refreshBar()
 end)
 
+-- your avatar turns slowly while the window is open
+RunService.RenderStepped:Connect(function(dt)
+	if win.Visible and avatar then
+		avatarAngle = avatarAngle + dt * 0.6
+		local c = CFrame.new(0, 0.4, 0)
+		viewCam.CFrame = CFrame.lookAt((c * CFrame.Angles(0, avatarAngle, 0) * CFrame.new(0, 0.6, 11)).Position, c.Position)
+	end
+end)
+
 ----------------------------------------------------------------------
 -- Opening and closing the window
 ----------------------------------------------------------------------
@@ -874,6 +992,7 @@ local function openWindow()
 		return
 	end
 	win.Visible, dim.Visible = true, true
+	buildAvatar()
 	winScale.Scale = 0.85
 	tween(winScale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back)
 	dim.BackgroundTransparency = 1
