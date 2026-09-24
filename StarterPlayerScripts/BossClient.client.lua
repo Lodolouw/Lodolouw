@@ -1494,7 +1494,7 @@ end
 
 -- (Mireworm's sand tools live in their own block: a Roblox script may only
 -- have 200 names at its top level, so only the ones used elsewhere are shared.)
-local Terrain, newScar, scarHole, scarHeave, carve, closeScar, forgetScar, stepScars, closeAllScars, floorHeightAt
+local Terrain, newScar, scarHole, scarHeave, carve, closeScar, forgetScar, stepScars, closeAllScars, floorHeightAt, warmSand
 do
 	----------------------------------------------------------------------
 	-- The sand floor, torn up (Mireworm's arena)
@@ -1748,6 +1748,22 @@ do
 		end
 	end
 
+	-- Ready the sand before the fight (the worm's warm-up, "rehearse"): look
+	-- through the arena for what stands on the sand now, and dig one small
+	-- hole deep inside the floor and fill it straight back in - out of sight -
+	-- so the fight's first real crater doesn't stall.
+	function warmSand(B)
+		floorInfo = nil
+		local info = arenaFloor(B)
+		if info and Terrain then
+			local deep = info.center - V3(0, 10, 0)
+			pcall(function()
+				Terrain:FillBall(deep, 2, AIR)
+				Terrain:FillBall(deep, 2, SANDMAT)
+			end)
+		end
+	end
+
 	-- the height of the floor at a spot, given the scars (for putting things on
 	-- the sides of a crater or the pit rather than floating over it)
 	function floorHeightAt(pos, floorY)
@@ -1788,15 +1804,9 @@ end
 -- at the same moment.)
 local SEAL_PARTS = { SealStone = true, SealRing = true, SealCoil = true, SealTile = true, SandSwirl = true }
 local function collapseSeal(B, on, instant)
-	if (B.sealDown or false) == on then
-		return
-	end
 	local arena = arenaOf(B)
-	if not arena then
-		return
-	end
-	B.sealDown = on
-	if not B.seal then
+	if arena and (not B.seal or #B.seal == 0) then
+		-- (what caves in, looked up once - the worm's warm-up does it before the fight)
 		B.seal = {}
 		for _, d in ipairs(arena:GetDescendants()) do
 			if d:IsA("BasePart") and SEAL_PARTS[d.Name] then
@@ -1804,6 +1814,10 @@ local function collapseSeal(B, on, instant)
 			end
 		end
 	end
+	if (B.sealDown or false) == on or not arena then
+		return
+	end
+	B.sealDown = on
 	for _, s in ipairs(B.seal) do
 		if s.tween then
 			s.tween:Cancel()
@@ -1905,7 +1919,7 @@ end
 
 -- The sandstorm in the dunes (ArenaAmbience draws it from the arena's Storm
 -- attribute): a breeze while the worm sleeps (0.35), a sandstorm the moment
--- it wakes (0.85), and howling once its armour is gone (1).
+-- it wakes (0.92), and howling once its armour is gone (1).
 local function stepStorm(B, dt)
 	local arena = arenaOf(B)
 	if not arena then
@@ -1914,7 +1928,7 @@ local function stepStorm(B, dt)
 	local state = B.model:GetAttribute("State")
 	local want = 0.35
 	if state == "Waking" or state == "Fighting" or state == "Transition" then
-		want = B.phase2Look and 1 or 0.85
+		want = B.phase2Look and 1 or 0.92
 	end
 	B.storm = B.storm or (arena:GetAttribute("Storm") or 0.35)
 	B.storm = B.storm + (want - B.storm) * math.min(1, dt * 0.6)
@@ -2154,7 +2168,6 @@ function Poses.Break(B, t, P)
 			local k = t / (BT * 0.35)
 			P.lean, P.lift, P.shake, P.flare, P.mouth = -0.4 * smooth(k), 6 * smooth(k), 0.45 * k, k, 0.5 * k
 			P.coreScale = 1 + 0.3 * k
-			P.solid = true
 		else
 			-- the plates blow off and it screams
 			local k = t - BT * 0.35
@@ -2163,7 +2176,6 @@ function Poses.Break(B, t, P)
 			P.mouth = clamp(1 - (k - 0.6) / 0.8, 0, 1)
 			P.flare = clamp(1 - k * 0.6, 0, 1)
 			P.shake = 0.3 * math.max(0, 1 - k)
-			P.solid = true
 		end
 		return
 	end
@@ -3364,10 +3376,8 @@ do
 			P.path = coilPath(c.C, c.r, c.g, c.headUp, c.rise or 1, c.thEnd, smooth(k) * c.g * 3)
 			P.override = c.C
 			P.noPush, P.noShadow = true, true
-			P.solid = B.prevAction == "Wake" and k < 0.5 -- (a coil round YOU you roll out of)
 			return
 		end
-		P.solid = k < 0.5 -- still standing: you can't walk through it
 		if k < 0.3 then
 			local e = smooth(k / 0.3)
 			P.lean, P.lift, P.mouth = -0.3 * e, 3 * e, 0.5 * e
@@ -3394,7 +3404,6 @@ do
 		P.lean = -0.35 * (1 - smooth((t - 0.25) / 0.6))
 		P.lift = 6 * spring(t, 4, 9)
 		P.spill = 32 * clamp(1 - t / 1.2, 0, 1) + 4 -- sand pouring off it
-		P.solid = true -- standing out of the sand: you can't walk through it
 	end
 
 	-- Racing after you under the sand (arching often), then waiting under the heave.
@@ -3440,7 +3449,6 @@ do
 			end
 			P.eyes = last and 0.6 or 1
 			P.spill = 6
-			P.solid = true -- lying in its trench: a wall of worm (go round it)
 		end
 		local BL, H = a.BodyLength, a.Height
 		P.path = function(s)
@@ -3579,7 +3587,7 @@ do
 		P.eyes, P.mouth = 0, 0
 		P.spill = 6 * (1 - up)
 		P.noShadow = true
-		P.solid = up > 0.9
+		P.solid = up > 0.9 -- (not while its coils are still coming up out of the sand)
 	end
 
 	function Poses.Wake(B, t, P)
@@ -3598,19 +3606,24 @@ do
 		end
 		P.spill = 10 * stir + 14 * clamp(rear, 0, 1) * (1 - u) -- sand pouring off its coils
 		P.noShadow = true
-		P.solid = true
 	end
 
-	-- You can't walk through it. Whatever of its body is out of the sand is
-	-- solid: walk into it and you stop at its side, like walking into a wall -
-	-- its neck, its head, its body lying along the sand, its sleeping coils.
-	-- (Not while it's coiled round YOU: that ring you're meant to roll through,
-	-- and BossService throws you back off it. And never up in the air above
-	-- you: you can run under its head.)
+	-- You can't walk through it. Every piece of its body that's out of the
+	-- sand is solid: walk into it - or let it swim into you - and you're
+	-- shoved out to its side, like bumping into a wall. Its back arching out
+	-- as it swims, its coil round you, its neck and head, its body lying in its
+	-- trench, its sleeping coils. (Never up in the air above you: you can run
+	-- under its head.) The one way THROUGH it is a roll: you're untouchable for
+	-- the length of it (the server says the same), and that's how you get out
+	-- of its coil.
 	function pushOutOfWorm(B, hrp, P)
 		local pts, gs = B.lastPoints, B.segGirths
-		if not P.solid or not pts or not gs then
+		if P.solid == false or not pts or not gs then
 			return
+		end
+		local char = hrp.Parent
+		if char and char:FindFirstChild("RollIframes") then
+			return -- mid-roll (CombatClient's glow while you're untouchable)
 		end
 		local pos = hrp.Position
 		local feet, top = pos.Y - 2.6, pos.Y + 2.2
@@ -3810,14 +3823,23 @@ do
 		return B.sinkCenter
 	end
 
+	local rehearse -- (below, with the rest of the warming up)
+
 	-- Every frame, for the worm:
-	--  * the RUMBLE: while it's under the sand and close, heavy thumps shake your
-	--    view - harder and quicker the closer it is (and a low looping "Worm
-	--    Rumble" sound, if you've added one)
+	--  * the warm-up, the moment you arrive in its arena (see rehearse)
+	--  * the RUMBLE: each time the sand bucks round it (BossService's pulses)
+	--    the ring shows how far it reaches, and your view thumps if it's close
+	--    (plus a low looping "Worm Rumble" sound while it's near, if you've added one)
 	--  * the WHIRLPOOL in phase two: the bowl in the middle drags you down
 	--  * the whirlpool's sand spiralling down the sides of the bowl
 	--  * the arena trembling as it passes under things
 	function stepWormSenses(B, dt, here, awake, state)
+		if here and not B.rehearsed then
+			B.rehearsed = true
+			rehearse(B)
+		elseif not here then
+			B.rehearsed = nil -- (and again next time you come)
+		end
 		local hrp = myRoot()
 		local under = B.model:GetAttribute("Submerged") == true
 		-- (Config.Bosses[2].Rumble: Range = how close before you feel it, Shake =
@@ -3953,7 +3975,9 @@ do
 	----------------------------------------------------------------------
 	-- Everything the fights play is fetched well before it's needed, so nothing
 	-- stalls, or plays silent, the first time it happens:
-	--  * every boss sound and song, a few seconds after you join (in the background)
+	--  * every boss sound and song, a couple of seconds after you join (in the
+	--    background), and again as you arrive in the worm's arena
+	--  * the worm's whole fight rehearsed as you arrive (see rehearse below)
 	--  * the particle textures the sand and slime are drawn with
 	--  * the first time you arrive in a Spire arena, every material the fight
 	--    draws with is shown to your screen for a moment, too small to see
@@ -3992,11 +4016,49 @@ do
 			ContentProvider:PreloadAsync(list)
 		end)
 	end
-	task.delay(4, warmSounds)
+	task.delay(2, warmSounds)
+
+	-- THE REHEARSAL: the moment you're in the worm's arena - while it's still
+	-- asleep - everything its fight does for the first time is done now, so
+	-- the fight looks right from its very first move instead of only the
+	-- second time round:
+	--  * the whole sand floor is loaded (the game streams the world in near
+	--    you first: sand further off might not be there yet, and then the worm
+	--    shows through where the sand should hide it and craters can't open)
+	--  * every sound and song it plays
+	--  * everything it looks up in the arena: what stands on the sand, the
+	--    platforms, the seal that caves in, the pit, what trembles
+	--  * one small hole dug and filled deep inside the floor, out of sight, so
+	--    the first real crater doesn't stall
+	--  * the dust of its tremor
+	function rehearse(B)
+		task.spawn(function()
+			local arena = arenaOf(B)
+			local center = arena and arena:GetAttribute("Center")
+			if typeof(center) == "Vector3" then
+				for i = 0, 8 do
+					local a = i / 8 * math.pi * 2
+					local spot = (i == 0) and center or center + V3(math.sin(a) * 110, 0, math.cos(a) * 110)
+					pcall(function()
+						player:RequestStreamAroundAsync(spot, 6)
+					end)
+				end
+			end
+		end)
+		task.spawn(function()
+			warmSounds()
+		end)
+		pcall(warmSand, B)
+		pcall(onStone, B, B.vpos)
+		pcall(sinkCenter, B)
+		pcall(stepTremble, B, nil)
+		pcall(collapseSeal, B, B.sealDown or false) -- (only looks the seal up: changes nothing)
+		pcall(quakeEmitter, B)
+	end
 
 	local WARM_MATERIALS = {
 		Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Slate, Enum.Material.Neon, Enum.Material.SmoothPlastic,
-		Enum.Material.Glass, Enum.Material.Metal, Enum.Material.Fabric, Enum.Material.Wood,
+		Enum.Material.Glass, Enum.Material.Metal, Enum.Material.Fabric, Enum.Material.Wood, Enum.Material.Limestone,
 	}
 	local warmedFloors = {}
 	local function warmMaterials()

@@ -137,7 +137,8 @@ moment the fight starts a sandstorm rolls in.
   torn up), the ring of standing stones round the seal (the worm's lair), five
   platforms that shatter in phase two (tag `DunePlatform`).
 - **Drawing:** `BossClient` - the "MIREWORM: the hunt" section. Its body is
-  solid wherever it's out of the sand (`pushOutOfWorm`). Craters, trenches,
+  solid wherever it's out of the sand, except to a roll (`pushOutOfWorm`), and
+  the whole fight is warmed up the moment you arrive (`rehearse`). Craters, trenches,
   fissures and the phase-two bowl are carved into the Terrain on each player's
   own screen and slide back after `Scars.Last` seconds; hits are always decided
   by the server.

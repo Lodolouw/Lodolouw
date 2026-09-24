@@ -385,26 +385,26 @@ Config.Spire = {
 				Sound = "Sandstorm", -- a looping wind in SoundService, if you add one
 				Volume = 0.3,
 				-- THE SANDSTORM. When the fight starts a wall of sand rolls in across
-				-- the arena, and while it rages everything past a stone's throw
-				-- fades into the dust. It dies down again when the worm does (and
-				-- blows harder still once its armour cracks).
+				-- the arena, and while it rages it's like fog: thick blowing dust
+				-- that swallows everything past a stone's throw. It dies down again
+				-- when the worm does (and blows harder still once its armour cracks).
 				Storm = {
 					Front = true, -- the wall of sand you see rolling in (false: it just thickens)
 					FrontSpeed = 55, -- how fast the wall crosses the arena, studs a second
 					-- the air at the storm's height: Density is how thick (0..1) - the
-					-- higher, the less you can see. At 0.6 you still see the worm
-					-- clearly across half the arena; much past 0.75 and you won't.
+					-- higher, the less you can see. 0.85 is a fog: the worm is clear up
+					-- close and gone into the dust half the arena away. (0.6 = a haze.)
 					Atmosphere = {
-						Density = 0.6,
-						Offset = 0.35,
-						Color = Color3.fromRGB(214, 166, 108),
-						Decay = Color3.fromRGB(168, 110, 64),
+						Density = 0.85,
+						Offset = 0.8,
+						Color = Color3.fromRGB(198, 154, 102),
+						Decay = Color3.fromRGB(150, 100, 60),
 						Glare = 0,
-						Haze = 3,
+						Haze = 6,
 					},
-					Veil = 0.3, -- dust right in front of your eyes (0 = none, 1 = blinding)
-					Tint = Color3.fromRGB(255, 226, 186), -- the light, through the dust
-					Brightness = -0.05, -- a little darker while it blows
+					Veil = 0.45, -- dust right in front of your eyes (0 = none, 1 = blinding)
+					Tint = Color3.fromRGB(255, 222, 180), -- the light, through the dust
+					Brightness = -0.06, -- a little darker while it blows
 					Volume = 0.75, -- the wind, at the storm's height
 				},
 			},

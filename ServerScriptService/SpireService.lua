@@ -193,11 +193,16 @@ local function warmArenas(player)
 			center = ok and cf and cf.Position or nil
 		end
 		if center then
-			-- and the ground round it (terrain isn't part of the model)
+			-- and the ground all round it (terrain isn't part of the model, and a
+			-- sand floor is wide: its middle, then a ring of spots round it)
 			task.spawn(function()
-				pcall(function()
-					player:RequestStreamAroundAsync(center, 10)
-				end)
+				for i = 0, 8 do
+					local a = i / 8 * math.pi * 2
+					local spot = (i == 0) and center or center + Vector3.new(math.sin(a) * 110, 0, math.cos(a) * 110)
+					pcall(function()
+						player:RequestStreamAroundAsync(spot, 10)
+					end)
+				end
 			end)
 		end
 	end

@@ -203,14 +203,17 @@ local function kp(t, v)
 end
 
 local stormBox = invisiblePart("SandstormBox", Vector3.new(120, 36, 120))
+local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds" -- soft puffs (not the default sparkles)
 
 -- fine grains whipping past
 local grains = Instance.new("ParticleEmitter")
 grains.Name = "Grains"
 grains.Texture = "rbxasset://textures/particles/smoke_main.dds"
-grains.LightInfluence = 1
-grains.LightEmission = 0.1
-grains.Size = NumberSequence.new({ kp(0, 0.16), kp(1, 0.26) })
+-- (a little lit from within, so they stay sand-coloured in the gloom instead
+-- of going grey like rain)
+grains.LightInfluence = 0.5
+grains.LightEmission = 0.25
+grains.Size = NumberSequence.new({ kp(0, 0.2), kp(1, 0.34) })
 grains.Transparency = NumberSequence.new({ kp(0, 1), kp(0.15, 0.35), kp(0.8, 0.45), kp(1, 1) })
 grains.Speed = NumberRange.new(40, 56)
 grains.Lifetime = NumberRange.new(1.8, 2.4)
@@ -219,16 +222,12 @@ grains.EmissionDirection = Enum.NormalId.Front
 grains.Shape = Enum.ParticleEmitterShape.Box
 grains.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
 grains.Rate = 0
-pcall(function()
-	-- stretched along the way they fly: streaks, not dots
-	grains.Orientation = Enum.ParticleOrientation.VelocityParallel
-	grains.Squash = NumberSequence.new(1.6)
-end)
 grains.Parent = stormBox
 
 -- big soft clouds of dust rolling through
 local dust = Instance.new("ParticleEmitter")
 dust.Name = "Dust"
+dust.Texture = DUST_TEXTURE
 dust.LightInfluence = 1
 dust.Size = NumberSequence.new({ kp(0, 16), kp(1, 34) })
 dust.Transparency = NumberSequence.new({ kp(0, 1), kp(0.3, 0.86), kp(0.7, 0.88), kp(1, 1) })
@@ -246,9 +245,10 @@ dust.Parent = stormBox
 -- the storm itself: thick sheets of sand tearing past (only in a storm)
 local sheets = Instance.new("ParticleEmitter")
 sheets.Name = "StormSheets"
+sheets.Texture = DUST_TEXTURE
 sheets.LightInfluence = 1
-sheets.Size = NumberSequence.new({ kp(0, 12), kp(1, 26) })
-sheets.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, 0.64), kp(0.75, 0.72), kp(1, 1) })
+sheets.Size = NumberSequence.new({ kp(0, 14), kp(1, 30) })
+sheets.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, 0.5), kp(0.75, 0.6), kp(1, 1) })
 sheets.Speed = NumberRange.new(34, 48)
 sheets.Lifetime = NumberRange.new(2.4, 3.2)
 sheets.RotSpeed = NumberRange.new(-30, 30)
@@ -263,7 +263,7 @@ sheets.Parent = stormBox
 -- how much of each, a second: in a breeze, and at the storm's height
 local GRAINS_CALM, GRAINS_STORM = 110, 520
 local DUST_CALM, DUST_STORM = 3, 9
-local SHEETS_STORM = 26
+local SHEETS_STORM = 40
 
 ----------------------------------------------------------------------
 -- The dust in front of your eyes (only in a storm)
@@ -338,6 +338,7 @@ local function startFront(amb, arena)
 	local c = amb.Sand or Color3.fromRGB(226, 190, 130)
 	local billow = Instance.new("ParticleEmitter")
 	billow.Name = "Billow"
+	billow.Texture = DUST_TEXTURE
 	billow.Color = ColorSequence.new(c:Lerp(Color3.fromRGB(150, 104, 62), 0.3))
 	billow.LightInfluence = 1
 	billow.Size = NumberSequence.new({ kp(0, 26), kp(1, 58) })
@@ -356,7 +357,8 @@ local function startFront(amb, arena)
 	grit.Name = "Grit"
 	grit.Texture = "rbxasset://textures/particles/smoke_main.dds"
 	grit.Color = ColorSequence.new(c)
-	grit.LightInfluence = 1
+	grit.LightInfluence = 0.5
+	grit.LightEmission = 0.25
 	grit.Size = NumberSequence.new({ kp(0, 0.3), kp(1, 0.5) })
 	grit.Transparency = NumberSequence.new({ kp(0, 1), kp(0.15, 0.3), kp(1, 1) })
 	grit.Speed = NumberRange.new(60, 80)

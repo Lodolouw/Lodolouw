@@ -716,19 +716,80 @@ local function standHeight(root)
 	return (hip > 0 and hip or 2) + half
 end
 
--- how far above the floor a player's feet are (negative: down in a crater)
-local function feetAbove(E, root)
-	return root.Position.Y - (E.floorY + standHeight(root))
+-- How each fighter really stands. Avatars - and the newer Roblox character
+-- controllers - hold the body at different heights, so a height worked out
+-- from HipHeight alone can be well off (and then someone standing right on
+-- the sand looked "in the air" to the tremor and the rumble, and was never
+-- hit). So every frame of the fight it watches each player: `rest` is how
+-- high their root actually sits while they stand or walk on the sand, and
+-- `leapAt` is the last moment they shot upward (a jump, or being thrown).
+local function watchFeet(E, t)
+	E.feet = E.feet or setmetatable({}, { __mode = "k" })
+	for _, p in ipairs(fightersIn(E)) do
+		local root = rootOf(p)
+		if root then
+			local f = E.feet[p]
+			if not f then
+				f = { rest = standHeight(root), leapAt = -math.huge }
+				E.feet[p] = f
+			end
+			local vy = root.AssemblyLinearVelocity.Y
+			if vy > 16 then
+				f.leapAt = t
+			end
+			if math.abs(vy) < 0.5 and not stoneUnder(E, root.Position) then
+				local h = root.Position.Y - E.floorY
+				if h > 0.5 and h < 12 then
+					f.rest = f.rest + (h - f.rest) * 0.02
+				end
+			end
+		end
+	end
 end
 
--- Feet on the floor (not jumping). "In the air" = clearly above the floor, or
--- going up or coming down fast - so a jump counts from the moment you leave
--- the ground, and standing in a crater (below the floor) still counts as on
--- it. On stone you're 1.7 studs up, which the callers that care about stone
--- check for themselves.
+local function feetOf(E, root)
+	return E.feet and E.feet[Players:GetPlayerFromCharacter(root.Parent)]
+end
+
+-- how far above the floor a player's feet are (negative: down in a crater)
+local function feetAbove(E, root)
+	local f = feetOf(E, root)
+	return root.Position.Y - (E.floorY + (f and f.rest or standHeight(root)))
+end
+
+-- Feet on the floor (not jumping). "In the air" = going up or coming down
+-- fast, or having jumped a moment ago (so even the top of a jump, where
+-- you're hardly moving, counts) - or clearly up on something, `above` studs
+-- or more. Standing in a crater (below the floor) still counts as on it. On
+-- stone you're 1.7 studs up, which the callers that care about stone check
+-- for themselves.
 local function grounded(E, root, above)
 	local vy = root.AssemblyLinearVelocity.Y
-	return feetAbove(E, root) < (above or 1.2) + 0.4 and vy < 7 and vy > -9
+	if vy > 7 or vy < -12 then
+		return false
+	end
+	local f = feetOf(E, root)
+	if f and now() - f.leapAt < 0.55 then
+		return false
+	end
+	return feetAbove(E, root) < (above or 1.2) + 1.2
+end
+
+-- (Studio only) why someone didn't count as standing on the sand - printed
+-- when a quake misses them, so a test shows exactly what it saw
+local function offSandReason(E, root)
+	if stoneUnder(E, root.Position) then
+		return "standing on stone"
+	end
+	local vy = root.AssemblyLinearVelocity.Y
+	if vy > 7 or vy < -12 then
+		return string.format("in the air (moving %s at %.0f)", vy > 0 and "up" or "down", math.abs(vy))
+	end
+	local f = feetOf(E, root)
+	if f and now() - f.leapAt < 0.55 then
+		return "in the air (just jumped)"
+	end
+	return string.format("up on something, %.1f studs above the sand", feetAbove(E, root))
 end
 
 -- where along a ray from `origin` (flat direction `dir`) it crosses a circle
@@ -1300,6 +1361,8 @@ function WormAttacks.Tremor(E, token)
 			local root = rootOf(p)
 			if root and not stoneUnder(E, root.Position) and grounded(E, root, 1.2) then
 				CombatService.DamagePlayer(p, a.Damage, root.Position, Vector3.new(0, a.Knockback, 0))
+			elseif root and RunService:IsStudio() then
+				print(string.format("[Mireworm] tremor quake %d missed %s: %s", i, p.Name, offSandReason(E, root)))
 			end
 		end
 	end
@@ -1514,6 +1577,7 @@ end
 local function stepWorm(E, dt)
 	local def = E.def
 	local t = now()
+	watchFeet(E, t)
 	listen(E, dt)
 	if E.motion then
 		local m = E.motion
