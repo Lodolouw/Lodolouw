@@ -1,0 +1,643 @@
+--[[
+	Config  (ModuleScript, parent: ReplicatedStorage, name: "Config")
+
+	Every number you would want to tune lives here. The server and the client
+	both read this file, so the shops, HUD and validation always agree.
+]]
+
+local Config = {}
+
+----------------------------------------------------------------------
+-- General
+----------------------------------------------------------------------
+Config.GameName = "Boss Grow" -- working title, rename freely
+Config.BaseHealth = 100
+Config.BaseWalkSpeed = 16
+Config.BaseCapacity = 20 -- backpack slots before upgrades
+Config.RequireProximity = true -- shops only work when you stand near them
+Config.StationRange = 34 -- studs
+Config.MaxPrestige = 100
+Config.TalismanSlots = 3
+
+-- Where the shops stand. Used by the lobby builder AND by server range checks.
+Config.Stations = {
+	Sell = Vector3.new(-60, 0, -30),
+	Upgrades = Vector3.new(60, 0, -30),
+	Craft = Vector3.new(0, 0, -62),
+	Prestige = Vector3.new(0, 0, 0),
+}
+
+----------------------------------------------------------------------
+-- Training yard (the "treadmill": practice dummies with multipliers)
+----------------------------------------------------------------------
+Config.BaseTrainGain = 1 -- the "+1" per hit before any multiplier
+Config.TrainClientInterval = 0.18 -- seconds between clicks the client sends
+Config.TrainMinInterval = 0.12 -- server rejects hits faster than this
+Config.AutoInterval = 1 -- seconds between auto-train hits
+
+-- Combo: keep hitting the same dummy (manually - auto-train doesn't count)
+-- without pausing longer than ComboWindow and your Power gain is multiplied.
+-- Each tier kicks in once your combo reaches `hits`.
+Config.ComboWindow = 1.1 -- seconds you can pause before the combo breaks
+Config.ComboTiers = {
+	{ hits = 10, mult = 1.1 },
+	{ hits = 25, mult = 1.25 },
+	{ hits = 50, mult = 1.5 },
+	{ hits = 100, mult = 2 },
+}
+
+function Config.comboMult(count)
+	local mult = 1
+	for _, tier in ipairs(Config.ComboTiers) do
+		if count >= tier.hits then
+			mult = tier.mult
+		end
+	end
+	return mult
+end
+
+Config.Yard = {
+	CenterZ = 75, -- z position of the row of pads
+	Spacing = 32, -- distance between pad centres
+	PadSize = 24, -- pad is PadSize x PadSize studs
+}
+
+----------------------------------------------------------------------
+-- Levels. Your level IS your Power: it's worked out from your total
+-- Power, so it goes up as you train and back down when you prestige
+-- (prestige resets Power). Each level needs LevelGrowth times more Power
+-- than the one before.
+----------------------------------------------------------------------
+Config.LevelBase = 20 -- Power needed to go from level 1 to level 2
+Config.LevelGrowth = 1.25 -- each next level costs this much more
+
+-- Total Power you need to reach `level`
+function Config.powerForLevel(level)
+	if level <= 1 then
+		return 0
+	end
+	local g = Config.LevelGrowth
+	return math.floor(Config.LevelBase * (g ^ (level - 1) - 1) / (g - 1))
+end
+
+-- Your level for a given total Power
+function Config.levelFromPower(power)
+	power = math.max(power or 0, 0)
+	local g = Config.LevelGrowth
+	local level = math.floor(math.log(power * (g - 1) / Config.LevelBase + 1) / math.log(g)) + 1
+	level = math.max(1, level)
+	-- fix any rounding at the exact boundaries
+	while Config.powerForLevel(level + 1) <= power do
+		level = level + 1
+	end
+	while level > 1 and Config.powerForLevel(level) > power do
+		level = level - 1
+	end
+	return level
+end
+
+-- mult = Power multiplier for this dummy, level = level needed to use it.
+-- (req, the Power that level needs, is filled in automatically below.)
+Config.Zones = {
+	{ id = "Straw", name = "Straw Dummy", mult = 1, level = 1, color = Color3.fromRGB(214, 168, 96) },
+	{ id = "Iron", name = "Iron Dummy", mult = 1.5, level = 5, color = Color3.fromRGB(150, 190, 235) },
+	{ id = "Frost", name = "Frost Dummy", mult = 3, level = 12, color = Color3.fromRGB(110, 225, 255) },
+	{ id = "Ember", name = "Ember Dummy", mult = 5, level = 20, color = Color3.fromRGB(255, 120, 45) },
+	{ id = "Void", name = "Void Dummy", mult = 8, level = 30, color = Color3.fromRGB(175, 95, 255) },
+	{ id = "Celestial", name = "Celestial Dummy", mult = 10, level = 45, color = Color3.fromRGB(255, 215, 70) },
+}
+for _, zone in ipairs(Config.Zones) do
+	zone.req = Config.powerForLevel(zone.level)
+end
+
+-- World position of the centre of pad number `index`
+function Config.zonePosition(index)
+	local n = #Config.Zones
+	local x = (index - (n + 1) / 2) * Config.Yard.Spacing
+	return Vector3.new(x, 0, Config.Yard.CenterZ)
+end
+
+----------------------------------------------------------------------
+-- Loot materials (dropped by bosses later, sold or used for crafting)
+----------------------------------------------------------------------
+Config.Materials = {
+	{ id = "Scrap", name = "Scrap Metal", color = Color3.fromRGB(170, 176, 190), sell = 5 },
+	{ id = "Shard", name = "Shadow Shard", color = Color3.fromRGB(150, 90, 255), sell = 25 },
+	{ id = "Ember", name = "Ember Core", color = Color3.fromRGB(255, 125, 40), sell = 120 },
+	{ id = "Void", name = "Void Crystal", color = Color3.fromRGB(60, 220, 255), sell = 600 },
+}
+
+----------------------------------------------------------------------
+-- Upgrades (bought with coins at the Upgrade Shop)
+----------------------------------------------------------------------
+Config.Upgrades = {
+	{
+		id = "Backpack", name = "Bigger Backpack", icon = "🎒", color = Color3.fromRGB(70, 170, 110),
+		desc = "+5 backpack slots per level",
+		perLevel = 5, maxLevel = 40, baseCost = 100, growth = 1.55,
+		effect = function(level) return "+" .. (level * 5) .. " slots" end,
+	},
+	{
+		id = "PowerGain", name = "Training Gloves", icon = "🥊", color = Color3.fromRGB(230, 80, 90),
+		desc = "+10% Power per hit per level",
+		perLevel = 0.10, maxLevel = 50, baseCost = 150, growth = 1.6,
+		effect = function(level) return "+" .. (level * 10) .. "% Power" end,
+	},
+	{
+		id = "SellValue", name = "Silver Tongue", icon = "💰", color = Color3.fromRGB(230, 180, 50),
+		desc = "+8% coins from selling per level",
+		perLevel = 0.08, maxLevel = 50, baseCost = 200, growth = 1.6,
+		effect = function(level) return "+" .. (level * 8) .. "% coins" end,
+	},
+	{
+		id = "WalkSpeed", name = "Swift Boots", icon = "👟", color = Color3.fromRGB(70, 150, 240),
+		desc = "+1 walk speed per level",
+		-- Raised from 15: at the old cap (16+15=31 studs/sec) it was a bit low
+		-- to clearly see the run animation blend in. Cost still grows the
+		-- same way per level, so this doesn't make it free - just reachable.
+		perLevel = 1, maxLevel = 40, baseCost = 300, growth = 1.7,
+		effect = function(level) return "+" .. level .. " speed" end,
+	},
+}
+
+function Config.upgradeCost(def, level)
+	return math.floor(def.baseCost * def.growth ^ level)
+end
+
+----------------------------------------------------------------------
+-- Talismans (crafted at the workbench, equipped in limited slots)
+-- bonus kinds: PowerGain, SellValue, MaxHealth, WalkSpeed, Capacity
+----------------------------------------------------------------------
+Config.Talismans = {
+	{
+		id = "Might", name = "Talisman of Might", icon = "💪", color = Color3.fromRGB(230, 80, 90),
+		bonus = "PowerGain", value = 0.15, desc = "+15% Power gain",
+		cost = { coins = 200, materials = { Scrap = 10 } },
+	},
+	{
+		id = "Fortune", name = "Talisman of Fortune", icon = "🍀", color = Color3.fromRGB(70, 190, 100),
+		bonus = "SellValue", value = 0.20, desc = "+20% coins from selling",
+		cost = { coins = 400, materials = { Scrap = 15, Shard = 3 } },
+	},
+	{
+		id = "Vigor", name = "Talisman of Vigor", icon = "❤️", color = Color3.fromRGB(240, 100, 140),
+		bonus = "MaxHealth", value = 0.25, desc = "+25% max health",
+		cost = { coins = 600, materials = { Scrap = 20, Shard = 5 } },
+	},
+	{
+		id = "Haste", name = "Talisman of Haste", icon = "⚡", color = Color3.fromRGB(250, 210, 60),
+		bonus = "WalkSpeed", value = 0.10, desc = "+10% walk speed",
+		cost = { coins = 800, materials = { Shard = 8 } },
+	},
+	{
+		id = "Greed", name = "Talisman of Greed", icon = "🧿", color = Color3.fromRGB(80, 170, 255),
+		bonus = "Capacity", value = 0.25, desc = "+25% backpack space",
+		cost = { coins = 1500, materials = { Shard = 10, Ember = 2 } },
+	},
+	{
+		id = "Titan", name = "Titan's Talisman", icon = "👑", color = Color3.fromRGB(255, 190, 50),
+		bonus = "PowerGain", value = 0.40, desc = "+40% Power gain",
+		cost = { coins = 5000, materials = { Ember = 6, Void = 2 } },
+	},
+}
+
+----------------------------------------------------------------------
+-- Prestige
+----------------------------------------------------------------------
+function Config.prestigeRequirement(prestige)
+	return 50000 * 4 ^ prestige
+end
+
+function Config.prestigePowerMult(prestige)
+	return 1 + 0.5 * prestige
+end
+
+function Config.prestigeCoinMult(prestige)
+	return 1 + 0.25 * prestige
+end
+
+----------------------------------------------------------------------
+-- Lookup tables
+----------------------------------------------------------------------
+Config.MaterialById = {}
+for _, m in ipairs(Config.Materials) do
+	Config.MaterialById[m.id] = m
+end
+
+Config.UpgradeById = {}
+for _, u in ipairs(Config.Upgrades) do
+	Config.UpgradeById[u.id] = u
+end
+
+Config.TalismanById = {}
+for _, t in ipairs(Config.Talismans) do
+	Config.TalismanById[t.id] = t
+end
+
+----------------------------------------------------------------------
+-- Derived stats (shared so the HUD and the server always agree)
+----------------------------------------------------------------------
+function Config.talismanBonus(data, kind)
+	local total = 0
+	for id, on in pairs(data.Equipped or {}) do
+		local t = Config.TalismanById[id]
+		if on and t and t.bonus == kind then
+			total = total + t.value
+		end
+	end
+	return total
+end
+
+function Config.equippedCount(data)
+	local n = 0
+	for _, on in pairs(data.Equipped or {}) do
+		if on then
+			n = n + 1
+		end
+	end
+	return n
+end
+
+function Config.lootCount(data)
+	local n = 0
+	for _, count in pairs(data.Loot or {}) do
+		n = n + count
+	end
+	return n
+end
+
+-- How fast a player moves: their full speed in the lobby, capped inside a Spire
+-- arena. Every place that sets walk speed asks this, so the two can't disagree.
+function Config.walkSpeedFor(player, d)
+	local speed = d and Config.stats(d).walkSpeed or Config.BaseWalkSpeed
+	if player and player:GetAttribute("SpireFloor") then
+		speed = math.min(speed, (Config.Combat and Config.Combat.ArenaWalkSpeed) or speed)
+	end
+	return speed
+end
+
+function Config.stats(d)
+	local up = d.Upgrades or {}
+	local prestige = d.Prestige or 0
+	local U = Config.UpgradeById
+
+	local powerMult = (1 + U.PowerGain.perLevel * (up.PowerGain or 0))
+		* (1 + Config.talismanBonus(d, "PowerGain"))
+		* Config.prestigePowerMult(prestige)
+
+	local coinMult = (1 + U.SellValue.perLevel * (up.SellValue or 0))
+		* (1 + Config.talismanBonus(d, "SellValue"))
+		* Config.prestigeCoinMult(prestige)
+
+	local capacity = math.floor(
+		(Config.BaseCapacity + U.Backpack.perLevel * (up.Backpack or 0)) * (1 + Config.talismanBonus(d, "Capacity"))
+	)
+
+	local walkSpeed = (Config.BaseWalkSpeed + U.WalkSpeed.perLevel * (up.WalkSpeed or 0))
+		* (1 + Config.talismanBonus(d, "WalkSpeed"))
+
+	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")))
+
+	return {
+		powerMult = powerMult,
+		coinMult = coinMult,
+		capacity = capacity,
+		walkSpeed = walkSpeed,
+		maxHealth = maxHealth,
+	}
+end
+
+----------------------------------------------------------------------
+-- Number formatting
+----------------------------------------------------------------------
+local SUFFIXES = { "", "K", "M", "B", "T", "Qa", "Qi" }
+
+function Config.format(n)
+	n = math.floor(n or 0)
+	if n < 1000 then
+		return tostring(n)
+	end
+	local i = 1
+	local v = n
+	while v >= 1000 and i < #SUFFIXES do
+		v = v / 1000
+		i = i + 1
+	end
+	return tostring(math.floor(v * 100) / 100) .. SUFFIXES[i]
+end
+
+-- Small gains keep one decimal so x1.5 hits read nicely
+function Config.formatGain(g)
+	if g >= 100 then
+		return Config.format(g)
+	end
+	return tostring(math.floor(g * 10 + 0.5) / 10)
+end
+
+function Config.formatMult(m)
+	return tostring(math.floor(m * 100 + 0.5) / 100)
+end
+
+----------------------------------------------------------------------
+-- The Spire (boss floors). Only floor 1's arena exists so far; the rest
+-- show as locked in the Spire menu.
+----------------------------------------------------------------------
+Config.Spire = {
+	EnterRange = 38, -- how close to the Spire's doors you must be to enter
+	-- each floor opens once you've beaten the boss on the floor below it
+	-- (in Studio every open floor is free to enter, so you can test them)
+	RequirePrevious = true,
+	Floors = {
+		{
+			id = 1,
+			boss = "Gloomgut, the Hollow Ooze",
+			area = "Gloomgut's Hollow",
+			level = 15, -- recommended level
+			blurb = "A bloated slime king rules the drowned colosseum beneath the Spire. It is slow to anger, and slower to die.",
+			color = Color3.fromRGB(120, 230, 90),
+			open = true,
+		},
+		{
+			id = 2,
+			boss = "Mireworm, the Devourer Beneath",
+			area = "The Sunken Dunes",
+			level = 30,
+			blurb = "An arena the desert swallowed whole. Something vast swims beneath the sand - watch the ground, not the sky.",
+			color = Color3.fromRGB(236, 186, 98),
+			open = true,
+			-- how the arena looks and sounds on your screen while you're in it
+			-- (ArenaAmbience puts the lobby's look back when you leave)
+			ambience = {
+				ClockTime = 16.8, -- a low golden sun
+				Atmosphere = {
+					Density = 0.36,
+					Offset = 0.12,
+					Color = Color3.fromRGB(240, 202, 148),
+					Decay = Color3.fromRGB(204, 132, 76),
+					Glare = 0.4,
+					Haze = 1.8,
+				},
+				Tint = Color3.fromRGB(255, 238, 212),
+				Saturation = 0.06,
+				Contrast = 0.05,
+				Sand = Color3.fromRGB(226, 190, 130), -- the blowing sand
+				Wind = Vector3.new(1, 0, 0.35), -- the way it blows
+				Sound = "Sandstorm", -- a looping wind in SoundService, if you add one
+				Volume = 0.3,
+			},
+		},
+		{ id = 3, boss = "???", area = "???", level = 45, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
+	},
+}
+
+-- The bosses of the Spire, by floor. Every number that shapes a fight is here.
+--
+-- Times are in seconds, distances in studs, damage against a player's 100
+-- health. A "tell" is how long an attack winds up before it lands: your dodge
+-- roll makes you untouchable for 0.5s, so every tell is longer than that - the
+-- fight is hard, but nothing in it is unfair.
+-- The acid rain that falls while you fight a boss. Subtle on purpose: raise
+-- Rate for a downpour, Tint for a greener world. Drop a looping Sound named
+-- "Acid Rain" into SoundService and it plays under the rain.
+Config.AcidRain = {
+	Color = Color3.fromRGB(150, 255, 110),
+	Rate = 900, -- drops a second, in the patch of sky around you
+	Splashes = 160, -- little splashes on the floor around you, a second
+	Tint = 0.2, -- how green it turns the world (0 = not at all, 1 = very)
+	Sound = "Acid Rain",
+	Volume = 0.25,
+}
+
+-- the lobby's music: the name of a Sound in SoundService
+Config.LobbyMusic = "Dreaming in the city"
+
+-- The mix. Every sound in the game goes through one of three groups, so if an
+-- asset turns out louder or quieter than expected, one number fixes the lot.
+-- The levels are set against each other: the fight on top, music underneath
+-- it, menu chimes quietest of all - you should always hear a punch land over
+-- the song, and a coin ding should never drown out the room.
+Config.Audio = {
+	Music = 1, -- every song
+	Effects = 1, -- punches, the boss, the world
+	UI = 0.8, -- coins, buttons, level-ups, menus
+
+	LobbyMusic = 0.25, -- background: easy to talk over
+	BossMusic = 0.42, -- louder than the lobby: the fight should feel bigger
+	Hits = 0.7, -- your punches landing, loudest thing you hear
+	BossSounds = 0.85, -- the boss's own slams, roars and splats
+	Victory = 0.6, -- the sting when it falls
+}
+
+Config.Bosses = {
+	[1] = {
+		Name = "Gloomgut, the Hollow Ooze",
+		Short = "Gloomgut",
+		Color = Color3.fromRGB(105, 210, 70), -- the slime
+		DeepColor = Color3.fromRGB(46, 120, 40), -- deeper in the body
+		CoreColor = Color3.fromRGB(26, 38, 22), -- the hollow thing inside
+		EyeColor = Color3.fromRGB(236, 255, 170),
+
+		-- How tough it is. Health is counted in punches from a player at exactly
+		-- the floor's recommended level, so the fight is the same length for them
+		-- whatever the numbers are. Stronger players cut it down faster, up to 3x.
+		HealthPunches = 30, -- the first boss: long enough to learn, short enough to hook
+		PartyScale = 0.6, -- +60% health for each extra player when the fight starts
+		StudioFairFight = true, -- in Studio, your punches hit as if you were exactly the
+		-- recommended level, so testing feels like the real fight even when you're strong
+
+		Size = 20, -- how wide the body is (about four times your height standing up)
+		WakeRange = 44, -- walk this close to the pit and it rises
+		WakeTime = 2.6, -- rising out of the pool (it can't be hurt while it does)
+		WakeSoundLead = 0.5, -- the roar's sound starts this much before the roar
+		Leash = 95, -- it never strays further than this from the middle of the arena
+		MoveSpeed = { 24, 32 }, -- surging after you between attacks, per phase (you walk 16, more with Swift Boots)
+		TurnSpeed = { 320, 460 }, -- degrees a second while it lines up, per phase
+		Breather = { { 0.25, 0.5 }, { 0.12, 0.35 } }, -- the pause between attacks, per phase
+
+		PhaseAt = 0.5, -- the shell breaks at half health
+		BreakTime = 2.5, -- the break itself, untouchable
+		BreakShove = 58, -- how hard the break throws everyone back
+		BreakReach = 40,
+		Phase2Recovery = 0.75, -- phase two recovers 25% faster from everything
+		DesperateAt = 0.15, -- below this it gets desperate...
+		DesperateRecovery = 0.62, -- ...and recovers faster again
+
+		Attacks = {
+			-- rears up, wobbles, drops its whole bulk on you
+			Slam = { Tell = 0.62, Damage = 22, Radius = 22, Recovery = 0.8, Knockback = 50, Rise = 8, Phase = 1, Range = { 0, 24 }, Weight = 5 },
+			-- flattens and pushes a wall of slime outward: roll through it or jump it
+			Wave = { Tell = 0.7, Damage = 18, Speed = 46, Reach = 80, Thickness = 5, Height = 4.2, Recovery = 0.75, Knockback = 40, Phase = 1, Range = { 8, 48 }, Weight = 4 },
+			-- roots itself and hoses the floor around you with a barrage of globs;
+			-- each leaves a burning puddle, so the arena fills up with them
+			Spit = { Tell = 0.55, Damage = 11, Globs = 14, Gap = 0.09, Flight = 0.85, Spread = 16, Radius = 5, Puddle = 5, PuddleTime = 4.5, PuddleDamage = 2, PuddleTick = 0.5, Recovery = 0.9, Phase = 1, Range = { 12, 90 }, Weight = 4 },
+			-- only at range: leans back and hurls itself at you
+			Lunge = { Tell = 0.62, Damage = 25, Speed = 110, MaxDistance = 70, Knockback = 66, Splash = 17, Recovery = 0.95, Phase = 1, Range = { 20, 200 }, Weight = 7 },
+			-- phase two: three slams in a row, hopping after you, each tighter than the last
+			TripleSlam = { Tell = 0.6, Gap = 0.45, Damage = 20, Radii = { 20, 18, 16 }, Hop = 9, Rise = 7, Recovery = 1.0, Knockback = 44, Phase = 2, Range = { 0, 28 }, Weight = 4 },
+			-- pillars of slime burst up under your feet, one after another: keep moving
+			Wail = { Tell = 0.6, Rings = 5, Gap = 0.38, Fuse = 1.05, Radius = 11, Geyser = 30, Damage = 24, Recovery = 0.9, Knockback = 38, Phase = 1, Range = { 0, 200 }, Weight = 3 },
+		},
+
+		-- What a kill is worth, in multiples of the floor's recommended power.
+		Reward = { Power = 1.5, FirstClear = 4 },
+
+		-- the fight's music: the name of a Sound in SoundService
+		Music = "Boss",
+		-- played over the banner when it dies
+		VictorySound = "Victory Is Ours (a) Sting",
+
+		-- Sound ids for the fight. Blank ones play nothing rather than erroring.
+		-- The fight's sounds: names of Sounds in SoundService (capitals and spaces
+		-- don't matter). Left blank, each one looks for "Boss <name>".
+		Sounds = { Wake = "Boss Wake", Slam = "Boss Slam", Wave = "Boss Wave", Spit = "Boss Spit", Splat = "Boss Splat",
+			Lunge = "Boss Lunge", Wail = "Boss Wail", Erupt = "Boss Erupt", Break = "Boss Break", Death = "Boss Death" },
+	},
+
+	[2] = {
+		Name = "Mireworm, the Devourer Beneath",
+		Short = "Mireworm",
+		-- BossClient builds a segmented worm instead of the slime for anything
+		-- with Body = "Worm" - everything else about it (health, phases, the
+		-- attacks below) works exactly like Gloomgut's, on the same engine.
+		Body = "Worm",
+		Color = Color3.fromRGB(178, 134, 74), -- its sand-crusted hide
+		DeepColor = Color3.fromRGB(94, 64, 36), -- its underside, in shadow
+		CoreColor = Color3.fromRGB(40, 26, 18), -- the dark of its throat
+		EyeColor = Color3.fromRGB(255, 214, 90), -- small and many, amber
+		HeartColor = Color3.fromRGB(255, 90, 40), -- the molten glow behind its armor
+
+		-- The second boss: a little longer than Gloomgut, and it hits harder,
+		-- but the same "punches at your recommended power" fairness applies.
+		HealthPunches = 34,
+		PartyScale = 0.62,
+		StudioFairFight = true,
+
+		Size = 30, -- a vast creature - half again as wide as Gloomgut
+		WakeRange = 55,
+		WakeTime = 3.2, -- it has further to come, from properly underground
+		WakeSoundLead = 0.6,
+		Leash = 130, -- keeps it inside the SandRadius DunesBuilder marked out for it
+		MoveSpeed = { 18, 27 }, -- a heavy surface crawl - it prefers to travel unseen
+		TurnSpeed = { 260, 380 },
+		Breather = { { 0.3, 0.55 }, { 0.15, 0.4 } },
+
+		PhaseAt = 0.5, -- its armor cracks at half health, and the seal caves in
+		BreakTime = 3.0,
+		BreakShove = 70,
+		BreakReach = 55,
+		Phase2Recovery = 0.72,
+		DesperateAt = 0.15,
+		DesperateRecovery = 0.6,
+
+		Attacks = {
+			-- rears its head out of the sand and crashes down where it stands
+			Slam = { Tell = 0.68, Damage = 26, Radius = 28, Recovery = 0.85, Knockback = 58, Rise = 10, Phase = 1, Range = { 0, 26 }, Weight = 5 },
+			-- a ridge of sand rips outward from it in a ring - roll through it or clear it
+			Wave = { Tell = 0.75, Damage = 20, Speed = 42, Reach = 90, Thickness = 6, Height = 3.6, Recovery = 0.8, Knockback = 46, Phase = 1, Range = { 10, 55 }, Weight = 4 },
+			-- roots and hurls clods of hardened sand: each one leaves a patch of
+			-- churning quicksand that grinds at anyone standing in it
+			Spit = { Tell = 0.6, Damage = 13, Globs = 12, Gap = 0.1, Flight = 0.95, Spread = 18, Radius = 6, Puddle = 6, PuddleTime = 5, PuddleDamage = 2, PuddleTick = 0.55, Recovery = 1.0, Phase = 1, Range = { 14, 110 }, Weight = 4 },
+			-- its signature move: dives under the sand, unseen but for a
+			-- ridge cutting toward you, and erupts wherever you were standing
+			Lunge = { Tell = 0.7, Damage = 30, Speed = 100, MaxDistance = 90, Knockback = 74, Splash = 20, Recovery = 1.05, Phase = 1, Range = { 30, 220 }, Weight = 7 },
+			-- phase two: three surges in a row, closing in between each
+			TripleSlam = { Tell = 0.65, Gap = 0.5, Damage = 24, Radii = { 26, 23, 20 }, Hop = 10, Rise = 9, Recovery = 1.05, Knockback = 50, Phase = 2, Range = { 0, 30 }, Weight = 4 },
+			-- geysers of sand erupt under the party, one after another - the
+			-- Maelstrom; standing still (or stopping to drink) gets you hit
+			Wail = { Tell = 0.6, Rings = 6, Gap = 0.4, Fuse = 1.15, Radius = 13, Geyser = 36, Damage = 26, Recovery = 0.95, Phase = 1, Range = { 0, 200 }, Weight = 3, Knockback = 42 },
+		},
+
+		Reward = { Power = 2.0, FirstClear = 5 },
+
+		-- the fight's music: a Sound named "Worm Music" in SoundService. Until
+		-- you add one, it plays Gloomgut's ("Boss") instead of nothing.
+		Music = "Worm Music",
+		VictorySound = "Victory Is Ours (a) Sting",
+		-- no acid rain here: the sandstorm (ArenaAmbience) picks up as it fights
+		Weather = "Sandstorm",
+
+		-- Its sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet fall back to Gloomgut's ("Boss Slam"...).
+		Sounds = { Wake = "Worm Rise", Slam = "Worm Slam", Wave = "Worm Sweep", Spit = "Worm Spit", Splat = "Worm Splat",
+			Lunge = "Worm Charge", Wail = "Worm Wail", Erupt = "Worm Erupt", Break = "Worm Crack", Death = "Worm Death" },
+	},
+}
+
+
+----------------------------------------------------------------------
+-- Combat in the Spire (Souls style: stamina, dodge roll, flasks)
+----------------------------------------------------------------------
+Config.Combat = {
+	MaxStamina = 100,
+	StaminaRegen = 34, -- per second
+	StaminaRegenDelay = 0.8, -- seconds after spending before it refills
+	PunchCost = 8,
+	PunchInterval = 0.42, -- fastest you can punch (seconds)
+	PunchLock = 0.42, -- each punch commits you: you can't move or punch again for this long
+	PunchRollCancel = 0.25, -- ...but after this much of it you can roll out of the punch
+	PunchRange = 8,
+	PunchContact = 0.45, -- how far into a swing the fist actually lands (share of
+	-- PunchLock). Damage, the camera and the sound all happen at this moment, and
+	-- it is also where tracking stops and you are committed. -- studs from you to the enemy's surface
+	RollCost = 24,
+	JumpCost = 14, -- jumping in an arena costs stamina too; below this you can't jump
+	RollCooldown = 0.55,
+	RollInvincible = 0.5, -- seconds of invincibility from the moment you roll
+	-- The roll takes about 0.46s in all (the hop, the dash through the air and
+	-- the landing), so half a second covers you from the floor and back again.
+	RollSpeed = 62, -- studs/second
+	RollTime = 0.28, -- how long the dash lasts
+	Flasks = 3, -- healing flasks per trip into the arena
+	FlaskHeal = 0.45, -- heals this share of your max health
+	FlaskDrinkTime = 0.9, -- seconds to drink (you're slowed and can't attack)
+	FlaskWalkSpeed = 6,
+	-- Your own sounds: names of Sounds in SoundService (capitals and spaces don't
+	-- matter) and how loud each plays. Getting hurt is the one you must never miss.
+	PlayerSounds = {
+		Roll = { Name = "Roll", Volume = 0.5 },
+		Hurt = { Name = "Hurt 8-Bit", Volume = 0.75 },
+		Drink = { Name = "Drinking Potion", Volume = 0.6 },
+		Death = { Name = "8bit death sound", Volume = 0.85 },
+	},
+	ArenaWalkSpeed = 24, -- the fastest anyone moves inside a Spire arena, however good their boots:
+	-- a boss can only press you if you can't simply outrun it (the lobby is unaffected)
+	-- your punch damage = the floor's recommended Power, times
+	-- (your Power / recommended Power) ^ DamageCurve, kept between Min and Max
+	DamageCurve = 0.5,
+	DamageMin = 0.35,
+	DamageMax = 3,
+	PracticeHits = 25,
+
+	-- A punch string, the Elden Ring idea kept simple: three swings that each
+	-- carry you a bit further, the last one leaving you open for longer. A press
+	-- near the end of a swing is remembered instead of dropped, and you only turn
+	-- toward your target during a swing's wind-up - after that you're committed.
+	-- The weight of a punch: what the world, the camera and your ears do when one
+	-- lands. None of it touches damage. Paste sound ids in below (leave them blank
+	-- and nothing plays rather than erroring).
+	Impact = {
+		World = false, -- the shockwave ring, air burst, dust and fist streaks.
+		-- Off for now: only the camera reacts to a hit. Set true to bring them back.
+		Ring = 13, -- how wide the shockwave ring opens, in studs
+		Time = 0.2, -- and how fast: fast and gone reads as force, slow reads as magic
+		Color = Color3.fromRGB(235, 245, 255),
+		Shake = 1.1, -- how hard the camera is knocked about
+		Fov = 4, -- degrees the view punches inward on a hit
+		Stop = 0.09, -- the beat of slow motion on a finisher
+		HitSounds = { "Punch 1", "Punch 2", "Punch 3", "Punch 4" }, -- Sounds in SoundService, one per landed hit
+		Sounds = {
+			Whoosh = "", -- the swing going through the air (played the moment you punch)
+			Thump = "", -- the low body hit
+			Crack = "", -- the sharp crack on top of it
+		},
+	},
+
+	Combo = {
+		Window = 0.85, -- punch again within this of the last one to continue the string
+		Steps = { 1, 1.3, 1.7 }, -- how far each swing carries you (x the base step)
+		Recovery = { 1, 1, 1.6 }, -- how long each swing leaves you committed (x PunchLock)
+		Buffer = 0.3, -- a press this close to the end of a swing is queued, not lost
+	}, -- the practice slime takes about this many hits at the recommended level
+}
+
+return Config
