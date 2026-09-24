@@ -895,10 +895,7 @@ local function dressLobby(lobby)
 			end
 		end
 	end
-	if D.Shrine ~= false and lobby:FindFirstChild("PrestigeShrine") then
-		local at = (Config.Stations and Config.Stations.Prestige) or V3()
-		sparks(at, 9, 3, 18, { RGB(254, 231, 97), RGB(246, 117, 122), RGB(255, 255, 255) }, 10, 0.4)
-	end
+	-- (the shrine and its sparks are gone: the plaza is plain paving)
 	local center = V3(0, 0, -10)
 	makeClouds(center)
 	makeBirds(center)
