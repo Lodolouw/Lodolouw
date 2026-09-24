@@ -5060,6 +5060,20 @@ local LOBBY_MUSIC = Config.LobbyMusic or "Dreaming in the city"
 if type(LOBBY_MUSIC) == "string" then
 	LOBBY_MUSIC = { LOBBY_MUSIC }
 end
+-- (shuffled: a different order every time you join; after the last song
+-- it shuffles again, never starting on the song that just played)
+local function shuffle(list, notFirst)
+	local out = table.clone(list)
+	for i = #out, 2, -1 do
+		local j = math.random(i)
+		out[i], out[j] = out[j], out[i]
+	end
+	if notFirst and #out > 1 and out[1] == notFirst then
+		out[1], out[#out] = out[#out], out[1]
+	end
+	return out
+end
+LOBBY_MUSIC = shuffle(LOBBY_MUSIC)
 local lobbyMusic, lobbyLevel, lobbyVolume = nil, 0, 0.15
 local lobbyTrack = 0
 
@@ -5070,7 +5084,11 @@ local function nextLobbySong()
 		lobbyMusic = nil
 	end
 	for _ = 1, #LOBBY_MUSIC do
-		lobbyTrack = lobbyTrack % #LOBBY_MUSIC + 1
+		if lobbyTrack >= #LOBBY_MUSIC then
+			LOBBY_MUSIC = shuffle(LOBBY_MUSIC, LOBBY_MUSIC[#LOBBY_MUSIC])
+			lobbyTrack = 0
+		end
+		lobbyTrack = lobbyTrack + 1
 		local template = SoundService:FindFirstChild(LOBBY_MUSIC[lobbyTrack])
 		if template and template:IsA("Sound") then
 			lobbyVolume = (Config.Audio and Config.Audio.LobbyMusic) or 0.25
