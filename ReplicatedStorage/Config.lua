@@ -559,7 +559,7 @@ Config.Bosses = {
 			SwimSpeed = { 30, 38 }, -- per phase (nobody runs faster than 24 in here)
 			Time = { { 1.4, 2.4 }, { 0.9, 1.7 } }, -- how long it stalks before it strikes, per phase
 			StrikeRange = 26, -- it strikes sooner once it's this close to its quarry
-			DiveTime = 0.8, -- going back under after it's been out
+			DiveTime = 0.95, -- going back under after it's been out (it arches over and plunges in ahead)
 			NoiseFade = 2.5, -- seconds a noise takes to fade (bigger = it remembers you longer)
 			StoneNoise = 0.25, -- moving on stone is this much as loud as on sand
 		},
@@ -613,9 +613,10 @@ Config.Bosses = {
 			-- drags you toward its middle, then its maw bursts up out of it. Roll
 			-- (you can't be dragged in the air) or get on stone.
 			Devour = { Tell = 1.5, Radius = 18, Depth = 6, Pull = { 6, 12 }, Bite = 10, Damage = 36, Knockback = 50, Exposed = 1.6, Phase = 1, Weight = 4, Sand = true },
-			-- TAIL LASH: its tail rips up out of the sand BEHIND you and sweeps
-			-- round in a wide arc - and in phase two, straight back again (Sweeps).
-			-- Roll through it, jump it, or be out of reach.
+			-- TAIL LASH: its tail rips up out of the sand BEHIND you and whips
+			-- round in a wide arc, low over the sand - the tip trailing behind and
+			-- cracking round at the end, like a whip - and in phase two, straight
+			-- back again (Sweeps). Roll through it, jump it, or be out of reach.
 			TailLash = { Tell = 0.85, Behind = 10, Reach = 26, Sweep = 220, Time = 0.55, Sweeps = { 1, 2 }, Pause = 0.25, Width = 5, Height = 5, Damage = 24, Knockback = 64, Phase = 1, Weight = 4 },
 			-- TREMOR: it thrashes underground, the whole sand floor quakes and
 			-- cracks open, a few times in a row. Be on stone, or in the air when each one hits.

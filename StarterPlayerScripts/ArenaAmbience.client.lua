@@ -202,6 +202,22 @@ local function kp(t, v)
 	return NumberSequenceKeypoint.new(t, v)
 end
 
+-- sets a property only when it has really changed (every frame, most of these
+-- are the same as last frame - no need to tell the engine again)
+local lastSet = setmetatable({}, { __mode = "k" })
+local function set(inst, prop, value, step)
+	local mine = lastSet[inst]
+	if not mine then
+		mine = {}
+		lastSet[inst] = mine
+	end
+	local old = mine[prop]
+	if old == nil or (step and math.abs(old - value) >= step) or (not step and old ~= value) then
+		mine[prop] = value
+		inst[prop] = value
+	end
+end
+
 local stormBox = invisiblePart("SandstormBox", Vector3.new(120, 36, 120))
 local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds" -- soft puffs (not the default sparkles)
 
@@ -525,9 +541,9 @@ RunService.RenderStepped:Connect(function(dt)
 			veilDown.BackgroundColor3 = veilColor
 		end
 	end
-	grains.Rate = level * (GRAINS_CALM + (GRAINS_STORM - GRAINS_CALM) * k)
-	dust.Rate = level * (DUST_CALM + (DUST_STORM - DUST_CALM) * k)
-	sheets.Rate = level * SHEETS_STORM * k
+	set(grains, "Rate", level * (GRAINS_CALM + (GRAINS_STORM - GRAINS_CALM) * k), 2)
+	set(dust, "Rate", level * (DUST_CALM + (DUST_STORM - DUST_CALM) * k), 0.2)
+	set(sheets, "Rate", level * SHEETS_STORM * k, 0.5)
 
 	-- the dust in front of your eyes, breathing with the gusts
 	local veil = (S and S.Veil or 0) * k * level
@@ -535,8 +551,8 @@ RunService.RenderStepped:Connect(function(dt)
 		local t = os.clock()
 		local gust = 0.85 + 0.15 * math.sin(t * 0.8) * math.sin(t * 2.3 + 1)
 		local a = math.clamp(veil * gust, 0, 0.95) * 0.6 -- (two layers of it)
-		veilAcross.BackgroundTransparency = 1 - a
-		veilDown.BackgroundTransparency = 1 - a
+		set(veilAcross, "BackgroundTransparency", 1 - a, 0.005)
+		set(veilDown, "BackgroundTransparency", 1 - a, 0.005)
 		veilGui.Enabled = true
 	elseif veilGui.Enabled then
 		veilGui.Enabled = false
@@ -546,7 +562,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local s = windSound(amb)
 	if s then
 		local calm = amb.Volume or 0.3
-		s.Volume = level * mix(calm, (S and S.Volume) or calm, k)
+		set(s, "Volume", level * mix(calm, (S and S.Volume) or calm, k), 0.005)
 	end
 	if level == 0 and want == 0 then
 		-- faded all the way out: the lobby's look is back exactly as it was

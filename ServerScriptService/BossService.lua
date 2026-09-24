@@ -964,16 +964,25 @@ local function wormErupt(E, token, spot, seconds)
 	return ok
 end
 
--- Head-first back under the sand. You can still land a hit in the first half.
+-- Head-first back under the sand: it arches over and plunges into the sand a
+-- little way in front of it (DIVE_AHEAD - never into stone), its body pouring
+-- in after its head, and it carries on from there. You can still land a hit
+-- in the first half.
+local DIVE_AHEAD = 18
 local function wormDive(E, token)
 	local H = E.def.Hunt
 	E.track, E.motion, E.swim = false, nil, nil
+	local into = sandSpot(E, E.pos + E.facing * DIVE_AHEAD, E.pos, 4)
 	local t0 = wormAction(E, "Dive", H.DiveTime)
+	setSlot(E, 1, into) -- (every screen draws it plunging in here)
+	E.motion = { from = E.pos, to = into, t0 = t0, t1 = t0 + H.DiveTime }
 	if not waitUntil(E, token, t0 + H.DiveTime * 0.5) then
 		return false
 	end
 	surface(E, false)
-	return waitUntil(E, token, t0 + H.DiveTime)
+	local ok = waitUntil(E, token, t0 + H.DiveTime)
+	E.motion = nil
+	return ok
 end
 
 -- Swims after its quarry for a while (Hunt.Time), striking sooner if it gets
@@ -1295,7 +1304,7 @@ function WormAttacks.TailLash(E, token)
 			f, g = to, from
 		end
 		E.lash = {
-			anchor = anchor, from = f, to = g, lastYaw = f,
+			anchor = anchor, from = f, to = g, lastU = 0,
 			t0 = s0, time = a.Time,
 			reach = a.Reach, width = a.Width, height = a.Height,
 			damage = a.Damage, knockback = a.Knockback, hit = {},
@@ -1308,25 +1317,33 @@ function WormAttacks.TailLash(E, token)
 	waitUntil(E, token, now() + 0.45) -- the tail drops back under
 end
 
--- The tail's angle `u` of the way through its sweep (eased in and out; BossClient
--- uses exactly the same curve to draw it).
-local function lashYaw(L, u)
+-- Where the tail is, `u` of the way through its sweep, at `x` of the way out
+-- along it (0 = where it comes up out of the sand, 1 = its tip). It's a whip:
+-- the sweep eases in and out, and the far end trails behind - most in the
+-- middle of the swing - then catches up as the swing ends. (BossClient draws
+-- exactly this curve - lashAngle there - so what hits you is what you see.
+-- The trailing never makes any part of it swing backwards.)
+local function lashAngle(from, to, u, x)
 	u = math.clamp(u, 0, 1)
-	return L.from + (L.to - L.from) * (u * u * (3 - 2 * u))
+	local span = to - from
+	local trail = 0.13 * math.abs(span) * x ^ 1.6 * (4 * u * (1 - u)) ^ 2
+	return from + span * (u * u * (3 - 2 * u)) - ((span >= 0) and trail or -trail)
 end
 
 -- Every frame of a tail lash: anyone the tail swept past since last frame is
--- hit, unless they jumped over it.
+-- hit, unless they jumped over it. (Where the tail was is worked out at YOUR
+-- distance from where it comes up, so its trailing tip is exactly as late
+-- reaching you as it looks.)
 local function stepLash(E, t)
 	local L = E.lash
 	local u = (t - L.t0) / L.time
 	if u < 0 then
 		return
 	end
-	local yaw = lashYaw(L, u)
+	u = math.min(u, 1)
+	local u0 = L.lastU or 0
+	L.lastU = u
 	local spin = (L.to >= L.from) and 1 or -1
-	local a1 = L.lastYaw
-	L.lastYaw = yaw
 	for _, p in ipairs(fightersIn(E)) do
 		if not L.hit[p] then
 			local root = rootOf(p)
@@ -1334,6 +1351,9 @@ local function stepLash(E, t)
 			local d = off.Magnitude
 			local above = feetAbove(E, root)
 			if d <= L.reach + PLAYER_RADIUS and above < L.height * 0.8 then
+				local x = math.min(d / L.reach, 1)
+				local a1 = lashAngle(L.from, L.to, u0, x)
+				local yaw = lashAngle(L.from, L.to, u, x)
 				local ang = math.atan2(off.X, off.Z)
 				local slack = (L.width / 2 + PLAYER_RADIUS) / math.max(d, 1)
 				-- how far past the tail's last position you are, the way it's sweeping
@@ -1631,10 +1651,16 @@ local function stepWorm(E, dt)
 	end
 	E.pos = inLeash(E, E.pos, 0)
 	stepRumble(E, t)
-	place(E)
-	-- the moment it was here (every screen glides it smoothly between these;
-	-- see glideWorm in BossClient)
-	E.model:SetAttribute("PosT", t)
+	-- where it is, for every screen: 30 times a second is plenty (each screen
+	-- glides it smoothly between these - see glideWorm in BossClient - and
+	-- every hit here uses E.pos itself, every frame), with the moment it was
+	-- there. A jump (it came up somewhere else) goes out at once.
+	local jumped = E.placedPos and (E.pos - E.placedPos).Magnitude > 4
+	if jumped or t - (E.placedAt or -1) >= 1 / 30 then
+		E.placedAt, E.placedPos = t, E.pos
+		place(E)
+		E.model:SetAttribute("PosT", t)
+	end
 	if E.coil then
 		stepCoil(E, t)
 	end

@@ -654,6 +654,8 @@ end
 --   path(s)  where its spine runs, tail (s = 0) to head (s = 1), in the world:
 --            the breach's arc, the coil's ring
 --   girth    how thick it is (the coil is thinner than it stands)
+--   taper(s) how thick it is along its length, tail to head (the lash's whippy tail)
+--   stage    a new stage inside one move (its body flows into it, like a new move)
 --   collar   0 hides the mound of sand round its base; noShadow hides its shadow
 local WORM_SEGMENTS = 20 -- (enough to bend smoothly into an arch, a ring or a leap)
 local WORM_BLEND = 0.3 -- seconds its body takes to flow from one shape into the next
@@ -840,7 +842,12 @@ end
 --  * sizes, colours, see-through-ness and materials are only written when they've
 --    actually changed
 --  * a segment deep under the sand (nobody can see it) is left where it was
-local Fast = { parts = {}, cframes = {}, n = 0, sizes = setmetatable({}, { __mode = "k" }), alphas = setmetatable({}, { __mode = "k" }) }
+local Fast = {
+	parts = {}, cframes = {}, n = 0,
+	sizes = setmetatable({}, { __mode = "k" }),
+	alphas = setmetatable({}, { __mode = "k" }),
+	colors = setmetatable({}, { __mode = "k" }),
+}
 function Fast.move(p, cf)
 	local n = Fast.n + 1
 	Fast.n = n
@@ -864,9 +871,11 @@ function Fast.flush()
 	end
 	Fast.n = 0
 end
-function Fast.size(p, v)
+-- (`tolerance`: how much it has to change by before it's worth resizing -
+-- parts that overlap their neighbours can take a bigger one)
+function Fast.size(p, v, tolerance)
 	local old = Fast.sizes[p]
-	if not old or math.abs(old.X - v.X) + math.abs(old.Y - v.Y) + math.abs(old.Z - v.Z) > 0.12 then
+	if not old or math.abs(old.X - v.X) + math.abs(old.Y - v.Y) + math.abs(old.Z - v.Z) > (tolerance or 0.12) then
 		Fast.sizes[p] = v
 		p.Size = v
 	end
@@ -878,7 +887,8 @@ function Fast.alpha(p, a)
 	end
 end
 function Fast.color(p, c)
-	if p.Color ~= c then
+	if Fast.colors[p] ~= c then
+		Fast.colors[p] = c
 		p.Color = c
 	end
 end
@@ -967,16 +977,31 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 		end
 	end
 	-- Hand-overs: when it starts something new, its body flows from the shape it
-	-- was in to the new one over a moment instead of jumping - unless it's come
-	-- up somewhere else entirely (then there's nothing to flow from).
+	-- was in to the new one instead of jumping. Head first: its head sets off
+	-- into the new shape and the rest follows on down its length, the way a
+	-- creature moves (not every part at once, like a morph). The further it has
+	-- to go, the longer it takes - a moment either way. Parts that were out of
+	-- sight under the sand simply come up in their new place. (Not when it's
+	-- come up somewhere else entirely: then there's nothing to flow from.)
 	local from = B.blendFrom
-	if from and t < (B.blendUntil or 0) and from[WORM_SEGMENTS] then
+	if from and from[WORM_SEGMENTS] and not B.blendUntil then
+		local hidden, far = B.blendHidden or {}, 0
+		for i, pt in ipairs(points) do
+			if not hidden[i] then
+				far = math.max(far, (from[i] - pt.pos).Magnitude)
+			end
+		end
+		B.blendTime = clamp(WORM_BLEND + far / 160, WORM_BLEND, 0.6)
+		B.blendUntil = t + B.blendTime
+	end
+	if from and from[WORM_SEGMENTS] and t < B.blendUntil then
 		if flat(from[WORM_SEGMENTS] - points[WORM_SEGMENTS].pos).Magnitude < 70 then
-			local w = smooth(1 - (B.blendUntil - t) / WORM_BLEND)
+			local q = 1 - (B.blendUntil - t) / B.blendTime
+			local w = smooth(q)
 			local hidden = B.blendHidden or {}
 			for i, pt in ipairs(points) do
 				if not hidden[i] then
-					pt.pos = from[i]:Lerp(pt.pos, w)
+					pt.pos = from[i]:Lerp(pt.pos, smooth(clamp(q * 1.6 - (1 - pt.s) * 0.6, 0, 1)))
 				end
 			end
 			for i, pt in ipairs(points) do
@@ -1011,7 +1036,7 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 	for i, pt in ipairs(points) do
 		local prev = points[i - 1] and (pt.pos - points[i - 1].pos).Magnitude or 0
 		local nxt = points[i + 1] and (points[i + 1].pos - pt.pos).Magnitude or 0
-		local g = girth * (1.06 - 0.16 * pt.s)
+		local g = girth * (P.taper and P.taper(pt.s) or (1.06 - 0.16 * pt.s))
 		local len = math.max(prev, nxt) * 1.75
 		if i == WORM_SEGMENTS then
 			-- the head: broader than its neck, a hood over the maw
@@ -1024,7 +1049,7 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 		frames[i], girths[i], lengths[i] = cf, g, len
 		if not skip[i] then
 			local seg = body.segments[i]
-			Fast.size(seg.part, V3(g, g * 0.96, len))
+			Fast.size(seg.part, V3(g, g * 0.96, len), 0.35)
 			Fast.move(seg.part, cf)
 			local c = phase2 and seg.color:Lerp(def.DeepColor, 0.2) or seg.color
 			Fast.color(seg.part, flash > 0 and c:Lerp(RGB(255, 240, 214), 0.45 * flash) or c)
@@ -1040,13 +1065,14 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 		if not (skip[i] and skip[i + 1]) then
 			local a, b = frames[i], frames[i + 1]
 			local g = (girths[i] + girths[i + 1]) / 2 * 0.84
-			Fast.size(seam, V3(g, g * 0.96, 1.3))
+			Fast.size(seam, V3(g, g * 0.96, 1.3), 0.3)
 			Fast.move(seam, frameAlong((a.Position + b.Position) / 2, b.Position - a.Position, a.UpVector))
 			if phase2 then
 				if seam.Material ~= Enum.Material.Neon then
 					seam.Material = Enum.Material.Neon
 				end
-				Fast.color(seam, heartColor:Lerp(RGB(255, 214, 140), 0.25 + 0.25 * math.sin(t * 3 + i)))
+				local tq = math.floor(t * 12) / 12 -- (a dozen changes a second is plenty for a glow)
+				Fast.color(seam, heartColor:Lerp(RGB(255, 214, 140), 0.25 + 0.25 * math.sin(tq * 3 + i)))
 			else
 				if seam.Material ~= Enum.Material.SmoothPlastic then
 					seam.Material = Enum.Material.SmoothPlastic
@@ -1066,10 +1092,10 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 			local cf, g, len = frames[pl.seg], girths[pl.seg], lengths[pl.seg]
 			if pl.side == 0 then
 				local h = g * (pl.seg == WORM_SEGMENTS and 0.15 or 0.2)
-				Fast.size(pl.part, V3(g * 0.3, h, len * 0.62))
+				Fast.size(pl.part, V3(g * 0.3, h, len * 0.62), 0.3)
 				Fast.move(pl.part, cf * CFrame.new(0, g * 0.46 + h / 2 - g * 0.04, len * 0.08))
 			else
-				Fast.size(pl.part, V3(g * 0.3, g * 0.06, len * 0.5))
+				Fast.size(pl.part, V3(g * 0.3, g * 0.06, len * 0.5), 0.3)
 				Fast.move(pl.part, cf * CFrame.Angles(0, 0, pl.side * 0.8) * CFrame.new(0, g * 0.47, 0))
 			end
 			Fast.alpha(pl.part, fade)
@@ -2464,7 +2490,7 @@ do
 		local len = run.Magnitude
 		local mid = (a + b) / 2
 		local c = V3(mid.X, y or mid.Y, mid.Z)
-		p.Size = V3(width, thickness or 0.12, math.max(len, 0.05))
+		Fast.size(p, V3(width, thickness or 0.12, math.max(len, 0.05)), 0.05)
 		if len > 0.05 then
 			p.CFrame = CFrame.lookAt(c, c + run)
 		else
@@ -2475,7 +2501,7 @@ do
 	-- a bar from a to b, following them up and down (down the side of a pit)
 	local function placeBar(p, a, b, width, thickness)
 		local len = (b - a).Magnitude
-		p.Size = V3(width, thickness or 0.12, math.max(len, 0.05))
+		Fast.size(p, V3(width, thickness or 0.12, math.max(len, 0.05)), 0.05)
 		if len > 0.05 then
 			p.CFrame = CFrame.lookAt((a + b) / 2, b)
 		else
@@ -2551,24 +2577,40 @@ do
 		end
 		local t0 = os.clock()
 		local conn
+		local settled = false
 		conn = RunService.RenderStepped:Connect(function(dt)
 			local e = os.clock() - t0
-			local parts, cframes = {}, {}
-			for k, b in ipairs(bits) do
-				b.vel = b.vel + V3(0, -60 * dt, 0)
-				b.pos = b.pos + b.vel * dt
-				if b.pos.Y < center.Y + 0.5 then
-					b.pos = V3(b.pos.X, center.Y + 0.5, b.pos.Z)
-					b.vel = V3(b.vel.X * 0.4, 0, b.vel.Z * 0.4)
+			-- (once every chunk has landed and stopped, there's nothing to move)
+			if not settled then
+				local parts, cframes = {}, {}
+				settled = true
+				for k, b in ipairs(bits) do
+					if not b.still then
+						b.vel = b.vel + V3(0, -60 * dt, 0)
+						b.pos = b.pos + b.vel * dt
+						b.age = e
+						if b.pos.Y < center.Y + 0.5 then
+							b.pos = V3(b.pos.X, center.Y + 0.5, b.pos.Z)
+							b.vel = V3(b.vel.X * 0.4, 0, b.vel.Z * 0.4)
+							b.still = b.vel.Magnitude < 1.5
+						end
+						settled = false
+						parts[#parts + 1] = b.part
+						cframes[#cframes + 1] = CFrame.new(b.pos) * CFrame.Angles(b.spin.X * b.age, b.spin.Y * b.age, b.spin.Z * b.age)
+					end
 				end
-				parts[k], cframes[k] = b.part, CFrame.new(b.pos) * CFrame.Angles(b.spin.X * e, b.spin.Y * e, b.spin.Z * e)
-				if e > 2 then
-					b.part.Transparency = clamp((e - 2) / 0.8, 0, 1)
+				if #parts > 0 then
+					pcall(function()
+						Workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+					end)
 				end
 			end
-			pcall(function()
-				Workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
-			end)
+			if e > 2 then
+				local fade = math.floor(clamp((e - 2) / 0.8, 0, 1) * 5) / 5 -- (in five steps)
+				for _, b in ipairs(bits) do
+					Fast.alpha(b.part, fade)
+				end
+			end
 			if e > 2.8 then
 				conn:Disconnect()
 				for _, b in ipairs(bits) do
@@ -3095,11 +3137,90 @@ do
 		})
 	end
 
-	-- TAIL LASH: the sand heaving up behind you and the sweep fanned out on the
-	-- floor (lighting up in the order the tail will pass), then the tail itself
-	-- ripping up out of a crater and sweeping round - exactly as the server
-	-- sweeps it - and in phase two, straight back again.
-	local TAIL_BITS = 12
+	-- TAIL LASH. Its tail - the real end of its body, tapering to a bone spike -
+	-- whips up out of a crater behind you and scythes round, low over the sand
+	-- (the rest of it runs off under the sand to its head). It's a whip: the
+	-- far end trails behind in the middle of the swing and cracks round at the
+	-- end of it, and its tip tears a furrow through the sand as it goes. Before
+	-- it comes, the sand heaves where it'll come up, and the fan it will sweep
+	-- and the arc its tip will cut glow on the floor, lighting up the way it'll
+	-- swing. In phase two it whips straight back again. BossService hits
+	-- exactly this shape (lashAngle there): jump it, roll through it, or be out
+	-- of reach.
+	local function lashAngle(from, to, u, x)
+		u = clamp(u, 0, 1)
+		local span = to - from
+		local trail = 0.13 * math.abs(span) * x ^ 1.6 * (4 * u * (1 - u)) ^ 2
+		return from + span * (u * u * (3 - 2 * u)) - ((span >= 0) and trail or -trail)
+	end
+
+	local TAIL_SHARE = 0.5 -- how much of its body is tail (the rest stays under the sand)
+	local S_TIP = 0.08 -- (where applyWormPose puts its first segment along its body)
+
+	-- how thick it is along its length for a lash: thin and whippy for most of
+	-- the tail, swelling back into its body where it comes out of the sand
+	local function tailTaper(s)
+		if s >= TAIL_SHARE then
+			return 1.06 - 0.16 * s
+		end
+		local x = clamp((TAIL_SHARE - s) / (TAIL_SHARE - S_TIP), 0, 1) -- 1 = the tip
+		if x >= 0.35 then
+			return lerp(0.3, 0.2, (x - 0.35) / 0.65)
+		end
+		return lerp(0.3, 0.95, ((0.35 - x) / 0.35) ^ 1.5)
+	end
+
+	-- A lash at a moment: which swing, how far through it, which way, how far
+	-- out of the sand the tail is, and the crack at the end of the swing
+	local function lashState(L, now)
+		local k = now - L.startAt
+		local step = L.time + L.pause
+		local i = clamp(math.floor(k / step) + 1, 1, L.sweeps)
+		local into = k - (i - 1) * step
+		local u = clamp(into / L.time, 0, 1)
+		local f, g = L.from, L.to
+		if i % 2 == 0 then
+			f, g = g, f
+		end
+		local up = 1
+		if k < 0 then
+			up = clamp(1 + k / L.rise, 0, 1) -- bursting up, just before it swings
+		elseif now > L.endAt then
+			up = 1 - clamp((now - L.endAt) / 0.45, 0, 1) -- dropping back under
+		end
+		local after = into - L.time
+		local crack = after > 0 and math.sin(math.min(after / 0.22, 1) * math.pi) * math.exp(-after * 5) or 0
+		return i, u, f, g, smooth(up), crack
+	end
+
+	-- its body for a lash: s from its tail tip (0) to its head (1)
+	local function lashPath(B, L, now)
+		local g = B.def.Size * 0.64
+		local A, R = L.anchor, L.reach
+		local _, u, f, to, up, crack = lashState(L, now)
+		local sign = (to >= f) and 1 or -1
+		local swing = 4 * u * (1 - u) -- how fast it's going (nothing at either end of a swing)
+		local back = V3(-math.sin(L.mid), 0, -math.cos(L.mid)) -- the way its body runs off under the sand
+		return function(s)
+			if s < TAIL_SHARE then
+				local x = clamp((TAIL_SHARE - s) / (TAIL_SHARE - S_TIP), 0, 1)
+				-- (the crack: its tip flicks on past the end of the swing, and back)
+				local yaw = lashAngle(f, to, u, x) + sign * 0.16 * crack * x * x
+				local thick = g * tailTaper(s)
+				-- it heaves up in an arch where it comes out of the ground, then
+				-- runs low along the sand (you can jump it), a ripple running out
+				-- along it as it swings
+				local h = thick * 0.45 + g * 0.45 * math.sin(math.pi * clamp(x / 0.35, 0, 1))
+				h = h + math.sin(x * 8 - now * 20) * 0.7 * x * swing
+				local y = h * up - (1 - up) * (thick + 3)
+				return A + V3(math.sin(yaw) * x * R, y, math.cos(yaw) * x * R)
+			end
+			-- the rest of it: down the hole and away under the sand, to its head
+			local b = (s - TAIL_SHARE) / (1 - TAIL_SHARE)
+			return A + back * (b * 44) + V3(0, -g * 0.55 - b * g * 1.4, 0)
+		end
+	end
+
 	local function tailLash(B, anchor, yaws, t0)
 		local a = B.def.Attacks.TailLash
 		anchor = onSand(anchor)
@@ -3108,56 +3229,76 @@ do
 		local sweeps = (type(a.Sweeps) == "table" and (a.Sweeps[phase] or a.Sweeps[1])) or 1
 		local pause = a.Pause or 0.25
 		local startAt = t0 + a.Tell
-		local endAt = startAt + sweeps * a.Time + (sweeps - 1) * pause
-		local goneAt = endAt + 0.45
-		local heave = newScar(B, "heave", math.max(startAt - serverNow(), 0.1))
+		local L = {
+			anchor = anchor, from = from, to = to, mid = (from + to) / 2,
+			startAt = startAt, endAt = startAt + sweeps * a.Time + (sweeps - 1) * pause,
+			sweeps = sweeps, pause = pause, time = a.Time, reach = a.Reach, rise = 0.14,
+		}
+		B.lash = L -- (Poses.TailLash draws its body from this)
+		local riseAt, goneAt = startAt - L.rise, L.endAt + 0.45
+		local heave = newScar(B, "heave", math.max(riseAt - serverNow(), 0.1))
 		local heaved = 0
-		local rays = {}
-		for i = 1, 7 do
-			rays[i] = newPart("LashRay", nil, WORM_GLOW, Enum.Material.Neon, 1)
+		-- the warning, laid on the floor once: the fan it will sweep, and the
+		-- arc its tip will cut (only their glow changes after that)
+		local marks = {}
+		for i = 1, 5 do
+			local yaw = from + (to - from) * (i - 1) / 4
+			local dir = V3(math.sin(yaw), 0, math.cos(yaw))
+			local ray = newPart("LashRay", nil, WORM_GLOW, Enum.Material.Neon, 1)
+			placeStrip(ray, anchor + dir * 3, anchor + dir * a.Reach, 0.35, 0.1, anchor.Y + 0.1)
+			marks[#marks + 1] = { part = ray, order = (i - 1) / 4 }
 		end
-		local tail = {}
-		for j = 1, TAIL_BITS do
-			local seg = newPart("Tail", Enum.PartType.Ball, B.def.Color:Lerp(B.def.DeepColor, (j % 2 == 0) and 0.3 or 0), Enum.Material.Sandstone, 1)
-			tail[j] = seg
+		local ARC = 12
+		for k = 1, ARC do
+			local y0 = from + (to - from) * (k - 1) / ARC
+			local y1 = from + (to - from) * k / ARC
+			local bar = newPart("LashRay", nil, WORM_GLOW, Enum.Material.Neon, 1)
+			placeStrip(bar, anchor + V3(math.sin(y0), 0, math.cos(y0)) * (a.Reach + 0.5),
+				anchor + V3(math.sin(y1), 0, math.cos(y1)) * (a.Reach + 0.5), 0.9, 0.1, anchor.Y + 0.1)
+			marks[#marks + 1] = { part = bar, order = (k - 0.5) / ARC }
 		end
 		local spike = newPart("TailSpike", nil, BONE, Enum.Material.SmoothPlastic, 1)
+		spike.Size = V3(0.9, 0.9, 3.6)
 		local tipDust = newPart("TailDust", nil, WORM_SAND, nil, 1)
 		tipDust.Size = V3(4, 1, 4)
 		local spray = wormEmitter("Spray", tipDust, {
 			Color = ColorSequence.new(WORM_SAND),
 			LightInfluence = 1,
-			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 4) }),
-			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) }),
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 4.5) }),
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) }),
 			Lifetime = NumberRange.new(0.6, 1.1),
-			Speed = NumberRange.new(5, 12),
+			Speed = NumberRange.new(6, 16),
 			SpreadAngle = Vector2.new(45, 45),
 			Acceleration = V3(0, -35, 0),
 			EmissionDirection = Enum.NormalId.Top,
 		})
-		local sounded = 0
-		local came = false
+		local furrow, lastCut = nil, nil
+		local sounded, cracked = 0, 0
+		local came, warned = false, true
 		addTelegraph(B, {
 			update = function(now)
 				if now > goneAt then
 					return false
 				end
-				if now < startAt then
+				if now < riseAt then
 					local k = clamp((now - t0) / a.Tell, 0, 1)
 					if heaved < 2 and k >= (heaved + 1) * 0.35 then
 						heaved = heaved + 1
 						scarHeave(heave, anchor, 5 + heaved, 1.5 * heaved)
 					end
-					for i, ray in ipairs(rays) do
-						local yaw = from + (to - from) * (i - 1) / (#rays - 1)
-						local dir = V3(math.sin(yaw), 0, math.cos(yaw))
-						placeStrip(ray, anchor + dir * 3, anchor + dir * a.Reach, 0.35, 0.1, anchor.Y + 0.1)
-						ray.Transparency = lerp(0.85, 0.2, k * (math.sin(now * 12 - i * 0.8) + 1) / 2)
+					-- a pulse running the way it will swing, quicker as it comes
+					local run = (now - t0) * lerp(1.2, 3, k)
+					for _, m in ipairs(marks) do
+						local glow = math.max(0, 1 - math.abs(((run - m.order) % 1) - 0.5) * 4)
+						Fast.alpha(m.part, math.floor(lerp(0.85, lerp(0.5, 0.05, k), glow) * 20 + 0.5) / 20)
 					end
 					return true
 				end
-				for _, ray in ipairs(rays) do
-					ray.Transparency = 1
+				if warned then
+					warned = false
+					for _, m in ipairs(marks) do
+						Fast.alpha(m.part, 1)
+					end
 				end
 				if not came then
 					came = true
@@ -3165,51 +3306,51 @@ do
 					burst(anchor + V3(0, 1, 0), WORM_SAND, 30, 30, 2.6, 0.9, true)
 					flingRubble(anchor, 6, SAND_BITS, 0.7)
 					kick(anchor, a.Reach, 0.7, -2)
+					furrow = newScar(B, "hole", (goneAt - now) + scarLife(B))
 				end
-				-- which sweep, and how far through it (the same eased sweep the server tests)
-				local i = math.min(math.floor((now - startAt) / (a.Time + pause)) + 1, sweeps)
-				local s0 = startAt + (i - 1) * (a.Time + pause)
-				local u = clamp((now - s0) / a.Time, 0, 1)
-				local f, g = from, to
-				if i % 2 == 0 then
-					f, g = to, from
-				end
-				if sounded < i then
+				local i, u, _, _, up = lashState(L, now)
+				local swingAt = startAt + (i - 1) * (L.time + pause)
+				if sounded < i and now >= swingAt - 0.1 then
 					sounded = i
 					playSound(B.def, "Sweep", anchor, 1)
 				end
-				local yaw = f + (g - f) * (u * u * (3 - 2 * u))
-				local up = 1
-				if now < startAt + 0.12 then
-					up = (now - startAt) / 0.12 -- ripping up out of the sand
-				elseif now > endAt then
-					up = 1 - (now - endAt) / 0.45 -- and dropping back under
+				-- its tip, where this frame's body put it: the spike on the end, the
+				-- sand spraying off it, and the furrow it tears
+				local pts = B.lastPoints
+				local tip = B.action == "TailLash" and pts and pts[1]
+				if tip and pts[2] and up > 0.05 then
+					local along = tip - pts[2]
+					along = along.Magnitude > 0.01 and along.Unit or V3(0, 0, 1)
+					Fast.move(spike, CFrame.lookAt(tip + along * 1.8, tip + along * 4))
+					Fast.alpha(spike, 0)
+					local ground = V3(tip.X, anchor.Y, tip.Z)
+					Fast.move(tipDust, CFrame.new(ground + V3(0, 0.5, 0)))
+					local swinging = u > 0.02 and u < 0.98 and now < L.endAt
+					spray.Rate = swinging and 40 or 0
+					if swinging and furrow and (not lastCut or flat(ground - lastCut).Magnitude >= 10) then
+						lastCut = ground
+						scarHole(furrow, ground, 3.2, 1.2)
+					end
+					-- the crack at the end of each swing
+					if cracked < i and now >= swingAt + L.time then
+						cracked = i
+						burst(ground + V3(0, 1, 0), WORM_SAND, 22, 26, 2.2, 0.7, true)
+						shockRing(B, ground, 1, 9, 0.3, WORM_SAND)
+						kick(ground, 14, 0.5, -1)
+					end
+				else
+					Fast.alpha(spike, 1)
+					spray.Rate = 0
 				end
-				local dir = V3(math.sin(yaw), 0, math.cos(yaw))
-				local bit = a.Reach / TAIL_BITS
-				for j, seg in ipairs(tail) do
-					local fj = j / TAIL_BITS
-					local w = lerp(7, 1.6, fj)
-					local top = a.Height * (0.55 + 0.35 * math.sin(fj * math.pi))
-					local c = anchor + dir * (bit * (j - 0.5)) + V3(0, top - w * 0.5 - (1 - up) * (top + w), 0)
-					seg.Size = V3(w, w * 0.9, bit * 1.8)
-					seg.CFrame = CFrame.lookAt(c, c + dir)
-					seg.Transparency = 0
-				end
-				local tipAt = anchor + dir * (a.Reach + 1) + V3(0, a.Height * 0.55 - (1 - up) * a.Height * 1.5, 0)
-				spike.Size = V3(0.9, 0.9, 3.2)
-				spike.CFrame = CFrame.lookAt(tipAt, tipAt + dir)
-				spike.Transparency = 0
-				tipDust.CFrame = CFrame.new(V3(tipAt.X, anchor.Y + 0.5, tipAt.Z))
-				spray.Rate = (u > 0 and u < 1 and up > 0.5) and 30 or 0
+				Fast.flush()
 				return true
 			end,
 			cleanup = function()
-				for _, r in ipairs(rays) do
-					r:Destroy()
+				if B.lash == L then
+					B.lash = nil
 				end
-				for _, seg in ipairs(tail) do
-					seg:Destroy()
+				for _, m in ipairs(marks) do
+					m.part:Destroy()
 				end
 				spike:Destroy()
 				tipDust:Destroy()
@@ -3276,7 +3417,7 @@ do
 							dust:Emit(250)
 						end
 						-- a wave of sand racing out across the whole floor from it
-						local wave = newRing(48, WORM_SAND, Enum.Material.Sand, 0.1)
+						local wave = newRing(32, WORM_SAND, Enum.Material.Sand, 0.1)
 						local w0, from = now, B.vpos
 						addTelegraph(B, {
 							update = function(n)
@@ -3299,9 +3440,9 @@ do
 							local ang = seeded(seed) * math.pi * 2
 							local dir = V3(math.sin(ang), 0, math.cos(ang))
 							local side = V3(-dir.Z, 0, dir.X)
-							for k = 1, 6 do
+							for k = 1, 4 do
 								local wob = (seeded(seed + k) - 0.5) * 5
-								scarHole(sc, origin + dir * (6 + k * 6) + side * wob, 2.8, 2.2)
+								scarHole(sc, origin + dir * (4 + k * 9) + side * wob, 3.2, 2.2)
 							end
 						end
 						playSound(B.def, "Crash", B.vpos, 0.7)
@@ -3365,8 +3506,47 @@ do
 		underPose(B, P, 1, HUMP_EVERY)
 	end
 
-	-- Going back under: head-first from standing; a coil (after a Coil, or just
-	-- woken in its coils round the seal) sinks where it lies.
+	-- The dive's arc: from deep in the hole it stands in, up and over, and down
+	-- into the sand at the spot ahead - and on down under it - measured along
+	-- its length, so its body can slide along it.
+	local function diveArc(O, into, H)
+		local F = flat(into - O)
+		F = F.Magnitude > 0.5 and F.Unit or V3(0, 0, 1)
+		local q0, q1 = O - V3(0, 26, 0), O + V3(0, H, 0) - F * 2
+		local q2, q3 = into + V3(0, H, 0) + F * 2, into + F * 8 - V3(0, 30, 0)
+		local pts, lens, total = {}, { 0 }, 0
+		for i = 0, 28 do
+			pts[i + 1] = bezier(q0, q1, q2, q3, i / 28)
+			if i > 0 then
+				total = total + (pts[i + 1] - pts[i]).Magnitude
+				lens[i + 1] = total
+			end
+		end
+		local out = (pts[29] - pts[28]).Unit
+		local lo = 1
+		local function at(dist)
+			if dist <= 0 then
+				return q0 + V3(0, dist, 0) -- (the end of it still down in the hole)
+			elseif dist >= total then
+				return pts[29] + out * (dist - total) -- (gone on down under the sand)
+			end
+			if lens[lo] > dist then
+				lo = 1
+			end
+			while lens[lo + 1] < dist do
+				lo = lo + 1
+			end
+			return pts[lo]:Lerp(pts[lo + 1], (dist - lens[lo]) / math.max(lens[lo + 1] - lens[lo], 1e-3))
+		end
+		return at, total
+	end
+
+	-- Going back under. From standing, it rears back a little, then arches over
+	-- and plunges head-first into the sand a little way ahead (where
+	-- BossService sends it: ActA), its whole body pouring in after its head
+	-- through the same hole, like a diving serpent. A coil (after a Coil, or
+	-- just woken in its coils round the seal) sinks where it lies.
+	local DIVE_BODY = 100 -- (about its length standing up out of the sand)
 	function Poses.Dive(B, t, P)
 		local T = B.def.Hunt.DiveTime
 		local k = clamp(t / T, 0, 1)
@@ -3374,21 +3554,50 @@ do
 			local c = B.coilRest
 			P.girth = c.g
 			P.path = coilPath(c.C, c.r, c.g, c.headUp, c.rise or 1, c.thEnd, smooth(k) * c.g * 3)
-			P.override = c.C
+			-- (where it "is" slips on under the sand to where it'll swim from next -
+			-- the spot BossService sends it to - so it doesn't jump there after)
+			local into = B.model:GetAttribute("ActA")
+			P.override = typeof(into) == "Vector3" and c.C:Lerp(V3(into.X, c.C.Y, into.Z), smooth(k)) or c.C
 			P.noPush, P.noShadow = true, true
 			return
 		end
-		if k < 0.3 then
-			local e = smooth(k / 0.3)
-			P.lean, P.lift, P.mouth = -0.3 * e, 3 * e, 0.5 * e
-		else
-			local e = smooth((k - 0.3) / 0.7)
-			P.lean = lerp(-0.3, 1.2, e)
-			P.lift = 3 * (1 - e)
-			P.mouth = 0.5 * (1 - e)
-			P.sink = e * e
-			P.ridge = e
+		-- the arc, worked out once when it starts (and again if the spot it's
+		-- diving at arrives a moment after the move does)
+		local into = B.model:GetAttribute("ActA")
+		local D = B.dive
+		if not D or D.start ~= B.actionStart or D.into ~= into then
+			local O = (D and D.start == B.actionStart) and D.O or B.vpos
+			local target = typeof(into) == "Vector3" and V3(into.X, O.Y, into.Z) or O + B.vfacing * 18
+			local at, total = diveArc(O, target, B.def.Size * 1.9)
+			local run = flat(target - O)
+			D = {
+				start = B.actionStart, into = into, O = O, at = at, total = total,
+				F = run.Magnitude > 0.5 and run.Unit or B.vfacing, span = run.Magnitude,
+			}
+			B.dive = D
 		end
+		-- where its head is along the arc: it rears back, then plunges - faster
+		-- and faster - until every bit of it has gone in
+		local head0 = DIVE_BODY - 10
+		local head
+		if k < 0.22 then
+			head = head0 - 6 * math.sin(k / 0.22 * math.pi / 2)
+		else
+			local q = (k - 0.22) / 0.78
+			head = (head0 - 6) + (D.total + DIVE_BODY + 5 - (head0 - 6)) * q ^ 1.5
+		end
+		local at = D.at
+		P.path = function(s)
+			return at(head - (1 - s) * DIVE_BODY)
+		end
+		-- where it "is" goes with its head, from the old hole to the new one (so
+		-- it carries on swimming from where it went in, without a jump)
+		local over = clamp(flat(at(head) - D.O):Dot(D.F), 0, D.span)
+		P.override = D.O + D.F * over
+		P.mouth = 0.6 * (1 - k)
+		P.eyes = 1
+		P.sink = smooth(clamp((k - 0.5) / 0.5, 0, 1)) -- (the glow in its throat going under with it)
+		P.noShadow = true
 	end
 
 	-- Bursting up out of the sand, maw wide, then standing there: EXPOSED.
@@ -3397,9 +3606,9 @@ do
 		if typeof(spot) == "Vector3" then
 			P.override = spot
 		end
-		local k = clamp(t / 0.3, 0, 1)
+		local k = clamp(t / 0.38, 0, 1)
 		P.sink = 1 - easeOut(k)
-		P.mouth = t < 0.3 and 1 or clamp(1 - (t - 0.3) / 0.6, 0, 1)
+		P.mouth = t < 0.38 and 1 or clamp(1 - (t - 0.38) / 0.6, 0, 1)
 		P.flare = clamp(1 - t / 0.9, 0, 1)
 		P.lean = -0.35 * (1 - smooth((t - 0.25) / 0.6))
 		P.lift = 6 * spring(t, 4, 9)
@@ -3479,11 +3688,14 @@ do
 		if not B.coilAng then
 			local off = flat(B.vpos - C)
 			B.coilAng = off.Magnitude > 1 and math.atan2(off.X, off.Z) or 0
+			B.coilFromR = off.Magnitude
 		end
 		local lap = math.pi * 2 * 0.94
 		if t < a.Tell then
 			local ang = B.coilAng + clamp(t / a.Tell, 0, 1) * lap
-			P.override = C + V3(math.sin(ang), 0, math.cos(ang)) * a.Radius
+			-- (from wherever it was, out or in onto its circle round you over a moment)
+			local r = lerp(B.coilFromR or a.Radius, a.Radius, smooth(clamp(t / 0.3, 0, 1)))
+			P.override = C + V3(math.sin(ang), 0, math.cos(ang)) * r
 			P.facing = V3(math.cos(ang), 0, -math.sin(ang))
 			underPose(B, P, 1.3, 24)
 			P.stage = "circle"
@@ -3509,18 +3721,30 @@ do
 		B.coilRest = { C = C, r = r, g = g, headUp = headUp, thEnd = thEnd }
 	end
 
-	-- Under the sinkhole, waiting (the funnel is all you see).
+	-- Under the sinkhole, waiting (the funnel is all you see). (It swims to the
+	-- middle of it under the sand - BossService moves it there.)
 	function Poses.Devour(B, t, P)
-		local C = B.model:GetAttribute("ActA")
-		if typeof(C) == "Vector3" then
-			P.override = C
-		end
 		underPose(B, P, 0, nil)
 	end
 
-	-- Under the sand behind you: only its tail comes up (drawn by tailLash).
+	-- Under the sand, getting behind you - then its tail whips up out of the sand
+	-- and round (its own body, tapering to a spike: see tailLash).
 	function Poses.TailLash(B, t, P)
-		underPose(B, P, 0.4, nil)
+		local L = B.lash
+		local now = (B.actionStart or 0) + t
+		if not L or now < L.startAt - L.rise then
+			underPose(B, P, 0.4, nil)
+			P.stage = "under"
+			return
+		end
+		-- its tail, whipping round (see tailLash); its head stays under the sand
+		P.stage = "lash"
+		P.path = lashPath(B, L, now)
+		P.taper = tailTaper
+		P.girth = B.def.Size * 0.64
+		P.override = L.anchor
+		P.sink, P.ridge, P.eyes = 1, 0, 0
+		P.noShadow = true
 	end
 
 	-- Thrashing underground.
@@ -3663,11 +3887,23 @@ do
 		at(B, t0 + T * 0.2, function()
 			playSound(B.def, "Dive", B.vpos, 0.8)
 		end)
-		at(B, t0 + T * 0.7, function()
-			local spot = B.mawPos and V3(B.mawPos.X, B.vpos.Y, B.mawPos.Z) or B.vpos
+		-- the sand bursting where its head plunges in, and pouring in after it
+		local function where()
+			local into = B.model:GetAttribute("ActA")
+			return typeof(into) == "Vector3" and onSand(into) or B.vpos
+		end
+		at(B, t0 + T * 0.55, function()
+			if B.prevAction == "Coil" or B.prevAction == "Wake" then
+				return -- (a coil just sinks where it lies)
+			end
+			local spot = where()
+			carve(B, spot, 7, 3.5, scarLife(B))
 			burst(spot + V3(0, 1, 0), WORM_SAND, 30, 26, 2.8, 1, true)
 			shockRing(B, spot, B.def.Size * 0.3, B.def.Size * 0.9, 0.35, WORM_SAND)
 			kick(spot, 20, 0.5)
+		end)
+		at(B, t0 + T * 0.85, function()
+			burst(where() + V3(0, 1, 0), WORM_SAND, 14, 14, 2.2, 0.8, true)
 		end)
 	end
 
@@ -4425,12 +4661,13 @@ local function startWormBlend(B, now)
 	if not B.lastPoints then
 		return
 	end
-	local floorY, g = B.vpos.Y, B.lastGirth or 0
+	local floorY, gs = B.vpos.Y, B.segGirths or {}
 	local hidden = {}
 	for i, p in ipairs(B.lastPoints) do
-		hidden[i] = p.Y + g * 0.5 < floorY
+		hidden[i] = p.Y + (gs[i] or B.lastGirth or 0) * 0.5 < floorY
 	end
-	B.blendFrom, B.blendGirth, B.blendUntil, B.blendHidden = table.clone(B.lastPoints), B.lastGirth, now + WORM_BLEND, hidden
+	-- (how long it takes is worked out on its first frame: see applyWormPose)
+	B.blendFrom, B.blendGirth, B.blendUntil, B.blendHidden = table.clone(B.lastPoints), B.lastGirth, nil, hidden
 end
 
 local function onAction(B, name, t0, now)

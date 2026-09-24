@@ -131,14 +131,18 @@ moment the fight starts a sandstorm rolls in.
   The sandstorm is `Config.Spire.Floors[2].ambience.Storm`, and the fight's
   music is `Music = "SANDWORMSONG"`.
 - **Server:** `BossService` - `wormBrain`, `stepRumble` and the `WormAttacks`
-  table (Ambush, Breach, Coil, Devour, TailLash, Tremor, Undermine). Gloomgut
+  table (Ambush, Breach, Coil, Devour, TailLash, Tremor, Undermine). The tail
+  lash is a whip (`lashAngle` - the client draws the same curve). Gloomgut
   still runs on `brain` and `Attacks`, untouched.
 - **Arena:** `DunesBuilder` - the fighting floor is Terrain sand (so it can be
   torn up), the ring of standing stones round the seal (the worm's lair), five
   platforms that shatter in phase two (tag `DunePlatform`).
 - **Drawing:** `BossClient` - the "MIREWORM: the hunt" section. Its body is
   solid wherever it's out of the sand, except to a roll (`pushOutOfWorm`), and
-  the whole fight is warmed up the moment you arrive (`rehearse`). Craters, trenches,
+  the whole fight is warmed up the moment you arrive (`rehearse`). Between
+  moves its body flows into the next shape head first; it dives in an arc into
+  a new hole ahead (`diveArc`); the tail lash is its own tail (`lashPath`).
+  Craters, trenches,
   fissures and the phase-two bowl are carved into the Terrain on each player's
   own screen and slide back after `Scars.Last` seconds; hits are always decided
   by the server.
