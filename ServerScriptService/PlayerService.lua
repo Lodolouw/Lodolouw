@@ -22,6 +22,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Items = require(ReplicatedStorage:WaitForChild("Items"))
 
 local PlayerService = {}
 
@@ -65,6 +66,13 @@ local function defaultData()
 		Equipped = {},
 		Auto = false,
 		Cleared = {}, -- ["1"] = how many times you've killed floor 1's boss
+		-- gear (see ReplicatedStorage.Items). Items: [uid] = { id, r = rolls,
+		-- t = when it dropped, lock = true if protected from salvaging}
+		Items = {},
+		Gear = {}, -- [slot] = uid of the item worn there
+		Chests = {}, -- ["1"] = unopened treasure chests from floor 1's boss
+		NextId = 1, -- (each item gets a new, never-reused id)
+		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
 	}
 end
 
@@ -117,6 +125,43 @@ local function mergeSaved(saved)
 			local n = saved.Cleared[tostring(floorId)]
 			if type(n) == "number" and n > 0 then
 				d.Cleared[tostring(floorId)] = math.floor(n)
+			end
+		end
+	end
+	-- gear: only real items, with rolls kept inside their item's ranges
+	if type(saved.NextId) == "number" then
+		d.NextId = math.max(1, math.floor(saved.NextId))
+	end
+	if type(saved.BestLevel) == "number" then
+		d.BestLevel = math.max(1, math.floor(saved.BestLevel))
+	end
+	if type(saved.Items) == "table" then
+		for uid, rec in pairs(saved.Items) do
+			local def = type(uid) == "string" and type(rec) == "table" and Items.ById[rec.id]
+			if def then
+				local r = {}
+				for stat, range in pairs(def.stats) do
+					local v = type(rec.r) == "table" and rec.r[stat]
+					r[stat] = type(v) == "number" and math.clamp(math.floor(v), range[1], range[2]) or range[1]
+				end
+				d.Items[uid] = { id = def.id, r = r, t = type(rec.t) == "number" and rec.t or 0, lock = rec.lock == true or nil }
+			end
+		end
+	end
+	if type(saved.Gear) == "table" then
+		for _, slot in ipairs(Items.Slots) do
+			local uid = saved.Gear[slot]
+			local rec = type(uid) == "string" and d.Items[uid]
+			if rec and Items.ById[rec.id].slot == slot then
+				d.Gear[slot] = uid
+			end
+		end
+	end
+	if type(saved.Chests) == "table" then
+		for floorId in pairs(Items.ByFloor) do
+			local n = saved.Chests[tostring(floorId)]
+			if type(n) == "number" and n > 0 then
+				d.Chests[tostring(floorId)] = math.floor(n)
 			end
 		end
 	end
@@ -327,6 +372,18 @@ function PlayerService.RecordBossKill(player, floorId)
 	return before == 0
 end
 
+-- A treasure chest from floor `floorId`'s boss, into the bag (unopened)
+function PlayerService.AddChest(player, floorId, count)
+	local profile = profiles[player]
+	if not profile or not Items.ByFloor[floorId] then
+		return
+	end
+	local d = profile.data
+	local key = tostring(floorId)
+	d.Chests[key] = (d.Chests[key] or 0) + (count or 1)
+	markDirty(player)
+end
+
 function PlayerService.AddPower(player, amount)
 	local profile = profiles[player]
 	if profile then
@@ -338,6 +395,101 @@ end
 ----------------------------------------------------------------------
 -- Actions (called through the Action RemoteFunction; return ok, message)
 ----------------------------------------------------------------------
+----------------------------------------------------------------------
+-- Gear: open chests, wear, take off, lock, salvage. Everything is decided
+-- here on the server; the client only asks.
+----------------------------------------------------------------------
+local chestRng = Random.new()
+
+handlers.OpenChest = function(player, d, floorId)
+	floorId = tonumber(floorId)
+	local key = floorId and tostring(floorId)
+	if not key or (d.Chests[key] or 0) < 1 then
+		return false, "You don't have that chest."
+	end
+	if Items.count(d) >= Items.BagSize then
+		return false, "Your bag is full! Salvage something first."
+	end
+	local def = Items.rollDrop(floorId, chestRng)
+	if not def then
+		return false, "That chest is empty?!"
+	end
+	d.Chests[key] = d.Chests[key] - 1
+	if d.Chests[key] <= 0 then
+		d.Chests[key] = nil
+	end
+	local uid = tostring(player.UserId) .. "-" .. tostring(d.NextId)
+	d.NextId = d.NextId + 1
+	local rec = { id = def.id, r = Items.rollStats(def, chestRng), t = os.time() }
+	d.Items[uid] = rec
+	markDirty(player)
+	-- the whole server hears about the big ones
+	local rarity = Items.RarityById[def.rarity]
+	if rarity.rank >= Items.RarityById.Legendary.rank then
+		local msg = string.format("* %s pulled a %s %s!", player.DisplayName, string.upper(def.rarity), def.name)
+		for _, other in ipairs(Players:GetPlayers()) do
+			notify(other, msg, "rare")
+		end
+	end
+	return true, { uid = uid, item = rec }
+end
+
+handlers.EquipItem = function(player, d, uid)
+	local rec = type(uid) == "string" and d.Items[uid]
+	local def = rec and Items.ById[rec.id]
+	if not def then
+		return false, "You don't have that item."
+	end
+	if Items.gearLevel(d) < def.level then
+		return false, "You need to reach Level " .. def.level .. " to wear that."
+	end
+	d.Gear[def.slot] = uid
+	applyCharacterStats(player, false)
+	markDirty(player)
+	return true
+end
+
+handlers.UnequipSlot = function(player, d, slot)
+	if type(slot) ~= "string" or not d.Gear[slot] then
+		return false, "Nothing to take off."
+	end
+	d.Gear[slot] = nil
+	applyCharacterStats(player, false)
+	markDirty(player)
+	return true
+end
+
+handlers.LockItem = function(player, d, uid)
+	local rec = type(uid) == "string" and d.Items[uid]
+	if not rec then
+		return false, "You don't have that item."
+	end
+	rec.lock = (not rec.lock) or nil
+	markDirty(player)
+	return true
+end
+
+handlers.SalvageItem = function(player, d, uid)
+	local rec = type(uid) == "string" and d.Items[uid]
+	local def = rec and Items.ById[rec.id]
+	if not def then
+		return false, "You don't have that item."
+	end
+	if rec.lock then
+		return false, "It's locked - unlock it first."
+	end
+	for _, worn in pairs(d.Gear) do
+		if worn == uid then
+			return false, "Take it off first."
+		end
+	end
+	local coins = math.floor(Items.RarityById[def.rarity].salvage * def.floor)
+	d.Items[uid] = nil
+	d.Coins = d.Coins + coins
+	markDirty(player)
+	return true, coins
+end
+
 handlers.BuyUpgrade = function(player, d, id)
 	local def = type(id) == "string" and Config.UpgradeById[id]
 	if not def then
@@ -707,6 +859,7 @@ function PlayerService.Start()
 					profile.leaderPower.Value = math.floor(profile.data.Power)
 					profile.leaderPrestige.Value = profile.data.Prestige
 					profile.leaderLevel.Value = Config.levelFromPower(profile.data.Power)
+					profile.data.BestLevel = math.max(profile.data.BestLevel or 1, profile.leaderLevel.Value)
 					remotes.StateUpdate:FireClient(player, profile.data)
 				end
 			end

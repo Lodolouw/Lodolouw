@@ -1968,6 +1968,10 @@ local function die(E)
 		if PlayerService and PlayerService.AddPower then
 			PlayerService.AddPower(p, gained)
 		end
+		-- and its treasure chest (opened from your bag)
+		if PlayerService and PlayerService.AddChest then
+			PlayerService.AddChest(p, E.floor, 1)
+		end
 		if BossEvent then
 			BossEvent:FireClient(p, "Victory", E.floor, gained, first)
 		end

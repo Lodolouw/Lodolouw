@@ -517,6 +517,8 @@ local function toast(message, kind)
 		color = C.red
 	elseif kind == "info" then
 		color = C.blue
+	elseif kind == "rare" then
+		color = RGB(200, 130, 20) -- someone pulled something big from a chest
 	end
 	local t = create("TextLabel", {
 		LayoutOrder = toastOrder,
@@ -544,7 +546,7 @@ local function toast(message, kind)
 		local first = table.remove(liveToasts, 1)
 		first:Destroy()
 	end
-	task.delay(2.4, function()
+	task.delay(kind == "rare" and 5 or 2.4, function()
 		if t.Parent then
 			tween(t, 0.3, { BackgroundTransparency = 1, TextTransparency = 1 })
 			Debris:AddItem(t, 0.35)

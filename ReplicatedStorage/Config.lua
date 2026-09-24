@@ -309,7 +309,14 @@ function Config.stats(d)
 	local walkSpeed = (Config.BaseWalkSpeed + U.WalkSpeed.perLevel * (up.WalkSpeed or 0))
 		* (1 + Config.talismanBonus(d, "WalkSpeed"))
 
-	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")))
+	-- your gear (ReplicatedStorage.Items): extra health, and extra training Power
+	local gear = { Health = 0, Power = 0 }
+	local okItems, Items = pcall(require, game:GetService("ReplicatedStorage"):FindFirstChild("Items"))
+	if okItems and type(Items) == "table" then
+		gear = Items.gearStats(d)
+	end
+	powerMult = powerMult * (1 + gear.Power / 100)
+	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")) + gear.Health)
 
 	return {
 		powerMult = powerMult,

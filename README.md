@@ -196,3 +196,30 @@ inside a pixel heart, measured by how much of it is full. A hit makes it
 slosh, spill drops over the rim and shake; a flask pours it back in; low on
 health it beats and blinks red; at zero it cracks in two and shatters, and
 forms again when you respawn.
+
+## Gear: boss chests, items and your bag
+
+Every boss drops its **treasure chest** for everyone in the arena when it
+dies. Open it from your bag (the **GEAR** button under the left buttons, or
+**G**) and it rolls a rarity, then an item of that rarity from that boss's loot:
+
+**Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret** (about 1 in 5000).
+
+- **Rolled stats:** every stat rolls inside its range when it drops, so no two
+  are equal. The better the rolls, the more stars (up to 3); all stats at their
+  best = **PERFECT**.
+- **Slots:** Weapon, Helmet, Chest, Boots. Stats: Damage, Crit Chance (x1.75),
+  Health, Defense (both capped at 60%) and Training Power.
+- **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
+  Oozark, Duneworn and Devourer's for Nahrzul) with bonuses for 2 and 4 pieces.
+- **Level:** each item needs a level: the highest you've ever reached, so
+  prestiging never locks you out. Gear and chests stay through prestige.
+- **The bag:** your loadout and total stats on the left; your items, tabs,
+  sorting and chests on the right. Hover for the item's card (stats and
+  ranges, how they compare to what you wear, set, lore); click to select,
+  double-click to wear; LOCK protects an item; SALVAGE (asks twice) gives coins.
+- **Legendary and up** are announced to the whole server.
+
+Everything is decided on the server (`PlayerService`): the client only asks.
+Items, rarities, odds, sets and stats all live in `ReplicatedStorage.Items`.
+

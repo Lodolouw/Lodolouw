@@ -36,6 +36,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Items = require(ReplicatedStorage:WaitForChild("Items"))
 
 local CombatService = {}
 
@@ -85,6 +86,13 @@ local function spend(st, amount, now)
 	st.lastSpend = now
 end
 
+-- what your worn gear gives you (see ReplicatedStorage.Items)
+local critRng = Random.new()
+local function gearOf(player)
+	local d = PlayerService and PlayerService.GetData(player)
+	return (Items.gearStats(d))
+end
+
 -- Your punch damage against something on this floor
 function CombatService.PunchDamage(player, floor)
 	local d = PlayerService and PlayerService.GetData(player)
@@ -101,10 +109,20 @@ end
 -- a real player would get.
 function CombatService.DamageAgainst(player, target)
 	local floor = floorOf(player)
+	local base
 	if target and target:GetAttribute("StudioFair") and RunService:IsStudio() then
-		return math.max(1, math.floor(Config.powerForLevel((floor and floor.level) or 1)))
+		base = math.max(1, math.floor(Config.powerForLevel((floor and floor.level) or 1)))
+	else
+		base = CombatService.PunchDamage(player, floor)
 	end
-	return CombatService.PunchDamage(player, floor)
+	-- your gear: more damage, and a chance of a critical hit
+	local gear = gearOf(player)
+	local dmg = base * (1 + gear.Damage / 100)
+	local crit = critRng:NextNumber() * 100 < gear.Crit
+	if crit then
+		dmg = dmg * Items.CritMultiplier
+	end
+	return math.max(1, math.floor(dmg)), crit
 end
 
 ----------------------------------------------------------------------
@@ -233,6 +251,8 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 		end
 		return false
 	end
+	-- your gear's defence takes a share off every hit
+	amount = amount * (1 - gearOf(player).Defense / 100)
 	hum:TakeDamage(amount)
 	send(player, "Hurt", amount, fromPosition, knockback, quiet == true)
 	return true
@@ -726,7 +746,8 @@ local function onAction(player, action, arg, swing)
 			end
 			target = target or nearestTarget(atRoot)
 			if target then
-				hitTarget(player, target, CombatService.DamageAgainst(player, target), weight)
+				local dmg, crit = CombatService.DamageAgainst(player, target)
+				hitTarget(player, target, dmg, crit and 3 or weight) -- (a crit lands as the heaviest punch)
 			end
 		end)
 	elseif action == "Roll" then
