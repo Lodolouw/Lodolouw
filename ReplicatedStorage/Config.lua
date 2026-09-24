@@ -431,6 +431,24 @@ Config.AcidRain = {
 	Volume = 0.25,
 }
 
+-- THE LOOK: an 8-bit, Terraria-style retro skin over every screen in the game
+-- (RetroUI does it - nothing else needs changing, and switching it off puts
+-- the old look back). Each piece can be switched off on its own.
+Config.Retro = {
+	On = true,
+	PixelFont = true, -- arcade pixel text everywhere (and a chunkier one for big titles)
+	Palette = true, -- every colour snapped to a 32-colour 8-bit palette
+	Bands = 4, -- smooth gradients become this many hard bands of colour (0 = leave them smooth)
+	Sprites = true, -- pixel-art icons instead of the emoji ones (hearts, stars, potions...)
+	SegmentBars = true, -- health, level and boss bars split into chunky segments
+	ClickBurst = true, -- a burst of pixel sparks every time you click a button
+	Scanlines = 0.93, -- a faint old-TV screen (1 = off; lower = stronger)
+	StartScreen = true, -- the title screen when you join
+	Title = "DEFEAT THE BOSS",
+	Subtitle = "TO GROW",
+	Blip = "UI Blip", -- a short 8-bit blip on clicks, if you add a Sound with this name to SoundService
+}
+
 -- the lobby's music: the name of a Sound in SoundService
 Config.LobbyMusic = "Dreaming in the city"
 

@@ -152,3 +152,12 @@ moment the fight starts a sandstorm rolls in.
   Worm Slam, Worm Sweep, Worm Wail, Worm Devour, Worm Crack, Worm Death, a
   looping Worm Rumble and a looping Sandstorm. Missing ones borrow Gloomgut's
   (or are simply silent).
+
+## The look: 8-bit retro
+
+`RetroUI` (StarterPlayerScripts) lays an 8-bit, Terraria-style skin over every
+screen in the game without changing the scripts that build them: pixel fonts,
+a 32-colour palette, hard-banded gradients, square corners and crisp outlines,
+pixel-art icons for the emoji ones, segmented health/level/boss bars, pixel
+sparks on clicks, a faint scanline screen and a retro title screen on joining.
+Every piece is switched in `Config.Retro` (`On = false` puts the old look back).
