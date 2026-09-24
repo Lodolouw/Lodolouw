@@ -18,10 +18,8 @@
 	  * "ArenaSpawn"   where you arrive (in this model, Floor = 2)
 	  * "ArenaExit"    the Leave prompt on the gate's golden fog
 	  * "BossHome"     the centre of the pit, Floor = 2
-	  * "DunePlatform" each stone platform (a Model; Radius attribute). In the
-	    fight BossService can crack them and shatter them (Cracks / Broken)
-	  * "DuneThumper"  the three bronze thumpers round the edge (a Model with a
-	    "Strike" prompt): strike one and the worm charges at the sound
+	  * "DunePlatform" each stone platform (a Model; Radius attribute). In
+	    phase two BossService can shatter them (Broken)
 	  * "DuneSinkhole" the centre that collapses in phase 2 (Radius attribute)
 	  * "DuneEdgeWall" the invisible walls round the sand you fight on
 	  * the model itself carries Floor, Center, SandRadius (how far out the worm
@@ -375,14 +373,16 @@ local function buildSinkhole()
 			end
 		end
 	end
-	-- the seal itself: a worn round stone carved with a coiled worm
-	cylinder("SealStone", 0.35, 14, CFrame.new(at(0, 0.12, 0)), STONE_DARK, Mat.Sandstone, DECOR)
-	cylinder("SealRing", 0.4, 9, CFrame.new(at(0, 0.16, 0)), STONE_DEEP, Mat.Sandstone, DECOR)
+	-- the seal itself: a worn round stone carved with a coiled worm (standing
+	-- proud of the sand, so it doesn't vanish under it; Mireworm sleeps coiled
+	-- round it - BossClient draws that)
+	cylinder("SealStone", 0.7, 14, CFrame.new(at(0, 0.25, 0)), STONE_DARK, Mat.Sandstone, DECOR)
+	cylinder("SealRing", 0.8, 9, CFrame.new(at(0, 0.3, 0)), STONE_DEEP, Mat.Sandstone, DECOR)
 	for i = 0, 17 do
 		local t = i / 17
 		local a = t * math.pi * 3.2
 		local r = 0.8 + t * 3.4
-		cylinder("SealCoil", 0.2, 1.1 - t * 0.4, CFrame.new(onRing(r, a, 0.36)), SHADOW, Mat.Sandstone, DECOR)
+		cylinder("SealCoil", 0.2, 1.1 - t * 0.4, CFrame.new(onRing(r, a, 0.7)), SHADOW, Mat.Sandstone, DECOR)
 	end
 	-- the sand already circles it: three arms of darker sand spiralling in
 	for arm = 0, 2 do
@@ -403,6 +403,51 @@ local function buildSinkhole()
 	sink:SetAttribute("Floor", 2)
 	sink:SetAttribute("Radius", SINK_R)
 	CollectionService:AddTag(sink, "DuneSinkhole")
+end
+
+----------------------------------------------------------------------
+-- The worm's lair: a ring of old standing stones round the seal
+----------------------------------------------------------------------
+-- What you see from the gate, in the middle of the arena: tall stones round
+-- the seal where Mireworm sleeps coiled (BossClient draws the worm itself),
+-- leaning and snapped, each carved with its coiled glyph, which glows. They
+-- stand just outside where the seal caves in, with a gap facing the gate.
+local LAIR_R = 42
+local GLYPH = RGB(255, 176, 84)
+
+local function buildLair()
+	local n = 8
+	for i = 0, n - 1 do
+		local a = (i + 0.5) / n * math.pi * 2
+		if math.abs(wrap(a)) > 0.45 then -- (the gap: the way in from the gate)
+			local base = onRing(LAIR_R + (rnd() - 0.5) * 3, a, 0)
+			local broken = rnd() < 0.35
+			local h = broken and (6 + rnd() * 4) or (15 + rnd() * 7)
+			local w = 4.2 + rnd() * 1.4
+			-- leaning a little, mostly outward, as if something pushed up under them
+			local tilt = CFrame.Angles(math.rad(4 + rnd() * 8), 0, math.rad((rnd() - 0.5) * 8))
+			local cf = facingCentre(base) * tilt
+			part("LairStone", V3(w, h, 3), cf * CFrame.new(0, h / 2 - 1.5, 0), STONE:Lerp(STONE_DARK, 0.35 + rnd() * 0.3), Mat.Sandstone)
+			part("LairStoneCap", V3(w + 0.8, 1, 3.6), cf * CFrame.new(0, h - 1.2, 0) * CFrame.Angles(0, 0, math.rad((rnd() - 0.5) * 10)),
+				STONE_DARK, Mat.Sandstone, DECOR)
+			-- the glyph on its face (the side toward the seal): a ring with a mark in it
+			if not broken or h > 7 then
+				local gy = math.min(h * 0.62, h - 3)
+				cylinder("LairGlyph", 0.2, 2.6, cf * CFrame.new(0, gy, -1.55) * CFrame.Angles(math.pi / 2, 0, 0), GLYPH, Mat.Neon,
+					merge(DECOR, { Transparency = 0.25 }))
+				part("LairGlyphMark", V3(0.35, 1.3, 0.24), cf * CFrame.new(0, gy, -1.66), SHADOW, Mat.Sandstone, DECOR)
+			end
+			if broken then
+				-- its top lying in the sand beside it
+				local fa = a + (rnd() - 0.5) * 0.8
+				local fp = base + V3(math.sin(fa), 0, math.cos(fa)) * (6 + rnd() * 3) + V3(0, 1.4, 0)
+				part("LairStoneFallen", V3(w, 2.8, 8 + rnd() * 4), CFrame.new(fp) * CFrame.Angles(0, fa + (rnd() - 0.5) * 0.6, math.rad((rnd() - 0.5) * 14)),
+					STONE:Lerp(STONE_DARK, 0.5), Mat.Sandstone)
+			end
+			-- sand drifted against its foot
+			ellipsoid("SandHeap", V3(w + 5, 2.4, 7), cf * CFrame.new(0, -0.5, 1.2), SAND, Mat.Sand, DECOR)
+		end
+	end
 end
 
 ----------------------------------------------------------------------
@@ -449,68 +494,6 @@ local function buildPlatforms()
 		pm:SetAttribute("Top", 1.7)
 		CollectionService:AddTag(pm, "DunePlatform")
 		pm.Parent = m
-	end
-end
-
-----------------------------------------------------------------------
--- The thumpers: bronze gongs the old arena's keepers used to call the worm.
--- Each stands straight out behind a platform, so the worm charging at one
--- from the middle of the arena runs into the stone on the way.
-----------------------------------------------------------------------
-local THUMPER_ANGLES = { 0.62, 3.45, 5.62 } -- the same angles as platforms 1, 3 and 5
-local THUMPER_R = 112
-local BRONZE = RGB(176, 120, 58)
-local BRONZE_DARK = RGB(120, 78, 38)
-
-local function buildThumpers()
-	for i, a in ipairs(THUMPER_ANGLES) do
-		local tm = Instance.new("Model")
-		tm.Name = "DuneThumper" .. i
-		local p = onRing(THUMPER_R, a, 0)
-		local cf = facingCentre(p) -- -Z looks at the middle of the arena
-		local base = cylinder("ThumperBase", 1.2, 9, cf * CFrame.new(0, 0.6, 0), STONE_DARK, Mat.Sandstone, nil, tm)
-		-- two posts and a lintel: the frame the gong hangs in
-		for _, sx in ipairs({ -1, 1 }) do
-			part("ThumperPost", V3(1.6, 10, 1.6), cf * CFrame.new(sx * 4.8, 6, 0), STONE, Mat.Sandstone, nil, tm)
-			part("ThumperPostCap", V3(2.2, 0.8, 2.2), cf * CFrame.new(sx * 4.8, 11.2, 0), STONE_DARK, Mat.Sandstone, DECOR, tm)
-		end
-		part("ThumperLintel", V3(12.4, 1.2, 1.8), cf * CFrame.new(0, 10.6, 0), STONE_DARK, Mat.Sandstone, nil, tm)
-		-- the gong, facing the pit, on two chains
-		local drumAt = cf * CFrame.new(0, 5.6, 0)
-		local drum = rod("ThumperDrum", (drumAt * CFrame.new(0, 0, 0.45)).Position, (drumAt * CFrame.new(0, 0, -0.45)).Position, 7.6,
-			BRONZE, Mat.Metal, nil, tm)
-		rod("ThumperRim", (drumAt * CFrame.new(0, 0, 0.3)).Position, (drumAt * CFrame.new(0, 0, -0.3)).Position, 8.2, BRONZE_DARK, Mat.Metal, DECOR, tm)
-		-- the coiled worm on its face glows: what the client flashes when it's struck
-		local glow = rod("ThumperGlow", (drumAt * CFrame.new(0, 0, -0.4)).Position, (drumAt * CFrame.new(0, 0, -0.56)).Position, 2.6,
-			RGB(255, 196, 96), Mat.Neon, DECOR, tm)
-		local light = Instance.new("PointLight")
-		light.Color = RGB(255, 190, 110)
-		light.Range = 12
-		light.Brightness = 0.8
-		light.Parent = glow
-		for _, sx in ipairs({ -1, 1 }) do
-			beam("ThumperChain", (cf * CFrame.new(sx * 2.2, 10, 0)).Position, (cf * CFrame.new(sx * 2.2, 9.1, 0)).Position, 0.3, SHADOW, Mat.Metal, DECOR, tm)
-		end
-		-- the beater, leaning on a post
-		beam("ThumperBeater", (cf * CFrame.new(6.4, 0.4, -1.6)).Position, (cf * CFrame.new(5.4, 6.4, -1.2)).Position, 0.5, RGB(96, 70, 48), Mat.Wood, DECOR, tm)
-		ball("ThumperBeaterHead", 1.5, cf * CFrame.new(5.35, 6.7, -1.2), RGB(150, 110, 70), Mat.Fabric, DECOR, tm)
-		-- sand drifted against the base
-		wedge("ThumperDrift", V3(8, 1, 3), cf * CFrame.new(0, 0.5, 5.8) * CFrame.Angles(0, math.pi, 0), SAND, Mat.Sand, DECOR, tm)
-
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Strike"
-		prompt.ObjectText = "Thumper"
-		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = 12
-		prompt.KeyboardKeyCode = Enum.KeyCode.E
-		prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
-		prompt.RequiresLineOfSight = false
-		prompt.Parent = drum
-
-		tm.PrimaryPart = base
-		tm:SetAttribute("Floor", 2)
-		CollectionService:AddTag(tm, "DuneThumper")
-		tm.Parent = m
 	end
 end
 
@@ -1197,8 +1180,8 @@ function DunesBuilder.Build()
 		{ "Dunes", buildDunes }, -- first: other pieces sit things on top of the sand
 		{ "Floor", buildFloor },
 		{ "Seal at the centre", buildSinkhole },
+		{ "The worm's lair", buildLair },
 		{ "Platforms", buildPlatforms },
-		{ "Thumpers", buildThumpers },
 		{ "Pillars", buildPillars },
 		{ "Ribcage and skull", buildCarcass },
 		{ "Old arches", buildArcade },

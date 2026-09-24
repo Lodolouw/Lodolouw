@@ -16,7 +16,7 @@
 	  * Mireworm (Body = "Worm"): its segmented body, the ridge it pushes up
 	    swimming under the sand, and its own warnings (see "MIREWORM: the hunt"
 	    below) - plus the rumble when it's close, the sinkhole and whirlpool
-	    dragging you in, the thumpers booming and the platforms breaking
+	    dragging you in, and the platforms breaking
 	  * the boss bar across the top, with the trailing damage chip
 	  * the shell shattering at half health, the dissolve on death, and the
 	    victory banner
@@ -305,7 +305,7 @@ local recentSplats = {}
 -- Mireworm's own sounds that have no Gloomgut sound of the same name: if you
 -- haven't added one yet, it borrows the nearest thing (a dive sounds like a
 -- lunge, its body crashing down like a slam, and so on).
-local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = "Wail", Devour = "Roar", Thumper = "Crash" }
+local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = "Wail", Devour = "Roar" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]
@@ -652,7 +652,7 @@ end
 --   ridge (worm only) the mound of sand it pushes up swimming underneath
 -- and a few knobs only the worm has, for when it isn't standing up out of a hole:
 --   path(s)  where its spine runs, tail (s = 0) to head (s = 1), in the world:
---            the breach's arc, the coil's ring, lying dazed on the sand
+--            the breach's arc, the coil's ring
 --   girth    how thick it is (the coil is thinner than it stands)
 --   collar   0 hides the mound of sand round its base; noShadow hides its shadow
 local WORM_SEGMENTS = 20 -- (enough to bend smoothly into an arch, a ring or a leap)
@@ -893,8 +893,10 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 
 	-- all the way under and nothing moving on the surface: it's already hidden
 	-- where it last was, so there's nothing to do (the dunes are a long way
-	-- from the lobby, and every screen runs this every frame)
-	if (not P.path and sink >= 0.999 and ridge < 0.02 and fade <= 0) or fade >= 1 then
+	-- from the lobby, and every screen runs this every frame). The same asleep
+	-- in its coils while you're somewhere else: drawn once, then left.
+	local resting = B.model:GetAttribute("State") == "Dormant" and player:GetAttribute("SpireFloor") ~= B.floor
+	if (not P.path and sink >= 0.999 and ridge < 0.02 and fade <= 0) or fade >= 1 or resting then
 		if B.parked then
 			return
 		end
@@ -969,10 +971,13 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 	-- up somewhere else entirely (then there's nothing to flow from).
 	local from = B.blendFrom
 	if from and t < (B.blendUntil or 0) and from[WORM_SEGMENTS] then
-		if (from[WORM_SEGMENTS] - points[WORM_SEGMENTS].pos).Magnitude < 40 then
+		if flat(from[WORM_SEGMENTS] - points[WORM_SEGMENTS].pos).Magnitude < 70 then
 			local w = smooth(1 - (B.blendUntil - t) / WORM_BLEND)
+			local hidden = B.blendHidden or {}
 			for i, pt in ipairs(points) do
-				pt.pos = from[i]:Lerp(pt.pos, w)
+				if not hidden[i] then
+					pt.pos = from[i]:Lerp(pt.pos, w)
+				end
 			end
 			for i, pt in ipairs(points) do
 				local a, b = points[math.max(i - 1, 1)].pos, points[math.min(i + 1, WORM_SEGMENTS)].pos
@@ -1027,6 +1032,8 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 		end
 	end
 
+	B.segGirths = girths -- (how thick each piece is: you can't walk through it)
+
 	-- the creases: dark, until its armour is gone and they burn
 	local heartColor = def.HeartColor or RGB(255, 90, 40)
 	for i, seam in ipairs(body.seams) do
@@ -1072,7 +1079,7 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 	-- the head
 	local headCF = frames[WORM_SEGMENTS]
 	local gH, lenH = girths[WORM_SEGMENTS], lengths[WORM_SEGMENTS]
-	B.headPos = headCF.Position -- (the dazed stars circle this)
+	B.headPos = headCF.Position
 	local T, top, side = headCF.LookVector, headCF.UpVector, headCF.RightVector
 	local mouth = clamp(P.mouth, 0, 1)
 	local rimR = gH * 0.27
@@ -1537,7 +1544,7 @@ do
 				if big < 80 and flat(p - center).Magnitude < info.radius + 6 and math.abs(p.Y - info.y) < big / 2 + 1 then
 					if d.CanCollide then
 						table.insert(info.solids, { part = d, r = math.max(d.Size.X, d.Size.Z) / 2 })
-					elseif d.Transparency < 1 and not ownName:find("^DunePlatform") and not ownName:find("^DuneThumper") then
+					elseif d.Transparency < 1 and not ownName:find("^DunePlatform") then
 						table.insert(info.decor, d)
 					end
 				end
@@ -1897,7 +1904,8 @@ local function collapseSeal(B, on, instant)
 end
 
 -- The sandstorm in the dunes (ArenaAmbience draws it from the arena's Storm
--- attribute) picks up when the worm wakes, and howls once its armour is gone.
+-- attribute): a breeze while the worm sleeps (0.35), a sandstorm the moment
+-- it wakes (0.85), and howling once its armour is gone (1).
 local function stepStorm(B, dt)
 	local arena = arenaOf(B)
 	if not arena then
@@ -1906,7 +1914,7 @@ local function stepStorm(B, dt)
 	local state = B.model:GetAttribute("State")
 	local want = 0.35
 	if state == "Waking" or state == "Fighting" or state == "Transition" then
-		want = B.phase2Look and 0.95 or 0.6
+		want = B.phase2Look and 1 or 0.85
 	end
 	B.storm = B.storm or (arena:GetAttribute("Storm") or 0.35)
 	B.storm = B.storm + (want - B.storm) * math.min(1, dt * 0.6)
@@ -1952,11 +1960,6 @@ function Poses.Wake(B, t, P)
 		P.mouth = math.sin((u - 0.6) / 0.28 * math.pi) -- the roar
 		P.shake = math.max(P.shake, 0.35 * P.mouth)
 		P.flare = P.mouth
-	end
-	if B.kind == "Worm" then
-		-- the worm throws its head back to roar at the sky
-		P.lean = -0.55 * P.mouth
-		P.lift = 5 * P.mouth
 	end
 end
 
@@ -2151,6 +2154,7 @@ function Poses.Break(B, t, P)
 			local k = t / (BT * 0.35)
 			P.lean, P.lift, P.shake, P.flare, P.mouth = -0.4 * smooth(k), 6 * smooth(k), 0.45 * k, k, 0.5 * k
 			P.coreScale = 1 + 0.3 * k
+			P.solid = true
 		else
 			-- the plates blow off and it screams
 			local k = t - BT * 0.35
@@ -2159,6 +2163,7 @@ function Poses.Break(B, t, P)
 			P.mouth = clamp(1 - (k - 0.6) / 0.8, 0, 1)
 			P.flare = clamp(1 - k * 0.6, 0, 1)
 			P.shake = 0.3 * math.max(0, 1 - k)
+			P.solid = true
 		end
 		return
 	end
@@ -2411,7 +2416,7 @@ end
 -- (Everything Mireworm draws lives in this one block: a Roblox script may only
 -- have 200 names at its top level, so only the handful used further down are
 -- shared - the rest stay inside.)
-local trailReset, trailRecord, stepHumps, stepWormSenses, stepThumpers, glideWorm
+local trailReset, trailRecord, stepHumps, stepWormSenses, pushOutOfWorm, glideWorm
 do
 	----------------------------------------------------------------------
 	-- MIREWORM: the hunt, as your screen sees it
@@ -2419,7 +2424,7 @@ do
 	-- BossService decides everything - where it swims, when each attack lands,
 	-- who it hits. This draws it all from the same server clock: its back arching
 	-- out of the sand as it swims, the sand it tears up, every warning, the rumble
-	-- when it's close, the thumpers booming and the platforms breaking. None of
+	-- when it's close and the platforms breaking. None of
 	-- Gloomgut's drawing above is used for it, and none of this is used for Gloomgut.
 	local WORM_GLOW = RGB(255, 150, 70) -- warnings of something coming up from below
 	local LOCKED = RGB(255, 60, 40) -- a breach that has stopped following you
@@ -2577,6 +2582,10 @@ do
 	-- slow patch on the connection, can't make it stop and jump. The delay
 	-- grows by itself if your updates arrive late, and shrinks again after.
 	function glideWorm(B, now, ground)
+		if B.model:GetAttribute("State") == "Dormant" then
+			B.snaps = nil -- asleep at home: nothing to glide (start afresh when it wakes)
+			return ground
+		end
 		local stamp = B.model:GetAttribute("PosT")
 		local snaps = B.snaps
 		if not snaps then
@@ -2588,8 +2597,11 @@ do
 		end
 		local last = snaps[#snaps]
 		if not last or stamp > last.t then
-			if last and flat(ground - last.p).Magnitude > 40 then
-				table.clear(snaps) -- it came up somewhere else entirely: no sliding across the arena
+			local gap = last and flat(ground - last.p).Magnitude or 0
+			if gap > 40 or (gap > 4 and gap / math.max(stamp - last.t, 1 / 240) > 200) then
+				-- it jumped on the server (came up somewhere else): faster than it
+				-- can ever move, so it's shown as a jump now, not slid across
+				table.clear(snaps)
 			end
 			snaps[#snaps + 1] = { t = stamp, p = ground }
 			while #snaps > 40 do
@@ -2768,27 +2780,6 @@ do
 	----------------------------------------------------------------------
 	-- Its body in its other shapes
 	----------------------------------------------------------------------
-	-- Lying dazed on the sand where it rammed the stone: its tail runs back down
-	-- into the sand behind it, its body humps along the ground, and its head lies
-	-- flat at the stone. `retreat` 0..1 drags it backwards under the sand again.
-	local function lyingPath(B, L, t, retreat)
-		local g = B.def.Size * 0.64
-		local X, dir = L.at, L.dir
-		local floorY = X.Y
-		return function(s)
-			local v = s - retreat * 1.15
-			local pos = X - dir * ((1 - v) * 46)
-			local y
-			if v < 0.2 then
-				y = floorY + g * 0.42 - (0.2 - v) / 0.2 * g * 1.9 -- down into the sand
-			else
-				y = floorY + g * 0.42 + math.sin((v - 0.2) / 0.8 * math.pi) * 6
-			end
-			y = y + math.sin(t * 2.2 + s * 4) * 0.35 -- it heaves as it lies there
-			return V3(pos.X, y, pos.Z)
-		end
-	end
-
 	-- Coiled round its quarry like a snake: the tail goes down into the sand off
 	-- the start of the ring, its body runs all the way round (half sunk in the
 	-- sand), and its neck climbs from the end of the ring up over the middle, the
@@ -3354,68 +3345,6 @@ do
 		})
 	end
 
-	-- CHARGE: the furrow it tears across the sand toward the thumper, and - if a
-	-- platform was in the way - the crash as it rams the stone.
-	local function chargeTrail(B, from, to, stone, t0, travel)
-		from, to = onSand(from), onSand(to)
-		local arriveAt = t0 + travel
-		local furrow = newScar(B, "hole", travel + scarLife(B))
-		local cut = 0
-		local total = flat(to - from).Magnitude
-		local crashed = false
-		addTelegraph(B, {
-			update = function(now)
-				local reach = total * clamp((now - t0) / math.max(travel, 0.05), 0, 1)
-				while cut + 7 <= reach do
-					cut = cut + 7
-					scarHole(furrow, from:Lerp(to, cut / math.max(total, 1)), 4, 1.8)
-				end
-				if stone and now >= arriveAt and not crashed then
-					crashed = true
-					local run = flat(to - from)
-					local hitPoint = to + (run.Magnitude > 0.01 and run.Unit or B.vfacing) * 3
-					carve(B, to, 9, 3.5, scarLife(B))
-					burst(hitPoint + V3(0, 2, 0), WORM_SAND, 50, 36, 3.4, 1.2, true)
-					burst(hitPoint + V3(0, 2, 0), STONE_BITS[1], 24, 30, 1.6, 0.8, true)
-					flingRubble(hitPoint, 8, STONE_BITS, 0.8)
-					shockRing(B, hitPoint, 3, B.def.Size, 0.45, WORM_SAND)
-					playSound(B.def, "Crash", hitPoint, 1.2)
-					kick(hitPoint, 40, 1.5, -5)
-				end
-				return now - arriveAt < 0.5
-			end,
-			cleanup = function() end,
-		})
-	end
-
-	-- DAZED: stars circling its head while it lies stunned
-	local function dazedStars(B, t0, seconds)
-		local stars = {}
-		for i = 1, 5 do
-			stars[i] = newPart("DazedStar", Enum.PartType.Ball, RGB(255, 236, 140), Enum.Material.Neon, 0)
-			stars[i].Size = V3(1.2, 1.2, 1.2)
-		end
-		addTelegraph(B, {
-			update = function(now)
-				local e = now - t0
-				if e > seconds or B.action ~= "Stunned" then
-					return false
-				end
-				local c = (B.headPos or B.vpos) + V3(0, B.def.Size * 0.5, 0)
-				for i, st in ipairs(stars) do
-					local ang = e * 3 + i / #stars * math.pi * 2
-					st.CFrame = CFrame.new(c + V3(math.sin(ang) * 5.5, math.sin(e * 5 + i) * 0.7, math.cos(ang) * 5.5))
-				end
-				return true
-			end,
-			cleanup = function()
-				for _, st in ipairs(stars) do
-					st:Destroy()
-				end
-			end,
-		})
-	end
-
 	----------------------------------------------------------------------
 	-- Its poses
 	----------------------------------------------------------------------
@@ -3424,25 +3353,21 @@ do
 		underPose(B, P, 1, HUMP_EVERY)
 	end
 
-	-- Going back under: head-first from standing; a coil sinks where it lies;
-	-- lying dazed, it drags itself back into its hole.
+	-- Going back under: head-first from standing; a coil (after a Coil, or just
+	-- woken in its coils round the seal) sinks where it lies.
 	function Poses.Dive(B, t, P)
 		local T = B.def.Hunt.DiveTime
 		local k = clamp(t / T, 0, 1)
-		if B.prevAction == "Stunned" and B.lying then
-			P.path = lyingPath(B, B.lying, t, smooth(k))
-			P.eyes = 0.3
-			P.noPush, P.noShadow = true, true
-			return
-		end
-		if B.prevAction == "Coil" and B.coilRest then
+		if (B.prevAction == "Coil" or B.prevAction == "Wake") and B.coilRest then
 			local c = B.coilRest
 			P.girth = c.g
-			P.path = coilPath(c.C, c.r, c.g, c.headUp, 1, c.thEnd, smooth(k) * c.g * 3)
+			P.path = coilPath(c.C, c.r, c.g, c.headUp, c.rise or 1, c.thEnd, smooth(k) * c.g * 3)
 			P.override = c.C
 			P.noPush, P.noShadow = true, true
+			P.solid = B.prevAction == "Wake" and k < 0.5 -- (a coil round YOU you roll out of)
 			return
 		end
+		P.solid = k < 0.5 -- still standing: you can't walk through it
 		if k < 0.3 then
 			local e = smooth(k / 0.3)
 			P.lean, P.lift, P.mouth = -0.3 * e, 3 * e, 0.5 * e
@@ -3469,6 +3394,7 @@ do
 		P.lean = -0.35 * (1 - smooth((t - 0.25) / 0.6))
 		P.lift = 6 * spring(t, 4, 9)
 		P.spill = 32 * clamp(1 - t / 1.2, 0, 1) + 4 -- sand pouring off it
+		P.solid = true -- standing out of the sand: you can't walk through it
 	end
 
 	-- Racing after you under the sand (arching often), then waiting under the heave.
@@ -3488,8 +3414,10 @@ do
 		if typeof(A) ~= "Vector3" or typeof(Bp) ~= "Vector3" or t < tell then
 			underPose(B, P, 1.4, 30)
 			P.shake = 0.25 * clamp(t / tell, 0, 1)
+			P.stage = "under"
 			return
 		end
+		P.stage = "leap"
 		local last = (m:GetAttribute("ActN") or 1) == 1
 		local run = flat(Bp - A)
 		local len = math.max(run.Magnitude, 1)
@@ -3512,6 +3440,7 @@ do
 			end
 			P.eyes = last and 0.6 or 1
 			P.spill = 6
+			P.solid = true -- lying in its trench: a wall of worm (go round it)
 		end
 		local BL, H = a.BodyLength, a.Height
 		P.path = function(s)
@@ -3549,8 +3478,10 @@ do
 			P.override = C + V3(math.sin(ang), 0, math.cos(ang)) * a.Radius
 			P.facing = V3(math.cos(ang), 0, -math.sin(ang))
 			underPose(B, P, 1.3, 24)
+			P.stage = "circle"
 			return
 		end
+		P.stage = "ring"
 		local e = t - a.Tell
 		local u = clamp(e / a.Close, 0, 1)
 		local r = a.Radius - (a.Radius - a.Crush) * u * u
@@ -3558,8 +3489,10 @@ do
 		local strike = clamp((e - a.Close + 0.16) / 0.16, 0, 1)
 		local headUp = lerp(g * 2.8, g * 0.55, strike * strike)
 		local thEnd = B.coilAng + lap
+		-- (it all bursts up out of the sand together: head and neck too)
+		local up = smooth(clamp(e / 0.35, 0, 1))
 		P.girth = g
-		P.path = coilPath(C, r, g, headUp, clamp(e / 0.3, 0, 1), thEnd, 0)
+		P.path = coilPath(C, r, g, headUp, clamp(e / 0.3, 0, 1), thEnd, (1 - up) * (headUp + g * 1.5))
 		P.override = C
 		P.mouth = (strike > 0 and strike < 1) and 1 or (0.35 + 0.3 * u)
 		P.flare, P.eyes = u, 1
@@ -3605,35 +3538,107 @@ do
 		underPose(B, P, 1.1, 26)
 	end
 
-	-- Charging at a thumper: tearing across the arena, arching as it goes.
-	function Poses.Charge(B, t, P)
-		local m = B.model
-		local from, to, travel = m:GetAttribute("ActA"), m:GetAttribute("ActB"), m:GetAttribute("ActN")
-		if typeof(from) == "Vector3" and typeof(to) == "Vector3" and travel then
-			P.override = from:Lerp(to, clamp(t / math.max(travel, 0.05), 0, 1))
+	----------------------------------------------------------------------
+	-- Asleep in the middle of the arena, and waking
+	----------------------------------------------------------------------
+	-- Until someone comes near, it lies coiled round the seal at the heart of
+	-- the arena, half sunk in the sand, its head laid in the middle of its
+	-- coils (looking toward the gate), breathing slowly: the thing you see as
+	-- you come in, and walk up to. Come within WakeRange (or punch it) and it
+	-- wakes: it stirs, its head rears up out of the coils and roars at you -
+	-- and then the coils sink and it's under the sand, hunting.
+	-- (Gloomgut keeps its own sleeping and waking.)
+	local SLEEP_R = 19 -- how far out from the seal its coils lie
+	local function sleepCoil(B, t, rear, stir, down)
+		local g = B.def.Size * 0.56
+		local C = B.vpos
+		if not B.sleepFace then
+			-- its neck comes over from the far side, so its head faces the way
+			-- it was put down facing (the gate)
+			local root = B.model.PrimaryPart
+			local f = root and flat(root.CFrame.LookVector) or B.vfacing
+			f = f.Magnitude > 0.01 and f.Unit or V3(0, 0, 1)
+			B.sleepFace = math.atan2(-f.X, -f.Z)
 		end
-		underPose(B, P, 1.6, 34)
-		P.shake = 0.2
+		-- (breathing only while you're in its arena: elsewhere nobody sees it)
+		local breathe = (player:GetAttribute("SpireFloor") == B.floor) and math.sin(t * 2 * math.pi / 5.5) or 0
+		local headUp = lerp(g * 0.62 + breathe * 0.35, g * 2.9, rear) + math.sin(t * 23) * stir * 0.6
+		B.coilRest = { C = C, r = SLEEP_R, g = g, headUp = headUp, thEnd = B.sleepFace, rise = 0.8 }
+		return coilPath(C, SLEEP_R, g * (1 + 0.025 * breathe), headUp, 0.8, B.sleepFace, down or 0), g
 	end
 
-	-- Dazed against the stone: lying on the sand, eyes rolling.
-	function Poses.Stunned(B, t, P)
-		local m = B.model
-		local X = m:GetAttribute("ActA")
-		if typeof(X) == "Vector3" and m.PrimaryPart then
-			local look = flat(m.PrimaryPart.CFrame.LookVector)
-			B.lying = { at = X, dir = look.Magnitude > 0.01 and look.Unit or B.vfacing }
+	local gloomDormant, gloomWake = Poses.Dormant, Poses.Wake
+	function Poses.Dormant(B, t, P)
+		if B.kind ~= "Worm" then
+			return gloomDormant(B, t, P)
 		end
-		if not B.lying then
-			underPose(B, P, 0, nil)
+		-- (back from a fight: its coils come up out of the sand and settle)
+		local up = smooth(clamp(t / 1.6, 0, 1))
+		local path, g = sleepCoil(B, t, 0, 0, (1 - up) * B.def.Size * 1.4)
+		P.path, P.girth = path, g
+		P.eyes, P.mouth = 0, 0
+		P.spill = 6 * (1 - up)
+		P.noShadow = true
+		P.solid = up > 0.9
+	end
+
+	function Poses.Wake(B, t, P)
+		if B.kind ~= "Worm" then
+			return gloomWake(B, t, P)
+		end
+		local u = clamp(t / B.def.WakeTime, 0, 1)
+		local stir = u < 0.3 and u / 0.3 or math.max(0, 1 - (u - 0.3) * 6) -- its coils shudder as it stirs
+		local rear = easeOutBack(clamp((u - 0.28) / 0.35, 0, 1)) -- then its head comes up
+		local path, g = sleepCoil(B, t, rear, stir)
+		P.path, P.girth = path, g
+		P.eyes = clamp((u - 0.2) / 0.1, 0, 1)
+		if u > 0.5 and u < 0.85 then
+			P.mouth = math.sin((u - 0.5) / 0.35 * math.pi) -- the roar
+			P.flare = P.mouth
+		end
+		P.spill = 10 * stir + 14 * clamp(rear, 0, 1) * (1 - u) -- sand pouring off its coils
+		P.noShadow = true
+		P.solid = true
+	end
+
+	-- You can't walk through it. Whatever of its body is out of the sand is
+	-- solid: walk into it and you stop at its side, like walking into a wall -
+	-- its neck, its head, its body lying along the sand, its sleeping coils.
+	-- (Not while it's coiled round YOU: that ring you're meant to roll through,
+	-- and BossService throws you back off it. And never up in the air above
+	-- you: you can run under its head.)
+	function pushOutOfWorm(B, hrp, P)
+		local pts, gs = B.lastPoints, B.segGirths
+		if not P.solid or not pts or not gs then
 			return
 		end
-		P.path = lyingPath(B, B.lying, t, 0)
-		P.override = B.lying.at
-		P.eyes = 0.35 + 0.25 * math.sin(t * 3)
-		P.mouth = 0.25 + 0.1 * math.sin(t * 1.7)
-		P.spill = 4
-		P.noPush, P.noShadow = true, true
+		local pos = hrp.Position
+		local feet, top = pos.Y - 2.6, pos.Y + 2.2
+		local moved = false
+		for _ = 1, 2 do -- (twice: pushed out of one piece of it into the next is caught)
+			for i = 1, #pts do
+				local c, r = pts[i], (gs[i] or 0) * 0.5
+				if r > 0.5 and c.Y + r * 0.85 > feet and c.Y - r * 0.85 < top then
+					local off = flat(pos - c)
+					local d = off.Magnitude
+					local want = r * 0.9 + 1.4
+					if d < want then
+						local out = d > 0.05 and off / d or B.vfacing
+						pos = V3(c.X, pos.Y, c.Z) + out * want
+						moved = true
+					end
+				end
+			end
+		end
+		if moved then
+			-- (a quick shove, not a jump: at most 3 studs a frame, which is still
+			-- far faster than anyone walks into it)
+			local shove = pos - hrp.Position
+			if shove.Magnitude > 3 then
+				pos = hrp.Position + shove.Unit * 3
+			end
+			hrp.CFrame = CFrame.new(pos) * (hrp.CFrame - hrp.Position)
+		end
 	end
 
 	----------------------------------------------------------------------
@@ -3698,17 +3703,6 @@ do
 		end)
 	end
 
-	function Starts.Charge(B, t0)
-		at(B, t0 + 0.02, function()
-			playSound(B.def, "Dive", B.vpos, 1)
-			burst(B.vpos + V3(0, 1, 0), WORM_SAND, 24, 24, 2.6, 0.8, true)
-		end)
-	end
-
-	function Starts.Stunned(B, t0)
-		dazedStars(B, t0, tonumber(B.model:GetAttribute("ActN")) or 4)
-	end
-
 	function SlotSpawns.Ambush(B, i, spot)
 		if i == 1 then
 			local eruptAt = tonumber(B.model:GetAttribute("ActN")) or (serverNow() + B.def.Attacks.Ambush.Lock)
@@ -3747,26 +3741,17 @@ do
 		end
 	end
 
-	function SlotSpawns.Charge(B, i, spot, t0)
-		local m = B.model
-		local from = m:GetAttribute("ActA")
-		if i == 2 and typeof(from) == "Vector3" then
-			local stone = m:GetAttribute("ActC")
-			chargeTrail(B, from, spot, typeof(stone) == "Vector3" and stone or nil, t0, tonumber(m:GetAttribute("ActN")) or 0.5)
-		end
-	end
-
 	----------------------------------------------------------------------
 	-- The arena answering it
 	----------------------------------------------------------------------
 	-- What stands in the arena trembles as it swims underneath: pillars, braziers,
-	-- the thumpers' frames, the columns on the platforms. (Only on your screen,
+	-- the columns on the platforms. (Only on your screen,
 	-- and only by a hair - enough to see, never enough to trip you.)
 	local SHAKERS = {
 		SandPillar = true, SandPillarBand = true, SandPillarBreak = true, FallenDrum = true,
 		BrazierStand = true, BrazierBowl = true, BrazierFoot = true,
-		ThumperPost = true, ThumperPostCap = true, ThumperLintel = true, ThumperDrum = true, ThumperRim = true, ThumperGlow = true,
 		PlatformColumn = true, PlatformColumnBase = true, DuneRock = true,
+		LairStone = true, LairStoneCap = true, LairGlyph = true, LairGlyphMark = true,
 	}
 	local function stepTremble(B, near)
 		if not B.shakers or (#B.shakers == 0 and os.clock() > (B.shakerLook or 0)) then
@@ -3845,11 +3830,29 @@ do
 			want = clamp(1 - (d - 8) / range, 0, 1)
 		end
 		B.rumble = (B.rumble or 0) + (want - (B.rumble or 0)) * math.min(1, dt * 4)
-		-- a thump now and then as it heaves past under you, a little quicker and
-		-- harder the closer it is (never a constant shake - that just looks like lag)
-		if B.rumble > 0.08 and cameraKickEvent and os.clock() >= (B.nextThump or 0) then
-			B.nextThump = os.clock() + lerp(1.1, 0.55, B.rumble)
-			cameraKickEvent:Fire(strength * (0.4 + 0.6 * B.rumble))
+		-- Each pulse of the rumble (BossService sends one every Rumble.Every
+		-- seconds as it swims, and hurts whoever is on the sand inside
+		-- Rumble.Radius): the sand jumps in a ring round its ridge - that ring is
+		-- how far it reaches - and you feel it in your view if it's close
+		local pulseT = B.model:GetAttribute("RumbleT")
+		if pulseT ~= B.rumbleSeen then
+			B.rumbleSeen = pulseT
+			local at = B.model:GetAttribute("RumbleP")
+			if type(pulseT) == "number" and typeof(at) == "Vector3" and serverNow() - pulseT < 0.5 and here then
+				local reach = R.Radius or 16
+				local c = onSand(at)
+				shockRing(B, c, 3, reach, 0.35, WORM_SAND)
+				for i = 1, 8 do
+					local a = i / 8 * math.pi * 2
+					burst(c + V3(math.sin(a) * reach * 0.8, 0.5, math.cos(a) * reach * 0.8), WORM_SAND, 4, 14, 1.6, 0.5, true)
+				end
+				if hrp and cameraKickEvent then
+					local d = flat(hrp.Position - c).Magnitude
+					if d < range then
+						cameraKickEvent:Fire(strength * (d <= reach and 1 or 0.35 + 0.4 * (1 - d / range)))
+					end
+				end
+			end
 		end
 		if B.rumble > 0.55 and hrp and os.clock() > (B.nextPuff or 0) then
 			B.nextPuff = os.clock() + 0.4
@@ -3907,92 +3910,9 @@ do
 	end
 
 	----------------------------------------------------------------------
-	-- The thumpers and the platforms (the dunes' own pieces)
+	-- The platforms (the dunes' own pieces)
 	----------------------------------------------------------------------
-	-- the boss this screen is drawing for a floor (for telegraphs that need one)
-	local function bossOnFloor(floorId)
-		for _, B in pairs(bosses) do
-			if B.floor == floorId then
-				return B
-			end
-		end
-		return nil
-	end
-
-	-- Someone struck a thumper: it booms, its glyph flashes, and rings of sound
-	-- roll out across the sand. Every screen plays it at the same moment.
-	local thumpers = {} -- [model] = { glow, color, light }
-	local function thumperBoom(tm, info)
-		local floorId = tm:GetAttribute("Floor") or 2
-		local def = Config.Bosses[floorId]
-		local ok, cf = pcall(function()
-			return tm:GetPivot()
-		end)
-		if not ok then
-			return
-		end
-		local pos = V3(cf.X, cf.Y, cf.Z)
-		local drum = tm:FindFirstChild("ThumperDrum", true)
-		local ground = V3(pos.X, (drum and drum.Position.Y - 5.6) or pos.Y, pos.Z)
-		if def then
-			playSound(def, "Thumper", ground, 1)
-		end
-		if info.glow then
-			info.glow.Color = RGB(255, 255, 235)
-			tween(info.glow, 0.9, { Color = info.color })
-		end
-		burst(ground + V3(0, 1, 0), WORM_SAND, 20, 18, 2, 0.8, true)
-		kick(ground, 15, 0.6, -2)
-		local B = bossOnFloor(floorId)
-		if B then
-			for i = 0, 2 do
-				task.delay(i * 0.2, function()
-					shockRing(B, ground, 4, 55 + i * 12, 0.9, RGB(255, 206, 120))
-				end)
-			end
-		end
-	end
-
-	local function trackThumper(tm)
-		if thumpers[tm] or not tm:IsA("Model") then
-			return
-		end
-		local glow = tm:FindFirstChild("ThumperGlow", true)
-		local info = { glow = glow, color = glow and glow.Color, light = glow and glow:FindFirstChildOfClass("PointLight") }
-		thumpers[tm] = info
-		tm:GetAttributeChangedSignal("StruckAt"):Connect(function()
-			local t = tm:GetAttribute("StruckAt")
-			if type(t) == "number" and serverNow() - t < 1 then
-				thumperBoom(tm, info)
-			end
-		end)
-		tm.AncestryChanged:Connect(function()
-			if not tm.Parent then
-				thumpers[tm] = nil
-			end
-		end)
-	end
-
-	-- while a thumper cools down its glyph goes dark: you can see which are ready
-	function stepThumpers()
-		local now = serverNow()
-		for tm, info in pairs(thumpers) do
-			local cooling = now < (tonumber(tm:GetAttribute("ReadyAt")) or 0)
-			if info.glow then
-				info.glow.Transparency = cooling and 0.75 or 0
-			end
-			if info.light then
-				info.light.Enabled = not cooling
-			end
-		end
-	end
-
-	for _, tm in ipairs(CollectionService:GetTagged("DuneThumper")) do
-		trackThumper(tm)
-	end
-	CollectionService:GetInstanceAddedSignal("DuneThumper"):Connect(trackThumper)
-
-	-- A platform cracking (rammed) or shattering (rammed too often, or undermined)
+	-- A platform shattering (undermined: it burst up through it)
 	local platformsSeen = {}
 	local function trackPlatform(pm)
 		if platformsSeen[pm] or not pm:IsA("Model") then
@@ -4436,6 +4356,21 @@ end
 CollectionService:GetInstanceAddedSignal("Boss"):Connect(track)
 
 -- a new action began on the server
+-- The worm's body flows from the shape it was in to its next one (see
+-- applyWormPose). Pieces of it that were out of sight under the sand don't
+-- flow: they simply come up in their new place, so nothing flies across.
+local function startWormBlend(B, now)
+	if not B.lastPoints then
+		return
+	end
+	local floorY, g = B.vpos.Y, B.lastGirth or 0
+	local hidden = {}
+	for i, p in ipairs(B.lastPoints) do
+		hidden[i] = p.Y + g * 0.5 < floorY
+	end
+	B.blendFrom, B.blendGirth, B.blendUntil, B.blendHidden = table.clone(B.lastPoints), B.lastGirth, now + WORM_BLEND, hidden
+end
+
 local function onAction(B, name, t0, now)
 	B.prevAction = B.action
 	B.action, B.actionStart = name, t0
@@ -4443,14 +4378,17 @@ local function onAction(B, name, t0, now)
 	B.slotsDone = 0
 	local worm = B.kind == "Worm"
 	if worm then
-		if B.lastPoints then
-			B.blendFrom, B.blendGirth, B.blendUntil = table.clone(B.lastPoints), B.lastGirth, now + WORM_BLEND
-		end
+		startWormBlend(B, now)
+		-- the news of a new move reaches your screen a moment after it began on
+		-- the server. Its shape starts from the beginning anyway (a burst out of
+		-- the sand really bursts up, instead of appearing half out) and plays a
+		-- touch fast until it has caught up. (Arriving much later - you joined
+		-- mid-move - it simply picks up where the server is.)
+		local late = now - t0
+		B.seenAt, B.lateBy = now, (late > 0 and late < 0.6) and late or 0
+		B.stage = nil
 		if name == "Reset" then
 			B.resetUnder = B.model:GetAttribute("Submerged") == true
-		end
-		if name ~= "Stunned" and name ~= "Dive" then
-			B.lying = nil -- (only a dive straight after lying dazed drags it back under)
 		end
 	end
 	if name == "Break" and now - t0 > B.def.BreakTime * 0.35 then
@@ -4461,6 +4399,7 @@ local function onAction(B, name, t0, now)
 	end
 	if worm and name == "Dormant" then
 		closeAllScars() -- asleep again: the floor is flat again
+		B.sleepFace = nil -- (and it lies down facing the gate again)
 	end
 	if name == "Wake" or name == "Dormant" or name == "Reset" then
 		B.phase2Look, B.crownGone = false, false
@@ -4534,7 +4473,20 @@ local function stepBoss(B, now, dt)
 		shape = Poses.Death
 	end
 	if shape then
-		shape(B, t, P)
+		if B.kind == "Worm" then
+			local catch = B.lateBy and B.lateBy > 0 and clamp(1 - (now - B.seenAt) / 0.5, 0, 1) or 0
+			shape(B, t - B.lateBy * catch, P)
+			-- a new stage inside the same move (a leap leaving the sand, a coil
+			-- closing round you): its body flows into it rather than jumping
+			if P.stage ~= B.stage then
+				if B.stage ~= nil and P.stage ~= nil then
+					startWormBlend(B, now)
+				end
+				B.stage = P.stage
+			end
+		else
+			shape(B, t, P)
+		end
 	end
 
 	-- being hit makes it wobble
@@ -4612,19 +4564,20 @@ local function stepBoss(B, now, dt)
 	end
 
 	-- you can't walk through it: nudged out to the edge of its body
-	if here and awake then
+	if B.kind == "Worm" then
+		-- (every piece of it that's out of the sand - see pushOutOfWorm)
+		if here and (awake or state == "Dormant") then
+			local hrp = myRoot()
+			if hrp then
+				pushOutOfWorm(B, hrp, P)
+			end
+		end
+	elseif here and awake then
 		local hrp = myRoot()
 		if hrp then
 			local offset = flat(hrp.Position - B.vpos)
 			local minimum = B.def.Size / 2 * P.sx + 1.2
-			local solid
-			if B.kind == "Worm" then
-				-- under the sand it's not in your way; lying along the sand or
-				-- coiled round you it isn't one round lump to be pushed out of
-				solid = (P.sink or 0) < 0.5 and not P.noPush
-			else
-				solid = P.lift < 4 -- in the air, you can run under it
-			end
+			local solid = P.lift < 4 -- in the air, you can run under it
 			if offset.Magnitude < minimum and solid then
 				local out = offset.Magnitude > 0.05 and offset.Unit or B.vfacing
 				local target = B.vpos + out * minimum
@@ -4910,7 +4863,6 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	stepBar(now, dt)
 	stepMusic(dt)
-	pcall(stepThumpers)
 	pcall(stepScars)
 	-- weather is decoration: if it ever fails, the fight carries on without it
 	local ok, err = pcall(stepRain, dt)

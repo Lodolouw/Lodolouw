@@ -362,7 +362,7 @@ Config.Spire = {
 			boss = "Mireworm, the Devourer Beneath",
 			area = "The Sunken Dunes",
 			level = 30,
-			blurb = "An arena the desert swallowed whole. Something vast swims beneath it, hunting by sound. Stone is silent - and a struck thumper lures it.",
+			blurb = "An arena the desert swallowed whole. Something vast sleeps coiled at its heart - wake it, and it hunts you by sound from under the sand. Stone is silent.",
 			color = Color3.fromRGB(236, 186, 98),
 			open = true,
 			-- how the arena looks and sounds on your screen while you're in it
@@ -384,6 +384,29 @@ Config.Spire = {
 				Wind = Vector3.new(1, 0, 0.35), -- the way it blows
 				Sound = "Sandstorm", -- a looping wind in SoundService, if you add one
 				Volume = 0.3,
+				-- THE SANDSTORM. When the fight starts a wall of sand rolls in across
+				-- the arena, and while it rages everything past a stone's throw
+				-- fades into the dust. It dies down again when the worm does (and
+				-- blows harder still once its armour cracks).
+				Storm = {
+					Front = true, -- the wall of sand you see rolling in (false: it just thickens)
+					FrontSpeed = 55, -- how fast the wall crosses the arena, studs a second
+					-- the air at the storm's height: Density is how thick (0..1) - the
+					-- higher, the less you can see. At 0.6 you still see the worm
+					-- clearly across half the arena; much past 0.75 and you won't.
+					Atmosphere = {
+						Density = 0.6,
+						Offset = 0.35,
+						Color = Color3.fromRGB(214, 166, 108),
+						Decay = Color3.fromRGB(168, 110, 64),
+						Glare = 0,
+						Haze = 3,
+					},
+					Veil = 0.3, -- dust right in front of your eyes (0 = none, 1 = blinding)
+					Tint = Color3.fromRGB(255, 226, 186), -- the light, through the dust
+					Brightness = -0.05, -- a little darker while it blows
+					Volume = 0.75, -- the wind, at the storm's height
+				},
 			},
 		},
 		{ id = 3, boss = "???", area = "???", level = 45, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
@@ -515,7 +538,7 @@ Config.Bosses = {
 
 		Size = 30, -- a vast creature - half again as wide as Gloomgut
 		WakeRange = 55,
-		WakeTime = 3.2, -- it has further to come, from properly underground
+		WakeTime = 3.2, -- it uncoils from round the seal and rears up to roar
 		WakeSoundLead = 0.6,
 		Leash = 130, -- keeps it inside the SandRadius DunesBuilder marked out for it
 		TurnSpeed = { 260, 380 }, -- degrees a second it can turn while it swims, per phase
@@ -541,20 +564,6 @@ Config.Bosses = {
 			StoneNoise = 0.25, -- moving on stone is this much as loud as on sand
 		},
 
-		-- THE THUMPERS. Strike one and it charges at the sound. If a stone
-		-- platform is in the way it rams the stone and is left dazed; if not,
-		-- it bursts up under the thumper - so line it up first.
-		Lure = {
-			ChargeSpeed = 70, -- how fast it charges at the sound
-			StunTime = { 4, 3.2 }, -- dazed after ramming stone, per phase
-			StunDamage = 1.25, -- your punches land this much harder while it's dazed
-			ThumperCooldown = 12, -- seconds before the same thumper can be struck again
-			Wary = 20, -- after being fooled it ignores every thumper for this long
-			Cracks = 2, -- rams a platform can take before it shatters
-			-- nothing in its way: it erupts under the thumper
-			Damage = 28, Radius = 16, Knockback = 60, Exposed = 1.3,
-		},
-
 		-- PHASE TWO: the seal caves in and the middle of the arena collapses into
 		-- a real bowl of sand that drags you down toward the pit at the bottom,
 		-- which burns. (The pull is on your screen; the damage is the server's.)
@@ -566,10 +575,13 @@ Config.Bosses = {
 			PitDamage = 6, PitTick = 0.5,
 		},
 
-		-- THE RUMBLE: while it swims under the sand close to you, your view gets a
-		-- thump now and then. Range = how close (studs) before you feel it;
-		-- Shake = how hard each thump is (0 turns it off).
-		Rumble = { Range = 40, Shake = 0.45 },
+		-- THE RUMBLE: while it swims under the sand hunting, the ground bucks in a
+		-- ring round it every `Every` seconds - you see the sand jump. Anyone
+		-- standing on sand inside `Radius` takes `Damage` and is jolted up: get
+		-- away from where it went under, keep off its ridge, jump as the sand
+		-- jumps, or get on stone. Range = how close before you feel each one in
+		-- your view; Shake = how hard (0 = not at all).
+		Rumble = { Every = 1.1, Radius = 18, Damage = 8, Knockback = 26, Range = 40, Shake = 0.45 },
 
 		-- THE SAND IT TEARS UP. Where it bursts out, crashes down or cracks the
 		-- floor, the sand really opens up (craters, trenches, fissures - on your
@@ -616,9 +628,10 @@ Config.Bosses = {
 
 		Reward = { Power = 2.0, FirstClear = 5 },
 
-		-- the fight's music: a Sound named "Worm Music" in SoundService. Until
-		-- you add one, it plays Gloomgut's ("Boss") instead of nothing.
-		Music = "Worm Music",
+		-- the fight's music: the Sound named "SANDWORMSONG" in SoundService
+		-- (capitals and spaces don't matter). If it's ever missing, it plays
+		-- Gloomgut's ("Boss") instead of nothing.
+		Music = "SANDWORMSONG",
 		VictorySound = "Victory Is Ours (a) Sting",
 		-- no acid rain here: the sandstorm (ArenaAmbience) picks up as it fights
 		Weather = "Sandstorm",
@@ -626,16 +639,15 @@ Config.Bosses = {
 		-- Its sounds: add Sounds with these names to SoundService whenever you
 		-- like. Any you haven't added yet borrow one of Gloomgut's instead.
 		Sounds = {
-			Wake = "Worm Rise", -- bursting out of the seal when it wakes
-			Dive = "Worm Charge", -- going head-first under the sand (and charging a thumper)
+			Wake = "Worm Rise", -- rearing up out of its coils when it wakes
+			Dive = "Worm Charge", -- going head-first under the sand
 			Erupt = "Worm Erupt", -- bursting up out of the sand
-			Crash = "Worm Slam", -- its body crashing down (breach, coil, ramming stone)
+			Crash = "Worm Slam", -- its body crashing down (breach, coil)
 			Sweep = "Worm Sweep", -- the tail lash
 			Roar = "Worm Wail", -- the tremor
 			Devour = "Worm Devour", -- the sinkhole opening
 			Break = "Worm Crack", -- its armour blowing off
 			Death = "Worm Death",
-			Thumper = "Thumper", -- the boom when someone strikes a thumper
 			Rumble = "Worm Rumble", -- a LOOPING low rumble, louder the closer it swims to you
 		},
 	},

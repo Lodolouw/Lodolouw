@@ -118,24 +118,32 @@ boss arena" — that's your teleport hook once the arena place/area exists.
 
 ## The Spire's second floor: Mireworm (the Sunken Dunes)
 
-Mireworm doesn't reuse any of Gloomgut's attacks. It lives under the sand and
-hunts by sound: running on sand is loud, stone is quiet, standing still is
-silent. Its cycle is hunt (under the sand, untouchable) -> strike -> exposed
-(hit it now) -> dive.
+Mireworm doesn't reuse any of Gloomgut's attacks. It sleeps coiled round the
+seal in the middle of the arena until someone comes near; then it rears up,
+roars, and goes under the sand to hunt by sound: running on sand is loud,
+stone is quiet, standing still is silent. Its cycle is hunt (under the sand,
+untouchable) -> strike -> exposed (hit it now) -> dive. While it's under the
+sand the ground bucks round its ridge (the rumble, which hurts), and the
+moment the fight starts a sandstorm rolls in.
 
-- **Where the numbers are:** `Config.Bosses[2]` - `Hunt`, `Lure` (thumpers),
+- **Where the numbers are:** `Config.Bosses[2]` - `Hunt`, `Rumble`,
   `Whirlpool` (phase two), `Scars` (how long torn-up sand lasts) and `Attacks`.
-- **Server:** `BossService` - `wormBrain` and the `WormAttacks` table (Ambush,
-  Breach, Coil, Devour, TailLash, Tremor, Undermine, and Charge for thumpers).
-  Gloomgut still runs on `brain` and `Attacks`, untouched.
+  The sandstorm is `Config.Spire.Floors[2].ambience.Storm`, and the fight's
+  music is `Music = "SANDWORMSONG"`.
+- **Server:** `BossService` - `wormBrain`, `stepRumble` and the `WormAttacks`
+  table (Ambush, Breach, Coil, Devour, TailLash, Tremor, Undermine). Gloomgut
+  still runs on `brain` and `Attacks`, untouched.
 - **Arena:** `DunesBuilder` - the fighting floor is Terrain sand (so it can be
-  torn up), three thumpers (tag `DuneThumper`), five platforms that crack and
-  shatter (tag `DunePlatform`).
-- **Drawing:** `BossClient` - the "MIREWORM: the hunt" section. Craters,
-  trenches, fissures and the phase-two bowl are carved into the Terrain on each
-  player's own screen and slide back after `Scars.Last` seconds; hits are always
-  decided by the server.
-- **Optional sounds** (SoundService): Worm Music, Worm Rise, Worm Charge,
-  Worm Erupt, Worm Slam, Worm Sweep, Worm Wail, Worm Devour, Worm Crack,
-  Worm Death, Thumper, and a looping Worm Rumble. Missing ones borrow
-  Gloomgut's.
+  torn up), the ring of standing stones round the seal (the worm's lair), five
+  platforms that shatter in phase two (tag `DunePlatform`).
+- **Drawing:** `BossClient` - the "MIREWORM: the hunt" section. Its body is
+  solid wherever it's out of the sand (`pushOutOfWorm`). Craters, trenches,
+  fissures and the phase-two bowl are carved into the Terrain on each player's
+  own screen and slide back after `Scars.Last` seconds; hits are always decided
+  by the server.
+- **The sandstorm:** `ArenaAmbience` - the wall of sand rolling in, the
+  thickened air, the dust over your view, the wind.
+- **Optional sounds** (SoundService): Worm Rise, Worm Charge, Worm Erupt,
+  Worm Slam, Worm Sweep, Worm Wail, Worm Devour, Worm Crack, Worm Death, a
+  looping Worm Rumble and a looping Sandstorm. Missing ones borrow Gloomgut's
+  (or are simply silent).
