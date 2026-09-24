@@ -798,6 +798,50 @@ local function cobble(slab)
 	end
 end
 
+-- THE PLAZA: the same cobbles, laid round the shrine on each of its three
+-- rings at that ring's own height, leaving the gold inlay ring and the gold
+-- pointers showing through
+local function cobblePlaza(ground)
+	local rings = {}
+	for _, n in ipairs({ "PlazaInner", "PlazaMid", "PlazaOuter" }) do
+		local d = ground:FindFirstChild(n)
+		if d then
+			d.Color = RGB(90, 105, 136)
+			table.insert(rings, { r = d.Size.Y / 2, top = d.Position.Y + d.Size.X / 2 })
+		end
+	end
+	if #rings == 0 then
+		return
+	end
+	local c = ground:FindFirstChild("PlazaInner") or ground:FindFirstChild("PlazaOuter")
+	local center = c.Position
+	local cell = 2.2
+	local outer = rings[#rings].r
+	for iz = -math.ceil(outer / cell), math.ceil(outer / cell) do
+		local shift = (iz % 2 == 0) and 0 or cell / 2
+		for ix = -math.ceil(outer / cell), math.ceil(outer / cell) do
+			local x, z = ix * cell + shift, iz * cell
+			local r = math.sqrt(x * x + z * z)
+			local ang = math.deg(math.atan2(z, x)) % 90
+			local onPointer = r > 19.4 and math.abs(ang - 45) < 7
+			if r > 12.6 and r < outer - 1 and not (r > 16.1 and r < 17.7) and not onPointer then
+				local top
+				for _, ring in ipairs(rings) do
+					if r < ring.r - 0.4 then
+						top = ring.top
+						break
+					end
+				end
+				if top then
+					local at = V3(center.X + x, top + 0.04, center.Z + z)
+					local w, d = cell - 0.35 - rng:NextNumber() * 0.4, cell - 0.35 - rng:NextNumber() * 0.4
+					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
+				end
+			end
+		end
+	end
+end
+
 -- all of it, once the lobby's here
 local function dressLobby(lobby)
 	if D.On == false then
@@ -813,11 +857,12 @@ local function dressLobby(lobby)
 	end
 	local ground0 = lobby:FindFirstChild("Ground")
 	if ground0 and D.Paths ~= false then
+		pcall(cobblePlaza, ground0)
 		for _, p in ipairs(ground0:GetChildren()) do
 			if p:IsA("BasePart") then
 				if PATHS[p.Name] then
 					pcall(cobble, p)
-				elseif p.Name == "Curb" then
+				elseif p.Name == "Curb" or p.Name == "PlazaCurb" then
 					p.Color = RGB(58, 68, 102)
 				end
 			end
