@@ -1174,8 +1174,32 @@ local function dressArena(arena)
 		return
 	end
 	restyleAll(arena)
+	-- The detail goes in only once the arena has really arrived: an arena that
+	-- hasn't streamed in yet is an empty model, and an empty model says it
+	-- sits at 0,0,0 - the middle of the lobby's plaza - so its dust would all
+	-- pile up there in one tall column. Wait until it has size, then dress it.
 	if D.On ~= false then
-		pcall(arenaDetail, arena, arena.Name == "SlimeArena")
+		task.spawn(function()
+			for _ = 1, 600 do -- (keeps looking for up to 10 minutes)
+				local ok, _, size = pcall(function()
+					return arena:GetBoundingBox()
+				end)
+				local count = 0
+				for _, d in ipairs(arena:GetDescendants()) do
+					if d:IsA("BasePart") then
+						count = count + 1
+						if count > 50 then
+							break
+						end
+					end
+				end
+				if ok and size and size.Magnitude > 60 and count > 50 then
+					pcall(arenaDetail, arena, arena.Name == "SlimeArena")
+					return
+				end
+				task.wait(1)
+			end
+		end)
 	end
 	if D.Flames ~= false then
 		for _, d in ipairs(arena:GetDescendants()) do
