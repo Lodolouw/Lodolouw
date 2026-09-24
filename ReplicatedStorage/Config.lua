@@ -492,6 +492,7 @@ Config.Retro = {
 		Flavour = true, -- a line of text typed out when you walk up to a shop, the shrine...
 		Repeat = 150, -- seconds before the same place talks again
 		Grade = true, -- a slightly warmer, punchier colour grade in the lobby
+		DummyTalk = true, -- the training dummies mock you (and tell jokes) while you train
 		-- Lines = { SellShop = "* your own line" }, -- (to change what a place says)
 		-- more to look at (all of it can't be touched or stood on)
 		Detail = {

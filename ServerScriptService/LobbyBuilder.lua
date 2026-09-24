@@ -1580,6 +1580,13 @@ local function buildDummy(dummy, zi, zone, O)
 	part(body, "Arms", V3(11, 1.2, 1.2), O * CFrame.new(0, yb + 8.2, -0.2), look.post, look.postMat)
 	part(body, "EyeL", V3(0.7, 0.7, 0.3), O * CFrame.new(-0.85, yb + 11.5, 1.65), col, Mat.Neon)
 	part(body, "EyeR", V3(0.7, 0.7, 0.3), O * CFrame.new(0.85, yb + 11.5, 1.65), col, Mat.Neon)
+	-- a pixel face: cross little brows and a stitched grin (it's smug)
+	for _, sx in ipairs({ -1, 1 }) do
+		part(body, "Brow", V3(0.9, 0.25, 0.3), O * CFrame.new(sx * 0.85, yb + 12.15, 1.66) * CFrame.Angles(0, 0, math.rad(sx * 14)), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
+	end
+	for k = -2, 2 do
+		part(body, "Grin", V3(0.35, 0.3, 0.3), O * CFrame.new(k * 0.38, yb + 10.35 + ((math.abs(k) == 2) and 0.2 or 0), 1.66), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
+	end
 
 	-- Bullseye on the chest
 	local chest = O * CFrame.new(0, yb + 6.8, 1.65)
@@ -1835,61 +1842,6 @@ local function buildYard(parent)
 		local status = billLabel(bb, "Status", zone.level <= 1 and "UNLOCKED" or ("Needs Level " .. zone.level), RGB(120, 255, 160), UDim2.fromScale(0.05, 0.74), UDim2.fromScale(0.9, 0.22))
 		status.Name = "Status"
 		CollectionService:AddTag(bb, "ZoneSign")
-	end
-
-	-- The way in: a stone archway over the path from the plaza, with a
-	-- pixel-style sign board hung in it (instead of the old plank on posts)
-	local AZ = Y.CenterZ - pad / 2 - 9 -- just in front of the first row
-	local archStone, archDark, gold = RGB(150, 146, 156), RGB(104, 100, 112), RGB(214, 170, 70)
-	for _, sx in ipairs({ -1, 1 }) do
-		local x = sx * 12
-		part(yard, "ArchBase", V3(4.4, 2, 4.4), CFrame.new(x, 1, AZ), archDark, Mat.Slate)
-		part(yard, "ArchPillar", V3(3.4, 17, 3.4), CFrame.new(x, 10.5, AZ), archStone, Mat.Slate)
-		part(yard, "ArchCap", V3(4.4, 1.2, 4.4), CFrame.new(x, 19.6, AZ), archDark, Mat.Slate)
-		part(yard, "ArchFinial", V3(1.6, 1.6, 1.6), CFrame.new(x, 21.2, AZ) * CFrame.Angles(math.rad(45), 0, math.rad(45)), gold, Mat.Neon, { CanCollide = false })
-		-- a torch on the plaza side of each pillar
-		local torchAt = V3(x, 13, AZ - 1.7)
-		part(yard, "ArchTorchHolder", V3(0.8, 2.2, 0.8), CFrame.new(torchAt), RGB(58, 58, 66), Mat.Metal, { CanCollide = false })
-		local torchHead = part(yard, "ArchTorch", V3(1, 0.8, 1), CFrame.new(torchAt + V3(0, 1.4, 0)), RGB(60, 40, 30), Mat.Wood, { CanCollide = false })
-		local fire = Instance.new("Fire")
-		fire.Size = 3
-		fire.Heat = 6
-		fire.Color = RGB(255, 140, 40)
-		fire.SecondaryColor = RGB(255, 220, 90)
-		fire.Parent = torchHead
-	end
-	part(yard, "ArchBeam", V3(28, 2.4, 3), CFrame.new(0, 20.4, AZ), archDark, Mat.Slate)
-	for _, sx in ipairs({ -1, 1 }) do
-		part(yard, "ArchChain", V3(0.3, 2.2, 0.3), CFrame.new(sx * 7, 18.1, AZ), RGB(58, 58, 66), Mat.Metal, { CanCollide = false })
-	end
-	local board = part(yard, "YardSign", V3(18, 4.6, 0.8), CFrame.new(0, 14.7, AZ), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
-	part(yard, "YardSignTrim", V3(18.8, 5.4, 0.6), CFrame.new(0, 14.7, AZ), gold, Mat.Metal, { CanCollide = false })
-	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
-		local sg = Instance.new("SurfaceGui")
-		sg.Name = "YardSignText"
-		sg.Face = face
-		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		sg.PixelsPerStud = 40
-		sg.LightInfluence = 0
-		sg.Parent = board
-		local title = Instance.new("TextLabel")
-		title.BackgroundTransparency = 1
-		title.Position = UDim2.fromScale(0.04, 0.08)
-		title.Size = UDim2.fromScale(0.92, 0.52)
-		title.Font = FONT
-		title.TextScaled = true
-		title.Text = "TRAINING YARD"
-		title.TextColor3 = RGB(254, 231, 97)
-		title.Parent = sg
-		local sub = Instance.new("TextLabel")
-		sub.BackgroundTransparency = 1
-		sub.Position = UDim2.fromScale(0.08, 0.62)
-		sub.Size = UDim2.fromScale(0.84, 0.28)
-		sub.Font = FONT
-		sub.TextScaled = true
-		sub.Text = "Stand on a pad and click to train"
-		sub.TextColor3 = RGB(255, 255, 255)
-		sub.Parent = sg
 	end
 end
 

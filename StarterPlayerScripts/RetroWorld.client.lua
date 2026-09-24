@@ -783,6 +783,126 @@ local function dressLobby(lobby)
 	end
 end
 
+
+----------------------------------------------------------------------
+-- THE DUMMIES TALK BACK (like Undertale's): stand on a pad and its dummy
+-- mocks you in a little black speech box, typed out with a blip
+----------------------------------------------------------------------
+local TAUNTS = {
+	Straw = { "* Is that a punch or a gentle suggestion?", "* I'm made of straw and I'm STILL not scared.", "* Hit me harder. I dare you. Politely." },
+	Iron = { "* Clang. That's the sound of you trying.", "* I've been hit harder by a breeze.", "* Iron will. Iron body. Iron... bored." },
+	Frost = { "* Brr. Your punches give me chills. Of boredom.", "* Chill out. You'll hurt yourself.", "* Ice to meet you. Nice try though." },
+	Ember = { "* You're not so hot, are you?", "* Careful, you'll get burned. Mostly your pride.", "* I've seen bigger sparks from a birthday candle." },
+	Void = { "* ...", "* The void stares back. It's unimpressed.", "* Your hits echo into nothing. Like your jokes." },
+	Celestial = { "* The stars laugh at your technique.", "* Divine. Radiant. Not you, me.", "* Keep going. The heavens need a comedy show." },
+	Ooze = { "* Squish! Oh wait, that was you slipping.", "* I'm slime. I bounce back. Can you?", "* You'll never get this goo off your gloves." },
+	Dune = { "* You hit like sand. Scattered.", "* A worm told me about you. He wasn't impressed.", "* Time is running out. Like sand. Get it?" },
+	Crystal = { "* Crystal clear: you need more training.", "* Don't crack under pressure. I won't.", "* So shiny. So unbreakable. So ME." },
+	Storm = { "* Lightning never strikes twice. You barely struck once.", "* That's shocking. Shockingly weak.", "* Thunder! ...oh that was just your stomach." },
+	Dragon = { "* Rawr. That means 'try harder' in dragon.", "* I've had lunches tougher than you.", "* Kneel, snack. I mean, hero." },
+	Cosmic = { "* In the vastness of space... you're still small.", "* I've seen galaxies born. Your punch? Not so much.", "* The universe is infinite. So is my patience." },
+}
+local LOCKED = { "* Aww. Come back when you're bigger.", "* You need Level %d to touch me. Bye bye!", "* Too soon, tiny hero. Level %d first." }
+
+local function bubbleFor(head)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "DummyTalk"
+	bb.Size = UDim2.fromScale(15, 3.6)
+	bb.StudsOffset = V3(0, 5.5, 0)
+	bb.MaxDistance = 70
+	bb.LightInfluence = 0
+	bb.Enabled = false
+	bb:SetAttribute("RetroSkip", true)
+	local box = Instance.new("Frame")
+	box.Size = UDim2.fromScale(1, 1)
+	box.BackgroundColor3 = RGB(0, 0, 0)
+	box.Parent = bb
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 3
+	edge.Parent = box
+	local txt = Instance.new("TextLabel")
+	txt.BackgroundTransparency = 1
+	txt.Position = UDim2.fromScale(0.04, 0.1)
+	txt.Size = UDim2.fromScale(0.92, 0.8)
+	txt.Font = Enum.Font.Arcade
+	txt.TextScaled = true
+	txt.TextWrapped = true
+	txt.TextXAlignment = Enum.TextXAlignment.Left
+	txt.TextColor3 = RGB(255, 255, 255)
+	txt.Parent = box
+	bb.Adornee = head
+	bb.Parent = mine
+	return bb, txt
+end
+
+local talkers = {} -- zone index -> { bb, txt }
+local talking = nil -- { zi, text, start, letters, until }
+local nextTalk, lastZone = 0, 0
+local function speak(zi, text)
+	local t = talkers[zi]
+	if not t then
+		return
+	end
+	if talking and talking.zi ~= zi and talkers[talking.zi] then
+		talkers[talking.zi].bb.Enabled = false
+	end
+	t.txt.Text = text
+	t.txt.MaxVisibleGraphemes = 0
+	t.bb.Enabled = true
+	talking = { zi = zi, start = os.clock(), letters = utf8.len(text) or #text, shown = 0, hideAt = math.huge }
+end
+local function findTalkers(lobby)
+	local yard = lobby:FindFirstChild("TrainingYard")
+	for zi = 1, #Config.Zones do
+		local d = yard and yard:FindFirstChild("Dummy" .. zi)
+		local head = d and d:FindFirstChild("Head", true)
+		if head then
+			local bb, txt = bubbleFor(head)
+			talkers[zi] = { bb = bb, txt = txt }
+		end
+	end
+end
+local function stepTalk(now)
+	local zi = player:GetAttribute("CurrentZone") or 0
+	local zone = Config.Zones[zi]
+	if zi ~= lastZone then
+		lastZone = zi
+		nextTalk = now + 0.4 -- (it notices you almost at once)
+	end
+	if zone and talkers[zi] and now >= nextTalk and not (talking and now < talking.hideAt) then
+		local line
+		local stats = player:FindFirstChild("leaderstats")
+		local lv = stats and stats:FindFirstChild("Level")
+		if lv and lv.Value < zone.level then
+			line = string.format(LOCKED[math.random(#LOCKED)], zone.level)
+		else
+			local list = TAUNTS[zone.id] or TAUNTS.Straw
+			line = list[math.random(#list)]
+		end
+		speak(zi, line)
+		nextTalk = now + 9 + math.random() * 6
+	end
+	if talking then
+		local t = talkers[talking.zi]
+		local want = math.min(talking.letters, math.floor((now - talking.start) * 30))
+		if want > talking.shown then
+			talking.shown = want
+			t.txt.MaxVisibleGraphemes = want
+			if want % 2 == 0 then
+				blip()
+			end
+			if want >= talking.letters then
+				t.txt.MaxVisibleGraphemes = -1
+				talking.hideAt = now + 3.5
+			end
+		end
+		if now > talking.hideAt or (zi ~= talking.zi) then
+			t.bb.Enabled = false
+			talking = nil
+		end
+	end
+end
 ----------------------------------------------------------------------
 -- Go
 ----------------------------------------------------------------------
@@ -800,6 +920,9 @@ if W.Flavour ~= false then
 	findSpots(lobby)
 end
 task.spawn(dressLobby, lobby)
+if W.DummyTalk ~= false then
+	task.spawn(findTalkers, lobby)
+end
 local spawnPad = lobby:FindFirstChild("LobbySpawn", true)
 if W.SaveStar ~= false and spawnPad and spawnPad:IsA("BasePart") then
 	buildStar(spawnPad.Position + V3(0, 7.5, 0))
@@ -889,6 +1012,7 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
+	stepTalk(now)
 	if saying then
 		local want = math.min(saying.letters, math.floor((now - saying.started) * (R.TypeSpeed or 40)))
 		if want > saying.shown then
