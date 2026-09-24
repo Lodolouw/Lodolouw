@@ -533,7 +533,7 @@ Config.Audio = {
 	Effects = 1, -- punches, the boss, the world
 	UI = 0.8, -- coins, buttons, level-ups, menus
 
-	LobbyMusic = 0.25, -- background: easy to talk over
+	LobbyMusic = 0.5, -- background, but clearly heard (raise it for louder, up to 1)
 	BossMusic = 0.42, -- louder than the lobby: the fight should feel bigger
 	Hits = 0.7, -- your punches landing, loudest thing you hear
 	BossSounds = 0.85, -- the boss's own slams, roars and splats
@@ -595,6 +595,7 @@ Config.Bosses = {
 
 		-- the fight's music: the name of a Sound in SoundService
 		Music = "Slime boss song",
+		MusicVolume = 0.8, -- (louder than the default boss music level)
 		-- played over the banner when it dies
 		VictorySound = "Victory Is Ours (a) Sting",
 
