@@ -40,9 +40,9 @@ local playerGui = player:WaitForChild("PlayerGui")
 local RGB = Color3.fromRGB
 local BLACK, WHITE, INK = RGB(0, 0, 0), RGB(255, 255, 255), RGB(24, 20, 37)
 local PANEL, SLOT, SLOT_HOVER = RGB(12, 10, 20), RGB(30, 28, 46), RGB(46, 44, 70)
-local GREY, DIM = RGB(139, 155, 180), RGB(90, 105, 136)
+local GREY, DIM = RGB(205, 212, 232), RGB(150, 160, 205) -- (bright enough to read on the dark)
 local GOLD, RED, GREEN = RGB(254, 174, 52), RGB(228, 59, 68), RGB(99, 199, 77)
-local FONT = Enum.Font.Arcade
+local FONT = Enum.Font.GothamBold -- clean and easy to read; the pixel font is kept for big titles
 local TITLE_FACE = nil
 pcall(function()
 	TITLE_FACE = Font.new("rbxasset://fonts/families/PressStart2P.json")
@@ -94,10 +94,14 @@ local function text(parent, props)
 		TextSize = 20,
 		Text = "",
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextStrokeColor3 = RGB(10, 8, 24),
+		TextStrokeTransparency = 0.55, -- a soft outline, so it stays crisp on the stars
 	}, parent)
 	for k, v in pairs(props) do
 		l[k] = v
 	end
+	-- a touch bigger than asked, and never tiny
+	l.TextSize = math.max(15, math.floor(l.TextSize * 1.2 + 0.5))
 	return l
 end
 local function box(parent, props, edge, thickness)
@@ -322,9 +326,10 @@ end
 
 -- the top bar: your coins, the title, and the way out
 local topBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, 70), ZIndex = 3 }, win)
-local coinIcon = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = GOLD, Position = UDim2.fromOffset(200, 22), Size = UDim2.fromOffset(26, 26), Rotation = 45, ZIndex = 4 }, topBar)
+-- (coins on the right, well clear of Roblox's own buttons in the top-left)
+local coinIcon = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = GOLD, Position = UDim2.new(1, -560, 0, 22), Size = UDim2.fromOffset(26, 26), Rotation = 45, ZIndex = 4 }, topBar)
 new("UIStroke", { Color = INK, Thickness = 3 }, coinIcon)
-local coinText = text(topBar, { Text = "0", TextSize = 30, TextColor3 = GOLD, Position = UDim2.fromOffset(240, 16), Size = UDim2.fromOffset(240, 40), ZIndex = 4, TextStrokeTransparency = 0.4, TextStrokeColor3 = INK })
+local coinText = text(topBar, { Text = "0", TextSize = 30, TextColor3 = GOLD, Position = UDim2.new(1, -520, 0, 16), Size = UDim2.fromOffset(240, 40), ZIndex = 4, TextStrokeTransparency = 0.4, TextStrokeColor3 = INK })
 local title = text(topBar, { Text = "INVENTORY", TextSize = 30, TextColor3 = WHITE, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.22), Size = UDim2.fromOffset(400, 40), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
 if TITLE_FACE then
 	title.FontFace = TITLE_FACE
@@ -370,11 +375,23 @@ local function buildAvatar()
 		copy:PivotTo(CFrame.new())
 		copy.Parent = world
 		avatar = copy
-		-- frame all of you, head to toe, from the front (you face -Z)
-		local box, size = copy:GetBoundingBox()
-		local h = math.max(size.Y, size.X * 0.8)
-		local dist = (h / 2) / math.tan(math.rad(viewCam.FieldOfView / 2)) * 1.12 + size.Z / 2
-		local c = box.Position
+		-- frame all of you, head to toe, from the front (you face -Z). Only
+		-- your body counts - not a big sword or wings sticking out of it
+		local lo, hi = math.huge, -math.huge
+		local cx, cz, n = 0, 0, 0
+		for _, part in ipairs(copy:GetDescendants()) do
+			if part:IsA("BasePart") and not part:FindFirstAncestorWhichIsA("Accessory") and part.Name ~= "HumanoidRootPart" then
+				lo = math.min(lo, part.Position.Y - part.Size.Y / 2)
+				hi = math.max(hi, part.Position.Y + part.Size.Y / 2)
+				cx, cz, n = cx + part.Position.X, cz + part.Position.Z, n + 1
+			end
+		end
+		if n == 0 then
+			lo, hi, n = -3, 2.5, 1
+		end
+		local h = (hi - lo) + 1.2 -- (a little room for hair and hats)
+		local dist = (h / 2) / math.tan(math.rad(viewCam.FieldOfView / 2)) * 1.15
+		local c = Vector3.new(cx / n, (lo + hi) / 2 + 0.3, cz / n)
 		viewCam.CFrame = CFrame.lookAt(c + Vector3.new(0, 0, -dist), c)
 	end)
 end
@@ -596,20 +613,20 @@ local function renderDetail(uid)
 		local range = def.stats[s.id]
 		if range then
 			local v = rec.r[s.id]
-			local row = new("Frame", { Name = "Row", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = nextO(), ZIndex = 4 }, detail)
-			text(row, { Text = Items.formatStat(s.id, v), TextSize = 17, Size = UDim2.new(0.75, 0, 0, 18), ZIndex = 5 })
+			local row = new("Frame", { Name = "Row", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 42), LayoutOrder = nextO(), ZIndex = 4 }, detail)
+			text(row, { Text = Items.formatStat(s.id, v), TextSize = 17, Size = UDim2.new(0.72, 0, 0, 22), ZIndex = 5 })
 			if wornRec then
 				local diff = v - (wornRec.r[s.id] or 0)
 				if diff ~= 0 then
-					text(row, { Text = (diff > 0 and "\u{25B2}+" or "\u{25BC}") .. diff, TextSize = 15, TextColor3 = diff > 0 and GREEN or RED, Position = UDim2.fromScale(0.72, 0), Size = UDim2.new(0.28, 0, 0, 18), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+					text(row, { Text = (diff > 0 and "\u{25B2}+" or "\u{25BC}") .. diff, TextSize = 15, TextColor3 = diff > 0 and GREEN or RED, Position = UDim2.fromScale(0.72, 0), Size = UDim2.new(0.28, 0, 0, 22), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
 				end
 			end
-			local track = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(24, 16, 20), Position = UDim2.fromOffset(0, 21), Size = UDim2.new(1, -44, 0, 8), ZIndex = 5 }, row)
+			local track = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(14, 10, 34), Position = UDim2.fromOffset(0, 27), Size = UDim2.new(1, -62, 0, 9), ZIndex = 5 }, row)
 			local span = range[2] - range[1]
 			local q = span > 0 and (v - range[1]) / span or 1
 			local fill = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = q >= 0.9 and GOLD or WHITE, Size = UDim2.new(0, 0, 1, 0), ZIndex = 6 }, track)
 			tween(fill, 0.35, { Size = UDim2.new(math.max(q, 0.04), 0, 1, 0) })
-			text(row, { Text = range[1] .. "-" .. range[2], TextSize = 12, TextColor3 = DIM, Position = UDim2.new(1, -40, 0, 17), Size = UDim2.fromOffset(40, 14), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+			text(row, { Text = range[1] .. "-" .. range[2], TextSize = 13, TextColor3 = DIM, Position = UDim2.new(1, -58, 0, 22), Size = UDim2.fromOffset(58, 18), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
 		end
 	end
 	-- the set, like enchantments
@@ -811,7 +828,7 @@ local function drawTabs()
 		end)
 		table.insert(tabButtons, b)
 	end
-	local sortBtn = button(tabs, SORTS[sortMode], WOOD_DARK, { LayoutOrder = 20, Size = UDim2.fromOffset(62, 42), TextSize = 12, ZIndex = 4 })
+	local sortBtn = button(tabs, SORTS[sortMode], WOOD_DARK, { LayoutOrder = 20, Size = UDim2.fromOffset(78, 42), TextSize = 14, ZIndex = 4 })
 	sortBtn:FindFirstChildOfClass("UIStroke").Color = EMPTY
 	sortBtn.MouseEnter:Connect(function()
 		setStatus("Sort by: " .. SORTS[sortMode])
