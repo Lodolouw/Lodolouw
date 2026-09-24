@@ -183,8 +183,20 @@ local function titleSign(parent, cf, title, subtitle, titleColor, width, maxDist
 	local anchor = anchorPart(parent, "SignAnchor", cf)
 	local studsWide = (width or 340) * SIGN_STUDS_PER_PIXEL
 	local bb = billboard(anchor, "Sign", UDim2.fromScale(studsWide, studsWide * 0.35), maxDistance or 85)
-	billLabel(bb, "Title", title, titleColor, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.66))
-	billLabel(bb, "Sub", subtitle, RGB(255, 255, 255), UDim2.fromScale(0, 0.66), UDim2.fromScale(1, 0.34))
+	-- (in the game's look: a black box with a thick white border)
+	local box = Instance.new("Frame")
+	box.Name = "Box"
+	box.BackgroundColor3 = RGB(12, 10, 20)
+	box.BackgroundTransparency = 0.15
+	box.Size = UDim2.fromScale(1, 1)
+	box.ZIndex = 0
+	box.Parent = bb
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 3
+	edge.Parent = box
+	billLabel(bb, "Title", title, titleColor, UDim2.fromScale(0.05, 0.06), UDim2.fromScale(0.9, 0.58))
+	billLabel(bb, "Sub", subtitle, RGB(255, 255, 255), UDim2.fromScale(0.08, 0.64), UDim2.fromScale(0.84, 0.28))
 	return anchor
 end
 
@@ -1271,12 +1283,28 @@ local function buildUpgradeShop(parent)
 		light.Parent = lantern
 	end
 
-	-- Floating upgrade arrow above the cap
-	local green = RGB(90, 240, 130)
-	local shaft = part(m, "ArrowShaft", V3(2.2, 5, 1.6), O * CFrame.new(0, 35, STEM_Z), green, Mat.Neon, { CanCollide = false })
-	local head = part(m, "ArrowHead", V3(4.6, 4.6, 1.6), O * CFrame.new(0, 39, STEM_Z) * CFrame.Angles(0, 0, math.rad(45)), green, Mat.Neon, { CanCollide = false })
-	fx(shaft, { SpinSpeed = 40, BobAmp = 0.8, BobSpeed = 2 })
-	fx(head, { SpinSpeed = 40, BobAmp = 0.8, BobSpeed = 2 })
+	-- A pixel-art arrow floating above the cap, pointing up: chunky green
+	-- cubes with a light edge, bobbing (and a small glow under it)
+	local ARROW = {
+		"...L...",
+		"..LGG..",
+		".LGGGG.",
+		"LGGGGGG",
+		"..LGG..",
+		"..LGG..",
+		"..LGG..",
+	}
+	local green, light = RGB(99, 199, 77), RGB(190, 240, 140)
+	local cube = 1.1
+	for y, row in ipairs(ARROW) do
+		for x = 1, #row do
+			local ch = string.sub(row, x, x)
+			if ch ~= "." then
+				local p = part(m, "ArrowPixel", V3(cube, cube, cube), O * CFrame.new((x - 4) * cube, 38 + (#ARROW - y) * cube, STEM_Z), ch == "L" and light or green, Mat.Neon, { CanCollide = false, CanQuery = false })
+				fx(p, { BobAmp = 0.8, BobSpeed = 2 })
+			end
+		end
+	end
 
 	titleSign(m, O * CFrame.new(0, 46, STEM_Z), "UPGRADES", "Spend coins to grow stronger", RGB(120, 200, 255), 340, 90)
 	part(m, "Mat", V3(10, 0.3, 4), O * CFrame.new(0, 0.95, 11.6), RGB(90, 170, 255), Mat.Neon, { Transparency = 0.35, CanCollide = false })
