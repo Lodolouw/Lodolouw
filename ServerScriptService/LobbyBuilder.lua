@@ -1137,11 +1137,31 @@ local function buildSellShop(parent)
 
 	-- Sign + spinning coin
 	titleSign(m, O * CFrame.new(0, 21.5, 2), "SELL SHOP", "Turn loot into coins", RGB(255, 214, 80), 340, 80)
-	local coin = part(m, "BigCoin", V3(0.9, 7, 7), O * CFrame.new(0, 28.5, 2) * CFrame.Angles(0, math.rad(90), 0), coinGold, Mat.Metal, {
-		Shape = Enum.PartType.Cylinder,
-		CanCollide = false,
-	})
-	fx(coin, { SpinSpeed = 90, BobAmp = 0.7, BobSpeed = 1.8 })
+	-- a pixel-art coin floating above it: gold cubes with a darker rim, a
+	-- shine and a notched middle, bobbing (in step with the Upgrade arrow)
+	local COIN = {
+		"...OOOO...",
+		".OOYYYYOO.",
+		".OYWYYYyO.",
+		"OYWYYYYYyO",
+		"OYYYddYYyO",
+		"OYYYddYYyO",
+		"OYYYYYYYyO",
+		".OYYYYYyO.",
+		".OOyyyyOO.",
+		"...OOOO...",
+	}
+	local INK = { O = RGB(184, 111, 80), Y = RGB(254, 231, 97), y = RGB(254, 174, 52), W = RGB(255, 255, 255), d = RGB(214, 150, 40) }
+	local cube = 0.8
+	for y, row in ipairs(COIN) do
+		for x = 1, #row do
+			local c = INK[string.sub(row, x, x)]
+			if c then
+				local px = part(m, "CoinPixel", V3(cube, cube, cube), O * CFrame.new((x - 5.5) * cube, 28.5 + (5.5 - y) * cube, 2), c, Mat.Neon, { CanCollide = false, CanQuery = false })
+				fx(px, { BobAmp = 0.7, BobSpeed = 1.8 })
+			end
+		end
+	end
 
 	-- Glowing welcome mat
 	part(m, "Mat", V3(12, 0.3, 6), O * CFrame.new(0, 0.45, 14), RGB(80, 230, 130), Mat.Neon, { Transparency = 0.35, CanCollide = false })
