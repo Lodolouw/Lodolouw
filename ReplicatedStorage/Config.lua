@@ -363,8 +363,8 @@ Config.Spire = {
 	Floors = {
 		{
 			id = 1,
-			boss = "Gloomgut, the Hollow Ooze",
-			area = "Gloomgut's Hollow",
+			boss = "Oozark, the Gelatinous Tyrant",
+			area = "Oozark's Hollow",
 			level = 15, -- recommended level
 			blurb = "A bloated slime king rules the drowned colosseum beneath the Spire. It is slow to anger, and slower to die.",
 			color = Color3.fromRGB(120, 230, 90),
@@ -372,7 +372,7 @@ Config.Spire = {
 		},
 		{
 			id = 2,
-			boss = "Mireworm, the Devourer Beneath",
+			boss = "Nahrzul, Devourer of the Dunes",
 			area = "The Sunken Dunes",
 			level = 30,
 			blurb = "An arena the desert swallowed whole. Something vast sleeps coiled at its heart - wake it, and it hunts you by sound from under the sand. Stone is silent.",
@@ -542,8 +542,8 @@ Config.Audio = {
 
 Config.Bosses = {
 	[1] = {
-		Name = "Gloomgut, the Hollow Ooze",
-		Short = "Gloomgut",
+		Name = "Oozark, the Gelatinous Tyrant",
+		Short = "Oozark",
 		Color = Color3.fromRGB(105, 210, 70), -- the slime
 		DeepColor = Color3.fromRGB(46, 120, 40), -- deeper in the body
 		CoreColor = Color3.fromRGB(26, 38, 22), -- the hollow thing inside
@@ -606,8 +606,8 @@ Config.Bosses = {
 	},
 
 	[2] = {
-		Name = "Mireworm, the Devourer Beneath",
-		Short = "Mireworm",
+		Name = "Nahrzul, Devourer of the Dunes",
+		Short = "Nahrzul",
 		-- Body = "Worm" gives it the worm's body (BossClient) AND the worm's own
 		-- way of fighting (BossService): it lives under the sand and hunts by
 		-- sound. None of Gloomgut's attacks are used - its moves are all below.

@@ -120,7 +120,7 @@ local SOUL_INK = { O = BLACK, R = RED, r = RGB(162, 38, 51) }
 
 -- the bosses' portraits
 local PORTRAITS = {
-	Gloomgut = {
+	Oozark = {
 		rows = {
 			"....GGGGGG....",
 			"..GGGGGGGGGG..",
@@ -137,7 +137,7 @@ local PORTRAITS = {
 		},
 		ink = { G = RGB(99, 199, 77), L = RGB(190, 240, 140), D = RGB(62, 137, 72), W = RGB(236, 255, 170), K = RGB(25, 60, 62) },
 	},
-	Mireworm = {
+	Nahrzul = {
 		rows = {
 			"......SSSS....",
 			"....SSSSSSSS..",
@@ -365,33 +365,36 @@ player.CharacterAdded:Connect(onCharacter)
 -- in phase two, crows if you fall and gets the last word when it dies.
 ----------------------------------------------------------------------
 local LINES = {
-	Gloomgut = {
-		wake = { "* Glorp. Fresh meat wandered into my pool.", "* Another hero? I'll add you to the ooze." },
+	-- a tyrant of jelly: pompous, royal and very pleased with himself
+	Oozark = {
+		wake = { "* KNEEL! You stand before OOZARK, the Gelatinous Tyrant!", "* A visitor? How DARE you drip on my royal floor." },
 		idle = {
-			"* You're squishier than you look.",
-			"* I've digested tougher things than you. Mostly boots.",
-			"* Stand still. It's easier to swallow you that way.",
-			"* Is that a punch? It tickles my insides.",
-			"* Everything ends up in the ooze eventually.",
+			"* Bow before your jiggly overlord!",
+			"* My kingdom is vast. And sticky. Mostly sticky.",
+			"* I shall add you to my collection of absorbed heroes!",
+			"* Do not touch the crown. It is also slime.",
+			"* Tremble! My wobbling strikes FEAR into lesser puddles!",
+			"* I was a puddle once. Now look at me. MAGNIFICENT.",
 		},
-		hit = { "* Ha! Sticky, isn't it?", "* Splat! Right in the face.", "* Did that sting? Good." },
-		phase2 = { "* You... popped me. NOW I'M ANGRY.", "* No more games. Only slime." },
-		win = { "* Glorp glorp. Try again, snack.", "* Back to the ooze with you." },
-		lose = { "* Glorp... I'll... reform... someday...", "* You're... not... squishy... at all..." },
+		hit = { "* HA! Behold the royal splat!", "* By decree of the Tyrant: OUCH, for you.", "* Sticky, isn't it? That's majesty." },
+		phase2 = { "* You... POPPED the Tyrant?! GUARDS! ...I have no guards.", "* Enough! Now witness my TRUE, FINAL, JIGGLIEST form!" },
+		win = { "* Another subject for the Gelatinous Kingdom!", "* Long live Oozark! Long live the goo!" },
+		lose = { "* The Tyrant... falls... tell the puddles... I was great...", "* No... my kingdom... it's melting..." },
 	},
-	Mireworm = {
-		wake = { "* WHO STIRS THE SANDS?", "* A little morsel, walking on my roof." },
+	-- ancient, hungry and deadly serious
+	Nahrzul = {
+		wake = { "* I AM NAHRZUL. THE DUNES ARE MY MOUTH.", "* Another caravan of one. How small you are." },
 		idle = {
 			"* I can hear your heartbeat through the sand.",
-			"* Run. It makes the hunt more fun.",
-			"* The dunes remember everyone I've eaten.",
-			"* You are very small. I am very hungry.",
+			"* Kingdoms have sunk into my belly. You will not be missed.",
+			"* The dunes remember every bone I have left in them.",
+			"* Run. The hunt ends the same either way.",
 			"* Beneath you. Behind you. Everywhere.",
 		},
-		hit = { "* CRUNCH. Delicious.", "* The sand swallows the weak.", "* Did you feel the earth move? That was me." },
-		phase2 = { "* MY ARMOUR... YOU'LL PAY FOR THAT.", "* Now the sands will drown you." },
+		hit = { "* The sand drinks your strength.", "* You are already half swallowed.", "* Feel the earth break. That was me." },
+		phase2 = { "* YOU CRACKED MY SHELL. NOW THE SANDS WILL DROWN YOU.", "* Enough. I will pull this whole desert down on you." },
 		win = { "* Another bone for the dunes.", "* The sands keep you now." },
-		lose = { "* The sands... grow... quiet...", "* Impossible... a morsel... beat me..." },
+		lose = { "* The dunes... fall... silent...", "* So even the desert... can be conquered..." },
 	},
 }
 
