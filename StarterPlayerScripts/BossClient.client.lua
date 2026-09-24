@@ -835,6 +835,54 @@ local function frameAlong(pos, along, up)
 	return CFrame.fromMatrix(pos, look:Cross(y), y, -look)
 end
 
+-- Drawing the worm cheaply. It's over a hundred parts, redrawn every frame, so:
+--  * every part's new place is collected and they all move in one go (BulkMoveTo)
+--  * sizes, colours, see-through-ness and materials are only written when they've
+--    actually changed
+--  * a segment deep under the sand (nobody can see it) is left where it was
+local Fast = { parts = {}, cframes = {}, n = 0, sizes = setmetatable({}, { __mode = "k" }), alphas = setmetatable({}, { __mode = "k" }) }
+function Fast.move(p, cf)
+	local n = Fast.n + 1
+	Fast.n = n
+	Fast.parts[n], Fast.cframes[n] = p, cf
+end
+function Fast.flush()
+	local n = Fast.n
+	if n == 0 then
+		return
+	end
+	for i = #Fast.parts, n + 1, -1 do
+		Fast.parts[i], Fast.cframes[i] = nil, nil
+	end
+	local ok = pcall(function()
+		Workspace:BulkMoveTo(Fast.parts, Fast.cframes, Enum.BulkMoveMode.FireCFrameChanged)
+	end)
+	if not ok then
+		for i = 1, n do
+			Fast.parts[i].CFrame = Fast.cframes[i]
+		end
+	end
+	Fast.n = 0
+end
+function Fast.size(p, v)
+	local old = Fast.sizes[p]
+	if not old or math.abs(old.X - v.X) + math.abs(old.Y - v.Y) + math.abs(old.Z - v.Z) > 0.12 then
+		Fast.sizes[p] = v
+		p.Size = v
+	end
+end
+function Fast.alpha(p, a)
+	if Fast.alphas[p] ~= a then
+		Fast.alphas[p] = a
+		p.Transparency = a
+	end
+end
+function Fast.color(p, c)
+	if p.Color ~= c then
+		p.Color = c
+	end
+end
+
 local function applyWormPose(B, P, ground, facing, t, dt)
 	local def, body = B.def, B.body
 	local D = def.Size
@@ -863,6 +911,7 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 	local F = facing
 	local U = V3(0, 1, 0)
 	local R = F:Cross(U)
+	local floorY = ground.Y
 
 	-- how tall it stands and how thick it is (squash and stretch, toned down:
 	-- it's a worm, not a jelly)
@@ -942,6 +991,17 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 		B.lastPoints[i] = pt.pos
 	end
 	B.lastGirth = girth
+
+	-- which segments are deep under the sand (a girth or more down): once one
+	-- has been put down there it's left alone - nobody can see it
+	B.buried = B.buried or {}
+	local skip = {}
+	for i, pt in ipairs(points) do
+		local deep = pt.pos.Y < floorY - girth * (i == WORM_SEGMENTS and 1.05 or 1)
+		skip[i] = deep and B.buried[i] == true and fade <= 0
+		B.buried[i] = deep
+	end
+
 	local frames, girths, lengths = {}, {}, {}
 	for i, pt in ipairs(points) do
 		local prev = points[i - 1] and (pt.pos - points[i - 1].pos).Magnitude or 0
@@ -957,47 +1017,55 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 		-- its top is its back (on a path - a ring, an arc, lying flat - its back is simply up)
 		local cf = frameAlong(pt.pos, along, path and U or R:Cross(along))
 		frames[i], girths[i], lengths[i] = cf, g, len
-		local seg = body.segments[i]
-		seg.part.Size = V3(g, g * 0.96, len)
-		seg.part.CFrame = cf
-		local c = phase2 and seg.color:Lerp(def.DeepColor, 0.2) or seg.color
-		seg.part.Color = c:Lerp(RGB(255, 240, 214), 0.45 * flash)
-		seg.part.Transparency = fade
+		if not skip[i] then
+			local seg = body.segments[i]
+			Fast.size(seg.part, V3(g, g * 0.96, len))
+			Fast.move(seg.part, cf)
+			local c = phase2 and seg.color:Lerp(def.DeepColor, 0.2) or seg.color
+			Fast.color(seg.part, flash > 0 and c:Lerp(RGB(255, 240, 214), 0.45 * flash) or c)
+			Fast.alpha(seg.part, fade)
+		end
 	end
 
 	-- the creases: dark, until its armour is gone and they burn
 	local heartColor = def.HeartColor or RGB(255, 90, 40)
 	for i, seam in ipairs(body.seams) do
-		local a, b = frames[i], frames[i + 1]
-		local g = (girths[i] + girths[i + 1]) / 2 * 0.84
-		seam.Size = V3(g, g * 0.96, 1.3)
-		seam.CFrame = frameAlong((a.Position + b.Position) / 2, b.Position - a.Position, a.UpVector)
-		if phase2 then
-			seam.Material = Enum.Material.Neon
-			seam.Color = heartColor:Lerp(RGB(255, 214, 140), 0.25 + 0.25 * math.sin(t * 3 + i))
-		else
-			seam.Material = Enum.Material.SmoothPlastic
-			seam.Color = def.DeepColor
+		if not (skip[i] and skip[i + 1]) then
+			local a, b = frames[i], frames[i + 1]
+			local g = (girths[i] + girths[i + 1]) / 2 * 0.84
+			Fast.size(seam, V3(g, g * 0.96, 1.3))
+			Fast.move(seam, frameAlong((a.Position + b.Position) / 2, b.Position - a.Position, a.UpVector))
+			if phase2 then
+				if seam.Material ~= Enum.Material.Neon then
+					seam.Material = Enum.Material.Neon
+				end
+				Fast.color(seam, heartColor:Lerp(RGB(255, 214, 140), 0.25 + 0.25 * math.sin(t * 3 + i)))
+			else
+				if seam.Material ~= Enum.Material.SmoothPlastic then
+					seam.Material = Enum.Material.SmoothPlastic
+				end
+				Fast.color(seam, def.DeepColor)
+			end
+			Fast.alpha(seam, fade)
 		end
-		seam.Transparency = fade
 	end
 
 	-- the armour, until it's blasted off: scales down the ridge of its back
 	-- (thick end toward the tail, so they overlap) and plates on its flanks
 	for _, pl in ipairs(body.plates) do
 		if B.crownGone then
-			pl.part.Transparency = 1
-		else
+			Fast.alpha(pl.part, 1)
+		elseif not skip[pl.seg] then
 			local cf, g, len = frames[pl.seg], girths[pl.seg], lengths[pl.seg]
 			if pl.side == 0 then
 				local h = g * (pl.seg == WORM_SEGMENTS and 0.15 or 0.2)
-				pl.part.Size = V3(g * 0.3, h, len * 0.62)
-				pl.part.CFrame = cf * CFrame.new(0, g * 0.46 + h / 2 - g * 0.04, len * 0.08)
+				Fast.size(pl.part, V3(g * 0.3, h, len * 0.62))
+				Fast.move(pl.part, cf * CFrame.new(0, g * 0.46 + h / 2 - g * 0.04, len * 0.08))
 			else
-				pl.part.Size = V3(g * 0.3, g * 0.06, len * 0.5)
-				pl.part.CFrame = cf * CFrame.Angles(0, 0, pl.side * 0.8) * CFrame.new(0, g * 0.47, 0)
+				Fast.size(pl.part, V3(g * 0.3, g * 0.06, len * 0.5))
+				Fast.move(pl.part, cf * CFrame.Angles(0, 0, pl.side * 0.8) * CFrame.new(0, g * 0.47, 0))
 			end
-			pl.part.Transparency = fade
+			Fast.alpha(pl.part, fade)
 		end
 	end
 
@@ -1010,99 +1078,92 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 	local rimR = gH * 0.27
 	local mawAt = headCF.Position + T * (lenH / 2 * 0.8)
 	B.mawPos = mawAt -- (what it spits from)
-	body.maw.Size = V3(0.5, rimR * 2, rimR * 2)
-	body.maw.CFrame = CFrame.fromMatrix(mawAt, T, top, T:Cross(top))
-	body.maw.Transparency = fade
-
-	-- the heart in its throat: two beats and a rest, faster once its armour is
-	-- gone, faster again when it's nearly dead
 	local rate = phase2 and (health <= def.DesperateAt and 2.4 or 1.7) or 1.1
 	local beatT = (os.clock() * rate) % 1
 	local beat = math.exp(-((beatT - 0.05) / 0.06) ^ 2) + 0.6 * math.exp(-((beatT - 0.24) / 0.06) ^ 2)
-	local heartSize = gH * (phase2 and 0.2 or 0.15) * (1 + 0.2 * beat + 0.3 * P.flare) * math.min(P.coreScale or 1, 1.3)
-	body.heart.Size = V3(heartSize, heartSize, heartSize * 0.6)
-	body.heart.CFrame = CFrame.fromMatrix(mawAt + T * 0.35, side, top, -T)
-	body.heart.Transparency = clamp(fade * 1.5, 0, 1)
-	body.heart.Color = heartColor:Lerp(RGB(255, 236, 190), 0.35 * beat + 0.4 * P.flare)
 	body.light.Brightness = lerp((phase2 and 2.4 or 1.2) + 0.6 * beat + P.flare * 1.8, 0, math.max(fade, sink))
-	body.light.Range = D * (phase2 and 1.6 or 1.1)
+	if not skip[WORM_SEGMENTS] then
+		Fast.size(body.maw, V3(0.5, rimR * 2, rimR * 2))
+		Fast.move(body.maw, CFrame.fromMatrix(mawAt, T, top, T:Cross(top)))
+		Fast.alpha(body.maw, fade)
 
-	-- teeth round the rim, pointing in at the throat
-	for _, tooth in ipairs(body.teeth) do
-		local radial = side * math.cos(tooth.angle) + top * math.sin(tooth.angle)
-		local len = gH * 0.15 * tooth.long * (0.85 + 0.3 * mouth)
-		local dir = (T * 0.45 - radial).Unit
-		local base = mawAt + radial * (rimR * 0.96) + T * 0.2
-		tooth.part.Size = V3(gH * 0.05, len, gH * 0.05)
-		tooth.part.CFrame = CFrame.fromMatrix(base + dir * (len / 2), T:Cross(radial), dir)
-		tooth.part.Transparency = clamp(fade * 1.2, 0, 1)
-	end
+		-- the heart in its throat: two beats and a rest, faster once its armour is
+		-- gone, faster again when it's nearly dead
+		local heartSize = gH * (phase2 and 0.2 or 0.15) * (1 + 0.2 * beat + 0.3 * P.flare) * math.min(P.coreScale or 1, 1.3)
+		Fast.size(body.heart, V3(heartSize, heartSize, heartSize * 0.6))
+		Fast.move(body.heart, CFrame.fromMatrix(mawAt + T * 0.35, side, top, -T))
+		Fast.alpha(body.heart, clamp(fade * 1.5, 0, 1))
+		Fast.color(body.heart, heartColor:Lerp(RGB(255, 236, 190), 0.35 * beat + 0.4 * P.flare))
+		body.light.Range = D * (phase2 and 1.6 or 1.1)
 
-	-- the jaws: shut into a point, open straight ahead to spit, splayed wide to roar
-	local jawLen = gH * 0.62
-	local theta = lerp(-0.55, 1.15, mouth)
-	for _, jaw in ipairs(body.jaws) do
-		local radial = side * math.cos(jaw.angle) + top * math.sin(jaw.angle)
-		local hinge = mawAt + radial * rimR - T * 0.4
-		local dir = T * math.cos(theta) + radial * math.sin(theta)
-		local out = radial * math.cos(theta) - T * math.sin(theta) -- its outer face
-		local across = dir:Cross(out)
-		jaw.part.Size = V3(gH * 0.32, gH * 0.12, jawLen)
-		jaw.part.CFrame = CFrame.fromMatrix(hinge + dir * (jawLen / 2), across, out, -dir)
-		jaw.part.Transparency = fade
-		for f, fang in ipairs(jaw.fangs) do
-			local len = gH * 0.1 * (1.15 - f * 0.12)
-			local at = hinge + dir * (jawLen * (0.25 + f * 0.18)) - out * (gH * 0.04)
-			fang.Size = V3(gH * 0.045, len, gH * 0.045)
-			fang.CFrame = CFrame.fromMatrix(at - out * (len / 2), across, -out)
-			fang.Transparency = clamp(fade * 1.2, 0, 1)
+		-- teeth round the rim, pointing in at the throat
+		for _, tooth in ipairs(body.teeth) do
+			local radial = side * math.cos(tooth.angle) + top * math.sin(tooth.angle)
+			local len = gH * 0.15 * tooth.long * (0.85 + 0.3 * mouth)
+			local dir = (T * 0.45 - radial).Unit
+			local base = mawAt + radial * (rimR * 0.96) + T * 0.2
+			Fast.size(tooth.part, V3(gH * 0.05, len, gH * 0.05))
+			Fast.move(tooth.part, CFrame.fromMatrix(base + dir * (len / 2), T:Cross(radial), dir))
+			Fast.alpha(tooth.part, clamp(fade * 1.2, 0, 1))
+		end
+
+		-- the jaws: shut into a point, open straight ahead to spit, splayed wide to roar
+		local jawLen = gH * 0.62
+		local theta = lerp(-0.55, 1.15, mouth)
+		for _, jaw in ipairs(body.jaws) do
+			local radial = side * math.cos(jaw.angle) + top * math.sin(jaw.angle)
+			local hinge = mawAt + radial * rimR - T * 0.4
+			local dir = T * math.cos(theta) + radial * math.sin(theta)
+			local out = radial * math.cos(theta) - T * math.sin(theta) -- its outer face
+			local across = dir:Cross(out)
+			Fast.size(jaw.part, V3(gH * 0.32, gH * 0.12, jawLen))
+			Fast.move(jaw.part, CFrame.fromMatrix(hinge + dir * (jawLen / 2), across, out, -dir))
+			Fast.alpha(jaw.part, fade)
+			for f, fang in ipairs(jaw.fangs) do
+				local len = gH * 0.1 * (1.15 - f * 0.12)
+				local tip = hinge + dir * (jawLen * (0.25 + f * 0.18)) - out * (gH * 0.04)
+				Fast.size(fang, V3(gH * 0.045, len, gH * 0.045))
+				Fast.move(fang, CFrame.fromMatrix(tip - out * (len / 2), across, -out))
+				Fast.alpha(fang, clamp(fade * 1.2, 0, 1))
+			end
+		end
+
+		-- its eyes, in a ring round the head behind the jaws
+		local eyeOpen = clamp(P.eyes, 0, 1) * (1 - fade)
+		local ringAt = headCF.Position + T * (lenH / 2 * 0.42)
+		local ringR = gH / 2 * 0.96 * math.sqrt(1 - 0.42 ^ 2) * 0.97
+		local eyeColor = def.EyeColor:Lerp(RGB(255, 255, 255), clamp(P.flare, 0, 1) * 0.4)
+		for _, e in ipairs(body.eyes) do
+			local radial = side * math.cos(e.angle) + top * math.sin(e.angle)
+			local blink = ((os.clock() * e.rate + e.seed) % 1) < 0.06 and 0 or 1
+			local open = eyeOpen * blink
+			local size = e.size * (1 + 0.35 * P.flare)
+			Fast.size(e.part, V3(size, math.max(size * open, 0.05), size * 0.7))
+			Fast.move(e.part, CFrame.fromMatrix(ringAt + radial * ringR, T:Cross(radial), T, radial))
+			Fast.alpha(e.part, open < 0.05 and 1 or 0)
+			Fast.color(e.part, eyeColor)
 		end
 	end
 
-	-- its eyes, in a ring round the head behind the jaws
-	local eyeOpen = clamp(P.eyes, 0, 1) * (1 - fade)
-	local ringAt = headCF.Position + T * (lenH / 2 * 0.42)
-	local ringR = gH / 2 * 0.96 * math.sqrt(1 - 0.42 ^ 2) * 0.97
-	for _, e in ipairs(body.eyes) do
-		local radial = side * math.cos(e.angle) + top * math.sin(e.angle)
-		local blink = ((os.clock() * e.rate + e.seed) % 1) < 0.06 and 0 or 1
-		local open = eyeOpen * blink
-		local size = e.size * (1 + 0.35 * P.flare)
-		e.part.Size = V3(size, math.max(size * open, 0.05), size * 0.7)
-		e.part.CFrame = CFrame.fromMatrix(ringAt + radial * ringR, T:Cross(radial), T, radial)
-		e.part.Transparency = open < 0.05 and 1 or 0
-		e.part.Color = def.EyeColor:Lerp(RGB(255, 255, 255), clamp(P.flare, 0, 1) * 0.4)
-	end
-
-	-- the mound of sand it comes out of
-	local out = 1 - sink
-	local floorAt = onFloor(ground)
-	local collarW = D * 1.2 * (1 + (P.sx - 1) * 0.4)
-	local collarH = 9 * out * (1 + 0.3 * crash) * (P.collar or 0) -- (off: it comes out of a real crater now)
-	body.collar.Size = V3(collarW, math.max(collarH, 0.05), collarW)
-	body.collar.CFrame = CFrame.new(floorAt - V3(0, collarH * 0.12, 0))
-	body.collar.Transparency = (collarH < 0.3) and 1 or fade
-
-	-- (the old solid "ridge" lump is gone: under the sand its back arches out
-	-- of the real sand instead, and `ridge` is only how much sand it sprays up)
-	body.ridge.Transparency = 1
-
-	-- its shadow: widens as it rears up, marking where it'll come down
-	local shadowD = P.shadowD or (D * 1.25 * (1 + (P.sx - 1) * 0.4))
-	placeDisc(body.shadow, floorAt + V3(0, 0.08, 0), shadowD, 0.1)
-	-- (off for the worm: its body casts real shadows, and a flat dark disc would
-	-- float over the crater it stands in)
-	body.shadow.Transparency = 1
+	-- (the old sand collar, solid "ridge" lump and flat shadow disc are gone: it
+	-- comes out of real craters in the Terrain sand now, its back arches out of
+	-- the real sand when it swims, and its body casts real shadows)
+	Fast.alpha(body.collar, 1)
+	Fast.alpha(body.ridge, 1)
+	Fast.alpha(body.shadow, 1)
 
 	-- sand pours off it as it comes up; dust blows off its base as it moves
+	local out = 1 - sink
+	local floorAt = onFloor(ground)
 	local lastSink = B.lastSink or sink
 	B.lastSink = sink
 	local rising = dt > 0 and (lastSink - sink) / dt or 0
 	B.spillHeat = math.max((B.spillHeat or 0) * math.exp(-dt * 0.8), clamp(rising * 1.5, 0, 1))
-	body.spillAt.CFrame = headCF
-	body.spill.Rate = P.spill or ((1 - fade) * out * (5 + 70 * B.spillHeat))
-	body.dustAt.CFrame = CFrame.new(floorAt + V3(0, 1, 0))
-	body.dust.Rate = (1 - fade) * (ridge * 45 + (moving and out * 10 or 0) + B.spillHeat * out * 30)
+	Fast.move(body.spillAt, headCF)
+	body.spill.Rate = P.spill or ((1 - fade) * out * (4 + 35 * B.spillHeat))
+	Fast.move(body.dustAt, CFrame.new(floorAt + V3(0, 1, 0)))
+	body.dust.Rate = (1 - fade) * (ridge * 18 + (moving and out * 6 or 0) + B.spillHeat * out * 15)
+	Fast.flush()
 end
 
 -- Which body a boss has, and how to pose it.
@@ -1465,7 +1526,8 @@ do
 		if typeof(center) ~= "Vector3" then
 			return nil
 		end
-		local info = { arena = arena, center = center, radius = arena:GetAttribute("SandRadius") or 146, y = center.Y, solids = {}, decor = {}, fresh = os.clock() + 20 }
+		-- (looked through once - it's a big model - and again only if it changes)
+		local info = { arena = arena, center = center, radius = arena:GetAttribute("SandRadius") or 146, y = center.Y, solids = {}, decor = {}, fresh = math.huge }
 		for _, d in ipairs(arena:GetDescendants()) do
 			if d:IsA("BasePart") and not KEEP_OUT[d.Name] then
 				local p = d.Position
@@ -1517,7 +1579,7 @@ do
 	-- trench (or the sand sliding back into several craters) never lands in one
 	-- frame and hitches your screen.
 	local edits = {}
-	local EDITS_PER_FRAME = 3
+	local EDITS_PER_FRAME = 2
 	local function terrainEdit(fn)
 		edits[#edits + 1] = fn
 	end
@@ -2457,9 +2519,9 @@ do
 	local function flingRubble(center, count, colors, speedScale)
 		colors = colors or STONE_BITS
 		local bits = {}
+		count = math.max(3, math.floor(count * 0.6))
 		for i = 1, count do
 			local p = newPart("Rubble", nil, colors[(i % #colors) + 1], Enum.Material.Sandstone, 0)
-			p.CastShadow = true
 			p.Size = V3(1 + math.random() * 2.6, 0.8 + math.random() * 1.6, 1 + math.random() * 2.6)
 			local ang = math.random() * math.pi * 2
 			local speed = (8 + math.random() * 16) * (speedScale or 1)
@@ -2474,16 +2536,22 @@ do
 		local conn
 		conn = RunService.RenderStepped:Connect(function(dt)
 			local e = os.clock() - t0
-			for _, b in ipairs(bits) do
+			local parts, cframes = {}, {}
+			for k, b in ipairs(bits) do
 				b.vel = b.vel + V3(0, -60 * dt, 0)
 				b.pos = b.pos + b.vel * dt
 				if b.pos.Y < center.Y + 0.5 then
 					b.pos = V3(b.pos.X, center.Y + 0.5, b.pos.Z)
 					b.vel = V3(b.vel.X * 0.4, 0, b.vel.Z * 0.4)
 				end
-				b.part.CFrame = CFrame.new(b.pos) * CFrame.Angles(b.spin.X * e, b.spin.Y * e, b.spin.Z * e)
-				b.part.Transparency = clamp((e - 2) / 0.8, 0, 1)
+				parts[k], cframes[k] = b.part, CFrame.new(b.pos) * CFrame.Angles(b.spin.X * e, b.spin.Y * e, b.spin.Z * e)
+				if e > 2 then
+					b.part.Transparency = clamp((e - 2) / 0.8, 0, 1)
+				end
 			end
+			pcall(function()
+				Workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+			end)
 			if e > 2.8 then
 				conn:Disconnect()
 				for _, b in ipairs(bits) do
@@ -2504,28 +2572,39 @@ do
 	-- few dozen times a second, a little unevenly. Chasing each update makes it
 	-- judder; instead every position is kept with the moment it arrived, and
 	-- it's drawn GLIDE seconds behind, sliding steadily between them.
-	local GLIDE = 0.1
+	-- Each position comes stamped with the moment the server put it there
+	-- (the "PosT" attribute), so a burst of updates arriving together, or a
+	-- slow patch on the connection, can't make it stop and jump. The delay
+	-- grows by itself if your updates arrive late, and shrinks again after.
 	function glideWorm(B, now, ground)
+		local stamp = B.model:GetAttribute("PosT")
 		local snaps = B.snaps
 		if not snaps then
-			snaps = { { t = now, p = ground } }
+			snaps = {}
 			B.snaps = snaps
 		end
+		if type(stamp) ~= "number" then
+			return ground -- (an older BossService that doesn't stamp: just follow it)
+		end
 		local last = snaps[#snaps]
-		if (ground - last.p).Magnitude > 0.001 then
-			if flat(ground - last.p).Magnitude > 40 then
-				-- it came up somewhere else entirely: no sliding across the arena
-				table.clear(snaps)
-			elseif now - last.t > 0.2 then
-				-- it was still, and now it's off: it starts from where it stood
-				snaps[#snaps + 1] = { t = now - 1 / 30, p = last.p }
+		if not last or stamp > last.t then
+			if last and flat(ground - last.p).Magnitude > 40 then
+				table.clear(snaps) -- it came up somewhere else entirely: no sliding across the arena
 			end
-			snaps[#snaps + 1] = { t = now, p = ground }
-			while #snaps > 30 do
+			snaps[#snaps + 1] = { t = stamp, p = ground }
+			while #snaps > 40 do
 				table.remove(snaps, 1)
 			end
+			-- how late this update is: the delay needs to cover the latest ones
+			local late = now - stamp
+			B.glideLate = math.max((B.glideLate or 0.1) * 0.97, late)
 		end
-		local at = now - GLIDE
+		local want = clamp((B.glideLate or 0.1) + 0.05, 0.08, 0.4)
+		B.glide = B.glide and (B.glide + (want - B.glide) * math.min(1, 0.05)) or want
+		local at = now - B.glide
+		if #snaps == 0 then
+			return ground
+		end
 		if at <= snaps[1].t then
 			return snaps[1].p
 		end
@@ -2610,8 +2689,8 @@ do
 	-- its body under the sand, along its path, arching out where the humps are
 	local function underPath(B)
 		local g = B.def.Size * 0.64
-		local baseY = B.vpos.Y - g * 0.95
-		local rise = g * 1.08
+		local baseY = B.vpos.Y - g * 1.1
+		local rise = g * 1.2
 		return function(s)
 			local back = (1 - s) * BODY_LEN
 			local p = trailAt(B, back)
@@ -2675,7 +2754,7 @@ do
 				if covered then
 					local p = trailAt(B, B.odo - w)
 					d.holder.CFrame = CFrame.new(V3(p.X, B.vpos.Y + 0.5, p.Z))
-					d.emitter.Rate = 45
+					d.emitter.Rate = 16
 				else
 					d.emitter.Rate = 0
 				end
@@ -2846,8 +2925,8 @@ do
 					locked = true
 					local near = nearestOnSegment(tail, Bp, myFloorPos(B))
 					kick(near, a.Width, 0.35)
-					for j = 0, 3 do
-						burst(tail:Lerp(Bp, j / 3) + V3(0, 0.5, 0), WORM_SAND, 6, 8, 1.4, 0.5, true)
+					for j = 0, 1 do
+						burst(tail:Lerp(Bp, j) + V3(0, 0.5, 0), WORM_SAND, 6, 8, 1.4, 0.5, true)
 					end
 				end
 				if now >= launchAt and now < landAt then
@@ -2870,8 +2949,8 @@ do
 						scarHole(sc, tail:Lerp(Bp, j / n), 6.5, 2.6)
 					end
 					scarHole(sc, Bp, 10, 4.5) -- where its head drove into the sand
-					for j = 0, 5 do
-						burst(tail:Lerp(Bp, j / 5) + V3(0, 1, 0), WORM_SAND, 14, 26, 2.8, 0.9, true)
+					for j = 0, 3 do
+						burst(tail:Lerp(Bp, j / 3) + V3(0, 1, 0), WORM_SAND, 16, 26, 2.8, 0.9, true)
 					end
 					flingRubble(tail:Lerp(Bp, 0.5), 10, SAND_BITS, 0.9)
 					local near = nearestOnSegment(tail, Bp, myFloorPos(B))
@@ -2919,8 +2998,8 @@ do
 					surfaced = true
 					hideRing(churn)
 					hideRing(rim)
-					for j = 0, 9 do
-						local ang = j / 10 * math.pi * 2
+					for j = 0, 4 do
+						local ang = j / 5 * math.pi * 2
 						burst(C + V3(math.sin(ang), 0, math.cos(ang)) * a.Radius + V3(0, 1, 0), WORM_SAND, 10, 22, 2.4, 0.8, true)
 					end
 					playSound(B.def, "Erupt", C, 0.8)
@@ -3037,7 +3116,6 @@ do
 		local tail = {}
 		for j = 1, TAIL_BITS do
 			local seg = newPart("Tail", Enum.PartType.Ball, B.def.Color:Lerp(B.def.DeepColor, (j % 2 == 0) and 0.3 or 0), Enum.Material.Sandstone, 1)
-			seg.CastShadow = true
 			tail[j] = seg
 		end
 		local spike = newPart("TailSpike", nil, BONE, Enum.Material.SmoothPlastic, 1)
@@ -3120,7 +3198,7 @@ do
 				spike.CFrame = CFrame.lookAt(tipAt, tipAt + dir)
 				spike.Transparency = 0
 				tipDust.CFrame = CFrame.new(V3(tipAt.X, anchor.Y + 0.5, tipAt.Z))
-				spray.Rate = (u > 0 and u < 1 and up > 0.5) and 70 or 0
+				spray.Rate = (u > 0 and u < 1 and up > 0.5) and 30 or 0
 				return true
 			end,
 			cleanup = function()
@@ -3180,7 +3258,7 @@ do
 					return false
 				end
 				if dust then
-					dust.Rate = 40 * clamp((now - t0) / a.Tell, 0, 1)
+					dust.Rate = 18 * clamp((now - t0) / a.Tell, 0, 1)
 				end
 				local hrp = myRoot()
 				local mine = hrp and player:GetAttribute("SpireFloor") == B.floor and not onStone(B, hrp.Position)
@@ -3192,7 +3270,7 @@ do
 					if now >= hitAt and not fired[i] then
 						fired[i] = true
 						if dust then
-							dust:Emit(500)
+							dust:Emit(250)
 						end
 						-- a wave of sand racing out across the whole floor from it
 						local wave = newRing(48, WORM_SAND, Enum.Material.Sand, 0.1)
@@ -3390,7 +3468,7 @@ do
 		P.flare = clamp(1 - t / 0.9, 0, 1)
 		P.lean = -0.35 * (1 - smooth((t - 0.25) / 0.6))
 		P.lift = 6 * spring(t, 4, 9)
-		P.spill = 70 * clamp(1 - t / 1.2, 0, 1) + 6 -- sand pouring off it
+		P.spill = 32 * clamp(1 - t / 1.2, 0, 1) + 4 -- sand pouring off it
 	end
 
 	-- Racing after you under the sand (arching often), then waiting under the heave.
@@ -3424,7 +3502,7 @@ do
 			head = u * len
 			arc = 1 - smooth((u - 0.55) / 0.45) -- the arc flattens as it comes down
 			P.mouth, P.flare = 1 - u * 0.5, 1 - u
-			P.spill = 60 -- sand streaming off it in the air
+			P.spill = 28 -- sand streaming off it in the air
 		else
 			local slideAt = m:GetAttribute("ActT")
 			local now = (B.actionStart or 0) + t
@@ -3703,22 +3781,33 @@ do
 				end
 			end
 		end
+		-- (a dozen times a second is plenty for a tremble, and it's all moved in one go)
+		if os.clock() < (B.nextTremble or 0) then
+			return
+		end
+		B.nextTremble = os.clock() + 0.08
+		local parts, cframes = {}, {}
 		for _, s in ipairs(B.shakers) do
 			local p = s.part
 			if p.Parent then
 				local d = near and flat(s.cf.Position - near).Magnitude or math.huge
 				if d < 34 then
 					local k = (1 - d / 34) * 0.3
-					p.CFrame = s.cf + V3((math.random() - 0.5) * k, 0, (math.random() - 0.5) * k)
+					parts[#parts + 1], cframes[#cframes + 1] = p, s.cf + V3((math.random() - 0.5) * k, 0, (math.random() - 0.5) * k)
 					s.moved = true
-					if k > 0.15 and math.random() < 0.02 then
+					if k > 0.15 and math.random() < 0.01 then
 						burst(V3(s.cf.X, B.vpos.Y + 0.5, s.cf.Z), WORM_SAND, 4, 5, 1.2, 0.6, true)
 					end
 				elseif s.moved then
-					p.CFrame = s.cf
+					parts[#parts + 1], cframes[#cframes + 1] = p, s.cf
 					s.moved = false
 				end
 			end
+		end
+		if #parts > 0 then
+			pcall(function()
+				Workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+			end)
 		end
 	end
 
@@ -3746,22 +3835,21 @@ do
 	function stepWormSenses(B, dt, here, awake, state)
 		local hrp = myRoot()
 		local under = B.model:GetAttribute("Submerged") == true
+		-- (Config.Bosses[2].Rumble: Range = how close before you feel it, Shake =
+		-- how hard each thump knocks your view)
+		local R = B.def.Rumble or {}
+		local range, strength = R.Range or 40, R.Shake or 0.45
 		local want = 0
 		if here and awake and hrp and under then
 			local d = flat(hrp.Position - B.vpos).Magnitude
-			want = clamp(1 - (d - 10) / 65, 0, 1)
+			want = clamp(1 - (d - 8) / range, 0, 1)
 		end
 		B.rumble = (B.rumble or 0) + (want - (B.rumble or 0)) * math.min(1, dt * 4)
-		if B.rumble > 0.03 and cameraKickEvent then
-			-- close by, the ground shudders under you the whole time...
-			if B.rumble > 0.35 then
-				cameraKickEvent:Fire(0.25 + 0.55 * (B.rumble - 0.35))
-			end
-			-- ...with a heavy thump as it heaves past, quicker and harder the closer it is
-			if os.clock() >= (B.nextThump or 0) then
-				B.nextThump = os.clock() + lerp(0.8, 0.3, B.rumble)
-				cameraKickEvent:Fire(0.45 + 1.1 * B.rumble, -1.2 * B.rumble)
-			end
+		-- a thump now and then as it heaves past under you, a little quicker and
+		-- harder the closer it is (never a constant shake - that just looks like lag)
+		if B.rumble > 0.08 and cameraKickEvent and os.clock() >= (B.nextThump or 0) then
+			B.nextThump = os.clock() + lerp(1.1, 0.55, B.rumble)
+			cameraKickEvent:Fire(strength * (0.4 + 0.6 * B.rumble))
 		end
 		if B.rumble > 0.55 and hrp and os.clock() > (B.nextPuff or 0) then
 			B.nextPuff = os.clock() + 0.4

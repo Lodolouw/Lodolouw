@@ -566,6 +566,11 @@ Config.Bosses = {
 			PitDamage = 6, PitTick = 0.5,
 		},
 
+		-- THE RUMBLE: while it swims under the sand close to you, your view gets a
+		-- thump now and then. Range = how close (studs) before you feel it;
+		-- Shake = how hard each thump is (0 turns it off).
+		Rumble = { Range = 40, Shake = 0.45 },
+
 		-- THE SAND IT TEARS UP. Where it bursts out, crashes down or cracks the
 		-- floor, the sand really opens up (craters, trenches, fissures - on your
 		-- screen, and you walk in them). This is how long before it slides back.

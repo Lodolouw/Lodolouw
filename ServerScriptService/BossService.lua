@@ -26,7 +26,7 @@
 	    Action, ActionId, ActionStart (server time), ActA/ActB/ActC (positions),
 	    ActN (a number), ActK (how many of the ActA..C slots are filled so far)
 	    Mireworm also: Submerged (under the sand), ActT (a second moment in an
-	    action, server time)
+	    action, server time), PosT (the server time of its current position)
 ]]
 
 local Players = game:GetService("Players")
@@ -1631,6 +1631,9 @@ local function stepWorm(E, dt)
 	end
 	E.pos = inLeash(E, E.pos, 0)
 	place(E)
+	-- the moment it was here (every screen glides it smoothly between these;
+	-- see glideWorm in BossClient)
+	E.model:SetAttribute("PosT", t)
 	if E.coil then
 		stepCoil(E, t)
 	end
