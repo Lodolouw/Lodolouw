@@ -632,6 +632,9 @@ Config.Bosses = {
 		-- (capitals and spaces don't matter). If it's ever missing, it plays
 		-- Gloomgut's ("Boss") instead of nothing.
 		Music = "SANDWORMSONG",
+		-- how loud it plays: this song is quieter than Gloomgut's, so it's turned
+		-- up (every other boss uses Config.Audio.BossMusic, 0.42). Higher = louder.
+		MusicVolume = 0.8,
 		VictorySound = "Victory Is Ours (a) Sting",
 		-- no acid rain here: the sandstorm (ArenaAmbience) picks up as it fights
 		Weather = "Sandstorm",

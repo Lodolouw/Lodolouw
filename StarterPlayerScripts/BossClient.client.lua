@@ -4659,6 +4659,7 @@ end
 local SoundService = game:GetService("SoundService")
 local MUSIC_VOLUME = (Config.Audio and Config.Audio.BossMusic) or 0.42
 local music, musicFor, musicLevel = nil, nil, 0
+local musicVolume = MUSIC_VOLUME -- (a boss can have its own: MusicVolume in its Config)
 
 local diedAt = -math.huge -- when you last died (the fight's music bows out)
 local function stepMusic(dt)
@@ -4697,6 +4698,7 @@ local function stepMusic(dt)
 			music:Play()
 		end
 		musicFor, musicLevel = want, 0
+		musicVolume = def.MusicVolume or MUSIC_VOLUME
 	end
 	-- in over about a second and a half, out over about two and a half
 	local target = want and 1 or 0
@@ -4709,7 +4711,7 @@ local function stepMusic(dt)
 	end
 	musicLevel = musicLevel + (target - musicLevel) * math.min(1, dt * (want and 0.7 or out))
 	if music then
-		music.Volume = MUSIC_VOLUME * musicLevel
+		music.Volume = musicVolume * musicLevel
 		if not want and musicLevel < 0.01 then
 			music:Destroy()
 			music, musicFor = nil, nil
