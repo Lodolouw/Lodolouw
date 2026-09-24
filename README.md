@@ -153,11 +153,23 @@ moment the fight starts a sandstorm rolls in.
   looping Worm Rumble and a looping Sandstorm. Missing ones borrow Gloomgut's
   (or are simply silent).
 
-## The look: 8-bit retro
+## The look: modern retro
 
-`RetroUI` (StarterPlayerScripts) lays an 8-bit, Terraria-style skin over every
-screen in the game without changing the scripts that build them: pixel fonts,
-a 32-colour palette, hard-banded gradients, square corners and crisp outlines,
-pixel-art icons for the emoji ones, segmented health/level/boss bars, pixel
-sparks on clicks, a faint scanline screen and a retro title screen on joining.
-Every piece is switched in `Config.Retro` (`On = false` puts the old look back).
+`RetroUI` (StarterPlayerScripts) restyles every screen in the game without
+changing the scripts that build them, mixing the pixel games that did it best:
+
+- **Undertale / Deltarune**: dark panels become black boxes with a thick
+  white border; the red heart SOUL sits beside the button you point at and
+  that button's text turns yellow; new messages type themselves out with a
+  voice blip (counters and timers don't).
+- **Pokémon**: a thin second line inside each box (the double border), the
+  bouncing title with a hard shadow, and the striped battle wipe.
+- **Stardew Valley**: chunky pixel icons in place of emoji, a pixel coin, and
+  soft pixel corners.
+- **Celeste**: buttons squash when pressed, menus pop open, and pixel sparks
+  burst on clicks.
+
+It also uses pixel fonts (nothing below `MinText`), a 32-colour palette with
+banded gradients, a clean screen (no scanlines) and a title screen on joining,
+with the Undertale encounter flash into the game. Every piece is switched in
+`Config.Retro` (`On = false` puts the old look back).

@@ -431,22 +431,43 @@ Config.AcidRain = {
 	Volume = 0.25,
 }
 
--- THE LOOK: an 8-bit, Terraria-style retro skin over every screen in the game
--- (RetroUI does it - nothing else needs changing, and switching it off puts
--- the old look back). Each piece can be switched off on its own.
+-- THE LOOK: modern retro, mixed from the pixel games that did it best:
+--   Undertale / Deltarune - black boxes with thick white borders, the red heart
+--     SOUL as your pointer, the button you point at turning yellow, messages
+--     that type themselves out with a blip, the "encounter" flash
+--   Pokemon - the double-line border inside every box, the bouncing title,
+--     the striped battle wipe
+--   Stardew Valley - chunky pixel icons (hearts, stars, coins, potions),
+--     soft pixel corners
+--   Celeste - everything squashes, bounces and sparkles when you touch it
+-- Pixel letters and a bright 32-colour palette, on a clean screen. (RetroUI
+-- does it - nothing else needs changing, and On = false puts the old look
+-- back.) Each piece can be switched off on its own.
 Config.Retro = {
 	On = true,
-	PixelFont = true, -- arcade pixel text everywhere (and a chunkier one for big titles)
-	Palette = true, -- every colour snapped to a 32-colour 8-bit palette
-	Bands = 4, -- smooth gradients become this many hard bands of colour (0 = leave them smooth)
-	Sprites = true, -- pixel-art icons instead of the emoji ones (hearts, stars, potions...)
-	SegmentBars = true, -- health, level and boss bars split into chunky segments
+	PixelFont = true, -- pixel text everywhere (and a chunkier one for big titles)
+	MinText = 13, -- no text smaller than this (pixel letters get hard to read below it)
+	Palette = true, -- every colour snapped to a 32-colour pixel-art palette
+	Bands = 3, -- smooth gradients become this many bands of colour, like pixel shading (0 = smooth)
+	Corners = 3, -- how round the corners of panels and buttons are (0 = hard square, like Undertale)
+	Boxes = true, -- dark panels become black boxes with a thick white border (the Undertale box)
+	BoxBorder = 3, -- how thick that white border is, in pixels
+	Bevel = true, -- a second, thin line inside each box's border (the Pokemon double border)
+	Sprites = true, -- pixel-art icons instead of the emoji ones (hearts, stars, coins, potions...)
+	PixelImages = false, -- draw pictures with chunky pixels (off: pictures stay smooth)
+	SegmentBars = false, -- health, level and boss bars split into segments
+	Cursor = true, -- the red heart SOUL next to the button you point at
+	HoverYellow = true, -- the button you point at turns its text yellow
+	Typewriter = true, -- new messages type themselves out, letter by letter
+	TypeSpeed = 40, -- letters a second when they do
+	TypeBlip = "UI Blip", -- the little voice blip while they type (a Sound in SoundService)
+	Bounce = true, -- buttons squash when pressed, menus pop in
 	ClickBurst = true, -- a burst of pixel sparks every time you click a button
-	Scanlines = 1, -- an old-TV screen with darker corners (1 = off - a clean screen; 0.93 = faint)
+	Scanlines = 1, -- an old-TV screen (1 = off - a clean screen; 0.93 = faint)
 	StartScreen = true, -- the title screen when you join
 	Title = "DEFEAT THE BOSS",
 	Subtitle = "TO GROW",
-	Blip = "UI Blip", -- a short 8-bit blip on clicks, if you add a Sound with this name to SoundService
+	Blip = "UI Blip", -- a short blip on clicks, if you add a Sound with this name to SoundService
 }
 
 -- the lobby's music: the name of a Sound in SoundService
