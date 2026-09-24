@@ -1178,16 +1178,44 @@ local function buildCraftBench(parent)
 		beam("KneeBrace", V3(sx * 14.5, 8.5, 11), V3(sx * 14.5, 11.6, 7), 0.7)
 	end
 
-	-- Stone filling the back gable under the roof: 1-stud steps, each as wide
-	-- as the roof allows at that height, so it follows the slope closely
-	local slope = (RIDGE_Y - EAVE_Y) / HALF_W
-	for i = 0, 7 do
-		local top = EAVE_Y + 1 + i
-		local halfW = (RIDGE_Y - top) / slope
-		if halfW > 0.4 then
-			part(m, "GableStep" .. i, V3(halfW * 2, 1, 2), O * CFrame.new(0, top - 0.5, -17), stone, Mat.Cobblestone)
+	-- Stone filling both gables under the roof - over the back wall, and over
+	-- the front wall of the stone room (so there's no open triangle between
+	-- the wall and the roof). Each is a solid triangle that follows the roof's
+	-- slope exactly: two wedges meeting under the ridge, on a low band where
+	-- the walls stop short of the roof's full width.
+	local function gable(z)
+		local rise, run = RIDGE_Y - EAVE_Y, HALF_W
+		local wallHalf = 14 -- the walls reach 14 studs either side
+		local lift = rise * (run - wallHalf) / run -- the roof's height over the wall's ends
+		part(m, "GableBand", V3(wallHalf * 2, lift, 2), O * CFrame.new(0, EAVE_Y + lift / 2, z), stone, Mat.Cobblestone)
+		local h = rise - lift
+		for _, side in ipairs({ -1, 1 }) do
+			-- (a wedge's upright face is at its local +Z, its slope running down
+			-- to -Z: so +Z points in to the middle, and the low tip out to the side)
+			local w = Instance.new("WedgePart")
+			w.Name = "Gable"
+			w.Anchored = true
+			w.Size = V3(2, h, wallHalf)
+			w.CFrame = O * CFrame.fromMatrix(V3(side * wallHalf / 2, EAVE_Y + lift + h / 2, z), V3(0, 0, side), V3(0, 1, 0), V3(-side, 0, 0))
+			w.Color = stone
+			w.Material = Mat.Cobblestone
+			w.TopSurface = Enum.SurfaceType.Smooth
+			w.BottomSurface = Enum.SurfaceType.Smooth
+			w.Parent = m
 		end
 	end
+	gable(-17)
+	gable(-5)
+	-- a little round attic window glowing in the front gable
+	discZ(m, "AtticWindowFrame", 0.4, 3.4, O * CFrame.new(0, 15.6, -3.9), timber, Mat.Wood)
+	local attic = discZ(m, "AtticWindow", 0.45, 2.6, O * CFrame.new(0, 15.6, -3.85), RGB(255, 206, 120), Mat.Neon, { Transparency = 0.15 })
+	part(m, "AtticWindowBar", V3(0.25, 2.6, 0.5), O * CFrame.new(0, 15.6, -3.8), timber, Mat.Wood)
+	part(m, "AtticWindowBar", V3(2.6, 0.25, 0.5), O * CFrame.new(0, 15.6, -3.8), timber, Mat.Wood)
+	local atticLight = Instance.new("PointLight")
+	atticLight.Color = RGB(255, 200, 120)
+	atticLight.Range = 8
+	atticLight.Brightness = 0.6
+	atticLight.Parent = attic
 
 	-- Red tiled gable roof: rows of overlapping tile strips on each slope
 	local run, rise = HALF_W, RIDGE_Y - EAVE_Y
