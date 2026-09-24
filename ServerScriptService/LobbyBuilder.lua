@@ -3884,7 +3884,7 @@ function LobbyBuilder.Build()
 		{ "Sell Shop", buildSellShop },
 		{ "Upgrade Shop", buildUpgradeShop },
 		{ "Armory (blacksmith)", buildCraftBench },
-		{ "Prestige Shrine", buildShrine },
+		-- (the Prestige Shrine is gone: the plaza is open paving now)
 		{ "Training Yard", buildYard },
 		{ "The Spire", buildSpire },
 		{ "Castle gate", buildCastleGate },

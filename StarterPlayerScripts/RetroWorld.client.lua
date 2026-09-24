@@ -817,6 +817,8 @@ local function cobblePlaza(ground)
 	local center = c.Position
 	local cell = 2.2
 	local outer = rings[#rings].r
+	-- (the middle is paved too, unless something stands there)
+	local innerGap = ground.Parent:FindFirstChild("PrestigeShrine") and 12.6 or -1
 	for iz = -math.ceil(outer / cell), math.ceil(outer / cell) do
 		local shift = (iz % 2 == 0) and 0 or cell / 2
 		for ix = -math.ceil(outer / cell), math.ceil(outer / cell) do
@@ -824,7 +826,7 @@ local function cobblePlaza(ground)
 			local r = math.sqrt(x * x + z * z)
 			local ang = math.deg(math.atan2(z, x)) % 90
 			local onPointer = r > 19.4 and math.abs(ang - 45) < 7
-			if r > 12.6 and r < outer - 1 and not (r > 16.1 and r < 17.7) and not onPointer then
+			if r > innerGap and r < outer - 1 and not (r > 16.1 and r < 17.7) and not onPointer then
 				local top
 				for _, ring in ipairs(rings) do
 					if r < ring.r - 0.4 then
@@ -893,7 +895,7 @@ local function dressLobby(lobby)
 			end
 		end
 	end
-	if D.Shrine ~= false then
+	if D.Shrine ~= false and lobby:FindFirstChild("PrestigeShrine") then
 		local at = (Config.Stations and Config.Stations.Prestige) or V3()
 		sparks(at, 9, 3, 18, { RGB(254, 231, 97), RGB(246, 117, 122), RGB(255, 255, 255) }, 10, 0.4)
 	end
