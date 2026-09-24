@@ -154,11 +154,61 @@ local function doorsRespawn()
 	return pad
 end
 
+-- Getting the arenas ready BEFORE you go in, so nothing is still loading when
+-- you arrive. (Only matters if the place uses streaming - Workspace >
+-- StreamingEnabled - otherwise everything is always loaded anyway.) As soon as
+-- you open the Spire menu, every arena is made to load for you in full and
+-- stay loaded, and the sand round it streams in too, while you're still
+-- choosing a floor.
+local warmed = {} -- [player] = true once their arenas have started loading
+local function arenaModels()
+	local list = {}
+	for _, anchor in ipairs(CollectionService:GetTagged("ArenaSpawn")) do
+		local arena = anchor:FindFirstAncestorWhichIsA("Model")
+		if arena and not table.find(list, arena) then
+			list[#list + 1] = arena
+		end
+	end
+	return list
+end
+
+local function warmArenas(player)
+	if warmed[player] then
+		return
+	end
+	warmed[player] = true
+	for _, arena in ipairs(arenaModels()) do
+		pcall(function()
+			-- the whole arena, kept loaded for this player from now on
+			if arena.ModelStreamingMode ~= Enum.ModelStreamingMode.Persistent then
+				arena.ModelStreamingMode = Enum.ModelStreamingMode.PersistentPerPlayer
+				arena:AddPersistentPlayer(player)
+			end
+		end)
+		local center = arena:GetAttribute("Center")
+		if typeof(center) ~= "Vector3" then
+			local ok, cf = pcall(function()
+				return arena:GetPivot()
+			end)
+			center = ok and cf and cf.Position or nil
+		end
+		if center then
+			-- and the ground round it (terrain isn't part of the model)
+			task.spawn(function()
+				pcall(function()
+					player:RequestStreamAroundAsync(center, 10)
+				end)
+			end)
+		end
+	end
+end
+
 local function openMenu(player)
 	local root = rootOf(player)
 	if not root then
 		return
 	end
+	warmArenas(player)
 	remotes.SpireEvent:FireClient(player, "OpenMenu")
 end
 
@@ -201,6 +251,7 @@ local function travel(player, action, floorId)
 			return false, "That arena isn't built yet."
 		end
 		lastTravel[player] = now
+		warmArenas(player) -- (normally already done when the menu opened)
 		if not moveCharacter(player, char, dest) then
 			return false, "You can't travel right now."
 		end
@@ -325,6 +376,7 @@ function SpireService.Start()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		lastTravel[player] = nil
+		warmed[player] = nil
 	end)
 end
 

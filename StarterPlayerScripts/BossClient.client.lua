@@ -656,6 +656,7 @@ end
 --   girth    how thick it is (the coil is thinner than it stands)
 --   collar   0 hides the mound of sand round its base; noShadow hides its shadow
 local WORM_SEGMENTS = 20 -- (enough to bend smoothly into an arch, a ring or a leap)
+local WORM_BLEND = 0.3 -- seconds its body takes to flow from one shape into the next
 local WORM_SAND = RGB(224, 188, 128) -- the arena's sand, for everything it throws up
 local WORM_SAND_DEEP = RGB(122, 92, 58) -- churned-up quicksand
 local WORM_PLATE = RGB(156, 124, 88)
@@ -914,6 +915,33 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 			points[i] = { s = s, pos = world(bezier(c0, c1, c2, c3, s)), along = slope(bezierSlope(c0, c1, c2, c3, s)) }
 		end
 	end
+	-- Hand-overs: when it starts something new, its body flows from the shape it
+	-- was in to the new one over a moment instead of jumping - unless it's come
+	-- up somewhere else entirely (then there's nothing to flow from).
+	local from = B.blendFrom
+	if from and t < (B.blendUntil or 0) and from[WORM_SEGMENTS] then
+		if (from[WORM_SEGMENTS] - points[WORM_SEGMENTS].pos).Magnitude < 40 then
+			local w = smooth(1 - (B.blendUntil - t) / WORM_BLEND)
+			for i, pt in ipairs(points) do
+				pt.pos = from[i]:Lerp(pt.pos, w)
+			end
+			for i, pt in ipairs(points) do
+				local a, b = points[math.max(i - 1, 1)].pos, points[math.min(i + 1, WORM_SEGMENTS)].pos
+				if (b - a).Magnitude > 1e-3 then
+					pt.along = b - a
+				end
+			end
+			girth = lerp(B.blendGirth or girth, girth, w)
+		else
+			B.blendFrom = nil
+		end
+	end
+	-- (this frame's shape, to flow from next time)
+	B.lastPoints = B.lastPoints or {}
+	for i, pt in ipairs(points) do
+		B.lastPoints[i] = pt.pos
+	end
+	B.lastGirth = girth
 	local frames, girths, lengths = {}, {}, {}
 	for i, pt in ipairs(points) do
 		local prev = points[i - 1] and (pt.pos - points[i - 1].pos).Magnitude or 0
@@ -1485,10 +1513,19 @@ do
 		return sc
 	end
 
+	-- Terrain edits wait their turn and go through a few a frame, so a whole
+	-- trench (or the sand sliding back into several craters) never lands in one
+	-- frame and hitches your screen.
+	local edits = {}
+	local EDITS_PER_FRAME = 3
+	local function terrainEdit(fn)
+		edits[#edits + 1] = fn
+	end
+
 	-- puts one piece of a scar into the terrain (again, if something covered it)
 	local TERRACES = 5
 	local function ballFill(ball)
-		pcall(function()
+		terrainEdit(function()
 			if ball.cone then
 				-- a wide, shallow pit (the phase-two bowl): stacked discs of air, each
 				-- narrower and deeper than the last - far less work for Terrain than
@@ -1576,7 +1613,7 @@ do
 		local info = sc.info
 		local x0, x1, z0, z1 = scarBox(sc)
 		local mid = V3((x0 + x1) / 2, 0, (z0 + z1) / 2)
-		pcall(function()
+		terrainEdit(function()
 			if sc.kind == "heave" then
 				local h = grid(12, true)
 				Terrain:FillBlock(CFrame.new(mid.X, info.y + h / 2, mid.Z), V3(x1 - x0, h, z1 - z0), AIR)
@@ -1608,8 +1645,12 @@ do
 		sc.balls, sc.hidden = {}, {}
 	end
 
-	-- Every frame: sand sliding back into the scars whose time is up
+	-- Every frame: a few waiting terrain edits, and sand sliding back into the
+	-- scars whose time is up
 	function stepScars()
+		for _ = 1, math.min(EDITS_PER_FRAME, #edits) do
+			pcall(table.remove(edits, 1))
+		end
 		local now = serverNow()
 		for i = #scars, 1, -1 do
 			local sc = scars[i]
@@ -2308,7 +2349,7 @@ end
 -- (Everything Mireworm draws lives in this one block: a Roblox script may only
 -- have 200 names at its top level, so only the handful used further down are
 -- shared - the rest stay inside.)
-local trailReset, trailRecord, stepHumps, stepWormSenses, stepThumpers
+local trailReset, trailRecord, stepHumps, stepWormSenses, stepThumpers, glideWorm
 do
 	----------------------------------------------------------------------
 	-- MIREWORM: the hunt, as your screen sees it
@@ -2330,6 +2371,13 @@ do
 	local HUMP_LEN = 38 -- one arch of its back
 	local HUMP_EVERY = 62 -- studs it swims between arches (some attacks arch more often)
 	local TRAIL_KEEP = BODY_LEN + HUMP_LEN + 60
+
+	-- a spot on the sand, a hair above it: the markings on the floor sit on top
+	-- of the Terrain sand rather than half inside its surface
+	local function onSand(p)
+		local f = onFloor(p)
+		return V3(f.X, f.Y + 0.1, f.Z)
+	end
 
 	-- a bar lying flat on the floor from a to b
 	local function placeStrip(p, a, b, width, thickness, y)
@@ -2447,6 +2495,48 @@ do
 
 	local function scarLife(B)
 		return (B.def.Scars and B.def.Scars.Last) or 7
+	end
+
+	----------------------------------------------------------------------
+	-- Gliding: smooth movement between what the server sends
+	----------------------------------------------------------------------
+	-- The server moves it every frame, but your screen only hears about it a
+	-- few dozen times a second, a little unevenly. Chasing each update makes it
+	-- judder; instead every position is kept with the moment it arrived, and
+	-- it's drawn GLIDE seconds behind, sliding steadily between them.
+	local GLIDE = 0.1
+	function glideWorm(B, now, ground)
+		local snaps = B.snaps
+		if not snaps then
+			snaps = { { t = now, p = ground } }
+			B.snaps = snaps
+		end
+		local last = snaps[#snaps]
+		if (ground - last.p).Magnitude > 0.001 then
+			if flat(ground - last.p).Magnitude > 40 then
+				-- it came up somewhere else entirely: no sliding across the arena
+				table.clear(snaps)
+			elseif now - last.t > 0.2 then
+				-- it was still, and now it's off: it starts from where it stood
+				snaps[#snaps + 1] = { t = now - 1 / 30, p = last.p }
+			end
+			snaps[#snaps + 1] = { t = now, p = ground }
+			while #snaps > 30 do
+				table.remove(snaps, 1)
+			end
+		end
+		local at = now - GLIDE
+		if at <= snaps[1].t then
+			return snaps[1].p
+		end
+		for i = #snaps, 2, -1 do
+			local a = snaps[i - 1]
+			if at >= a.t then
+				local b = snaps[i]
+				return a.p:Lerp(b.p, clamp((at - a.t) / math.max(b.t - a.t, 1e-3), 0, 1))
+			end
+		end
+		return snaps[#snaps].p
 	end
 
 	----------------------------------------------------------------------
@@ -2660,7 +2750,7 @@ do
 	-- lift you), ringed in glowing warning, and then it bursts up out of it.
 	local function ambushMark(B, spot, eruptAt)
 		local a = B.def.Attacks.Ambush
-		spot = onFloor(spot)
+		spot = onSand(spot)
 		local t0 = serverNow()
 		local ring = newRing(26, WORM_GLOW, Enum.Material.Neon, 1)
 		local heave = newScar(B, "heave", math.max(eruptAt - t0, 0.1))
@@ -2698,7 +2788,7 @@ do
 		if typeof(A) ~= "Vector3" then
 			return
 		end
-		A = onFloor(A)
+		A = onSand(A)
 		local launchAt = t0 + tell
 		local landAt = launchAt + a.Flight
 		local lockAt = launchAt + a.Flight * a.Lock
@@ -2716,7 +2806,7 @@ do
 				if not landed then
 					local live = m:GetAttribute("ActB")
 					if typeof(live) == "Vector3" and m:GetAttribute("Action") == "Breach" then
-						Bp = onFloor(live)
+						Bp = onSand(live)
 					end
 				end
 				if not Bp then
@@ -2806,7 +2896,7 @@ do
 	-- tightens. At the crush: a crater where the head strikes down.
 	local function coilMarks(B, C, t0)
 		local a = B.def.Attacks.Coil
-		C = onFloor(C)
+		C = onSand(C)
 		local surfaceAt = t0 + a.Tell
 		local crushAt = surfaceAt + a.Close
 		local churn = newRing(40, WORM_SAND_DEEP, Enum.Material.Sand, 1)
@@ -2864,7 +2954,7 @@ do
 	-- the bottom, the bite marked there, and it drags you in while it's open.
 	local function devourFunnel(B, C, t0)
 		local a = B.def.Attacks.Devour
-		C = onFloor(C)
+		C = onSand(C)
 		local biteAt = t0 + a.Tell
 		local hole = newScar(B, "hole", math.max(biteAt - serverNow(), 0) + scarLife(B))
 		local stages = { { 0.12, 0.55, 0.4 }, { 0.4, 0.8, 0.7 }, { 0.7, 1, 1 } } -- { when, size, depth }
@@ -2930,7 +3020,7 @@ do
 	local TAIL_BITS = 12
 	local function tailLash(B, anchor, yaws, t0)
 		local a = B.def.Attacks.TailLash
-		anchor = onFloor(anchor)
+		anchor = onSand(anchor)
 		local from, to = yaws.X, yaws.Y
 		local phase = B.model:GetAttribute("Phase") or 1
 		local sweeps = (type(a.Sweeps) == "table" and (a.Sweeps[phase] or a.Sweeps[1])) or 1
@@ -3102,8 +3192,24 @@ do
 					if now >= hitAt and not fired[i] then
 						fired[i] = true
 						if dust then
-							dust:Emit(400)
+							dust:Emit(500)
 						end
+						-- a wave of sand racing out across the whole floor from it
+						local wave = newRing(48, WORM_SAND, Enum.Material.Sand, 0.1)
+						local w0, from = now, B.vpos
+						addTelegraph(B, {
+							update = function(n)
+								local u = (n - w0) / 0.6
+								if u >= 1 then
+									return false
+								end
+								placeRing(wave, onSand(from), lerp(6, 140, easeOut(u)), 2.2 * (1 - u) + 0.2, 3.5, lerp(0.1, 1, u))
+								return true
+							end,
+							cleanup = function()
+								removeRing(wave)
+							end,
+						})
 						-- fissures: the same on every screen (seeded from the moment it began)
 						local origin = B.vpos
 						local sc = newScar(B, "hole", scarLife(B) - 1)
@@ -3141,7 +3247,7 @@ do
 	-- the server lights those). The platform breaking is drawn further down.
 	local function undermineMarks(B, C, radius, t0)
 		local a = B.def.Attacks.Undermine
-		C = onFloor(C)
+		C = onSand(C)
 		local breakAt = t0 + a.Tell
 		local ring = newRing(32, WORM_GLOW, Enum.Material.Neon, 1)
 		local nextPuff = 0
@@ -3173,7 +3279,7 @@ do
 	-- CHARGE: the furrow it tears across the sand toward the thumper, and - if a
 	-- platform was in the way - the crash as it rams the stone.
 	local function chargeTrail(B, from, to, stone, t0, travel)
-		from, to = onFloor(from), onFloor(to)
+		from, to = onSand(from), onSand(to)
 		local arriveAt = t0 + travel
 		local furrow = newScar(B, "hole", travel + scarLife(B))
 		local cut = 0
@@ -3643,12 +3749,19 @@ do
 		local want = 0
 		if here and awake and hrp and under then
 			local d = flat(hrp.Position - B.vpos).Magnitude
-			want = clamp(1 - (d - 12) / 40, 0, 1)
+			want = clamp(1 - (d - 10) / 65, 0, 1)
 		end
 		B.rumble = (B.rumble or 0) + (want - (B.rumble or 0)) * math.min(1, dt * 4)
-		if B.rumble > 0.05 and cameraKickEvent and os.clock() >= (B.nextThump or 0) then
-			B.nextThump = os.clock() + lerp(0.75, 0.32, B.rumble)
-			cameraKickEvent:Fire(0.06 + 0.32 * B.rumble * B.rumble)
+		if B.rumble > 0.03 and cameraKickEvent then
+			-- close by, the ground shudders under you the whole time...
+			if B.rumble > 0.35 then
+				cameraKickEvent:Fire(0.25 + 0.55 * (B.rumble - 0.35))
+			end
+			-- ...with a heavy thump as it heaves past, quicker and harder the closer it is
+			if os.clock() >= (B.nextThump or 0) then
+				B.nextThump = os.clock() + lerp(0.8, 0.3, B.rumble)
+				cameraKickEvent:Fire(0.45 + 1.1 * B.rumble, -1.2 * B.rumble)
+			end
 		end
 		if B.rumble > 0.55 and hrp and os.clock() > (B.nextPuff or 0) then
 			B.nextPuff = os.clock() + 0.4
@@ -3826,6 +3939,91 @@ do
 		trackPlatform(pm)
 	end
 	CollectionService:GetInstanceAddedSignal("DunePlatform"):Connect(trackPlatform)
+
+	----------------------------------------------------------------------
+	-- Warming up
+	----------------------------------------------------------------------
+	-- Everything the fights play is fetched well before it's needed, so nothing
+	-- stalls, or plays silent, the first time it happens:
+	--  * every boss sound and song, a few seconds after you join (in the background)
+	--  * the particle textures the sand and slime are drawn with
+	--  * the first time you arrive in a Spire arena, every material the fight
+	--    draws with is shown to your screen for a moment, too small to see
+	-- (The arenas themselves are loaded for you by SpireService as soon as you
+	-- open the Spire menu.)
+	local ContentProvider = game:GetService("ContentProvider")
+	local function warmSounds()
+		local list, seen = {}, {}
+		local function add(name)
+			if type(name) == "string" and name ~= "" and not seen[name] then
+				seen[name] = true
+				local sound = findSound(name)
+				if sound then
+					list[#list + 1] = sound
+				end
+			end
+		end
+		for _, def in pairs(Config.Bosses or {}) do
+			for key, name in pairs(def.Sounds or {}) do
+				add(name)
+				add("Boss " .. key)
+			end
+			add(def.Music)
+			add(def.VictorySound)
+		end
+		for _, key in ipairs({ "Wake", "Slam", "Wave", "Spit", "Splat", "Lunge", "Wail", "Erupt", "Break", "Death" }) do
+			add("Boss " .. key) -- (what Mireworm borrows when it has no sound of its own)
+		end
+		add(Config.AcidRain and Config.AcidRain.Sound)
+		for _, f in ipairs((Config.Spire and Config.Spire.Floors) or {}) do
+			add(f.ambience and f.ambience.Sound)
+		end
+		list[#list + 1] = "rbxasset://textures/particles/smoke_main.dds"
+		list[#list + 1] = "rbxasset://textures/particles/sparkles_main.dds"
+		pcall(function()
+			ContentProvider:PreloadAsync(list)
+		end)
+	end
+	task.delay(4, warmSounds)
+
+	local WARM_MATERIALS = {
+		Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Slate, Enum.Material.Neon, Enum.Material.SmoothPlastic,
+		Enum.Material.Glass, Enum.Material.Metal, Enum.Material.Fabric, Enum.Material.Wood,
+	}
+	local warmedFloors = {}
+	local function warmMaterials()
+		local cam = Workspace.CurrentCamera
+		if not cam then
+			return
+		end
+		local bits = {}
+		for k, mat in ipairs(WARM_MATERIALS) do
+			local bit = newPart("Warm", nil, RGB(200, 200, 200), mat, 0.97)
+			bit.Size = V3(0.2, 0.2, 0.2)
+			bits[k] = bit
+		end
+		local t0 = os.clock()
+		local conn
+		conn = RunService.RenderStepped:Connect(function()
+			local cf = cam.CFrame
+			for k, bit in ipairs(bits) do
+				bit.CFrame = cf * CFrame.new((k - 5) * 0.25, -1.2, -5)
+			end
+			if os.clock() - t0 > 0.5 then
+				conn:Disconnect()
+				for _, bit in ipairs(bits) do
+					bit:Destroy()
+				end
+			end
+		end)
+	end
+	player:GetAttributeChangedSignal("SpireFloor"):Connect(function()
+		local f = player:GetAttribute("SpireFloor")
+		if f and not warmedFloors[f] then
+			warmedFloors[f] = true
+			warmMaterials()
+		end
+	end)
 end
 
 ----------------------------------------------------------------------
@@ -4157,6 +4355,9 @@ local function onAction(B, name, t0, now)
 	B.slotsDone = 0
 	local worm = B.kind == "Worm"
 	if worm then
+		if B.lastPoints then
+			B.blendFrom, B.blendGirth, B.blendUntil = table.clone(B.lastPoints), B.lastGirth, now + WORM_BLEND
+		end
 		if name == "Reset" then
 			B.resetUnder = B.model:GetAttribute("Submerged") == true
 		end
@@ -4275,10 +4476,14 @@ local function stepBoss(B, now, dt)
 	end
 
 	-- where it is: smoothed from the server's position, or exactly on its arc
-	-- while it's lunging or hopping
+	-- while it's lunging or hopping (the worm glides between updates - see
+	-- glideWorm)
 	local ground = rootGround(B)
+	local glided = (B.kind == "Worm") and glideWorm(B, now, ground) or nil
 	if P.override then
 		B.vpos = V3(P.override.X, ground.Y, P.override.Z)
+	elseif glided then
+		B.vpos = V3(glided.X, ground.Y, glided.Z)
 	else
 		B.vpos = B.vpos:Lerp(ground, 1 - math.exp(-dt * 14))
 	end

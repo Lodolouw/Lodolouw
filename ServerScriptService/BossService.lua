@@ -706,10 +706,32 @@ local function sandSpot(E, pos, toward, extra)
 	return inLeash(E, pos, 4)
 end
 
--- feet on the floor (not jumping). On stone you're 1.7 studs up, which the
--- callers that care about stone check for themselves.
+-- How high a player's root sits above whatever they're standing on: R6 legs
+-- are 2 studs; R15 bodies use their HipHeight. (So tall and small avatars
+-- are judged right, not just the default size.)
+local function standHeight(root)
+	local hum = root.Parent and root.Parent:FindFirstChildOfClass("Humanoid")
+	local half = root.Size.Y / 2
+	if hum and hum.RigType == Enum.HumanoidRigType.R6 then
+		return 2 + half
+	end
+	local hip = hum and tonumber(hum.HipHeight) or 0
+	return (hip > 0 and hip or 2) + half
+end
+
+-- how far above the floor a player's feet are (negative: down in a crater)
+local function feetAbove(E, root)
+	return root.Position.Y - (E.floorY + standHeight(root))
+end
+
+-- Feet on the floor (not jumping). "In the air" = clearly above the floor, or
+-- going up or coming down fast - so a jump counts from the moment you leave
+-- the ground, and standing in a crater (below the floor) still counts as on
+-- it. On stone you're 1.7 studs up, which the callers that care about stone
+-- check for themselves.
 local function grounded(E, root, above)
-	return root.Position.Y - (E.floorY + STAND_HEIGHT) < (above or 1.2)
+	local vy = root.AssemblyLinearVelocity.Y
+	return feetAbove(E, root) < (above or 1.2) + 0.4 and vy < 7 and vy > -9
 end
 
 -- where along a ray from `origin` (flat direction `dir`) it crosses a circle
@@ -1292,7 +1314,7 @@ local function stepLash(E, t)
 			local root = rootOf(p)
 			local off = flat(root.Position - L.anchor)
 			local d = off.Magnitude
-			local above = root.Position.Y - (E.floorY + STAND_HEIGHT)
+			local above = feetAbove(E, root)
 			if d <= L.reach + PLAYER_RADIUS and above < L.height * 0.8 then
 				local ang = math.atan2(off.X, off.Z)
 				local slack = (L.width / 2 + PLAYER_RADIUS) / math.max(d, 1)
