@@ -174,6 +174,14 @@ banded gradients, a clean screen (no scanlines) and a title screen on joining,
 with the Undertale encounter flash into the game. Every piece is switched in
 `Config.Retro` (`On = false` puts the old look back).
 
+The lobby wears the same look (`RetroWorld`, `Config.Retro.World`): its
+colours snapped to the menus' palette, realistic textures turned to flat
+colour, pixel motes drifting around you, a spinning pixel save star over the
+spawn, and Undertale-style lines typed out when you walk up to a shop, the
+shrine, the yard or the Spire. It only changes how things look, only on your
+screen: nothing is moved, nothing solid changes, and the people, the dummies
+and the boss arenas are left alone.
+
 Your health is **the heart** (in `Hud`, tuned in `Config.Heart`): red liquid
 inside a pixel heart, measured by how much of it is full. A hit makes it
 slosh, spill drops over the rim and shake; a flask pours it back in; low on

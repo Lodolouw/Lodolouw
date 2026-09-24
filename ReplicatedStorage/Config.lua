@@ -468,6 +468,19 @@ Config.Retro = {
 	Title = "DEFEAT THE BOSS",
 	Subtitle = "TO GROW",
 	Blip = "UI Blip", -- a short blip on clicks, if you add a Sound with this name to SoundService
+	-- the lobby in the same look (RetroWorld - only on your screen, only how
+	-- things look: nothing is moved, and nothing solid changes)
+	World = {
+		On = true,
+		Palette = true, -- the lobby's colours snapped to the same palette as the menus
+		Flat = true, -- realistic textures (cobblestone, slate, metal...) become flat colour
+		Motes = 36, -- glowing pixel cubes drifting around you (0 = none)
+		SaveStar = true, -- the spinning pixel star over the spawn
+		Flavour = true, -- a line of text typed out when you walk up to a shop, the shrine...
+		Repeat = 150, -- seconds before the same place talks again
+		Grade = true, -- a slightly warmer, punchier colour grade in the lobby
+		-- Lines = { SellShop = "* your own line" }, -- (to change what a place says)
+	},
 }
 
 -- THE HEART: your health on screen, as red liquid inside a pixel heart (Hud).
