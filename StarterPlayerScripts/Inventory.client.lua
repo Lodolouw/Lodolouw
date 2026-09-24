@@ -232,7 +232,7 @@ end
 ----------------------------------------------------------------------
 -- The screen
 ----------------------------------------------------------------------
-local gui = new("ScreenGui", { Name = "Inventory", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 40 }, playerGui)
+local gui = new("ScreenGui", { Name = "Inventory", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 40, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, playerGui)
 gui:SetAttribute("RetroSkip", true)
 local scaler = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
 local uiScale = new("UIScale", {}, scaler)
@@ -288,11 +288,12 @@ local gearScale = new("UIScale", {}, gearBtn)
 -- warm dark backdrop, you standing big in a spotlight on the left with your
 -- gear floating round you, your items in the middle, and the item you're
 -- looking at, huge, on the right. No boxes - everything floats.
-local WOOD, WOOD_DARK, WOOD_EDGE = RGB(46, 30, 34), RGB(30, 20, 24), RGB(150, 110, 60)
-local TILE, TILE_HOVER = RGB(52, 36, 40), RGB(84, 60, 62)
+local WOOD, WOOD_DARK, WOOD_EDGE = RGB(34, 26, 70), RGB(20, 16, 44), RGB(44, 232, 245)
+local TILE, TILE_HOVER = RGB(40, 32, 84), RGB(70, 56, 136)
+local EMPTY = RGB(58, 48, 110) -- an empty tile's cross
 local dim = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = BLACK, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 1 }, scaler)
-local win = new("Frame", { BackgroundColor3 = RGB(40, 22, 26), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 2, Active = true }, scaler)
-new("UIGradient", { Rotation = 90, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(74, 36, 40)), ColorSequenceKeypoint.new(0.55, RGB(38, 22, 28)), ColorSequenceKeypoint.new(1, RGB(16, 10, 14)) }) }, win)
+local win = new("Frame", { BackgroundColor3 = RGB(30, 20, 70), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 2, Active = true }, scaler)
+new("UIGradient", { Rotation = 90, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(72, 36, 120)), ColorSequenceKeypoint.new(0.5, RGB(32, 22, 78)), ColorSequenceKeypoint.new(1, RGB(10, 8, 28)) }) }, win)
 local winScale = new("UIScale", {}, win)
 -- faint pixel blocks drifting in the backdrop, and a dark vignette at the edges
 do
@@ -301,12 +302,17 @@ do
 		local size = rnd:NextInteger(40, 120)
 		new("Frame", {
 			BorderSizePixel = 0,
-			BackgroundColor3 = rnd:NextNumber() < 0.5 and RGB(90, 48, 52) or RGB(20, 12, 16),
-			BackgroundTransparency = 0.82 + rnd:NextNumber() * 0.12,
+			BackgroundColor3 = rnd:NextNumber() < 0.5 and RGB(120, 70, 190) or RGB(10, 8, 30),
+			BackgroundTransparency = 0.84 + rnd:NextNumber() * 0.1,
 			Position = UDim2.new(rnd:NextNumber(), -size / 2, rnd:NextNumber(), -size / 2),
 			Size = UDim2.fromOffset(size, size),
 			ZIndex = 2,
 		}, win)
+	end
+	for i = 1, 60 do
+		local size = (i % 7 == 0) and 4 or 2
+		local star = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = (i % 5 == 0) and RGB(44, 232, 245) or ((i % 3 == 0) and RGB(246, 117, 122) or WHITE), Position = UDim2.fromScale(rnd:NextNumber(), rnd:NextNumber()), Size = UDim2.fromOffset(size, size), ZIndex = 2 }, win)
+		star:SetAttribute("Twinkle", rnd:NextNumber() * 6)
 	end
 	for _, v in ipairs({ { 0, 0, 1, 0.16, 90, false }, { 0, 0.84, 1, 0.16, 90, true }, { 0, 0, 0.1, 1, 0, false }, { 0.9, 0, 0.1, 1, 0, true } }) do
 		local f = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = BLACK, Position = UDim2.fromScale(v[1], v[2]), Size = UDim2.fromScale(v[3], v[4]), ZIndex = 2 }, win)
@@ -316,25 +322,25 @@ end
 
 -- the top bar: your coins, the title, and the way out
 local topBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, 70), ZIndex = 3 }, win)
-local coinIcon = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = GOLD, Position = UDim2.fromOffset(40, 22), Size = UDim2.fromOffset(26, 26), Rotation = 45, ZIndex = 4 }, topBar)
+local coinIcon = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = GOLD, Position = UDim2.fromOffset(200, 22), Size = UDim2.fromOffset(26, 26), Rotation = 45, ZIndex = 4 }, topBar)
 new("UIStroke", { Color = INK, Thickness = 3 }, coinIcon)
-local coinText = text(topBar, { Text = "0", TextSize = 30, TextColor3 = GOLD, Position = UDim2.fromOffset(80, 16), Size = UDim2.fromOffset(240, 40), ZIndex = 4, TextStrokeTransparency = 0.4, TextStrokeColor3 = INK })
+local coinText = text(topBar, { Text = "0", TextSize = 30, TextColor3 = GOLD, Position = UDim2.fromOffset(240, 16), Size = UDim2.fromOffset(240, 40), ZIndex = 4, TextStrokeTransparency = 0.4, TextStrokeColor3 = INK })
 local title = text(topBar, { Text = "INVENTORY", TextSize = 30, TextColor3 = WHITE, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.22), Size = UDim2.fromOffset(400, 40), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 })
 if TITLE_FACE then
 	title.FontFace = TITLE_FACE
 	title.TextSize = 24
 end
 local bagCount = text(topBar, { Text = "0/60", TextSize = 20, TextColor3 = GREY, Position = UDim2.new(1, -330, 0, 20), Size = UDim2.fromOffset(240, 30), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-local closeBtn = button(topBar, "X", RGB(30, 20, 24), { Position = UDim2.new(1, -74, 0, 14), Size = UDim2.fromOffset(46, 46), TextSize = 28, ZIndex = 5 })
+local closeBtn = button(topBar, "X", RGB(20, 16, 44), { Position = UDim2.new(1, -74, 0, 14), Size = UDim2.fromOffset(46, 46), TextSize = 28, ZIndex = 5 })
 
 -- LEFT: you, big, in a spotlight
 local left = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 30, 0, 80), Size = UDim2.new(0.36, -30, 1, -100), ZIndex = 3 }, win)
-local spot = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(255, 210, 160), BackgroundTransparency = 0.9, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromScale(0.7, 0.7), SizeConstraint = Enum.SizeConstraint.RelativeXX, ZIndex = 3 }, left)
+local spot = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(44, 232, 245), BackgroundTransparency = 0.9, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromScale(0.7, 0.7), SizeConstraint = Enum.SizeConstraint.RelativeXX, ZIndex = 3 }, left)
 new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, spot)
 new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.6, 0.7), NumberSequenceKeypoint.new(1, 1) }) }, spot)
 local shadow = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = BLACK, BackgroundTransparency = 0.55, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.7), Size = UDim2.new(0.34, 0, 0, 34), ZIndex = 3 }, left)
 new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, shadow)
-local view = new("ViewportFrame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.02), Size = UDim2.fromScale(0.62, 0.7), Ambient = RGB(190, 170, 170), LightColor = RGB(255, 236, 210), LightDirection = Vector3.new(-0.6, -1, -0.8), ZIndex = 4 }, left)
+local view = new("ViewportFrame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromScale(0.56, 0.72), Ambient = RGB(190, 170, 170), LightColor = RGB(255, 236, 210), LightDirection = Vector3.new(-0.6, -1, -0.8), ZIndex = 4 }, left)
 local viewCam = new("Camera", { FieldOfView = 30 }, view)
 view.CurrentCamera = viewCam
 local world = new("WorldModel", {}, view)
@@ -364,6 +370,12 @@ local function buildAvatar()
 		copy:PivotTo(CFrame.new())
 		copy.Parent = world
 		avatar = copy
+		-- frame all of you, head to toe, from the front (you face -Z)
+		local box, size = copy:GetBoundingBox()
+		local h = math.max(size.Y, size.X * 0.8)
+		local dist = (h / 2) / math.tan(math.rad(viewCam.FieldOfView / 2)) * 1.12 + size.Z / 2
+		local c = box.Position
+		viewCam.CFrame = CFrame.lookAt(c + Vector3.new(0, 0, -dist), c)
 	end)
 end
 -- the four slots float round you, two each side
@@ -678,10 +690,10 @@ local function slotFrame(parent, def, uid)
 			b.BackgroundColor3 = base
 		end
 	else
-		edge.Color = RGB(74, 52, 56)
+		edge.Color = EMPTY
 		-- an empty tile: a faint cross, like an empty slot
 		for _, r in ipairs({ 45, -45 }) do
-			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = RGB(74, 52, 56), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1.1, 0, 0, 3), Rotation = r, ZIndex = 4 }, b)
+			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = EMPTY, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1.1, 0, 0, 3), Rotation = r, ZIndex = 4 }, b)
 		end
 		b.ClipsDescendants = true
 	end
@@ -771,7 +783,7 @@ local function drawTabs()
 	for i, id in ipairs(defs) do
 		local on = tab == id
 		local b = button(tabs, id == "All" and "ALL" or "", on and TILE_HOVER or WOOD_DARK, { LayoutOrder = i, Size = UDim2.fromOffset(id == "Chests" and 62 or 46, 42), TextSize = 16, ZIndex = 4, TextColor3 = on and GOLD or WHITE })
-		b:FindFirstChildOfClass("UIStroke").Color = on and GOLD or RGB(74, 52, 56)
+		b:FindFirstChildOfClass("UIStroke").Color = on and GOLD or EMPTY
 		if id ~= "All" then
 			local ic = id == "Chests" and icon("Treasure", RGB(184, 111, 80), GOLD) or icon(id, on and RGB(192, 203, 220) or GREY, on and GOLD or DIM)
 			ic.Size = UDim2.fromOffset(30, 30)
@@ -800,7 +812,7 @@ local function drawTabs()
 		table.insert(tabButtons, b)
 	end
 	local sortBtn = button(tabs, SORTS[sortMode], WOOD_DARK, { LayoutOrder = 20, Size = UDim2.fromOffset(62, 42), TextSize = 12, ZIndex = 4 })
-	sortBtn:FindFirstChildOfClass("UIStroke").Color = RGB(74, 52, 56)
+	sortBtn:FindFirstChildOfClass("UIStroke").Color = EMPTY
 	sortBtn.MouseEnter:Connect(function()
 		setStatus("Sort by: " .. SORTS[sortMode])
 	end)
@@ -825,7 +837,7 @@ local function drawLeft()
 		b.Position = SLOT_AT[slot]
 		b.Size = UDim2.fromOffset(104, 104)
 		if not def then
-			local ghost = icon(slot, RGB(74, 52, 56), RGB(74, 52, 56))
+			local ghost = icon(slot, EMPTY, EMPTY)
 			ghost.Parent = b
 		end
 		b.Activated:Connect(function()
@@ -1009,12 +1021,16 @@ salvageBtn.Activated:Connect(function()
 	refreshBar()
 end)
 
--- your avatar turns slowly while the window is open
-RunService.RenderStepped:Connect(function(dt)
-	if win.Visible and avatar then
-		avatarAngle = avatarAngle + dt * 0.6
-		local c = CFrame.new(0, 0.4, 0)
-		viewCam.CFrame = CFrame.lookAt((c * CFrame.Angles(0, math.sin(avatarAngle * 0.5) * 0.6, 0) * CFrame.new(0, 0.8, 12)).Position, c.Position)
+-- the backdrop's stars twinkle while the window is open
+RunService.RenderStepped:Connect(function()
+	if win.Visible then
+		local t = os.clock()
+		for _, c in ipairs(win:GetChildren()) do
+			local ph = c:GetAttribute("Twinkle")
+			if ph then
+				c.BackgroundTransparency = (math.sin(t * 2 + ph * 3) > 0.3) and 0.1 or 0.7
+			end
+		end
 	end
 end)
 
@@ -1026,6 +1042,7 @@ local function openWindow()
 		return
 	end
 	win.Visible, dim.Visible = true, true
+	gearBtn.Visible = false
 	buildAvatar()
 	winScale.Scale = 1.04
 	tween(winScale, 0.25, { Scale = 1 }, Enum.EasingStyle.Quad)
@@ -1053,6 +1070,7 @@ local function closeWindow()
 	tween(dim, 0.12, { BackgroundTransparency = 1 })
 	task.delay(0.12, function()
 		win.Visible, dim.Visible = false, false
+		gearBtn.Visible = true
 	end)
 end
 gearBtn.Activated:Connect(function()
