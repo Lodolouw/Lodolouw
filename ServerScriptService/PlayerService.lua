@@ -2,9 +2,9 @@
 	PlayerService  (ModuleScript, parent: ServerScriptService, name: "PlayerService")
 
 	Server-authoritative game logic for the lobby:
-	  * per-player data (Power, Coins, Prestige, Loot, Upgrades, Talismans) + DataStore saving
+	  * per-player data (Power = XP, Coins, Loot, Upgrades, Talismans, Stats, Gear) + DataStore saving
 	  * training on the dummy pads (manual clicks + auto-train)
-	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, Prestige
+	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, stat points, gear
 	  * remotes for the HUD
 
 	Hooks for your future arena scripts:
@@ -73,6 +73,7 @@ local function defaultData()
 		Chests = {}, -- ["1"] = unopened treasure chests from floor 1's boss
 		NextId = 1, -- (each item gets a new, never-reused id)
 		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
+		Stats = {}, -- stat points spent: [stat] = points (see Config.StatPoints)
 	}
 end
 
@@ -88,9 +89,9 @@ local function mergeSaved(saved)
 	if type(saved.Coins) == "number" then
 		d.Coins = saved.Coins
 	end
-	if type(saved.Prestige) == "number" then
-		d.Prestige = saved.Prestige
-	end
+	-- (prestige is gone: every prestige you had becomes one of Oozark's
+	-- treasure chests, once, and your count goes back to 0)
+	local oldPrestige = type(saved.Prestige) == "number" and math.floor(saved.Prestige) or 0
 	if type(saved.Loot) == "table" then
 		for id in pairs(d.Loot) do
 			if type(saved.Loot[id]) == "number" then
@@ -163,6 +164,21 @@ local function mergeSaved(saved)
 			if type(n) == "number" and n > 0 then
 				d.Chests[tostring(floorId)] = math.floor(n)
 			end
+		end
+	end
+	if oldPrestige > 0 then
+		d.Chests["1"] = (d.Chests["1"] or 0) + math.min(oldPrestige, 100)
+	end
+	-- stat points: only real stats, and never more than you've earned
+	if type(saved.Stats) == "table" then
+		for _, st in ipairs(Config.StatPoints.Stats) do
+			local v = saved.Stats[st.id]
+			if type(v) == "number" and v > 0 then
+				d.Stats[st.id] = math.floor(v)
+			end
+		end
+		if Config.statPointsSpent(d) > Config.statPointsTotal(d) then
+			d.Stats = {}
 		end
 	end
 	return d
@@ -609,23 +625,31 @@ handlers.Unequip = function(player, d, id)
 	return true, "Unequipped."
 end
 
-handlers.Prestige = function(player, d)
-	if d.Prestige >= Config.MaxPrestige then
-		return false, "You've reached the maximum prestige!"
+-- Stat points: spend `n` (1-100) on a stat, or reset them all (free)
+handlers.SpendStat = function(player, d, arg)
+	local stat = type(arg) == "table" and arg.stat
+	local n = type(arg) == "table" and tonumber(arg.n) or 1
+	if not Config.StatById[stat] then
+		return false, "Unknown stat."
 	end
-	local req = Config.prestigeRequirement(d.Prestige)
-	if d.Power < req then
-		return false, "You need " .. Config.format(req) .. " Power to prestige."
+	n = math.clamp(math.floor(n), 1, 100)
+	n = math.min(n, Config.statPointsLeft(d))
+	if n < 1 then
+		return false, "No stat points left - level up for more!"
 	end
-	d.Prestige = d.Prestige + 1
-	d.Power = 0
-	d.Coins = 0
-	for id in pairs(d.Upgrades) do
-		d.Upgrades[id] = 0
+	d.Stats[stat] = (d.Stats[stat] or 0) + n
+	applyCharacterStats(player, false)
+	markDirty(player)
+	return true
+end
+
+handlers.ResetStats = function(player, d)
+	for id in pairs(d.Stats) do
+		d.Stats[id] = 0
 	end
 	applyCharacterStats(player, false)
 	markDirty(player)
-	return true, "Prestige " .. d.Prestige .. "! Permanent bonuses unlocked."
+	return true, "Stat points refunded."
 end
 
 handlers.SetAuto = function(player, d, on)
@@ -712,13 +736,8 @@ local function onPlayerAdded(player)
 	power.Name = "Power"
 	power.Value = math.floor(profile.data.Power)
 	power.Parent = ls
-	local prestige = Instance.new("IntValue")
-	prestige.Name = "Prestige"
-	prestige.Value = profile.data.Prestige
-	prestige.Parent = ls
 	ls.Parent = player
 	profile.leaderPower = power
-	profile.leaderPrestige = prestige
 	profile.leaderLevel = level
 
 	player.CharacterAdded:Connect(function(char)
@@ -857,7 +876,6 @@ function PlayerService.Start()
 				local profile = profiles[player]
 				if profile and player.Parent then
 					profile.leaderPower.Value = math.floor(profile.data.Power)
-					profile.leaderPrestige.Value = profile.data.Prestige
 					profile.leaderLevel.Value = Config.levelFromPower(profile.data.Power)
 					profile.data.BestLevel = math.max(profile.data.BestLevel or 1, profile.leaderLevel.Value)
 					remotes.StateUpdate:FireClient(player, profile.data)

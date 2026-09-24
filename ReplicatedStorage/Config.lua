@@ -16,7 +16,7 @@ Config.BaseWalkSpeed = 16
 Config.BaseCapacity = 20 -- backpack slots before upgrades
 Config.RequireProximity = true -- shops only work when you stand near them
 Config.StationRange = 34 -- studs
-Config.MaxPrestige = 100
+Config.MaxPrestige = 0 -- (prestige is gone)
 Config.TalismanSlots = 3
 
 -- Where the shops stand. Used by the lobby builder AND by server range checks.
@@ -66,37 +66,81 @@ Config.Yard = {
 }
 
 ----------------------------------------------------------------------
--- Levels. Your level IS your Power: it's worked out from your total
--- Power, so it goes up as you train and back down when you prestige
--- (prestige resets Power). Each level needs LevelGrowth times more Power
--- than the one before.
+-- Levels (like Blox Fruits): your level is the number that matters. It
+-- comes from your total Power (your XP), which only ever goes up - from
+-- training and beating bosses - up to MaxLevel. Every level gives you
+-- StatPoints.PerLevel points to spend on your stats (see Config.StatPoints).
+-- Total Power for a level = LevelScale x (level - 1) ^ LevelCurve
+-- (level 2 needs 18, level 44 about 1.4M, level 256 about 297M).
 ----------------------------------------------------------------------
-Config.LevelBase = 20 -- Power needed to go from level 1 to level 2
-Config.LevelGrowth = 1.25 -- each next level costs this much more
+Config.MaxLevel = 256
+Config.LevelScale = 17.9
+Config.LevelCurve = 3
 
 -- Total Power you need to reach `level`
 function Config.powerForLevel(level)
 	if level <= 1 then
 		return 0
 	end
-	local g = Config.LevelGrowth
-	return math.floor(Config.LevelBase * (g ^ (level - 1) - 1) / (g - 1))
+	level = math.min(level, Config.MaxLevel + 1)
+	return math.floor(Config.LevelScale * (level - 1) ^ Config.LevelCurve)
 end
 
--- Your level for a given total Power
+-- Your level for a given total Power (never above MaxLevel)
 function Config.levelFromPower(power)
 	power = math.max(power or 0, 0)
-	local g = Config.LevelGrowth
-	local level = math.floor(math.log(power * (g - 1) / Config.LevelBase + 1) / math.log(g)) + 1
-	level = math.max(1, level)
+	local level = math.floor((power / Config.LevelScale) ^ (1 / Config.LevelCurve)) + 1
+	level = math.clamp(level, 1, Config.MaxLevel)
 	-- fix any rounding at the exact boundaries
-	while Config.powerForLevel(level + 1) <= power do
+	while level < Config.MaxLevel and Config.powerForLevel(level + 1) <= power do
 		level = level + 1
 	end
 	while level > 1 and Config.powerForLevel(level) > power do
 		level = level - 1
 	end
 	return level
+end
+
+----------------------------------------------------------------------
+-- Stat points: every level gives you PerLevel points to spend in the STATS
+-- menu (the button on the left, or the Shrine of Growth). `per` is what one
+-- point gives. Resetting them is free.
+----------------------------------------------------------------------
+Config.StatPoints = {
+	PerLevel = 3,
+	Stats = {
+		{ id = "Strength", name = "Strength", per = 0.5, gives = "Damage", desc = "% more damage to bosses", color = Color3.fromRGB(228, 59, 68) },
+		{ id = "Vitality", name = "Vitality", per = 2, gives = "Health", desc = " more max health", color = Color3.fromRGB(99, 199, 77) },
+		{ id = "Defense", name = "Defense", per = 0.1, gives = "Defense", desc = "% less damage taken (60% max, with gear)", color = Color3.fromRGB(0, 153, 219) },
+		{ id = "Training", name = "Training", per = 0.5, gives = "Power", desc = "% more Power from training", color = Color3.fromRGB(254, 174, 52) },
+	},
+}
+Config.StatById = {}
+for _, st in ipairs(Config.StatPoints.Stats) do
+	Config.StatById[st.id] = st
+end
+
+-- how many points you've earned, spent, and have left
+function Config.statPointsTotal(d)
+	return (Config.levelFromPower(d and d.Power or 0) - 1) * Config.StatPoints.PerLevel
+end
+function Config.statPointsSpent(d)
+	local n = 0
+	for _, st in ipairs(Config.StatPoints.Stats) do
+		n = n + ((d and d.Stats and d.Stats[st.id]) or 0)
+	end
+	return n
+end
+function Config.statPointsLeft(d)
+	return math.max(0, Config.statPointsTotal(d) - Config.statPointsSpent(d))
+end
+-- what your spent points give: { Damage = %, Health = n, Defense = %, Power = % }
+function Config.statBonus(d)
+	local out = { Damage = 0, Health = 0, Defense = 0, Power = 0 }
+	for _, st in ipairs(Config.StatPoints.Stats) do
+		out[st.gives] = out[st.gives] + ((d and d.Stats and d.Stats[st.id]) or 0) * st.per
+	end
+	return out
 end
 
 -- mult = Power multiplier for this dummy, level = level needed to use it.
@@ -214,19 +258,13 @@ Config.Talismans = {
 	},
 }
 
-----------------------------------------------------------------------
--- Prestige
-----------------------------------------------------------------------
-function Config.prestigeRequirement(prestige)
-	return 50000 * 4 ^ prestige
+-- (Prestige is gone: levels are the true progress now. These stay only so
+-- anything old that asks gets "no bonus".)
+function Config.prestigePowerMult()
+	return 1
 end
-
-function Config.prestigePowerMult(prestige)
-	return 1 + 0.5 * prestige
-end
-
-function Config.prestigeCoinMult(prestige)
-	return 1 + 0.25 * prestige
+function Config.prestigeCoinMult()
+	return 1
 end
 
 ----------------------------------------------------------------------
@@ -291,16 +329,15 @@ end
 
 function Config.stats(d)
 	local up = d.Upgrades or {}
-	local prestige = d.Prestige or 0
 	local U = Config.UpgradeById
+	local points = Config.statBonus(d)
 
 	local powerMult = (1 + U.PowerGain.perLevel * (up.PowerGain or 0))
 		* (1 + Config.talismanBonus(d, "PowerGain"))
-		* Config.prestigePowerMult(prestige)
+		* (1 + points.Power / 100)
 
 	local coinMult = (1 + U.SellValue.perLevel * (up.SellValue or 0))
 		* (1 + Config.talismanBonus(d, "SellValue"))
-		* Config.prestigeCoinMult(prestige)
 
 	local capacity = math.floor(
 		(Config.BaseCapacity + U.Backpack.perLevel * (up.Backpack or 0)) * (1 + Config.talismanBonus(d, "Capacity"))
@@ -316,7 +353,7 @@ function Config.stats(d)
 		gear = Items.gearStats(d)
 	end
 	powerMult = powerMult * (1 + gear.Power / 100)
-	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")) + gear.Health)
+	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")) + gear.Health + points.Health)
 
 	return {
 		powerMult = powerMult,

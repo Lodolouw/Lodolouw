@@ -88,9 +88,14 @@ end
 
 -- what your worn gear gives you (see ReplicatedStorage.Items)
 local critRng = Random.new()
+-- what your gear AND your stat points give you together (Defense capped)
 local function gearOf(player)
 	local d = PlayerService and PlayerService.GetData(player)
-	return (Items.gearStats(d))
+	local t = Items.gearStats(d)
+	local pts = Config.statBonus(d)
+	t.Damage = t.Damage + pts.Damage
+	t.Defense = math.min(t.Defense + pts.Defense, Items.StatById.Defense.cap or 60)
+	return t
 end
 
 -- Your punch damage against something on this floor

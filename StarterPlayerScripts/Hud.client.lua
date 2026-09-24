@@ -902,7 +902,7 @@ hudButton("Upgrades", "⬆️", { RGB(110, 210, 255), RGB(60, 120, 255) }, 1, "U
 hudButton("Backpack", "🎒", { RGB(120, 230, 130), RGB(40, 160, 90) }, 2, "Backpack") -- just opens your bag, no teleport
 -- Armory = your talismans (craft + equip), same panel as before, new look
 hudButton("Armory", "⚔️", { RGB(255, 196, 80), RGB(225, 60, 55) }, 3, "Craft", STATION_APPROACH.Craft)
-local prestigeBtn = hudButton("Prestige", "⭐", { RGB(255, 226, 100), RGB(255, 140, 40) }, 4, "Prestige") -- prestige works from anywhere, no teleport
+local prestigeBtn = hudButton("Stats", "⭐", { RGB(255, 226, 100), RGB(255, 140, 40) }, 4, "Stats") -- your stat points, from anywhere
 
 local badge = text({
 	Name = "Badge",
@@ -991,7 +991,7 @@ end
 
 local capText = statRow(BUTTON_ICON_IMAGES.Backpack ~= "" and BUTTON_ICON_IMAGES.Backpack or "🎒", 1)
 local coinText = statRow("COIN", 2, C.gold)
-local prestigeText = statRow(BUTTON_ICON_IMAGES.Prestige ~= "" and BUTTON_ICON_IMAGES.Prestige or "⭐", 3, RGB(255, 170, 220))
+local prestigeText = statRow("⭐", 3, RGB(254, 231, 97)) -- your unspent stat points
 
 ----------------------------------------------------------------------
 -- HUD: hint banner, goal bar, right-side controls
@@ -1871,110 +1871,95 @@ do
 end
 
 ----------------------------------------------------------------------
--- Panel: Prestige
+-- Panel: Stats (spend the points each level gives you, Blox Fruits style)
 ----------------------------------------------------------------------
 local prestigeUI = {}
 do
-	local confirmUntil = 0
-	local p = makePanel("Prestige", "PRESTIGE", RGB(255, 190, 60), 520)
-
+	local p = makePanel("Stats", "STATS", RGB(255, 190, 60), 560)
 	prestigeUI.level = text({
 		LayoutOrder = 1,
-		Size = UDim2.new(1, -10, 0, 48),
-		TextSize = 34,
+		Size = UDim2.new(1, -10, 0, 44),
+		TextSize = 30,
 		TextColor3 = C.gold,
 		Parent = p.body,
 	}, { stroke(3) })
-	prestigeUI.gains = text({
-		LayoutOrder = 2,
-		Size = UDim2.new(1, -10, 0, 64),
-		TextSize = 22,
-		TextWrapped = true,
-		Parent = p.body,
-	}, { stroke(2.5) })
-
-	local barHolder = create("Frame", {
-		LayoutOrder = 3,
-		Size = UDim2.new(1, -10, 0, 38),
-		BackgroundColor3 = C.panelDark,
-		Parent = p.body,
-	}, { corner(19), border(3) })
-	prestigeUI.fill = create("Frame", {
-		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = C.gold,
-		BorderSizePixel = 0,
-		Parent = barHolder,
-	}, { corner(19), gradient({ RGB(255, 226, 100), RGB(255, 150, 50) }, 90) })
-	prestigeUI.barText = text({
-		Size = UDim2.fromScale(1, 1),
-		TextSize = 20,
-		ZIndex = 2,
-		Parent = barHolder,
-	}, { stroke(2.5) })
-
-	text({
-		LayoutOrder = 4,
-		Size = UDim2.new(1, -10, 0, 56),
-		Text = "Resets: Power (and your Level), Coins, Upgrades\nKeeps: Talismans, Materials, Prestige level",
-		TextSize = 18,
-		TextColor3 = C.dim,
-		TextWrapped = true,
-		Parent = p.body,
-	})
-
-	prestigeUI.btn = button({
-		LayoutOrder = 5,
-		Size = UDim2.new(1, -10, 0, 62),
-		Text = "PRESTIGE",
-		TextSize = 28,
-		Parent = p.body,
-	})
-
-	p.refresh = function()
-		local pr = state.Prestige
-		local req = Config.prestigeRequirement(pr)
-		prestigeUI.level.Text = "Prestige Level " .. pr
-		prestigeUI.gains.Text = "Power gain   x" .. Config.formatMult(Config.prestigePowerMult(pr)) .. "  >  x" .. Config.formatMult(Config.prestigePowerMult(pr + 1))
-			.. "\nCoin bonus   x" .. Config.formatMult(Config.prestigeCoinMult(pr)) .. "  >  x" .. Config.formatMult(Config.prestigeCoinMult(pr + 1))
-		prestigeUI.fill.Size = UDim2.fromScale(math.clamp(state.Power / req, 0, 1), 1)
-		prestigeUI.barText.Text = Config.format(state.Power) .. " / " .. Config.format(req) .. " Power"
-
-		if pr >= Config.MaxPrestige then
-			prestigeUI.btn.Text = "MAX PRESTIGE"
-			paint(prestigeUI.btn, false, C.gold)
-		elseif state.Power < req then
-			prestigeUI.btn.Text = "NEED " .. Config.format(req) .. " POWER"
-			paint(prestigeUI.btn, false, C.gold)
-		elseif os.clock() < confirmUntil then
-			prestigeUI.btn.Text = "TAP AGAIN TO CONFIRM"
-			paint(prestigeUI.btn, true, C.red)
-		else
-			prestigeUI.btn.Text = "PRESTIGE!"
-			paint(prestigeUI.btn, true, C.gold)
+	local rows = {}
+	for i, st in ipairs(Config.StatPoints.Stats) do
+		local row = create("Frame", {
+			LayoutOrder = 1 + i,
+			Size = UDim2.new(1, -10, 0, 78),
+			BackgroundColor3 = C.row,
+			Parent = p.body,
+		}, { corner(12), border(3, st.color) })
+		local name = text({
+			Position = UDim2.fromOffset(16, 6),
+			Size = UDim2.new(1, -250, 0, 34),
+			TextSize = 26,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = st.color,
+			Parent = row,
+		}, { stroke(2.5) })
+		local effect = text({
+			Position = UDim2.fromOffset(16, 40),
+			Size = UDim2.new(1, -250, 0, 28),
+			TextSize = 18,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = C.dim,
+			Parent = row,
+		})
+		local function plus(label, n, x)
+			local b = button({
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, x, 0.5, 0),
+				Size = UDim2.fromOffset(n == 1 and 64 or 84, 52),
+				Text = label,
+				TextSize = 24,
+				Parent = row,
+			})
+			b.Activated:Connect(function()
+				doAction("SpendStat", { stat = st.id, n = n })
+			end)
+			return b
 		end
+		rows[st.id] = { name = name, effect = effect, one = plus("+1", 1, -104), ten = plus("+10", 10, -12) }
 	end
-
-	prestigeUI.btn.Activated:Connect(function()
-		if not state then
-			return
-		end
-		local req = Config.prestigeRequirement(state.Prestige)
-		if state.Power < req or state.Prestige >= Config.MaxPrestige then
-			return
-		end
+	local reset = button({
+		LayoutOrder = 10,
+		Size = UDim2.new(1, -10, 0, 50),
+		Text = "RESET POINTS (FREE)",
+		TextSize = 22,
+		Parent = p.body,
+	})
+	local confirmUntil = 0
+	reset.Activated:Connect(function()
 		if os.clock() >= confirmUntil then
 			confirmUntil = os.clock() + 3
-			p.refresh()
+			reset.Text = "TAP AGAIN TO RESET"
 			task.delay(3.1, function()
-				if state and p.frame.Visible then
-					p.refresh()
-				end
+				reset.Text = "RESET POINTS (FREE)"
 			end)
 			return
 		end
 		confirmUntil = 0
-		doAction("Prestige")
+		reset.Text = "RESET POINTS (FREE)"
+		doAction("ResetStats")
 	end)
+
+	p.refresh = function()
+		local left = Config.statPointsLeft(state)
+		prestigeUI.level.Text = "Level " .. Config.levelFromPower(state.Power) .. "   -   " .. left .. " point" .. (left == 1 and "" or "s") .. " to spend"
+		local bonus = Config.statBonus(state)
+		for _, st in ipairs(Config.StatPoints.Stats) do
+			local r = rows[st.id]
+			local pts = (state.Stats and state.Stats[st.id]) or 0
+			r.name.Text = st.name .. "  " .. pts
+			local v = bonus[st.gives]
+			r.effect.Text = "+" .. (math.floor(v * 10 + 0.5) / 10) .. st.desc
+			paint(r.one, left >= 1, st.color)
+			paint(r.ten, left >= 1, st.color)
+		end
+		paint(reset, Config.statPointsSpent(state) > 0, C.red)
+	end
 end
 
 ----------------------------------------------------------------------
@@ -2004,8 +1989,8 @@ local function renderHint()
 		end
 	elseif Config.lootCount(state) > 0 then
 		message = "You're carrying loot - sell it at the Sell Shop!"
-	elseif state.Power >= Config.prestigeRequirement(state.Prestige) and state.Prestige < Config.MaxPrestige then
-		message = "You can Prestige! Visit the shrine in the middle."
+	elseif Config.statPointsLeft(state) > 0 then
+		message = "You have " .. Config.statPointsLeft(state) .. " stat points! Spend them in STATS."
 	else
 		message = "Step onto a glowing dummy pad and click to grow stronger!"
 		for _, z in ipairs(Config.Zones) do
@@ -2027,10 +2012,11 @@ local function renderBars()
 	barLabel.Text = "Lv. " .. level
 	barText.Text = Config.format(state.Power) .. " / " .. Config.format(toPower)
 
-	local req = Config.prestigeRequirement(state.Prestige)
-	local pct = math.min(100, math.floor(state.Power / req * 100))
-	badge.Text = pct .. "%"
-	badge.BackgroundColor3 = pct >= 100 and C.green or C.red
+	-- the STATS button's badge: points waiting to be spent
+	local left = Config.statPointsLeft(state)
+	badge.Visible = left > 0
+	badge.Text = tostring(left)
+	badge.BackgroundColor3 = C.green
 end
 
 local function renderStats()
@@ -2039,7 +2025,7 @@ local function renderStats()
 	capText.TextColor3 = count >= stats.capacity and C.red or C.white
 	coinText.Text = Config.format(state.Coins)
 	powerText.Text = "Power: " .. Config.format(state.Power)
-	prestigeText.Text = tostring(state.Prestige)
+	prestigeText.Text = tostring(Config.statPointsLeft(state))
 	autoText.Text = state.Auto and "AUTO TRAIN: ON" or "AUTO TRAIN: OFF"
 	autoBtn.BackgroundColor3 = state.Auto and C.green or C.red
 end

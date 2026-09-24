@@ -195,8 +195,9 @@ local function titleSign(parent, cf, title, subtitle, titleColor, width, maxDist
 	edge.Color = RGB(255, 255, 255)
 	edge.Thickness = 3
 	edge.Parent = box
-	billLabel(bb, "Title", title, titleColor, UDim2.fromScale(0.05, 0.06), UDim2.fromScale(0.9, 0.58))
-	billLabel(bb, "Sub", subtitle, RGB(255, 255, 255), UDim2.fromScale(0.08, 0.64), UDim2.fromScale(0.84, 0.28))
+	-- (just the name: the old line of text under it is gone)
+	bb.Size = UDim2.fromScale(studsWide, studsWide * 0.22)
+	billLabel(bb, "Title", title, titleColor, UDim2.fromScale(0.05, 0.1), UDim2.fromScale(0.9, 0.8))
 	return anchor
 end
 
@@ -1627,10 +1628,9 @@ local function buildShrine(parent)
 		fx(rune, { OrbitRadius = 4.5, OrbitSpeed = 35, OrbitCenter = V3(0, 18.4, 0), Phase = phase, SpinSpeed = 90 })
 	end
 
-	titleSign(m, CFrame.new(0, 24, 0), "PRESTIGE", "Reset for permanent bonuses", RGB(255, 214, 80), 340, 100)
 
-	addPrompt(tier3, "Prestige", "Prestige", "Prestige Shrine", 18)
-	autoZone(m, O * CFrame.new(0, 5, 0), V3(16, 10, 16), "Panel", "Prestige")
+	addPrompt(tier3, "Stats", "Stat Points", "Shrine of Growth", 18)
+	autoZone(m, O * CFrame.new(0, 5, 0), V3(16, 10, 16), "Panel", "Stats")
 end
 
 ----------------------------------------------------------------------
