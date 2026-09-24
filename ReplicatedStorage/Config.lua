@@ -442,7 +442,7 @@ Config.Retro = {
 	Sprites = true, -- pixel-art icons instead of the emoji ones (hearts, stars, potions...)
 	SegmentBars = true, -- health, level and boss bars split into chunky segments
 	ClickBurst = true, -- a burst of pixel sparks every time you click a button
-	Scanlines = 0.93, -- a faint old-TV screen (1 = off; lower = stronger)
+	Scanlines = 1, -- an old-TV screen with darker corners (1 = off - a clean screen; 0.93 = faint)
 	StartScreen = true, -- the title screen when you join
 	Title = "DEFEAT THE BOSS",
 	Subtitle = "TO GROW",
