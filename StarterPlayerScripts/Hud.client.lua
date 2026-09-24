@@ -990,7 +990,7 @@ end
 
 local capText = statRow(BUTTON_ICON_IMAGES.Backpack ~= "" and BUTTON_ICON_IMAGES.Backpack or "🎒", 1)
 local coinText = statRow("COIN", 2, C.gold)
-local prestigeText = statRow("⭐", 3, RGB(254, 231, 97)) -- your unspent stat points
+local prestigeText = statRow("⭐", 3, RGB(254, 231, 97)) -- your level
 
 ----------------------------------------------------------------------
 -- HUD: hint banner, goal bar, right-side controls
@@ -2024,7 +2024,7 @@ local function renderStats()
 	capText.TextColor3 = count >= stats.capacity and C.red or C.white
 	coinText.Text = Config.format(state.Coins)
 	powerText.Text = "Power: " .. Config.format(state.Power)
-	prestigeText.Text = tostring(Config.statPointsLeft(state))
+	prestigeText.Text = "LV " .. Config.levelFromPower(state.Power)
 	autoText.Text = state.Auto and "AUTO TRAIN: ON" or "AUTO TRAIN: OFF"
 	autoBtn.BackgroundColor3 = state.Auto and C.green or C.red
 end
