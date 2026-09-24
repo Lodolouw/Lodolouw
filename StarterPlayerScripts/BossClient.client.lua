@@ -1560,7 +1560,7 @@ do
 			return nil
 		end
 		-- (looked through once - it's a big model - and again only if it changes)
-		local info = { arena = arena, center = center, radius = arena:GetAttribute("SandRadius") or 146, y = center.Y, solids = {}, decor = {}, fresh = math.huge }
+		local info = { arena = arena, floor = B.floor, center = center, radius = arena:GetAttribute("SandRadius") or 146, y = center.Y, solids = {}, decor = {}, fresh = math.huge }
 		for _, d in ipairs(arena:GetDescendants()) do
 			if d:IsA("BasePart") and not KEEP_OUT[d.Name] then
 				local p = d.Position
@@ -1617,27 +1617,62 @@ do
 		edits[#edits + 1] = fn
 	end
 
+	-- Sand about to be put back where YOU stand: you're lifted onto it first.
+	-- (Your character's physics runs on your own screen, so sand appearing
+	-- around your legs would bury you - and a buried character loses the
+	-- ground and drops straight through the floor.) `top` is the new surface.
+	local FEET = 3 -- (from the middle of your body down to your feet, near enough)
+	local function liftOut(x0, x1, z0, z1, top, redug)
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if not hrp then
+			return
+		end
+		local p = hrp.Position
+		if p.X < x0 - 1.5 or p.X > x1 + 1.5 or p.Z < z0 - 1.5 or p.Z > z1 + 1.5 then
+			return
+		end
+		-- (standing in another hole that's dug straight back out in the same
+		-- moment - the phase-two pit, say - you stay where you are)
+		for _, b in ipairs(redug or {}) do
+			if not b.height and flat(p - V3(b.x, 0, b.z)).Magnitude < b.r - 1 then
+				return
+			end
+		end
+		if p.Y - FEET < top + 0.3 and p.Y > top - 20 then
+			hrp.CFrame = hrp.CFrame + V3(0, top + FEET + 0.6 - p.Y, 0)
+			hrp.AssemblyLinearVelocity = V3(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
+		end
+	end
+
 	-- puts one piece of a scar into the terrain (again, if something covered it)
 	local TERRACES = 5
+	local function carveBall(ball)
+		if ball.closed then
+			return -- (its scar has been filled back in since)
+		end
+		if ball.cone then
+			-- a wide, shallow pit (the phase-two bowl): stacked discs of air, each
+			-- narrower and deeper than the last - far less work for Terrain than
+			-- one enormous ball - which Terrain rounds off into a smooth bowl
+			for k = 1, TERRACES do
+				local r = ball.r * (1 - (k - 1) / TERRACES)
+				local d = ball.depth * k / TERRACES
+				Terrain:FillCylinder(CFrame.new(ball.x, ball.floorY - d / 2 + 0.5, ball.z), d + 1, r, AIR)
+			end
+		elseif ball.height then
+			-- a heave: two stacked discs of sand, only ever above the floor (so
+			-- it never fills in a crater next to it); Terrain rounds them off
+			liftOut(ball.x - ball.r, ball.x + ball.r, ball.z - ball.r, ball.z + ball.r, ball.floorY + ball.height)
+			Terrain:FillCylinder(CFrame.new(ball.x, ball.floorY + ball.height * 0.3, ball.z), ball.height * 0.6, ball.r, SANDMAT)
+			Terrain:FillCylinder(CFrame.new(ball.x, ball.floorY + ball.height * 0.5, ball.z), ball.height, ball.r * 0.6, SANDMAT)
+		else
+			Terrain:FillBall(ball.c, ball.rs, AIR)
+		end
+	end
 	local function ballFill(ball)
 		terrainEdit(function()
-			if ball.cone then
-				-- a wide, shallow pit (the phase-two bowl): stacked discs of air, each
-				-- narrower and deeper than the last - far less work for Terrain than
-				-- one enormous ball - which Terrain rounds off into a smooth bowl
-				for k = 1, TERRACES do
-					local r = ball.r * (1 - (k - 1) / TERRACES)
-					local d = ball.depth * k / TERRACES
-					Terrain:FillCylinder(CFrame.new(ball.x, ball.floorY - d / 2 + 0.5, ball.z), d + 1, r, AIR)
-				end
-			elseif ball.height then
-				-- a heave: two stacked discs of sand, only ever above the floor (so
-				-- it never fills in a crater next to it); Terrain rounds them off
-				Terrain:FillCylinder(CFrame.new(ball.x, ball.floorY + ball.height * 0.3, ball.z), ball.height * 0.6, ball.r, SANDMAT)
-				Terrain:FillCylinder(CFrame.new(ball.x, ball.floorY + ball.height * 0.5, ball.z), ball.height, ball.r * 0.6, SANDMAT)
-			else
-				Terrain:FillBall(ball.c, ball.rs, AIR)
-			end
+			carveBall(ball)
 		end)
 	end
 
@@ -1708,6 +1743,17 @@ do
 		local info = sc.info
 		local x0, x1, z0, z1 = scarBox(sc)
 		local mid = V3((x0 + x1) / 2, 0, (z0 + z1) / 2)
+		-- anything else torn up in that box (another crater, the phase-two pit)
+		local redug = {}
+		for _, other in ipairs(scars) do
+			if other ~= sc then
+				for _, b in ipairs(other.balls) do
+					if b.x + b.r > x0 and b.x - b.r < x1 and b.z + b.r > z0 and b.z - b.r < z1 then
+						redug[#redug + 1] = b
+					end
+				end
+			end
+		end
 		terrainEdit(function()
 			if sc.kind == "heave" then
 				local h = grid(12, true)
@@ -1715,23 +1761,22 @@ do
 			else
 				local bottom = info.y - 12
 				local top = upTo or info.y
+				liftOut(x0, x1, z0, z1, top, redug)
 				Terrain:FillBlock(CFrame.new(mid.X, (bottom + top) / 2, mid.Z), V3(x1 - x0, top - bottom, z1 - z0), SANDMAT)
 			end
-		end)
-		-- anything else torn up in that box goes back the way it was
-		for _, other in ipairs(scars) do
-			if other ~= sc then
-				for _, b in ipairs(other.balls) do
-					if b.x + b.r > x0 and b.x - b.r < x1 and b.z + b.r > z0 and b.z - b.r < z1 then
-						ballFill(b)
-					end
-				end
+			-- ...goes back the way it was in the SAME moment: there's never a
+			-- frame where the sand covers a hole someone is standing in
+			for _, b in ipairs(redug) do
+				carveBall(b)
 			end
-		end
+		end)
 	end
 
 	function closeScar(sc)
 		refillScar(sc)
+		for _, b in ipairs(sc.balls) do
+			b.closed = true -- (so nothing digs it back out later)
+		end
 		for d, t in pairs(sc.hidden) do
 			if d.Parent then
 				d.Transparency = t
@@ -1745,6 +1790,23 @@ do
 	function stepScars()
 		for _ = 1, math.min(EDITS_PER_FRAME, #edits) do
 			pcall(table.remove(edits, 1))
+		end
+		-- The safety net: if you ever end up under the arena's floor (whatever
+		-- put you there), you're put straight back on top of the sand, right
+		-- where you were (or just inside the edge), instead of falling forever.
+		local info = floorInfo
+		if info and player:GetAttribute("SpireFloor") == info.floor then
+			local char = player.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if hrp and hrp.Position.Y < info.y - 10 then
+				local off = flat(hrp.Position - info.center)
+				if off.Magnitude < info.radius + 60 then
+					local keep = math.min(off.Magnitude, info.radius - 8)
+					local spot = info.center + (off.Magnitude > 0.1 and off.Unit * keep or V3())
+					hrp.AssemblyLinearVelocity = V3()
+					hrp.CFrame = CFrame.new(V3(spot.X, info.y + FEET + 4, spot.Z)) * (hrp.CFrame - hrp.Position)
+				end
+			end
 		end
 		local now = serverNow()
 		for i = #scars, 1, -1 do
@@ -3862,6 +3924,9 @@ do
 	-- under its head.) The one way THROUGH it is a roll: you're untouchable for
 	-- the length of it (the server says the same), and that's how you get out
 	-- of its coil.
+	local sandOnly = RaycastParams.new()
+	sandOnly.FilterType = Enum.RaycastFilterType.Include
+	sandOnly.FilterDescendantsInstances = { Workspace:FindFirstChildOfClass("Terrain") }
 	function pushOutOfWorm(B, hrp, P)
 		local pts, gs = B.lastPoints, B.segGirths
 		if P.solid == false or not pts or not gs then
@@ -3895,6 +3960,12 @@ do
 			local shove = pos - hrp.Position
 			if shove.Magnitude > 3 then
 				pos = hrp.Position + shove.Unit * 3
+			end
+			-- and never into the side of a crater: if the sand where you'd land
+			-- is higher than your feet, you land on top of it instead
+			local hit = Workspace:Raycast(pos + V3(0, 8, 0), V3(0, -14, 0), sandOnly)
+			if hit and hit.Position.Y > pos.Y - 2.2 then
+				pos = V3(pos.X, hit.Position.Y + 3.1, pos.Z)
 			end
 			hrp.CFrame = CFrame.new(pos) * (hrp.CFrame - hrp.Position)
 		end
