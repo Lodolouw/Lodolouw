@@ -635,6 +635,69 @@ end
 player:GetAttributeChangedSignal("Colosseum"):Connect(syncTracker)
 syncTracker()
 
+-- Confetti: when you clear a wave the crowd throws it from every side of
+-- the stands - chunky 8-bit squares that arc into the arena, tumbling, and
+-- flutter down. Only on your screen (it's your fight).
+local CONFETTI = { RGB(228, 59, 68), RGB(254, 174, 52), RGB(254, 231, 97), RGB(99, 199, 77), RGB(0, 153, 219), RGB(44, 232, 245), RGB(181, 80, 136), RGB(255, 255, 255) }
+local function confetti()
+	local CC0 = Config.Colosseum
+	local c = CC0.Center
+	local pieces = {}
+	local rngC = Random.new()
+	for _ = 1, 140 do
+		local a = rngC:NextNumber() * math.pi * 2
+		local r = CC0.Radius + rngC:NextNumber(6, 20)
+		local from = c + Vector3.new(math.cos(a) * r, rngC:NextNumber(12, 26), math.sin(a) * r)
+		-- thrown up and in, towards the middle
+		local inward = Vector3.new(-math.cos(a), 0, -math.sin(a))
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.SmoothPlastic
+		p.Color = CONFETTI[rngC:NextInteger(1, #CONFETTI)]
+		p.Size = Vector3.new(0.9, 0.9, 0.12)
+		p.CFrame = CFrame.new(from)
+		p.Parent = workspace
+		pieces[#pieces + 1] = {
+			part = p,
+			pos = from,
+			vel = inward * rngC:NextNumber(18, 34) + Vector3.new(0, rngC:NextNumber(18, 30), 0),
+			spin = Vector3.new(rngC:NextNumber(-8, 8), rngC:NextNumber(-8, 8), rngC:NextNumber(-8, 8)),
+			rot = Vector3.zero,
+			delay = rngC:NextNumber(0, 0.5),
+		}
+	end
+	-- moved 20 times a second (a little 8-bit), for about four seconds
+	local t = 0
+	while t < 4.2 do
+		local dt = task.wait(1 / 20)
+		t += dt
+		for _, pc in ipairs(pieces) do
+			if t >= pc.delay then
+				pc.vel = pc.vel + Vector3.new(0, -26 * dt, 0)
+				pc.vel = pc.vel * (1 - 1.6 * dt) -- (paper: the air slows it right down)
+				pc.pos = pc.pos + pc.vel * dt
+				pc.rot = pc.rot + pc.spin * dt
+				if pc.pos.Y < c.Y + 0.2 then
+					pc.pos = Vector3.new(pc.pos.X, c.Y + 0.2, pc.pos.Z)
+					pc.vel = Vector3.zero
+					pc.spin = Vector3.zero
+				end
+				pc.part.CFrame = CFrame.new(pc.pos) * CFrame.Angles(pc.rot.X, pc.rot.Y, pc.rot.Z)
+				if t > 3.2 then
+					pc.part.Transparency = (t - 3.2) / 1
+				end
+			end
+		end
+	end
+	for _, pc in ipairs(pieces) do
+		pc.part:Destroy()
+	end
+end
+
 -- Down the pipe: you shrink, bit by bit (8-bit steps), sliding into the
 -- mini colosseum's little door - then you're inside the Colosseum, already
 -- small enough for it, so no growing there. Coming out, you pop out of the
@@ -734,6 +797,9 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		showBanner("WAVE " .. tostring(a), RGB(255, 255, 255), 1.4)
 	elseif kind == "Kill" then
 		popReward(a, b, c)
+	elseif kind == "WaveClear" then
+		showBanner("WAVE " .. tostring(a) .. " CLEARED!", GOLD, 1.8)
+		task.spawn(confetti)
 	elseif kind == "QuestDone" then
 		showBanner("QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins", GREEN, 2.6)
 	end
@@ -742,31 +808,35 @@ end)
 ----------------------------------------------------------------------
 -- Never stuck in the floor after respawning
 ----------------------------------------------------------------------
--- If a new body turns up with its feet below the ground (it happened after
--- dying in the Colosseum), lift it out and stand it on top.
+-- If a new body turns up sunk into the ground (it happened after dying in
+-- the Colosseum), lift it out and stand it on top. For the first 10 seconds
+-- of every life we check where the body SHOULD be - its hip height above the
+-- floor under it - and lift it if it's more than a stud too low.
 player.CharacterAdded:Connect(function(char)
 	local hum = char:WaitForChild("Humanoid", 10)
 	local root = char:WaitForChild("HumanoidRootPart", 10)
 	if not (hum and root) then
 		return
 	end
-	for _ = 1, 6 do
-		task.wait(0.5)
-		if not char.Parent then
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.RespectCanCollide = true
+	for _ = 1, 40 do
+		task.wait(0.25)
+		if not char.Parent or hum.Health <= 0 then
 			return
 		end
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
 		params.FilterDescendantsInstances = { char }
-		params.RespectCanCollide = true
-		-- the floor right under us, looking down from above our head
-		local hit = workspace:Raycast(root.Position + Vector3.new(0, 8, 0), Vector3.new(0, -12, 0), params)
-		local box, size = char:GetBoundingBox()
-		local feet = box.Position.Y - size.Y / 2
-		if hit and feet < hit.Position.Y - 0.5 then
-			root.AssemblyLinearVelocity = Vector3.zero
-			char:PivotTo(char:GetPivot() + Vector3.new(0, hit.Position.Y - feet + 0.2, 0))
-			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		-- the floor under us, looking down from well above our head
+		local hit = workspace:Raycast(root.Position + Vector3.new(0, 10, 0), Vector3.new(0, -16, 0), params)
+		if hit then
+			local hip = (hum.RigType == Enum.HumanoidRigType.R6) and 2 or math.max(hum.HipHeight, 0.5)
+			local want = hit.Position.Y + hip + root.Size.Y / 2
+			if root.Position.Y < want - 1 then
+				root.AssemblyLinearVelocity = Vector3.zero
+				char:PivotTo(char:GetPivot() + Vector3.new(0, want - root.Position.Y + 0.1, 0))
+				hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+			end
 		end
 	end
 end)

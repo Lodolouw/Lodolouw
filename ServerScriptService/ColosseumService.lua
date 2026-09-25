@@ -38,6 +38,7 @@ local sessions = {} -- [player] = the fight that player is in
 local remote -- ColosseumEvent: server -> client
 local enemyFolder
 local rng = Random.new()
+local strawPuff -- (below)
 
 ----------------------------------------------------------------------
 -- Helpers
@@ -128,6 +129,28 @@ local function inArena(pos)
 		d = d.Unit * C.Radius
 	end
 	return Vector3.new(C.Center.X + d.X, C.Center.Y, C.Center.Z + d.Z)
+end
+
+-- A puff of straw flying out round a dummy's feet (landing, slamming)
+strawPuff = function(model, at)
+	local puff = Instance.new("Part")
+	puff.Transparency = 1
+	puff.Anchored = true
+	puff.CanCollide = false
+	puff.CanQuery = false
+	puff.Size = Vector3.new(0.2, 0.2, 0.2)
+	puff.CFrame = CFrame.new(at + Vector3.new(0, 0.5, 0))
+	puff.Parent = model
+	local p = Instance.new("ParticleEmitter")
+	p.Color = ColorSequence.new(Color3.fromRGB(228, 166, 114))
+	p.Size = NumberSequence.new(1.2, 0)
+	p.Lifetime = NumberRange.new(0.3, 0.5)
+	p.Speed = NumberRange.new(14, 20)
+	p.SpreadAngle = Vector2.new(80, 10)
+	p.Rate = 0
+	p.Parent = puff
+	p:Emit(18)
+	Debris:AddItem(puff, 1)
 end
 
 -- A dummy's slam: a red ring on the sand, a short hop, and down it comes.
@@ -221,16 +244,46 @@ end
 
 -- What one dummy does, over and over, until it's beaten (or you leave)
 local function brain(s, e)
-	-- dropping in from the sky
-	local land = feet(e.model).Position
+	-- Spawning in: a shadow grows on the sand where it'll land, then it
+	-- drops out of the sky, lands with a puff of straw and bounces.
+	local start = feet(e.model)
+	local land = start.Position
+	local turn = start - start.Position
+	place(e.model, CFrame.new(land + Vector3.new(0, 80, 0)) * turn) -- (up out of sight)
+	local shadow = Instance.new("Part")
+	shadow.Name = "LandingShadow"
+	shadow.Shape = Enum.PartType.Cylinder
+	shadow.Anchored = true
+	shadow.CanCollide = false
+	shadow.CanQuery = false
+	shadow.CanTouch = false
+	shadow.Color = Color3.fromRGB(24, 20, 37)
+	shadow.Material = Enum.Material.SmoothPlastic
+	shadow.CastShadow = false
+	shadow.Parent = e.model -- (inside the dummy: only its owner sees it)
+	for k = 1, 8 do -- (grows in chunky 8-bit steps)
+		local d = 1 + k * 0.6
+		shadow.Size = Vector3.new(0.1, d, d)
+		shadow.CFrame = CFrame.new(land + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		shadow.Transparency = 0.75 - k * 0.04
+		task.wait(0.07)
+	end
 	local t0 = os.clock()
-	while e.alive and os.clock() - t0 < 0.5 do
-		local k = (os.clock() - t0) / 0.5
-		place(e.model, CFrame.new(land + Vector3.new(0, 40 * (1 - k * k), 0)) * feet(e.model).Rotation)
+	while e.alive and os.clock() - t0 < 0.35 do
+		local k = (os.clock() - t0) / 0.35
+		place(e.model, CFrame.new(land + Vector3.new(0, 50 * (1 - k * k), 0)) * turn)
 		task.wait(1 / 30)
 	end
+	shadow:Destroy()
 	if e.alive then
-		place(e.model, CFrame.new(land) * feet(e.model).Rotation)
+		place(e.model, CFrame.new(land) * turn)
+		strawPuff(e.model, land)
+		-- a little bounce
+		for k = 1, 6 do
+			place(e.model, CFrame.new(land + Vector3.new(0, math.sin(k / 6 * math.pi) * 1.6, 0)) * turn)
+			task.wait(1 / 30)
+		end
+		place(e.model, CFrame.new(land) * turn)
 	end
 	while e.alive and sessions[s.player] == s do
 		task.wait(rng:NextNumber(C.Rest[1], C.Rest[2]))
@@ -360,6 +413,7 @@ function ColosseumService.OnKill(s, model)
 	pushState(player, s)
 
 	if s.alive <= 0 and sessions[player] == s then
+		send(player, "WaveClear", s.wave) -- (the crowd throws confetti)
 		task.delay(C.WaveBreak, function()
 			if sessions[player] == s then
 				spawnWave(s)
