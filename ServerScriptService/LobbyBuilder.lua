@@ -627,7 +627,11 @@ local function buildGround(parent)
 			grid[j] = row
 		end
 		local function isCurb(i, j)
-			if grid[j][i] or noCurb(X0 + i - 0.5, Z0 + j - 0.5) then
+			local cx, cz = X0 + i - 0.5, Z0 + j - 0.5
+			if cx * cx + cz * cz < (PLAZA_R + 1.2) ^ 2 then
+				return false -- (the plaza gets its own smooth round rim, below)
+			end
+			if grid[j][i] or noCurb(cx, cz) then
 				return false
 			end
 			for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
@@ -668,6 +672,23 @@ local function buildGround(parent)
 				end
 			end
 			open = nextOpen
+		end
+		-- the plaza's rim: a smooth ring hugging its round edge, open where the
+		-- roads come in
+		local RR, NR = PLAZA_R + 0.5, 72
+		for n = 0, NR - 1 do
+			local a = (n + 0.5) / NR * math.pi * 2
+			local p = V3(math.cos(a) * RR, 0.45, math.sin(a) * RR)
+			local onRoad = false
+			for _, r in ipairs(pathRects) do
+				if p.X > r[1] - 0.8 and p.X < r[3] + 0.8 and p.Z > r[2] - 0.8 and p.Z < r[4] + 0.8 then
+					onRoad = true
+				end
+			end
+			if not onRoad then
+				local tangent = V3(-math.sin(a), 0, math.cos(a))
+				part(g, "PlazaCurb", V3(1, 0.9, 2 * math.pi * RR / NR + 0.12), CFrame.lookAt(p, p + tangent), CURB_COLOR, Mat.Brick)
+			end
 		end
 	end
 	cylinder(g, "PlazaMid", 0.7, 38, CFrame.new(0, 0.35, 0), RGB(232, 214, 178), Mat.Plastic)
