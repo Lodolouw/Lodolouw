@@ -5115,7 +5115,10 @@ local function buildSlimeArena()
 			local a = (i + 0.5) / segs * math.pi * 2
 			local p = onRing(r, a, y)
 			local len = 2 * r * math.sin(math.pi / segs) + 0.3
-			part(m, name, V3(len, thick, width), CFrame.lookAt(p, p + V3(math.cos(a), 0, -math.sin(a))) * CFrame.Angles(0, math.pi / 2, 0), color, mat, extra)
+			-- (neighbours overlap a little at the joints: every other one sits a
+			-- hair lower, so their tops never share a height and flicker)
+			local odd = (i % 2 == 1) and 0.04 or 0
+			part(m, name, V3(len, thick - odd, width), CFrame.lookAt(p - V3(0, odd / 2, 0), p - V3(0, odd / 2, 0) + V3(math.cos(a), 0, -math.sin(a))) * CFrame.Angles(0, math.pi / 2, 0), color, mat, extra)
 		end
 	end
 
@@ -5291,17 +5294,23 @@ local function buildSlimeArena()
 	end
 	-- the boss pit: a raised stone lip round a bubbling pool of slime
 	cylinder(m, "PitRim", 2.2, 62, CFrame.new(at(0, 1.1, 0)), ARENA_STONE_DARK, Mat.Slate)
-	cylinder(m, "PitLip", 0.6, 64, CFrame.new(at(0, 2.3, 0)), RGB(90, 96, 102), Mat.Slate)
-	local pool = cylinder(m, "SlimePool", 0.4, 57, CFrame.new(at(0, 2.3, 0)), SLIME, Mat.Neon, { Transparency = 0.1, CanCollide = false })
-	slimeGlow(pool, 0.3)
-	cylinder(m, "SlimePoolDeep", 0.4, 40, CFrame.new(at(0, 2.35, 0)), SLIME_DEEP, Mat.Neon, { Transparency = 0.2, CanCollide = false })
+	-- (the lip is a RING of stone round the pool - it used to be a solid disc
+	-- that covered the pool completely, a hair above it, which flickered. An
+	-- invisible "PitLip" disc stays as a marker: BossClient reads the pit's
+	-- size and height from it, to draw warnings on top of the pool)
+	cylinder(m, "PitLip", 0.6, 64, CFrame.new(at(0, 2.3, 0)), RGB(90, 96, 102), Mat.Slate, { Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false })
+	ringBand("PitLipRing", 30.25, 3.5, 2.3, 0.6, RGB(90, 96, 102), Mat.Slate, 36)
+	-- the pool: solid glowing slime (see-through slime under a see-through
+	-- boss flickers), with a darker middle standing clear above it
+	local pool = cylinder(m, "SlimePool", 0.4, 57, CFrame.new(at(0, 2.3, 0)), SLIME, Mat.Neon, { CanCollide = false })
+	cylinder(m, "SlimePoolDeep", 0.4, 40, CFrame.new(at(0, 2.42, 0)), SLIME_DEEP, Mat.Neon, { CanCollide = false })
 	local poolLight = Instance.new("PointLight")
 	poolLight.Range = 40
 	poolLight.Brightness = 1.5
 	poolLight.Color = SLIME
 	poolLight.Parent = pool
 	for i = 1, 7 do
-		local b = ball(m, "SlimeBubble", 1.5 + rnd() * 2.5, CFrame.new(at((rnd() - 0.5) * 40, 2.6, (rnd() - 0.5) * 40)), SLIME, Mat.Neon, { Transparency = 0.25, CanCollide = false })
+		local b = ball(m, "SlimeBubble", 1.5 + rnd() * 2.5, CFrame.new(at((rnd() - 0.5) * 40, 2.6, (rnd() - 0.5) * 40)), SLIME, Mat.Neon, { CanCollide = false })
 		fx(b, { BobAmp = 0.6, BobSpeed = 1 + rnd(), Phase = i * 50 })
 	end
 	local bubbles = anchorPart(m, "PoolBubbles", CFrame.new(at(0, 2.6, 0)))
@@ -5632,7 +5641,7 @@ local function buildSlimeArena()
 	local FLAT_R = 146
 	local FLATTEN = {
 		FloorBand = true, FloorSpoke = true, SlimeChannel = true,
-		PitRim = true, PitLip = true, SlimePool = true, SlimePoolDeep = true, SlimeBubble = true,
+		PitRim = true, PitLip = true, PitLipRing = true, SlimePool = true, SlimePoolDeep = true, SlimeBubble = true,
 		Moat = true, MoatBank = true, Walk = true,
 		-- the bridge decks and their rails are left out on purpose: they are
 		-- structures you stand on and lean against, so they have to stay solid

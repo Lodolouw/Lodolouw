@@ -527,12 +527,30 @@ end
 -- Puts every part of the body where this frame's pose says.
 local function applySlimePose(B, P, ground, facing, t, dt)
 	local def, body = B.def, B.body
+	if PIXEL then
+		-- (sits a hair above the floor, so the cube's bottom never cuts through
+		-- the glowing slime channels in the paving - see-through things that
+		-- cut through each other flicker)
+		ground = ground + V3(0, 0.3, 0)
+	end
 	local D = def.Size
 	local H = D * 0.85 * P.sy
 	local halfX, halfY, halfZ = D * P.sx / 2, H / 2, D * P.sz / 2
 	local sinkDepth = P.sink * H * 0.85
+	if PIXEL then
+		-- (a round body can half-show out of the pool like a dome; a cube would be
+		-- a flat slab sticking out of it - so asleep, it's right under the surface)
+		sinkDepth = P.sink * (H + 2)
+	end
 	local fade = P.fade or 0
 	local phase2 = B.phase2Look
+	-- 8-BIT: only the jelly cube itself is see-through. Everything inside it or
+	-- on it is solid, and pops out of sight in steps as it dies (fade) instead
+	-- of turning see-through - because Roblox can't sort see-through parts
+	-- that sit inside each other, and they flicker in front of each other.
+	local function solid(goneAt)
+		return (fade >= goneAt) and 1 or 0
+	end
 
 	local jitter = V3(0, 0, 0)
 	if P.shake > 0 then
@@ -547,9 +565,16 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 	body.shell.CFrame = center
 	body.shell.Transparency = lerp(phase2 and 0.44 or 0.3, 1, fade)
 	body.shell.Color = def.Color:Lerp(RGB(236, 255, 214), 0.5 * flash)
+	if PIXEL then
+		-- (8-bit hit flash: a crisp white blink, not a fade)
+		body.shell.Color = flash > 0.35 and RGB(255, 255, 255) or snapColor(def.Color)
+	end
 	body.inner.Size = body.shell.Size * 0.84
 	body.inner.CFrame = center * CFrame.new(0, -H * 0.06, 0)
 	body.inner.Transparency = lerp(phase2 and 0.72 or 0.55, 1, fade)
+	if PIXEL then
+		body.inner.Transparency = 1
+	end
 
 	-- the core lags behind the body: a little secondary motion reads as jelly
 	local coreSize = D * (phase2 and 0.47 or 0.36) * (1 + 0.05 * math.sin(t * 2.7)) * (P.coreScale or 1)
@@ -558,6 +583,9 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 	body.core.Size = V3(coreSize, coreSize * 0.95, coreSize)
 	body.core.CFrame = CFrame.new(B.corePos) * (center - center.Position)
 	body.core.Transparency = lerp(phase2 and 0.4 or 0.3, 1, clamp(fade * 1.3 - 0.2, 0, 1))
+	if PIXEL then
+		body.core.Transparency = solid(0.6)
+	end
 
 	-- the heart: the thing you are actually killing. Two beats and a rest, faster
 	-- once the shell is broken and faster again when it is nearly dead.
@@ -569,6 +597,12 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 	body.heart.Size = V3(heartSize, heartSize, heartSize)
 	body.heart.CFrame = CFrame.new(B.corePos)
 	body.heart.Transparency = lerp(0, 1, clamp(fade * 1.5, 0, 1))
+	if PIXEL then
+		-- (the core is solid now: the heart glows on its front, like a gem, so you
+		-- can still see the thing you're killing)
+		body.heart.CFrame = body.core.CFrame * CFrame.new(0, 0, -(coreSize / 2))
+		body.heart.Transparency = solid(0.7)
+	end
 	body.heart.Color = (def.HeartColor or RGB(214, 255, 120)):Lerp(RGB(255, 255, 230), 0.4 * beat + 0.4 * P.flare)
 	body.light.Brightness = lerp((phase2 and 2.1 or 1.1) + 0.6 * beat + P.flare * 1.6, 0, fade)
 	body.light.Range = D * (phase2 and 1.7 or 1.3)
@@ -590,7 +624,7 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 		local bz = onSurface(halfX, halfY, halfZ, bx, by) + 0.12
 		brow.Size = V3(D * 0.24, D * 0.06, D * 0.09)
 		brow.CFrame = center * CFrame.new(bx, by, bz) * CFrame.Angles(0, 0, side * 0.44)
-		brow.Transparency = lerp(0.12, 1, fade)
+		brow.Transparency = PIXEL and solid(0.3) or lerp(0.12, 1, fade)
 	end
 	-- the other eyes, each blinking on its own slow clock
 	for _, e in ipairs(body.smallEyes) do
@@ -600,7 +634,7 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 		local z = onSurface(halfX, halfY, halfZ, x, y)
 		local size = D * 0.055 * e.size
 		e.part.Size = V3(size, math.max(size * 0.8 * open, 0.05), size * 0.6)
-		e.part.CFrame = center * CFrame.new(x, y, z) * CFrame.Angles(0, math.atan2(x, -z) * 0.8, 0)
+		e.part.CFrame = center * CFrame.new(x, y, z) * CFrame.Angles(0, PIXEL and 0 or math.atan2(x, -z) * 0.8, 0)
 		e.part.Transparency = open < 0.05 and 1 or 0
 	end
 
@@ -611,7 +645,7 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 	local mz = onSurface(halfX, halfY, halfZ, 0, my)
 	body.mouth.Size = V3(mouthW, mouthH, D * 0.08)
 	body.mouth.CFrame = center * CFrame.new(0, my - D * 0.04 * P.mouth, mz)
-	body.mouth.Transparency = lerp(0.05, 1, fade)
+	body.mouth.Transparency = PIXEL and solid(0.4) or lerp(0.05, 1, fade)
 	local mouthMid = my - D * 0.04 * P.mouth
 	for _, tooth in ipairs(body.teeth) do
 		local x = tooth.x * mouthW * 0.86
@@ -634,7 +668,7 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 			local pos = center * CFrame.new(math.cos(c.angle) * r, H * 0.42 + (c.center and 0.9 or 0), math.sin(c.angle) * r)
 			c.part.Size = c.size
 			c.part.CFrame = pos * CFrame.Angles(0, -c.angle, 0) * CFrame.Angles(0, 0, c.tilt)
-			c.part.Transparency = fade
+			c.part.Transparency = PIXEL and solid(0.5) or fade
 		end
 	end
 	-- what's inside, circling
@@ -643,7 +677,7 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 		local r = D * 0.23
 		d.part.Size = d.size
 		d.part.CFrame = center * CFrame.new(math.cos(a) * r * P.sx, H * d.height, math.sin(a) * r * P.sz) * CFrame.Angles(t * d.spin, a, t * 0.4)
-		d.part.Transparency = lerp(0.1, 1, fade)
+		d.part.Transparency = PIXEL and solid(0.5) or lerp(0.1, 1, fade)
 	end
 	-- the foot: spread out over the floor, pulled in when it leaves the ground,
 	-- splashed wide when it lands
@@ -654,13 +688,36 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 	body.foot.CFrame = base * CFrame.new(0, P.lift * 0.96 + footH * 0.28 - sinkDepth * 0.4, 0)
 	body.foot.Transparency = lerp(phase2 and 0.46 or 0.34, 1, math.max(fade, P.sink * 0.8))
 	body.foot.Color = body.shell.Color
+	-- (8-bit: a point on the cube's outside, in direction `a` round it, and
+	-- which way that face looks)
+	local function onBox(a, out)
+		local cx, cz = math.cos(a), math.sin(a)
+		local k = 1 / math.max(math.abs(cx) / halfX, math.abs(cz) / halfZ)
+		local nx, nz = 0, 0
+		if math.abs(cx) / halfX > math.abs(cz) / halfZ then
+			nx = cx > 0 and 1 or -1
+		else
+			nz = cz > 0 and 1 or -1
+		end
+		return cx * k + nx * out, cz * k + nz * out
+	end
+	if PIXEL then
+		body.foot.Transparency = 1 -- (a square sheet round a cube just looked odd)
+	end
 	for _, sk in ipairs(body.skirt) do
 		local size = D * sk.size * (1 + 0.5 * math.max(P.sx - 1, 0)) * (1 - 0.3 * P.sink) * spread
 		local r = footW * 0.43
 		local pos = base * CFrame.new(math.cos(sk.angle) * r, size * 0.3 - sinkDepth * 0.3 + P.lift * 0.96, math.sin(sk.angle) * r * P.sz / P.sx)
 		sk.part.Size = V3(size, size * 0.72, size)
-		sk.part.CFrame = pos
 		sk.part.Transparency = lerp(phase2 and 0.42 or 0.3, 1, fade)
+		if PIXEL then
+			-- solid lumps of goo oozing out at the foot of each face
+			local x, z = onBox(sk.angle, size * 0.3)
+			pos = base * CFrame.new(x, size * 0.3 - sinkDepth + P.lift * 0.96, z)
+			sk.part.Transparency = math.max(solid(0.3), P.sink > 0.3 and 1 or 0)
+			sk.part.Color = body.shell.Color
+		end
+		sk.part.CFrame = pos
 	end
 	-- drips lengthen and snap back
 	for _, d in ipairs(body.drips) do
@@ -669,16 +726,25 @@ local function applySlimePose(B, P, ground, facing, t, dt)
 		else
 			local len = 1.5 + 2.2 * ((t * 0.45 + d.phase) % 1)
 			local x, z = math.cos(d.angle) * halfX * 0.97, math.sin(d.angle) * halfZ * 0.97
+			if PIXEL then
+				x, z = onBox(d.angle, 0.2) -- (running down the outside of a face)
+				len = math.floor(len * 2 + 0.5) / 2 -- (and growing in chunky steps)
+			end
 			local top = center * CFrame.new(x, -H * 0.02, z)
 			d.part.Size = V3(len, 0.55, 0.55)
 			d.part.CFrame = top * CFrame.new(0, -len / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
-			d.part.Transparency = lerp(0.18, 1, fade)
+			d.part.Transparency = PIXEL and solid(0.3) or lerp(0.18, 1, fade)
 		end
 	end
 	-- its shadow on the floor: widens as it rears up, marking where it will land
 	local shadowD = P.shadowD or (D * 0.95 * P.sx)
 	placeDisc(body.shadow, onFloor(ground) + V3(0, 0.08, 0), shadowD, 0.1)
 	body.shadow.Transparency = lerp(P.shadowDark and (0.62 - 0.3 * P.shadowDark) or 0.62, 1, math.max(fade, P.sink))
+	if PIXEL then
+		-- a solid dark shadow (a see-through one under a see-through cube flickers)
+		body.shadow.Transparency = (fade > 0.5 or P.sink > 0.5) and 1 or 0
+		body.shadow.Color = RGB(24, 20, 37)
+	end
 end
 
 ----------------------------------------------------------------------
@@ -2121,6 +2187,13 @@ function Poses.Wake(B, t, P)
 		P.shake = math.max(P.shake, 0.35 * P.mouth)
 		P.flare = P.mouth
 	end
+	if PIXEL then
+		-- 8-bit: it heaves up out of the pool in chunky steps, like a sprite
+		P.sink = math.floor(P.sink * 10 + 0.5) / 10
+		P.sy = math.floor(P.sy * 16 + 0.5) / 16
+		P.sx = math.floor(P.sx * 16 + 0.5) / 16
+		P.sz = P.sx
+	end
 end
 
 function Poses.Reset(B, t, P)
@@ -2132,6 +2205,9 @@ function Poses.Reset(B, t, P)
 	P.sink = smooth(u)
 	P.eyes = 1 - clamp(u * 2, 0, 1)
 	P.sy = 1 + 0.08 * spring(t, 3, 12)
+	if PIXEL and B.kind ~= "Worm" then
+		P.sink = math.floor(P.sink * 10 + 0.5) / 10 -- (sinking back down in steps too)
+	end
 end
 
 function Poses.Slam(B, t, P)
