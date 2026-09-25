@@ -4523,12 +4523,19 @@ local function buildIsland(parent)
 			local cx = midX(zc)
 			left = math.clamp(left + (rnd() - 0.5) * 1, -1.2, 1.5)
 			right = math.clamp(right + (rnd() - 0.5) * 1, -1.2, 1.5)
-			local xL, xR = cx - 5.5 - left, cx + 5.5 + right
-			-- (only on the grass: where the path meets the cove's slanting edge)
-			while xL < xR - 1 and levelAtCell(xL + 0.5, zc) ~= 3 do
+			-- a good wide track, opening out as it reaches the steps to the beach
+			local t = (zc - z0) / L
+			local half = 7 + math.clamp((t - 0.75) / 0.25, 0, 1) * 1.2
+			local xL, xR = cx - half - left, cx + half + right
+			-- (only on grass - the island's, or the patch round the top of the
+			-- beach steps - never hanging out over the sand)
+			local function onGrass(x)
+				return levelAtCell(x, zc) == 3 or (zc > z1 - 14 and math.abs(x - xEnd) < STAIR_HALF + 7)
+			end
+			while xL < xR - 1 and not onGrass(xL + 0.5) do
 				xL = xL + 0.5
 			end
-			while xR > xL + 1 and levelAtCell(xR - 0.5, zc) ~= 3 do
+			while xR > xL + 1 and not onGrass(xR - 0.5) do
 				xR = xR - 0.5
 			end
 			if xR - xL > 1.5 then
@@ -4561,8 +4568,14 @@ local function buildIsland(parent)
 	do
 		local n = 6
 		local rise = (TERRACE1_TOP - BEACH_TOP) / n
-		local TREAD, HALF = 1.6, 6
+		local TREAD, HALF = 1.6, 8 -- (as wide as the path where it arrives)
 		local nc = { CanCollide = false }
+		-- fill in the grass round the top of the steps, so the island's
+		-- slanting pixel edge doesn't leave a bite of sand beside them
+		local padZ0 = zGrassEnd - 14
+		local padW = HALF * 2 + 14
+		part(m, "GrassShoulder", V3(padW, TERRACE1_TOP - 1.4 - BEACH_TOP + 1, zGrassEnd - padZ0), CFrame.new(xEnd, (TERRACE1_TOP - 1.4 + BEACH_TOP - 1) / 2, (padZ0 + zGrassEnd) / 2), ISLE.DIRT, Mat.Ground)
+		part(m, "GrassShoulderTop", V3(padW, 1.4, zGrassEnd - padZ0), CFrame.new(xEnd, TERRACE1_TOP - 0.7, (padZ0 + zGrassEnd) / 2), ISLE.GRASS, Mat.Grass)
 		for i = 1, n - 1 do
 			local top = TERRACE1_TOP - i * rise
 			local za = zGrassEnd + (i - 1) * TREAD
