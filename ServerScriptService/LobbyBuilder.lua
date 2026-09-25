@@ -595,7 +595,7 @@ local function buildGround(parent)
 	-- are joined into long pieces. Where paths meet there's no gap in the
 	-- paving, so no curb - every junction opens up by itself.
 	do
-		local OPEN = { { 8, 93, 13, 99 } } -- (the farm path's opening off the south road)
+		local NOCURB = { { 7, 88, 20, 104 } } -- (the farm path leaves the south road here: no rim)
 		local PLAZA_R = 23.2
 		local X0, X1, Z0, Z1 = -118, 118, -112, SOUTH_WALL - 1
 		local function paved(x, z)
@@ -607,7 +607,10 @@ local function buildGround(parent)
 					return true
 				end
 			end
-			for _, r in ipairs(OPEN) do
+			return false
+		end
+		local function noCurb(x, z)
+			for _, r in ipairs(NOCURB) do
 				if x > r[1] and x < r[3] and z > r[2] and z < r[4] then
 					return true
 				end
@@ -624,7 +627,7 @@ local function buildGround(parent)
 			grid[j] = row
 		end
 		local function isCurb(i, j)
-			if grid[j][i] then
+			if grid[j][i] or noCurb(X0 + i - 0.5, Z0 + j - 0.5) then
 				return false
 			end
 			for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
@@ -4370,38 +4373,64 @@ local function buildIsland(parent)
 							local p = V3(x + (rnd() - 0.5) * CELL, BEACH_TOP - 1 + s * 0.35, z + (rnd() - 0.5) * CELL)
 							part(m, "CoastRock", V3(s * 1.3, s, s * 1.1), CFrame.new(p) * CFrame.Angles(math.rad((rnd() - 0.5) * 20), rnd() * 3, math.rad((rnd() - 0.5) * 20)), (rnd() < 0.5) and ISLE.ROCK2 or ISLE.ROCK3, Mat.Slate)
 						end
-					else
-						-- the shoreline: waves rolling in (LobbyFX moves them, in
-						-- little 8-bit steps)
-						local out
-						for _, n in ipairs({ { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }) do
-							local L = grid[j + n[2]][i + n[1]]
-							if L == 0 or L == 1 then
-								out = V3(n[1], 0, n[2])
-								break
-							end
-						end
-						if out then
-							-- one long, calm wave per stretch of coast (like the Coastal
-							-- Waves mod): it rises out in the deep blue, rolls in across
-							-- the shallows and breaks on the sand, fading as it goes
-							local w = CELL + 0.8
-							local at = V3(x, SEA_Y + 0.4, z) + out * (CELL / 2 + 26)
-							local foam = part(m, "Foam", V3(w, 0.25, 1.4), CFrame.lookAt(at, at - out), ISLE.FOAM, Mat.SmoothPlastic, {
-								CanCollide = false, CanQuery = false, CastShadow = false,
-							})
-							foam:SetAttribute("WaveMode", "drift")
-							foam:SetAttribute("WaveDir", -out)
-							foam:SetAttribute("WaveAmp", 26.5)
-							foam:SetAttribute("WaveSpeed", 0.11)
-							foam:SetAttribute("Phase", math.deg(th) * 1.5)
-							CollectionService:AddTag(foam, "Wave")
-						end
+
 					end
 				end
 			end
 		end
 	end
+
+	-- The waves: smooth rings of white foam following the whole coastline
+	-- (not the pixel steps of the beach, the true curve under them). Each
+	-- ring starts out in the deep blue and the whole ring rolls in together,
+	-- breaking on the sand and fading - then loops. Two rings, half a cycle
+	-- apart, so there's always a wave on its way. LobbyFX moves them.
+	local function waveRing(center, radiusAt, gap, skipAt)
+		for ring = 0, 1 do
+			local n = 0
+			local th = -math.pi
+			while th < math.pi do
+				local function at(a, off)
+					local r = radiusAt(a) + (off or 0)
+					return V3(center.X + math.cos(a) * r, SEA_Y + 0.4, center.Z + math.sin(a) * r)
+				end
+				local p0 = at(th)
+				local step = 4.5 / math.max(radiusAt(th), 1)
+				local p1 = at(th + step)
+				local mid = (p0 + p1) / 2
+				local tangent = (p1 - p0).Unit
+				local inward = V3(tangent.Z, 0, -tangent.X)
+				if inward:Dot(center - mid) < 0 then
+					inward = -inward
+				end
+				if not (skipAt and skipAt(mid)) then
+					local start = mid - inward * gap
+					local foam = part(m, "Foam", V3(1.5, 0.25, (p1 - p0).Magnitude + 0.6), CFrame.lookAt(start, start + tangent), ISLE.FOAM, Mat.SmoothPlastic, {
+						CanCollide = false, CanQuery = false, CastShadow = false,
+					})
+					foam:SetAttribute("WaveMode", "drift")
+					foam:SetAttribute("WaveDir", inward)
+					foam:SetAttribute("WaveAmp", gap)
+					foam:SetAttribute("WaveSpeed", 0.1)
+					foam:SetAttribute("Phase", ring * 180)
+					CollectionService:AddTag(foam, "Wave")
+					n = n + 1
+				end
+				th = th + step
+			end
+		end
+	end
+	-- round the main island (where the beach meets the water)...
+	waveRing(V3(ISLE_CX, 0, ISLE_CZ), function(a)
+		return EDGE_BEACH[edgeBin(a)] + 1
+	end, 26, function(p)
+		-- (not across the channel to the Spire, where the beach stops short)
+		return p.Z < -175
+	end)
+	-- ...and round the Spire's islet
+	waveRing(V3(0, 0, SPIRE_ISLE_Z), function(a)
+		return spireBeachR(a) + 1
+	end, 18)
 
 	-- the sea: one big flat sheet (four, as parts can't be bigger than 2048)
 	for _, t in ipairs({ { -750, -835 }, { 750, -835 }, { -750, 615 }, { 750, 615 } }) do
