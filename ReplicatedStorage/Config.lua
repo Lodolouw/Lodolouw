@@ -21,10 +21,15 @@ Config.TalismanSlots = 3
 
 -- Where the shops stand. Used by the lobby builder AND by server range checks.
 Config.Stations = {
-	Sell = Vector3.new(-60, 0, -30),
-	Upgrades = Vector3.new(60, 0, -30),
-	Craft = Vector3.new(0, 0, -62),
+	Sell = Vector3.new(52, 0, 45), -- south-east of the fountain plaza
+	Upgrades = Vector3.new(-40, 0, 236), -- the mushroom house, down by the fishing lake
+	Craft = Vector3.new(72, 0, -40), -- the forge, in the Gear Hall on the east side
 	Prestige = Vector3.new(0, 0, 0),
+}
+-- which way each building turns (degrees round the vertical)
+Config.StationTurn = {
+	Sell = -90, -- faces west, towards the path from the plaza
+	Upgrades = 90, -- faces east, towards the lake
 }
 
 ----------------------------------------------------------------------
@@ -57,12 +62,13 @@ function Config.comboMult(count)
 end
 
 Config.Yard = {
-	CenterZ = 75, -- z position of the first row of pads
-	Spacing = 32, -- distance between pad centres
-	PadSize = 24, -- pad is PadSize x PadSize studs
-	PerRow = 6, -- pads in a row; the next ones start a new row...
-	RowGap = 44, -- ...this much further back (south)...
-	TierHeight = 5, -- ...and a step up, on a raised stone terrace
+	CenterX = -60, -- x of the middle of the pads (the south-west corner of the castle)
+	CenterZ = 62, -- z position of the first row of pads
+	Spacing = 25, -- distance between pad centres
+	PadSize = 20, -- pad is PadSize x PadSize studs
+	PerRow = 4, -- pads in a row; the next ones start a new row...
+	RowGap = 30, -- ...this much further back (south)...
+	TierHeight = 0, -- ...and this much higher (0 = all on the ground)
 }
 
 ----------------------------------------------------------------------
@@ -170,7 +176,7 @@ function Config.zonePosition(index)
 	local Y = Config.Yard
 	local row = math.floor((index - 1) / Y.PerRow)
 	local col = (index - 1) % Y.PerRow + 1
-	local x = (col - (Y.PerRow + 1) / 2) * Y.Spacing
+	local x = (Y.CenterX or 0) + (col - (Y.PerRow + 1) / 2) * Y.Spacing
 	return Vector3.new(x, row * Y.TierHeight, Y.CenterZ + row * Y.RowGap)
 end
 

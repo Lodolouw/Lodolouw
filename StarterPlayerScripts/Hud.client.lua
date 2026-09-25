@@ -774,8 +774,8 @@ local leftCol = create("Frame", {
 -- shop CFrames/rotations as LobbyBuilder, pushed forward past the counter to
 -- the customer side and turned 180° to face back in at it.
 local STATION_APPROACH = {
-	Upgrades = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(-90), 0) * CFrame.new(0, 0, 13) * CFrame.Angles(0, math.pi, 0), -- (in front of the toad)
-	Backpack = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(90), 0) * CFrame.new(0, 0, 11) * CFrame.Angles(0, math.pi, 0),
+	Upgrades = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(Config.StationTurn.Upgrades or -90), 0) * CFrame.new(0, 0, 13) * CFrame.Angles(0, math.pi, 0), -- (in front of the toad)
+	Backpack = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(Config.StationTurn.Sell or 90), 0) * CFrame.new(0, 0, 11) * CFrame.Angles(0, math.pi, 0),
 	Craft = CFrame.new(Config.Stations.Craft) * CFrame.new(0, 0, 9) * CFrame.Angles(0, math.pi, 0),
 	Prestige = CFrame.new(Config.Stations.Prestige) * CFrame.new(0, 0, 12) * CFrame.Angles(0, math.pi, 0),
 }

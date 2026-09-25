@@ -500,17 +500,14 @@ local function lamp(parent, x, z)
 end
 
 local TREES = {
-	-- the first and last pairs were nudged inward to clear the corner towers
-	{ -98, -96, 1.1 }, { -88, -106, 0.9 }, { 98, -96, 1.1 }, { 88, -106, 0.9 },
-	{ -104, -62, 1 }, { 104, -62, 1 }, { -86, -30, 1 }, { 86, -30, 1 },
-	{ -104, 4, 1.1 }, { -104, 34, 1 }, { 104, 4, 1.1 }, { 104, 34, 1 },
-	{ -32, -98, 0.9 }, { 32, -98, 0.9 },
-	{ -96, 105, 1 }, { 96, 105, 1 }, { -60, 108, 0.9 }, { 60, 108, 0.9 },
+	{ 60, -100, 1.1 }, { 88, -92, 0.9 }, { -52, -30, 1 }, { -100, -30, 1 },
+	{ -104, 20, 1 }, { -40, 30, 0.9 }, { 98, 60, 1 }, { 50, 164, 0.9 },
 }
 
 local LAMPS = {
-	{ -11, 18 }, { 11, 18 }, { -11, 44 }, { 11, 44 },
-	{ -34, -44 }, { 34, -44 }, { -34, -90 }, { 34, -90 }, -- outside corners of the loop round the forge
+	{ -12, -30 }, { 12, -30 }, { -12, -66 }, { 12, -66 },
+	{ 40, 11 }, { 70, 11 }, { -40, -11 }, { -66, -11 },
+	{ 11, 60 }, { -11, 110 }, { 11, 110 }, { -11, 150 }, { 11, 150 },
 }
 
 local function buildGround(parent)
@@ -537,47 +534,35 @@ local function buildGround(parent)
 		part(g, "Curb", V3(1, 0.9, zb - za), CFrame.new(x, 0.45, (za + zb) / 2), CURB_COLOR, Mat.Brick)
 	end
 
-	-- the east-west road between the Sell Shop and the mushroom house
-	pathSlab("PathEastWest", -50, -38, 47.5, -22)
-	curbAlongX(-50, -8.5, -21.5)
-	curbAlongX(8.5, 47, -21.5)
-	-- north edge: open where the forge path and the loop round the forge join
-	curbAlongX(-50, -29.5, -38.5)
-	curbAlongX(-19.5, -8.5, -38.5)
-	curbAlongX(8.5, 19.5, -38.5)
-	curbAlongX(29.5, 47, -38.5)
-	-- forge front -> road, and a short link from the road into the plaza
-	pathSlab("PathToForge", -8, -49.5, 8, -38)
-	pathSlab("PathRoadToPlaza", -8, -22, 8, -20.5)
-	for _, x in ipairs({ -8.5, 8.5 }) do
-		curbAlongZ(-49.5, -38.5, x)
-	end
-	-- behind the forge: the walk up to the Boss Arena gate
-	-- a loop round the forge: up both sides, joined behind it, where the
-	-- walk to the Spire stairs carries on north
-	for _, sx in ipairs({ -1, 1 }) do
-		pathSlab("PathForgeSide", sx > 0 and 20 or -29, -86, sx > 0 and 29 or -20, -38)
-		pathSlab("PathBehindForge", sx > 0 and 8 or -29, -95, sx > 0 and 29 or -8, -86)
-		curbAlongZ(-86, -38.5, sx * 19.5) -- along the forge
-		curbAlongZ(-96, -38.5, sx * 29.5) -- outer edge
-	end
-	curbAlongX(-19.5, 19.5, -85.5) -- behind the forge
-	pathSlab("PathToGate", -8, -106, 8, -86)
-	for _, sx in ipairs({ -1, 1 }) do
-		curbAlongX(sx > 0 and 8.5 or -30, sx > 0 and 30 or -8.5, -95.5)
-		curbAlongZ(-106, -95.5, sx * 8.5)
-	end
-	-- the path widens into a landing at the foot of the Spire stairs
-	pathSlab("StairLanding", -12, -112, 12, -106)
-	for _, sx in ipairs({ -1, 1 }) do
-		curbAlongZ(-112, -106, sx * 12.5)
-		curbAlongX(sx > 0 and 8 or -13, sx > 0 and 13 or -8, -105.5)
-	end
-	-- plaza -> spawn -> training yard
-	pathSlab("PathToYard", -8, 20.5, 8, 52)
-	for _, x in ipairs({ -8.5, 8.5 }) do
-		curbAlongZ(22, 52, x)
-	end
+	-- The floorplan: the fountain plaza in the middle, a wide avenue north
+	-- to the Grand Keep (and through it to the Spire), the road east to the
+	-- forge in the Gear Hall, west to the Pet Sanctuary, south past the
+	-- Sell Shop and the colosseum to the south gate.
+	local Y = Config.Yard
+	-- north: the avenue to the keep, and the floor of the passage through it
+	pathSlab("PathToGate", -9, -74, 9, -23)
+	curbAlongZ(-74, -23.5, -9.5)
+	curbAlongZ(-74, -23.5, 9.5)
+	pathSlab("StairLanding", -12, -112, 12, -74)
+	-- east: to the forge's front door
+	pathSlab("PathEastWest", 23, -8, 80, 8)
+	pathSlab("PathToForge", 62, -19, 80, -8)
+	curbAlongX(23.5, 80, 8.5)
+	curbAlongX(23.5, 61.5, -8.5)
+	-- west: to the Pet Sanctuary garden
+	pathSlab("PathEastWest", -88, -8, -23, 8)
+	pathSlab("PathForgeSide", -88, -58, -72, -8)
+	curbAlongX(-88, -23.5, 8.5)
+	curbAlongX(-71.5, -23.5, -8.5)
+	-- south: past the spawn to the south gate, with branches to the Sell
+	-- Shop and into the colosseum
+	pathSlab("PathToYard", -8, 23, 8, SOUTH_WALL - 3)
+	pathSlab("PathEastWest", 8, 38, 29, 52)
+	pathSlab("PathEastWest", -12, 84, -8, 96)
+	curbAlongZ(23.5, 37.5, 8.5)
+	curbAlongZ(52.5, SOUTH_WALL - 3, 8.5)
+	curbAlongZ(23.5, 83.5, -8.5)
+	curbAlongZ(96.5, SOUTH_WALL - 3, -8.5)
 
 	-- Central plaza rings (outer ring in the same stone as the paths)
 	cylinder(g, "PlazaOuter", 0.6, 46, CFrame.new(0, 0.3, 0), PATH_COLOR, Mat.Cobblestone)
@@ -586,7 +571,7 @@ local function buildGround(parent)
 	for i = 0, N - 1 do
 		local a = (i + 0.5) / N * math.pi * 2
 		local p = V3(math.cos(a) * R, 0.45, math.sin(a) * R)
-		if math.abs(p.X) > 9.2 then
+		if math.abs(p.X) > 9.7 and math.abs(p.Z) > 9.7 then
 			local tangent = V3(-math.sin(a), 0, math.cos(a))
 			part(g, "PlazaCurb", V3(1, 0.9, 2 * math.pi * R / N + 0.15), CFrame.lookAt(p, p + tangent), CURB_COLOR, Mat.Brick)
 		end
@@ -606,8 +591,10 @@ local function buildGround(parent)
 		end
 	end
 
-	-- Training yard slab
-	part(g, "YardSlab", V3(204, 0.6, 46), CFrame.new(0, 0.3, 75), RGB(86, 96, 122), Mat.Plastic, {
+	-- Training yard slab, under all the pads
+	local first, last = Config.zonePosition(1), Config.zonePosition(#Config.Zones)
+	local halfW = Y.PerRow * Y.Spacing / 2
+	part(g, "YardSlab", V3(halfW * 2, 0.6, last.Z - first.Z + Y.PadSize + 6), CFrame.new(Y.CenterX or 0, 0.3, (first.Z + last.Z) / 2), RGB(86, 96, 122), Mat.Plastic, {
 		TopSurface = Enum.SurfaceType.Studs,
 	})
 
@@ -881,48 +868,28 @@ local function blossomTree(parent, x, z, s)
 end
 
 local NEW_TREES = {
-	{ pineTree, -38, -75, 1 }, { roundTree, -50, -104, 0.9 },
-	{ pineTree, 38, -75, 1 }, { roundTree, 50, -104, 0.9 },
-	{ blossomTree, -80, 20, 1 }, { pineTree, -60, 40, 1 }, { roundTree, -45, 15, 0.9 },
-	{ blossomTree, 80, 20, 1 }, { pineTree, 60, 40, 1 }, { roundTree, 45, 15, 0.9 },
-	{ pineTree, -25, 107, 0.8 }, { pineTree, 25, 107, 0.8 },
-	{ blossomTree, -80, 108, 0.9 }, { blossomTree, 80, 108, 0.9 },
+	{ pineTree, 60, -88, 1 }, { roundTree, 76, -104, 0.9 }, { blossomTree, 96, -76, 0.9 },
+	{ pineTree, -60, 24, 1 }, { roundTree, -86, 30, 0.9 }, { blossomTree, -30, -40, 0.9 },
+	{ blossomTree, 28, -40, 0.9 }, { pineTree, 90, 22, 0.9 }, { roundTree, 40, 80, 0.9 },
+	{ pineTree, 96, 150, 0.9 }, { blossomTree, 28, 110, 0.9 }, { pineTree, -30, 164, 0.8 },
+	{ roundTree, -100, 152, 0.9 },
 }
 
 local ROCKS = {
-	{ -108, -40, 1 }, { 108, -40, 1 }, { -109, 75, 1.1 }, { 109, 75, 1.1 },
-	{ -40, -10, 0.8 }, { 40, -10, 0.8 }, { -26, -108, 0.9 }, { 26, -108, 0.9 },
-	{ -64, -106, 0.8 }, { 64, -106, 0.8 }, { -95, 45, 0.9 }, { 95, 45, 0.9 },
+	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -64, 40, 0.8 },
+	{ 60, 100, 0.9 }, { -104, 160, 0.9 }, { 20, 160, 0.8 },
 }
 
 local BUSHES = {
-	{ -78, -42, 1 }, { -78, -18, 0.9 }, { 78, -42, 1 }, { 78, -18, 0.9 },
-	{ -108, 60, 1 }, { -108, 92, 0.9 }, { 108, 60, 1 }, { 108, 92, 0.9 },
-	{ -30, 12, 0.8 }, { 30, 12, 0.8 }, { -20, 28, 0.7 }, { 20, 28, 0.7 },
-	{ -34, -62, 0.9 }, { 34, -62, 0.9 }, { -110, -10, 1 }, { 110, -10, 1 },
-	{ -45, 108, 0.9 }, { 45, 108, 0.9 },
+	{ -30, 16, 0.8 }, { 30, 16, 0.8 }, { -20, -30, 0.7 }, { 20, -30, 0.7 },
+	{ 34, -58, 0.9 }, { -108, 0, 1 }, { 96, 36, 0.9 }, { 24, 66, 0.8 },
+	{ -24, 44, 0.8 }, { 90, 100, 0.9 }, { -60, 160, 0.9 },
 }
 
 local FLOWER_PATCHES = {
-	{ -40, 30 }, { 40, 30 }, { -28, -12 }, { 28, -12 },
-	{ -95, 10 }, { 95, 10 }, { -12, 108 }, { 12, 108 },
-	{ -65, 25 }, { 65, 25 },
+	{ -40, 18 }, { 40, 24 }, { -28, -14 }, { 28, -14 }, { -95, 12 },
+	{ 22, 90 }, { 80, 80 }, { 24, 130 }, { 50, 160 }, { -80, 40 },
 }
-
--- Everything that stood along the old south strip (behind the first row of
--- pads) moves back into the new strip behind the terrace
-local function shiftSouth(list, zAt)
-	for _, e in ipairs(list) do
-		if e[zAt] > 95 then
-			e[zAt] = e[zAt] + SOUTH_EXT
-		end
-	end
-end
-shiftSouth(TREES, 2)
-shiftSouth(NEW_TREES, 3)
-shiftSouth(ROCKS, 2)
-shiftSouth(BUSHES, 2)
-shiftSouth(FLOWER_PATCHES, 2)
 
 local function buildDecor(parent)
 	local d = folder(parent, "CastleAndNature")
@@ -953,35 +920,6 @@ local function buildDecor(parent)
 		wallTorch(d, V3(E, 16, z), V3(-1, 0, 0))
 	end
 
-	-- Chains on posts lining the walk up to the Boss Arena gate
-	for _, x in ipairs({ -10.5, 10.5 }) do
-		local zs = { -104, -98 }
-		for _, z in ipairs(zs) do
-			chainPost(d, x, z)
-		end
-		for i = 1, #zs - 1 do
-			chain(d, V3(x, 4.6, zs[i]), V3(x, 4.6, zs[i + 1]), 1.2)
-		end
-	end
-
-	-- Two fenced flower gardens in the empty north corners, each with a
-	-- blossom tree in the middle and an opening facing the shops.
-	for _, sx in ipairs({ -1, 1 }) do
-		local x0, x1 = 58 * sx, 90 * sx
-		local z0, z1 = -98, -70
-		fence(d, V3(x1, 0, z0), V3(x1, 0, z1)) -- outer side
-		fence(d, V3(x0, 0, z0), V3(x1, 0, z0)) -- back
-		fence(d, V3(x0, 0, z1), V3(x1, 0, z1)) -- front
-		fence(d, V3(x0, 0, z0), V3(x0, 0, -90)) -- inner side, with a gap to walk in
-		fence(d, V3(x0, 0, -78), V3(x0, 0, z1))
-		blossomTree(d, 74 * sx, -84, 0.8)
-		for _, p in ipairs({ { 64, -92 }, { 84, -92 }, { 64, -76 }, { 84, -76 } }) do
-			flowers(d, p[1] * sx, p[2], 3)
-		end
-		bush(d, 87 * sx, -95, 0.7)
-		bush(d, 87 * sx, -73, 0.7)
-	end
-
 	for _, t in ipairs(NEW_TREES) do
 		t[1](d, t[2], t[3], t[4])
 	end
@@ -1008,7 +946,7 @@ local function buildSellShop(parent)
 	-- kept low and the shopkeeper stands on a step behind it, so you see him.
 	-- Faces the plaza (local +Z).
 	local m = folder(parent, "SellShop")
-	local O = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(90), 0)
+	local O = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(Config.StationTurn.Sell or 90), 0)
 	local wood = RGB(150, 106, 68)
 	local timber = RGB(120, 80, 50)
 	local woodDark = RGB(96, 64, 42)
@@ -1198,7 +1136,7 @@ local function buildUpgradeShop(parent)
 	-- plants and lanterns. The shopkeeper stands at a counter out front.
 	-- Faces the plaza (local +Z = towards the middle of the lobby).
 	local m = folder(parent, "UpgradeShop")
-	local O = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(-90), 0)
+	local O = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(Config.StationTurn.Upgrades or -90), 0)
 	local STEM_Z, STEM_R = -3, 9 -- stem centre (local z) and radius
 	local capRed, capRedDark = RGB(204, 50, 44), RGB(184, 40, 36)
 	local white = RGB(250, 246, 236)
@@ -1879,7 +1817,7 @@ local function buildYard(parent)
 	-- pads past the first PerRow, with a grand staircase across its whole
 	-- front (shallow half-stud steps, easy to walk up), a low crenellated
 	-- parapet round its back and sides, and braziers at its front corners.
-	if #Config.Zones > Y.PerRow then
+	if #Config.Zones > Y.PerRow and Y.TierHeight > 0 then
 		local c2 = Config.zonePosition(Y.PerRow + 1)
 		local H = Y.TierHeight
 		local halfW = (Y.PerRow / 2) * Y.Spacing - Y.Spacing / 2 + pad / 2 + 10 -- the pads, plus a margin
@@ -3528,8 +3466,6 @@ local function buildSouthGate(parent)
 		wallTorch(m, V3(sx * 14.5, 12, z - depth / 2), V3(0, 0, -1))
 		banner(m, V3(x, 30, z + 10.1), V3(0, 0, 1), sx < 0 and BANNER_BLUE or BANNER_RED)
 	end
-	-- a path from the gate to the steps at the back of the training yard
-	part(m, "GatePath", V3(12, 0.55, SOUTH_WALL - 150), CFrame.new(0, 0.275, (SOUTH_WALL + 150) / 2 - 2), RGB(208, 192, 162), Mat.Cobblestone)
 	titleSign(m, CFrame.new(0, SPRING + R + 13, z + depth / 2 + 1), "Lakeside", nil, RGB(120, 200, 255), 300, 90)
 
 	-- the drawbridge, let down across the moat, with chains up to the gatehouse
@@ -3652,23 +3588,10 @@ local function buildLakeside(parent)
 		end
 	end
 	part(m, "Barrel", V3(2.4, 3, 2.4), CFrame.new(LAKE_X0 + 20, 2.5, dz + 1.6), RGB(130, 86, 50), Mat.WoodPlanks)
-	-- the fishing hut: a round stone stem under a big red mushroom cap
-	local hx, hz = -24, dz
-	cylinder(m, "HutStem", 11, 14, CFrame.new(hx, 5.5, hz), RGB(236, 222, 196), Mat.Plastic)
-	part(m, "HutDoor", V3(0.4, 6, 4), CFrame.new(hx + 7, 3, hz), RGB(110, 70, 44), Mat.WoodPlanks)
-	ball(m, "HutWindow", 2.4, CFrame.new(hx + 6.2, 7.5, hz - 4), RGB(255, 210, 120), Mat.Neon)
-	cylinder(m, "HutCapUnder", 1, 22, CFrame.new(hx, 11.5, hz), RGB(245, 232, 210), Mat.Plastic)
-	coneRoof(m, V3(hx, 12, hz), 12, 10, RGB(220, 60, 60), 7)
-	for i = 0, 6 do
-		local a = i / 7 * math.pi * 2
-		local r = 6 + (i % 2) * 2.5
-		ball(m, "HutSpot", 2.2, CFrame.new(hx + math.cos(a) * r, 12 + (12 - r) * 10 / 12 * 0.95, hz + math.sin(a) * r), RGB(255, 245, 235), Mat.SmoothPlastic, { CanCollide = false })
-	end
-	titleSign(m, CFrame.new(hx, 26, hz), "Fishing Hut", nil, RGB(120, 200, 255), 300, 70)
-
+	local hx = Config.Stations.Upgrades.X + 20 -- the mushroom house's front door
 	-- a path from the drawbridge to the hut and the dock
 	part(m, "LakePath", V3(10, 0.55, dz - MOAT_Z1 + 5), CFrame.new(0, 0.275, (MOAT_Z1 + dz) / 2 + 2.5), RGB(208, 192, 162), Mat.Cobblestone)
-	part(m, "LakePathWest", V3(hx + 7 + 5, 0.55, 8), CFrame.new((hx + 7 - 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
+	part(m, "LakePathWest", V3(-5 - hx, 0.55, 8), CFrame.new((hx - 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
 	part(m, "LakePathEast", V3(LAKE_X0 - 5, 0.55, 8), CFrame.new((LAKE_X0 + 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
 
 	-- a fence round the edge of the shelf so nobody walks off by accident
@@ -3698,6 +3621,253 @@ local function buildLakeside(parent)
 	squareMountain(m, 0, (MOAT_Z0 + SHELF_Z1) / 2, SHELF_HALF_X, (SHELF_Z1 - MOAT_Z0) / 2, -6, 4)
 end
 
+-- The Grand Keep's main building, south of the Spire gate: two tall stone
+-- wings with a wide vaulted passage between them (the walk to the Spire),
+-- two big front towers with cone roofs, and one long red roof over it all.
+-- (The wings become the Auction House later.)
+local function buildGreatHall(parent)
+	local m = folder(parent, "GreatHall")
+	local z0, z1 = -110, -74 -- back and front
+	local zc, depth = (z0 + z1) / 2, z1 - z0
+	local H = 34
+	local PASS = 12 -- half the passage's width
+	for _, sx in ipairs({ -1, 1 }) do
+		local xa, xb = sx * PASS, sx * 40
+		local xc, w = (xa + xb) / 2, math.abs(xb - xa)
+		part(m, "Wing", V3(w, H, depth), CFrame.new(xc, H / 2, zc), KEEP_STONE, Mat.Cobblestone)
+		part(m, "WingPlinth", V3(w + 1, 3, depth + 1), CFrame.new(xc, 1.5, zc), KEEP_DARK, Mat.Cobblestone)
+		part(m, "WingBand", V3(w + 0.6, 1, depth + 0.6), CFrame.new(xc, 18, zc), KEEP_DARK, Mat.Cobblestone)
+		-- tall glowing windows on the front, and a banner between them
+		for _, t in ipairs({ 0.3, 0.7 }) do
+			local x = xa + (xb - xa) * t
+			part(m, "HallWindow", V3(3, 8, 0.4), CFrame.new(x, 25, z1 + 0.2), RGB(255, 200, 110), Mat.Neon)
+			part(m, "HallWindowSill", V3(4, 0.6, 1), CFrame.new(x, 20.7, z1 + 0.5), KEEP_DARK, Mat.Cobblestone)
+		end
+		banner(m, V3(sx * 26, 12, z1 + 0.1), V3(0, 0, 1), sx < 0 and BANNER_RED or BANNER_BLUE)
+		-- the front towers
+		local tx = sx * 42
+		cylinder(m, "FrontTower", H + 16, 16, CFrame.new(tx, (H + 16) / 2, z1), KEEP_STONE, Mat.Cobblestone)
+		cylinder(m, "FrontTowerBand", 1.2, 17.4, CFrame.new(tx, H * 0.6, z1), KEEP_DARK, Mat.Cobblestone)
+		cylinder(m, "FrontTowerLedge", 1.6, 18, CFrame.new(tx, H + 16.8, z1), KEEP_DARK, Mat.Cobblestone)
+		coneRoof(m, V3(tx, H + 17.5, z1), 10, 28, ROOF_RED, 12)
+		wallTorch(m, V3(sx * (PASS + 2.5), 10, z1), V3(0, 0, 1))
+	end
+	-- the passage's vault and the arch over its front
+	part(m, "PassageRoof", V3(PASS * 2 + 0.2, H - 24, depth), CFrame.new(0, 24 + (H - 24) / 2, zc), KEEP_STONE, Mat.Cobblestone)
+	for k = 0, 11 do
+		local a0, a1 = k / 12 * math.pi, (k + 1) / 12 * math.pi
+		local R = PASS
+		local p0 = V3(math.cos(a0) * R, 12 + math.sin(a0) * R, z1 + 0.4)
+		local p1 = V3(math.cos(a1) * R, 12 + math.sin(a1) * R, z1 + 0.4)
+		local mid = (p0 + p1) / 2
+		part(m, "Voussoir", V3(2.2, 1.4, (p1 - p0).Magnitude + 0.3), CFrame.lookAt(mid, mid + (p1 - p0).Unit, V3(0, 0, 1)), KEEP_DARK, Mat.Cobblestone)
+		-- (fill the corners above the round arch)
+		local x = -R + (k + 0.5) * (2 * R / 12)
+		local top = 12 + math.sqrt(math.max(0, R * R - x * x))
+		part(m, "ArchFill", V3(2 * R / 12 + 0.02, 24 - top, 1.2), CFrame.new(x, (top + 24) / 2, z1 - 0.4), KEEP_STONE, Mat.Cobblestone)
+	end
+	-- one long red roof along the whole keep
+	local roofH, run = 16, depth / 2 + 1
+	for _, s in ipairs({ -1, 1 }) do
+		local w = Instance.new("WedgePart")
+		w.Name = "KeepRoof"
+		w.Anchored = true
+		w.Size = V3(82, roofH, run)
+		w.CFrame = CFrame.fromMatrix(V3(0, H + roofH / 2, zc + s * run / 2), V3(-s, 0, 0), V3(0, 1, 0), V3(0, 0, -s))
+		w.Color = ROOF_RED
+		w.Material = Mat.SmoothPlastic
+		w.TopSurface = Enum.SurfaceType.Smooth
+		w.BottomSurface = Enum.SurfaceType.Smooth
+		w.Parent = m
+	end
+	-- dormer spirelets along the ridge
+	for _, x in ipairs({ -24, 0, 24 }) do
+		coneRoof(m, V3(x, H + roofH - 3, zc), 2.6, 12, ROOF_RED, 7)
+	end
+	titleSign(m, CFrame.new(0, 30, z1 + 2), "The Spire", nil, RGB(140, 180, 255), 300, 90)
+end
+
+-- The fountain in the middle of the plaza: a round basin, a pillar with two
+-- tiers of bowls, and water spilling down.
+local function buildFountain(parent)
+	local m = Instance.new("Model")
+	m.Name = "Fountain"
+	m.Parent = parent
+	local stone, dark = RGB(196, 190, 204), RGB(140, 136, 152)
+	cylinder(m, "BasinWall", 2.2, 20, CFrame.new(0, 1.1, 0), stone, Mat.Slate)
+	cylinder(m, "BasinRim", 0.6, 21, CFrame.new(0, 2.5, 0), dark, Mat.Slate)
+	cylinder(m, "Water", 0.4, 18.6, CFrame.new(0, 2.05, 0), WATER, Mat.SmoothPlastic, { Transparency = 0.2, CanCollide = false })
+	cylinder(m, "Pillar", 9, 2.6, CFrame.new(0, 6.5, 0), stone, Mat.Slate)
+	cylinder(m, "BowlLow", 1.2, 9, CFrame.new(0, 6, 0), dark, Mat.Slate)
+	cylinder(m, "BowlLowWater", 0.3, 8, CFrame.new(0, 6.5, 0), WATER, Mat.SmoothPlastic, { CanCollide = false })
+	cylinder(m, "BowlHigh", 1, 5, CFrame.new(0, 10, 0), dark, Mat.Slate)
+	cylinder(m, "BowlHighWater", 0.3, 4.2, CFrame.new(0, 10.45, 0), WATER, Mat.SmoothPlastic, { CanCollide = false })
+	ball(m, "Top", 1.8, CFrame.new(0, 11.6, 0), GOLD, Mat.Metal)
+	-- water falling from the bowls, in thin rings
+	cylinder(m, "SpillLow", 3.6, 8.4, CFrame.new(0, 4.1, 0), RGB(170, 215, 255), Mat.SmoothPlastic, { Transparency = 0.55, CanCollide = false, CanQuery = false })
+	cylinder(m, "SpillHigh", 3, 4.6, CFrame.new(0, 8.3, 0), RGB(170, 215, 255), Mat.SmoothPlastic, { Transparency = 0.55, CanCollide = false, CanQuery = false })
+	local spout = anchorPart(m, "Spout", CFrame.new(0, 11.8, 0))
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 18
+	e.Color = ColorSequence.new(RGB(210, 235, 255))
+	e.Size = NumberSequence.new(0.5, 0.2)
+	e.Lifetime = NumberRange.new(0.8, 1.1)
+	e.Speed = NumberRange.new(6, 8)
+	e.SpreadAngle = Vector2.new(25, 25)
+	e.Acceleration = V3(0, -30, 0)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Parent = spout
+end
+
+-- The Pet Sanctuary (north-west): a fenced flower garden round a tall
+-- round tower with a cone roof. (Pets come later - the tower is waiting.)
+local function buildPetSanctuary(parent)
+	local m = folder(parent, "PetSanctuary")
+	local x0, x1, z0, z1 = -110, -60, -108, -58
+	part(m, "GardenLawn", V3(x1 - x0, 0.3, z1 - z0), CFrame.new((x0 + x1) / 2, 0.15, (z0 + z1) / 2), RGB(110, 200, 96), Mat.Grass)
+	fence(m, V3(x1, 0, z0), V3(x1, 0, z1))
+	fence(m, V3(x0 + 2, 0, z1), V3(-89, 0, z1)) -- the front, with a gap for the path
+	fence(m, V3(-71, 0, z1), V3(x1, 0, z1))
+	local tx, tz = -80, -86
+	cylinder(m, "Tower", 44, 18, CFrame.new(tx, 22, tz), RGB(200, 190, 170), Mat.Cobblestone)
+	cylinder(m, "TowerBand", 1.2, 19.4, CFrame.new(tx, 26, tz), RGB(150, 120, 90), Mat.Cobblestone)
+	cylinder(m, "TowerLedge", 1.6, 20, CFrame.new(tx, 44.8, tz), RGB(150, 120, 90), Mat.Cobblestone)
+	coneRoof(m, V3(tx, 45.5, tz), 11, 30, RGB(214, 90, 140), 12)
+	part(m, "TowerDoor", V3(5, 8, 0.6), CFrame.new(tx + 3, 4, tz + 9.1) * CFrame.Angles(0, math.rad(20), 0), RGB(110, 70, 44), Mat.WoodPlanks)
+	for _, y in ipairs({ 18, 32 }) do
+		part(m, "TowerWindow", V3(2, 3.6, 0.4), CFrame.new(tx + 3, y, tz + 9.1) * CFrame.Angles(0, math.rad(20), 0), RGB(255, 200, 110), Mat.Neon)
+	end
+	-- ivy on the tower
+	for i = 0, 5 do
+		local a = i * 1.1
+		local len = 10 + (i % 3) * 6
+		part(m, "Ivy", V3(1, len, 0.5), CFrame.new(tx + math.cos(a) * 9.1, 40 - len / 2, tz + math.sin(a) * 9.1) * CFrame.Angles(0, -a + math.pi / 2, 0), RGB(80, 150, 70), Mat.Grass, { CanCollide = false })
+	end
+	for _, f in ipairs({ { -100, -70 }, { -70, -104 }, { -100, -84 }, { -104, -64 }, { -66, -66 }, { -82, -100 } }) do
+		flowers(m, f[1], f[2], 4)
+	end
+	blossomTree(m, -102, -98, 0.8)
+	bush(m, -106, -104, 0.9)
+	titleSign(m, CFrame.new(-80, 12, z1 + 2), "Pet Sanctuary", nil, RGB(255, 150, 200), 320, 70)
+end
+
+-- The Farm Colosseum (south-west): for now the practice dummies stand in a
+-- fenced farm field with hay bales, until the real colosseum is built.
+local function buildFarmField(parent)
+	local m = folder(parent, "FarmField")
+	local Y = Config.Yard
+	local first, last = Config.zonePosition(1), Config.zonePosition(#Config.Zones)
+	local x0, x1 = -112, (Y.CenterX or 0) + Y.PerRow * Y.Spacing / 2 - 0.5
+	local z0, z1 = first.Z - Y.PadSize / 2 - 6, last.Z + Y.PadSize / 2 + 6
+	fence(m, V3(x0, 0, z0), V3(x1, 0, z0))
+	fence(m, V3(x0, 0, z1), V3(x1, 0, z1))
+	fence(m, V3(x1, 0, z0), V3(x1, 0, 84))
+	fence(m, V3(x1, 0, 96), V3(x1, 0, z1))
+	local HAY = RGB(222, 190, 90)
+	for _, h in ipairs({ { x1 - 3, 80 }, { x1 - 3, 100 }, { x0 + 4, z0 + 4 }, { x0 + 4, z1 - 4 }, { x1 - 4, z1 - 4 } }) do
+		part(m, "HayBale", V3(4, 3, 3), CFrame.new(h[1], 1.5, h[2]), HAY, Mat.Grass)
+		part(m, "HayBand", V3(4.1, 3.1, 0.4), CFrame.new(h[1], 1.5, h[2]), RGB(150, 110, 60), Mat.Fabric, { CanCollide = false })
+	end
+	part(m, "HayTop", V3(4, 3, 3), CFrame.new(x1 - 3, 4.5, 80), HAY, Mat.Grass)
+	titleSign(m, CFrame.new(x1, 13, 90), "Training Field", nil, RGB(255, 220, 110), 320, 80)
+end
+
+-- A stream down the east side of the castle: it springs from a grotto in
+-- rocks in the north-east corner, runs past the forge and turns its
+-- waterwheel, and drains away through a grated culvert in the south-east.
+local function buildRiver(parent)
+	local m = folder(parent, "River")
+	local x0, x1 = 102, 114
+	local zN, zS = -100, 157
+	part(m, "RiverWater", V3(x1 - x0, 0.35, zS - zN), CFrame.new((x0 + x1) / 2, 0.22, (zN + zS) / 2), WATER, Mat.SmoothPlastic, {
+		Transparency = 0.15, CanCollide = false, CanQuery = false,
+	})
+	for i = 0, math.floor((zS - zN) / 14) do
+		local z = zN + i * 14 + 7
+		part(m, "RiverRipple", V3(3, 0.05, 0.4), CFrame.new(x0 + 3 + (i % 3) * 3, 0.42, z), RGB(190, 225, 255), Mat.SmoothPlastic, { CanCollide = false, CanQuery = false })
+	end
+	-- the bank stones along the castle side
+	for z = zN + 2, zS - 2, 6 do
+		if math.abs(z - 0) > 9 then
+			part(m, "BankStone", V3(1.6, 1 + rnd() * 0.6, 5.6), CFrame.new(x0 - 0.6, 0.5, z), rockColor(0.05), Mat.Slate)
+		end
+	end
+	-- the grotto: rocks round a spring pouring out of the north wall
+	for i = 0, 6 do
+		local a = i / 6 * math.pi
+		part(m, "GrottoRock", V3(6, 5 + rnd() * 6, 5), CFrame.new(108 + math.cos(a) * 9, 2, -104 + math.sin(a) * 3) * CFrame.Angles(0, rnd() * math.pi, 0), rockColor(0.1), Mat.Slate)
+	end
+	part(m, "Spring", V3(8, 10, 1), CFrame.new(108, 5, -101), RGB(150, 205, 255), Mat.SmoothPlastic, { Transparency = 0.3, CanCollide = false, CanQuery = false })
+	-- where it drains away underground, through a grate in a stone culvert
+	part(m, "Culvert", V3(x1 - x0 + 3, 5, 3), CFrame.new((x0 + x1) / 2, 2.5, zS + 1.5), STONE_DARK, Mat.Cobblestone)
+	for x = x0 + 1, x1 - 1, 2 do
+		part(m, "GrateBar", V3(0.5, 3.6, 0.5), CFrame.new(x, 1.8, zS - 0.2), GATE_IRON, Mat.Metal)
+	end
+	-- the forge's waterwheel
+	local wz = Config.Stations.Craft.Z
+	local wx = 108
+	part(m, "WheelAxle", V3(12, 1, 1), CFrame.new(wx - 4, 8, wz), RGB(70, 50, 34), Mat.Wood)
+	for _, dx in ipairs({ -2, 2 }) do
+		part(m, "WheelRim", V3(0.8, 16, 16), CFrame.new(wx + dx, 8, wz), RGB(120, 84, 50), Mat.WoodPlanks, { Shape = Enum.PartType.Cylinder, CanCollide = false })
+	end
+	part(m, "WheelHub", V3(4.4, 12, 12), CFrame.new(wx, 8, wz), WATER, Mat.SmoothPlastic, { Shape = Enum.PartType.Cylinder, Transparency = 1, CanCollide = false })
+	for i = 0, 7 do
+		local a = i / 8 * math.pi
+		part(m, "WheelPaddle", V3(4.6, 15.6, 0.6), CFrame.new(wx, 8, wz) * CFrame.Angles(a, 0, 0), RGB(150, 104, 62), Mat.WoodPlanks, { CanCollide = false })
+	end
+end
+
+-- A windmill in the south-east corner, over a little pumpkin patch
+local function buildWindmill(parent)
+	local m = folder(parent, "Windmill")
+	local x, z = 72, 128
+	for i = 0, 3 do
+		cylinder(m, "MillBody", 7, 16 - i * 2, CFrame.new(x, 3.5 + i * 7, z), RGB(236, 226, 206), Mat.Plastic)
+	end
+	coneRoof(m, V3(x, 28, z), 7, 12, ROOF_RED, 8)
+	part(m, "MillDoor", V3(4, 6, 0.5), CFrame.new(x, 3, z - 7.8), RGB(110, 70, 44), Mat.WoodPlanks)
+	local hub = CFrame.new(x, 22, z - 6.5)
+	part(m, "MillHub", V3(2, 2, 2), hub, RGB(90, 60, 40), Mat.Wood)
+	for i = 0, 3 do
+		local c = hub * CFrame.Angles(0, 0, i * math.pi / 2 + 0.3) * CFrame.new(0, 8, -0.4)
+		part(m, "MillArm", V3(0.6, 16, 0.4), c, RGB(90, 60, 40), Mat.Wood, { CanCollide = false })
+		part(m, "MillSail", V3(3.4, 12, 0.2), c * CFrame.new(1.9, 1, 0), RGB(245, 240, 228), Mat.Fabric, { CanCollide = false })
+	end
+	for i = 0, 9 do
+		local px, pz = 40 + (i % 5) * 6, 98 + math.floor(i / 5) * 6
+		ball(m, "Pumpkin", 2.4 + rnd() * 0.8, CFrame.new(px, 1, pz), RGB(240, 140, 40), Mat.SmoothPlastic)
+		part(m, "PumpkinStem", V3(0.3, 0.8, 0.3), CFrame.new(px, 2.4, pz), RGB(80, 120, 50), Mat.Wood, { CanCollide = false })
+	end
+	fence(m, V3(34, 0, 110), V3(66, 0, 110))
+end
+
+-- A rocky cliff at the east end of the lake, with a waterfall pouring off
+-- its top into the water (like the pictures).
+local function buildLakeFalls(parent)
+	local m = folder(parent, "LakeFalls")
+	local cx, cz = 98, (LAKE_Z0 + LAKE_Z1) / 2
+	for i = 0, 9 do
+		local h = 18 + rnd() * 20
+		part(m, "Cliff", V3(10 + rnd() * 6, h, 12 + rnd() * 6), CFrame.new(cx + (rnd() - 0.3) * 12, h / 2 - 2, cz - 30 + i * 6.5) * CFrame.Angles(0, (rnd() - 0.5) * 0.5, 0), rockColor(rnd() * 0.3), Mat.Slate)
+	end
+	part(m, "CliffTop", V3(16, 2, 20), CFrame.new(cx + 2, 34, cz), RGB(96, 180, 84), Mat.Grass)
+	part(m, "Falls", V3(1.5, 36, 10), CFrame.new(LAKE_X1 + 4, 16, cz), RGB(150, 205, 255), Mat.SmoothPlastic, { Transparency = 0.25, CanCollide = false, CanQuery = false })
+	for i = 0, 2 do
+		part(m, "FallsStreak", V3(0.3, 36, 1), CFrame.new(LAKE_X1 + 3.1, 16, cz - 3 + i * 3), RGB(235, 248, 255), Mat.SmoothPlastic, { Transparency = 0.4, CanCollide = false, CanQuery = false })
+	end
+	local foam = anchorPart(m, "FallsFoam", CFrame.new(LAKE_X1 + 1, -0.5, cz))
+	foam.Size = V3(4, 1, 10)
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 16
+	e.Color = ColorSequence.new(RGB(240, 250, 255))
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 4) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(1, 1.6)
+	e.Speed = NumberRange.new(3, 6)
+	e.SpreadAngle = Vector2.new(60, 60)
+	e.Parent = foam
+end
+
 local function buildCastle(parent)
 	local m = folder(parent, "Castle")
 	buildKeep(m)
@@ -3715,6 +3885,13 @@ local function buildCastle(parent)
 		bartizan(m, V3(x, 0, -121), V3(0, 0, -1))
 	end
 	buildLakeside(m)
+	buildLakeFalls(m)
+	buildGreatHall(m)
+	buildFountain(m)
+	buildPetSanctuary(m)
+	buildFarmField(m)
+	buildRiver(m)
+	buildWindmill(m)
 end
 
 ----------------------------------------------------------------------

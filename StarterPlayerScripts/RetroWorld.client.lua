@@ -818,7 +818,9 @@ local function cobblePlaza(ground)
 	local cell = 2.2
 	local outer = rings[#rings].r
 	-- (the middle is paved too, unless something stands there)
-	local innerGap = ground.Parent:FindFirstChild("PrestigeShrine") and 12.6 or -1
+	local innerGap = ground.Parent:FindFirstChild("PrestigeShrine") and 12.6
+		or (ground.Parent:FindFirstChild("Fountain", true) and 10.5)
+		or -1
 	for iz = -math.ceil(outer / cell), math.ceil(outer / cell) do
 		local shift = (iz % 2 == 0) and 0 or cell / 2
 		for ix = -math.ceil(outer / cell), math.ceil(outer / cell) do
