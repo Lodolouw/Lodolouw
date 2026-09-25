@@ -78,7 +78,8 @@ local function defaultData()
 		Stats = {}, -- stat points spent: [stat] = points (see Config.StatPoints)
 		-- today's quests (see Config.Quests): which day they're for, and for
 		-- each one how far along you are and whether you've handed it in
-		Quests = { day = 0, list = {}, bonus = false },
+		-- (three are offered each day; `pick` is the one you chose, 1-3)
+		Quests = { day = 0, list = {}, pick = nil },
 	}
 end
 
@@ -175,7 +176,8 @@ local function mergeSaved(saved)
 	-- (anything older is thrown away and today's are dealt out fresh)
 	if type(saved.Quests) == "table" and saved.Quests.day == Config.questDay() and type(saved.Quests.list) == "table" then
 		d.Quests.day = saved.Quests.day
-		d.Quests.bonus = saved.Quests.bonus == true
+		local pick = tonumber(saved.Quests.pick)
+		d.Quests.pick = (pick and pick >= 1 and pick <= Config.Quests.PerDay) and math.floor(pick) or nil
 		for _, q in ipairs(saved.Quests.list) do
 			local def = type(q) == "table" and Config.QuestById[q.id]
 			if def then
@@ -370,10 +372,10 @@ end
 -- Returns true if it did (so the screen needs the new ones).
 local function ensureQuests(d)
 	local today = Config.questDay()
-	if d.Quests.day == today and #d.Quests.list > 0 then
+	if d.Quests.day == today and #d.Quests.list == Config.Quests.PerDay then
 		return false
 	end
-	d.Quests = { day = today, list = {}, bonus = false }
+	d.Quests = { day = today, list = {}, pick = nil }
 	for _, id in ipairs(Config.questsForDay(today)) do
 		table.insert(d.Quests.list, { id = id, n = 0, claimed = false })
 	end
@@ -389,8 +391,9 @@ function PlayerService.QuestProgress(player, kind, amount)
 	end
 	local d = profile.data
 	local changed = ensureQuests(d)
-	for _, q in ipairs(d.Quests.list) do
-		local def = Config.QuestById[q.id]
+	-- (only the quest you picked counts)
+	for i, q in ipairs(d.Quests.list) do
+		local def = i == d.Quests.pick and Config.QuestById[q.id]
 		if def and def.kind == kind and not q.claimed and q.n < def.goal then
 			q.n = math.min(def.goal, q.n + (amount or 1))
 			changed = true
@@ -719,8 +722,28 @@ handlers.ResetStats = function(player, d)
 	return true, "Stat points refunded."
 end
 
--- Hand in a finished quest at the Quest Board (arg = its place on the board, 1-3)
-handlers.ClaimQuest = function(player, d, index)
+-- Choose today's quest at the Quest Board (arg = its place on the board, 1-3).
+-- One a day: once you've picked, that's the one.
+handlers.PickQuest = function(player, d, index)
+	if not nearStation(player, "Quests") then
+		return false, "Walk up to the Quest Board first!"
+	end
+	ensureQuests(d)
+	if d.Quests.pick then
+		return false, "You've already picked today's quest."
+	end
+	local q = type(index) == "number" and d.Quests.list[index]
+	local def = q and Config.QuestById[q.id]
+	if not def then
+		return false, "There's no such quest."
+	end
+	d.Quests.pick = index
+	markDirty(player)
+	return true, "Quest taken: " .. Config.questText(def)
+end
+
+-- Hand in today's quest once it's done
+handlers.ClaimQuest = function(player, d)
 	if not nearStation(player, "Quests") then
 		return false, "Walk up to the Quest Board first!"
 	end
@@ -728,10 +751,10 @@ handlers.ClaimQuest = function(player, d, index)
 		markDirty(player)
 		return false, "A new day - new quests!"
 	end
-	local q = type(index) == "number" and d.Quests.list[index]
+	local q = d.Quests.pick and d.Quests.list[d.Quests.pick]
 	local def = q and Config.QuestById[q.id]
 	if not def then
-		return false, "There's no such quest."
+		return false, "Pick a quest first!"
 	end
 	if q.claimed then
 		return false, "You've already handed that one in."
@@ -741,24 +764,8 @@ handlers.ClaimQuest = function(player, d, index)
 	end
 	q.claimed = true
 	d.Coins = d.Coins + def.reward
-	local msg = "+" .. Config.format(def.reward) .. " coins!"
-	-- all of today's handed in: a treasure chest from the hardest boss you've beaten
-	local all = true
-	for _, other in ipairs(d.Quests.list) do
-		if not other.claimed then
-			all = false
-		end
-	end
-	if all and not d.Quests.bonus and Config.Quests.BonusChest then
-		d.Quests.bonus = true
-		local floorId = math.max(1, highestCleared(d))
-		if Items.ByFloor[floorId] then
-			d.Chests[tostring(floorId)] = (d.Chests[tostring(floorId)] or 0) + 1
-			msg = msg .. " All done today: a bonus treasure chest!"
-		end
-	end
 	markDirty(player)
-	return true, msg
+	return true, "+" .. Config.format(def.reward) .. " coins!"
 end
 
 handlers.SetAuto = function(player, d, on)

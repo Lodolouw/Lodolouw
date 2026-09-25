@@ -444,6 +444,11 @@ local function leave(player)
 	endSession(player)
 	player:SetAttribute("Colosseum", nil)
 	send(player, "Left")
+	-- walking out heals you back to full
+	local _, hum = rootOf(player)
+	if hum then
+		hum.Health = hum.MaxHealth
+	end
 	local back = CollectionService:GetTagged("ColosseumReturn")[1]
 	if not back then
 		return

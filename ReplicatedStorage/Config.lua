@@ -95,15 +95,14 @@ end
 ----------------------------------------------------------------------
 -- Daily quests (the Quest Board)
 ----------------------------------------------------------------------
--- Every day (midnight UTC) everyone gets the same PerDay quests, picked
--- from the pool below - never two of the same kind on one day. Finish one,
--- walk to the Quest Board and hand it in for the coins. Hand in all of the
--- day's quests for a bonus treasure chest from the hardest boss you've beaten.
+-- Every day (midnight UTC) the Quest Board offers the same PerDay quests
+-- to everyone, picked from the pool below - never two of the same kind on
+-- one day. You choose ONE of them; finish it, then hand it in at the board
+-- for the coins (it gets stamped COMPLETED).
 --   kind: arena = dummies beaten in the Colosseum, boss = Spire bosses beaten,
 --         sell = items sold, chest = treasure chests opened
 Config.Quests = {
 	PerDay = 3,
-	BonusChest = true,
 	Pool = {
 		{ id = "Arena10", kind = "arena", goal = 10, reward = 80, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Arena30", kind = "arena", goal = 30, reward = 150, text = "Beat %d dummies in the Colosseum" },

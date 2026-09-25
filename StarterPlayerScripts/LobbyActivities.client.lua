@@ -69,14 +69,52 @@ local function say(text, color)
 	end
 end
 
-local function claim(index)
+local notesRef -- (the cards, once built)
+local bgRef -- (the cork panel, shaken by the stamp)
+
+-- The stamp: a big red COMPLETED slams down onto the card from above the
+-- screen, the board jolts, and it stays there.
+local function stamp(index)
+	local n = notesRef and notesRef[index]
+	if not n then
+		return
+	end
+	local st = n.stamp
+	st.Visible = true
+	local scale = st:FindFirstChildOfClass("UIScale")
+	for k = 0, 6 do
+		scale.Scale = 3 - 2 * (k / 6) ^ 2 -- (falling towards you, faster and faster)
+		st.TextTransparency = 1 - k / 6
+		task.wait(1 / 40)
+	end
+	scale.Scale = 1
+	st.TextTransparency = 0
+	-- THUMP: the whole board jolts
+	local home = bgRef.Position
+	for k = 1, 6 do
+		bgRef.Position = home + UDim2.fromOffset((k % 2 == 0 and -1 or 1) * (7 - k), (k % 2 == 0 and 1 or -1) * (6 - k))
+		task.wait(1 / 40)
+	end
+	bgRef.Position = home
+end
+
+-- A card's button: pick it (if you haven't picked today's quest yet), or
+-- hand it in (if it's the one you picked and it's done).
+local function act(index)
+	local pick = quests and quests.pick
 	local ok, ok2, msg = pcall(function()
-		return Remotes.Action:InvokeServer("ClaimQuest", index)
+		if not pick then
+			return Remotes.Action:InvokeServer("PickQuest", index)
+		end
+		return Remotes.Action:InvokeServer("ClaimQuest")
 	end)
 	if not ok then
 		say("Couldn't reach the server.", RED)
-	else
-		say(tostring(msg or ""), ok2 and GREEN or RED)
+		return
+	end
+	say(tostring(msg or ""), ok2 and GREEN or RED)
+	if ok2 and pick then
+		task.spawn(stamp, index)
 	end
 end
 
@@ -99,6 +137,8 @@ local function buildMenu()
 	bg.Position = UDim2.fromScale(0.5, 0.5)
 	bg.Size = UDim2.fromScale(0.62, 0.62)
 	bg.Parent = gui
+	bgRef = bg
+	notesRef = notes
 	local aspect = Instance.new("UIAspectRatioConstraint")
 	aspect.AspectRatio = 1.7
 	aspect.Parent = bg
@@ -177,9 +217,23 @@ local function buildMenu()
 		btn.Position = UDim2.fromScale(0.1, 0.83)
 		btn.Parent = note
 		btn.Activated:Connect(function()
-			claim(i)
+			act(i)
 		end)
 		n.button = btn
+		-- the COMPLETED stamp (hidden until it's handed in)
+		local st = label(note, "COMPLETED", UDim2.fromScale(1.05, 0.2), UDim2.fromScale(-0.025, 0.36), RED)
+		st.Name = "Stamp"
+		st.Rotation = -18
+		st.ZIndex = 5
+		st.Visible = false
+		local ring = Instance.new("UIStroke")
+		ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		ring.Color = RED
+		ring.Thickness = 4
+		ring.Parent = st
+		local sc = Instance.new("UIScale")
+		sc.Parent = st
+		n.stamp = st
 		notes[i] = n
 	end
 end
@@ -196,13 +250,9 @@ local function timeLeft()
 end
 
 local function hasHandIn()
-	for _, q in ipairs((quests and quests.list) or {}) do
-		local def = Config.QuestById[q.id]
-		if def and not q.claimed and q.n >= def.goal then
-			return true
-		end
-	end
-	return false
+	local q = quests and quests.pick and quests.list and quests.list[quests.pick]
+	local def = q and Config.QuestById[q.id]
+	return def ~= nil and not q.claimed and q.n >= def.goal
 end
 
 local function render()
@@ -210,48 +260,59 @@ local function render()
 		return
 	end
 	local list = (quests and quests.list) or {}
-	local allClaimed = #list > 0
+	local pick = quests and quests.pick
+	local handedIn = false
 	for i, n in ipairs(notes) do
 		local q = list[i]
 		local def = q and Config.QuestById[q.id]
 		n.frame.Visible = def ~= nil
 		if def then
+			local mine = pick == i
 			local done = q.n >= def.goal
-			n.frame.BackgroundColor3 = q.claimed and PAPER_DONE or PAPER
 			n.text.Text = Config.questText(def)
-			local filled = math.floor(q.n / def.goal * 10 + 1e-6)
+			local filled = mine and math.floor(q.n / def.goal * 10 + 1e-6) or 0
 			for b, blk in ipairs(n.blocks) do
 				blk.BackgroundColor3 = (b <= filled) and (done and GREEN or GOLD) or RGB(58, 68, 102)
 			end
-			n.count.Text = Config.format(q.n) .. " / " .. Config.format(def.goal)
+			n.count.Text = mine and (Config.format(q.n) .. " / " .. Config.format(def.goal)) or ""
 			n.reward.Text = Config.format(def.reward) .. " coins"
-			if q.claimed then
-				n.button.Text = "HANDED IN"
-				n.button.BackgroundColor3 = GREY
-				n.button.TextColor3 = RGB(255, 255, 255)
-				n.button.AutoButtonColor = false
+			-- (the ones you didn't pick fade back)
+			n.frame.BackgroundTransparency = (pick and not mine) and 0.55 or 0
+			n.text.TextTransparency = (pick and not mine) and 0.5 or 0
+			n.frame.BackgroundColor3 = (mine and q.claimed) and PAPER_DONE or PAPER
+			n.stamp.Visible = mine and q.claimed or false
+			if not pick then
+				n.button.Text = "PICK"
+				n.button.BackgroundColor3 = GOLD
+				n.button.TextColor3 = RGB(24, 20, 37)
+				n.button.AutoButtonColor = true
+				n.button.Visible = true
+			elseif not mine then
+				n.button.Visible = false
+			elseif q.claimed then
+				handedIn = true
+				n.button.Visible = false
 			elseif done then
 				n.button.Text = "HAND IN!"
 				n.button.BackgroundColor3 = GREEN
 				n.button.TextColor3 = RGB(255, 255, 255)
 				n.button.AutoButtonColor = true
+				n.button.Visible = true
 			else
-				n.button.Text = "NOT DONE"
+				n.button.Text = "IN PROGRESS"
 				n.button.BackgroundColor3 = RGB(58, 68, 102)
 				n.button.TextColor3 = GREY
 				n.button.AutoButtonColor = false
-			end
-			if not q.claimed then
-				allClaimed = false
+				n.button.Visible = true
 			end
 		end
 	end
-	if quests and quests.bonus then
-		footer.Text = "All done! Bonus chest claimed. New quests in " .. timeLeft()
-	elseif allClaimed then
-		footer.Text = "All done! New quests in " .. timeLeft()
+	if not pick then
+		footer.Text = "Pick ONE quest for today!  New quests in " .. timeLeft()
+	elseif handedIn then
+		footer.Text = "Done for today!  New quests in " .. timeLeft()
 	else
-		footer.Text = "Hand in all 3 for a bonus chest!  New in " .. timeLeft()
+		footer.Text = "Finish it, then hand it in here.  New quests in " .. timeLeft()
 	end
 end
 
