@@ -3157,20 +3157,20 @@ end
 
 ----------------------------------------------------------------------
 -- The castle rebuild: Grand Keep, turrets, south gatehouse,
--- the moat outside the walls
+-- the paved landing and stairs outside the south gate
 ----------------------------------------------------------------------
 -- Gives the castle the storybook personality of the reference pictures:
 -- red cone roofs on every tower, a Grand Keep rising over the Spire gate,
--- little turrets hanging off the outside of the walls, a gatehouse with a drawbridge over a moat on the south
--- side, and outside it a grassy shelf with a fishing lake whose stream
--- pours off the edge of the island as a waterfall.
+-- little turrets hanging off the outside of the walls, and a gatehouse on
+-- the south side, opening onto cosy stairs down to the island.
 local KEEP_STONE = RGB(150, 146, 160)
 local KEEP_DARK = RGB(104, 100, 116)
 local WATER = RGB(64, 136, 214)
-local PLANK = RGB(150, 104, 62)
 
--- the moat, south of the south wall
-local MOAT_Z0, MOAT_Z1 = SOUTH_WALL + 4, SOUTH_WALL + 22
+-- just outside the south wall: the castle's rock ends here, and the paved
+-- landing in front of the south gate reaches out to GATE_LANDING_Z
+local CASTLE_ROCK_S = SOUTH_WALL + 12
+local GATE_LANDING_Z = SOUTH_WALL + 16
 local TERRACE1_TOP = -14 -- the first green terrace below the castle (see the island)
 
 -- A Grand Keep built up over the Spire gate: the gate towers grow a second,
@@ -3246,8 +3246,7 @@ local function bartizan(parent, pos, out)
 end
 
 -- The south gatehouse: a round arch in the south wall between two big
--- round towers with cone roofs, the portcullis pulled up, and the
--- drawbridge let down over the moat.
+-- round towers with cone roofs and the portcullis pulled up.
 local function buildSouthGate(parent)
 	local m = folder(parent, "SouthGate")
 	local z = SOUTH_WALL
@@ -3322,30 +3321,8 @@ local function buildSouthGate(parent)
 		banner(m, V3(x, 30, z + 10.1), V3(0, 0, 1), sx < 0 and BANNER_BLUE or BANNER_RED)
 	end
 	titleSign(m, CFrame.new(0, SPRING + R + 13, z + depth / 2 + 1), "Beach", nil, RGB(120, 200, 255), 300, 90)
-
-	-- the drawbridge, let down across the moat, with chains up to the gatehouse
-	local bz0, bz1 = z + depth / 2, MOAT_Z1 + 1
-	part(m, "Drawbridge", V3(R * 2 - 2, 1, bz1 - bz0), CFrame.new(0, 0.1, (bz0 + bz1) / 2), PLANK, Mat.WoodPlanks)
-	for x = -R + 2, R - 2, 4 do
-		part(m, "BridgeBand", V3(0.6, 1.1, bz1 - bz0), CFrame.new(x, 0.15, (bz0 + bz1) / 2), RGB(60, 58, 64), Mat.Metal)
-	end
-	for _, sx in ipairs({ -1, 1 }) do
-		chain(m, V3(sx * (R - 2), SPRING + 4, z + depth / 2), V3(sx * (R - 2), 0.8, bz1 - 1), 0.5)
-	end
 end
 
--- Outside the south gate: the moat, a sunken channel with water in it all
--- along the south wall, and a grassy bank beyond it where the drawbridge
--- comes down (then stairs lead on down the island to the beach).
-local function buildMoat(parent)
-	local m = folder(parent, "Moat")
-	part(m, "MoatBed", V3(236, 2, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(0, -6, (MOAT_Z0 + MOAT_Z1) / 2 - 2), RGB(84, 80, 72), Mat.Slate)
-	part(m, "MoatWater", V3(236, 3.5, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(0, -3.25, (MOAT_Z0 + MOAT_Z1) / 2 - 2), WATER, Mat.SmoothPlastic, {
-		Transparency = 0.3, CanCollide = false, CanQuery = false,
-	})
-	part(m, "MoatBank", V3(256, 6, 3), CFrame.new(0, -3, MOAT_Z1 + 1.5), RGB(90, 105, 136), Mat.Slate)
-	part(m, "MoatBankTop", V3(256.4, 0.6, 3.4), CFrame.new(0, -0.3, MOAT_Z1 + 1.5), RGB(99, 199, 77), Mat.Grass)
-end
 
 -- The Grand Keep's main building, south of the Spire gate: two tall stone
 -- wings with a wide vaulted passage between them (the walk to the Spire),
@@ -3986,6 +3963,7 @@ local CELL = 6 -- the size of one "pixel" of the island
 local GRID_X0, GRID_X1, GRID_Z0, GRID_Z1 = -420, 420, -420, 520
 local BEACH_TOP = SEA_Y + 1.5
 local STAIR_HALF = 7 -- half the width of the stairs down to the beach
+local PATH_END_X = -18 -- where the path from the gate reaches the cove (and the pier)
 local SPIRE_ISLE_Z = -316
 
 -- how far the castle's rectangle is from (x, z) (0 inside it)
@@ -4081,7 +4059,7 @@ end
 
 -- is (x, z) on (or right beside) the stairs and pier down to the beach?
 local function nearStairs(x, z)
-	return z > MOAT_Z1 - 2 and math.abs(x) < STAIR_HALF + 22
+	return z > SOUTH_WALL + 2 and math.abs(x) < STAIR_HALF + 22
 end
 -- the mushroom house's patch of the cove (it's 40 x 42, facing east)
 local function nearMushroomHouse(x, z)
@@ -4201,11 +4179,8 @@ local function buildIsland(parent)
 	local m = folder(parent, "IslandAndSea")
 	local shadow = { CastShadow = false }
 
-	-- the castle's rock: under the walls and the moat
-	part(m, "IslandRock", V3(256, -6 - ISLAND_FLOOR, 327), CFrame.new(0, (ISLAND_FLOOR - 6) / 2, (-128 + MOAT_Z1 + 3) / 2), ISLE.ROCK2, Mat.Slate, shadow)
-	for _, sx in ipairs({ -1, 1 }) do
-		part(m, "MoatEnd", V3(10, 7, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(sx * 123, -3.5, (MOAT_Z0 + MOAT_Z1) / 2), ISLE.ROCK2, Mat.Slate)
-	end
+	-- the castle's rock: under the walls
+	part(m, "IslandRock", V3(256, -6 - ISLAND_FLOOR, CASTLE_ROCK_S + 128), CFrame.new(0, (ISLAND_FLOOR - 6) / 2, (CASTLE_ROCK_S - 128) / 2), ISLE.ROCK2, Mat.Slate, shadow)
 	wallFootRocks(m)
 
 	-- the island, one pixel (CELL studs) at a time: work out what every
@@ -4223,7 +4198,7 @@ local function buildIsland(parent)
 			local x, z = cellPos(i, j)
 			local L = isleLevel(x, z)
 			-- (no need for grass under the castle's rock, or sand under the Spire's)
-			if L == 3 and math.abs(x) < 125 and z > -125 and z < MOAT_Z1 then
+			if L == 3 and math.abs(x) < 125 and z > -125 and z < CASTLE_ROCK_S - 3 then
 				L = -1
 			elseif L == 2 and (x * x + (z - SPIRE_ISLE_Z) ^ 2) < 86 * 86 then
 				L = -1
@@ -4360,103 +4335,226 @@ local function buildIsland(parent)
 	-- stone stairs from the drawbridge down to the grass, a sandy path to the
 	-- beach with a few steps down, and a wooden pier out over the water
 	local STEP_C, STEP_C2, WALL_C = RGB(192, 203, 220), RGB(139, 155, 180), RGB(90, 105, 136)
-	local function flight(zStart, yTop, yBottom, maxRise, tread)
+	local function flight(xc, zStart, yTop, yBottom, maxRise, tread)
 		local n = math.ceil((yTop - yBottom) / maxRise)
 		local rise = (yTop - yBottom) / n
 		for i = 1, n - 1 do
 			local top = yTop - i * rise
 			local z = zStart + (i - 0.5) * tread
-			part(m, "BeachStair", V3(STAIR_HALF * 2, top - yBottom + 1, tread + 0.02), CFrame.new(0, (top + yBottom - 1) / 2, z), (i % 2 == 0) and STEP_C or STEP_C2, Mat.Slate)
+			part(m, "BeachStair", V3(STAIR_HALF * 2, top - yBottom + 1, tread + 0.02), CFrame.new(xc, (top + yBottom - 1) / 2, z), (i % 2 == 0) and STEP_C or STEP_C2, Mat.Slate)
 		end
 		local zEnd = zStart + (n - 1) * tread
 		for _, sx in ipairs({ -1, 1 }) do
-			local x = sx * (STAIR_HALF + 0.6)
+			local x = xc + sx * (STAIR_HALF + 0.6)
 			local a, b = V3(x, yTop + 0.8, zStart), V3(x, yBottom + 0.8 + rise, zEnd)
 			part(m, "StairWall", V3(1.2, 2.4, (b - a).Magnitude + 1.2), CFrame.lookAt((a + b) / 2, b), WALL_C, Mat.Slate)
 		end
 		return zEnd
 	end
-	local zAt = flight(MOAT_Z1 + 3, 0, TERRACE1_TOP, 0.5, 1)
+	-- The way down from the south gate, made to feel cosy: a paved landing
+	-- outside the gate with lanterns and flower boxes, then wide, shallow
+	-- steps of warm cream stone in two gentle flights with a resting landing
+	-- between them, low stone walls with a wooden handrail either side,
+	-- lanterns, flowers and bushes at the bottom.
+	local zAt
+	do
+		local HW = 9 -- half the width of the stairs
+		local CREAM, CREAM2, EDGE = RGB(234, 212, 170), RGB(232, 183, 150), RGB(194, 133, 105)
+		local STONE, STONE2, WOOD, WOOD2 = RGB(139, 155, 180), RGB(90, 105, 136), RGB(184, 111, 80), RGB(115, 62, 57)
+		local GLOW = RGB(254, 231, 97)
+		local nc = { CanCollide = false }
+		local base = TERRACE1_TOP
+		local function lantern(x, y, z)
+			part(m, "LanternPost", V3(0.8, 4.4, 0.8), CFrame.new(x, y + 2.2, z), WOOD2, Mat.Wood)
+			part(m, "LanternBox", V3(1.3, 1.3, 1.3), CFrame.new(x, y + 5, z), GLOW, Mat.Neon)
+			part(m, "LanternRoof", V3(1.8, 0.4, 1.8), CFrame.new(x, y + 5.85, z), WOOD2, Mat.Wood)
+			part(m, "LanternFoot", V3(1.4, 0.6, 1.4), CFrame.new(x, y + 0.3, z), STONE2, Mat.Slate)
+		end
+		local function flowerBox(x, y, z, alongZ)
+			part(m, "FlowerBox", alongZ and V3(1.4, 0.8, 3.4) or V3(3.4, 0.8, 1.4), CFrame.new(x, y + 0.4, z), WOOD, Mat.WoodPlanks)
+			part(m, "FlowerLeaves", alongZ and V3(1.1, 0.5, 3) or V3(3, 0.5, 1.1), CFrame.new(x, y + 1, z), ISLE.GRASS2, Mat.Grass, nc)
+			for k = -1, 1 do
+				local c = ({ RGB(228, 59, 68), RGB(254, 231, 97), RGB(246, 117, 122) })[k + 2]
+				local o = alongZ and V3(0, 0, k * 1) or V3(k * 1, 0, 0)
+				part(m, "Flower", V3(0.55, 0.55, 0.55), CFrame.new(V3(x, y + 1.45, z) + o), c, Mat.SmoothPlastic, nc)
+			end
+		end
+		-- the landing outside the gate, paved, level with the gateway
+		local z0, z1 = SOUTH_WALL, GATE_LANDING_Z
+		part(m, "GateLanding", V3(HW * 2 + 8, -0.4 - base, z1 - z0), CFrame.new(0, (base - 0.4) / 2, (z0 + z1) / 2), STONE, Mat.Slate)
+		part(m, "GateLandingPaving", V3(HW * 2 + 8, 0.4, z1 - z0), CFrame.new(0, -0.2, (z0 + z1) / 2), CREAM, Mat.Slate)
+		for x = -HW - 1, HW + 1, 4 do
+			part(m, "PavingLine", V3(0.2, 0.42, z1 - z0), CFrame.new(x, -0.2, (z0 + z1) / 2), CREAM2, Mat.Slate, nc)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			local x = sx * (HW + 3.4)
+			local w0 = SOUTH_WALL + 6 -- (clear of the gateway's piers)
+			part(m, "LandingWall", V3(1.2, 2.2, z1 - w0), CFrame.new(x, 1.1, (w0 + z1) / 2), STONE, Mat.Slate)
+			part(m, "LandingWallCap", V3(1.6, 0.4, z1 - w0 + 0.4), CFrame.new(x, 2.4, (w0 + z1) / 2), STONE2, Mat.Slate)
+			flowerBox(x, 2.6, w0 + 3, true)
+			lantern(sx * (HW + 1.5), 0, z1 - 1.2)
+		end
+		-- two flights of wide, shallow steps
+		local RISE, TREAD, STEPS = 0.5, 1.4, 13
+		local function stairFlight(zStart, yTop)
+			for i = 1, STEPS do
+				local top = yTop - i * RISE
+				local za = zStart + (i - 1) * TREAD
+				part(m, "GateStair", V3(HW * 2 + 2.4, top - base, TREAD + 0.02), CFrame.new(0, (top + base) / 2, za + TREAD / 2), (i % 2 == 0) and CREAM or CREAM2, Mat.Slate)
+				part(m, "GateStairEdge", V3(HW * 2, 0.14, 0.3), CFrame.new(0, top + 0.05, za + TREAD - 0.15), EDGE, Mat.Slate, nc)
+				-- solid stone along both sides, closing off the ends of the steps
+				for _, sx in ipairs({ -1, 1 }) do
+					part(m, "StairSide", V3(1.4, top - base - 0.02, TREAD + 0.04), CFrame.new(sx * (HW + 0.65), (top - 0.02 + base) / 2, za + TREAD / 2), STONE, Mat.Slate)
+				end
+			end
+			local zEnd = zStart + STEPS * TREAD
+			local yEnd = yTop - STEPS * RISE
+			for _, sx in ipairs({ -1, 1 }) do
+				local x = sx * (HW + 0.6)
+				local a, b = V3(x, yTop + 1.1, zStart), V3(x, yEnd + 1.1, zEnd)
+				local len = (b - a).Magnitude
+				part(m, "StairWall", V3(1.2, 2.2, len + 1), CFrame.lookAt((a + b) / 2, b), STONE, Mat.Slate)
+				part(m, "StairWallCap", V3(1.6, 0.4, len + 1.2), CFrame.lookAt((a + b) / 2 + V3(0, 1.3, 0), b + V3(0, 1.3, 0)), STONE2, Mat.Slate)
+				-- the wooden handrail on little posts
+				local ra, rb = a + V3(0, 3, 0), b + V3(0, 3, 0)
+				part(m, "Handrail", V3(0.5, 0.4, len), CFrame.lookAt((ra + rb) / 2, rb), WOOD, Mat.WoodPlanks)
+				for k = 0, 3 do
+					local p = a:Lerp(b, (k + 0.5) / 4)
+					part(m, "HandrailPost", V3(0.35, 1.8, 0.35), CFrame.new(p + V3(0, 2.2, 0)), WOOD2, Mat.Wood, nc)
+				end
+			end
+			return zEnd, yEnd
+		end
+		local zA, yA = stairFlight(z1, 0)
+		-- the resting landing, with a lantern and flowers either side
+		local restLen = 8
+		part(m, "RestLanding", V3(HW * 2 + 2.4, yA - base, restLen), CFrame.new(0, (yA + base) / 2, zA + restLen / 2), CREAM, Mat.Slate)
+		for x = -HW, HW, 3 do
+			part(m, "PavingLine", V3(0.2, 0.02, restLen), CFrame.new(x, yA + 0.01, zA + restLen / 2), CREAM2, Mat.Slate, nc)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			local x = sx * (HW + 0.6)
+			part(m, "RestWall", V3(1.2, 2.2, restLen + 1), CFrame.new(x, yA + 1.1, zA + restLen / 2), STONE, Mat.Slate)
+			part(m, "RestWallCap", V3(1.6, 0.4, restLen + 1.2), CFrame.new(x, yA + 2.4, zA + restLen / 2), STONE2, Mat.Slate)
+			flowerBox(x, yA + 2.6, zA + restLen / 2 - 1.5, true)
+			lantern(sx * (HW - 1), yA, zA + restLen / 2 + 2)
+		end
+		local zB = stairFlight(zA + restLen, yA)
+		-- at the bottom: lanterns, bushes and flowers either side
+		for _, sx in ipairs({ -1, 1 }) do
+			lantern(sx * (HW + 3), base, zB + 1.5)
+			blockBush(m, sx * (HW + 6.5), zB - 3, 1, base)
+			blockBush(m, sx * (HW + 5.5), zB - 12, 0.8, base)
+			for _ = 1, 6 do
+				local fx, fz = sx * (HW + 5) + (rnd() - 0.5) * 5, zB + 4 + (rnd() - 0.5) * 5
+				part(m, "FlowerStem", V3(0.25, 0.8, 0.25), CFrame.new(fx, base + 0.4, fz), ISLE.GRASS2, Mat.Grass, nc)
+				part(m, "Flower", V3(0.6, 0.6, 0.6), CFrame.new(fx, base + 0.95, fz), FLOWER_COLORS[1 + math.floor(rnd() * #FLOWER_COLORS)], Mat.SmoothPlastic, nc)
+			end
+		end
+		zAt = zB
+	end
+	local xEnd = PATH_END_X -- where the path reaches the cove
 	local zGrassEnd = zAt
-	while levelAtCell(0, zGrassEnd + 1) == 3 do
+	while levelAtCell(xEnd, zGrassEnd + 1) == 3 do
 		zGrassEnd = zGrassEnd + 1
 	end
-	-- the path across the grass: a worn dirt track that wanders the way a
-	-- real one does - a lazy bend or two that aren't quite regular, edges
-	-- that come and go, pebbles and the odd flat stone in it, and grass
-	-- tufts creeping in from the sides. Laid in rows 1.5 studs deep.
+	-- the path across the grass: a worn dirt track that goes where you'd
+	-- walk - straight down from the gate, bowing out a little, then sweeping
+	-- round towards the cove and the pier in one easy bend. Its edges come
+	-- and go a little, with darker trodden patches, pebbles and the odd flat
+	-- stone, and grass tufts creeping in from the sides. Rows 1.5 studs deep.
 	do
 		local z0, z1 = zAt, zGrassEnd
-		local len = z1 - z0
+		local L = z1 - z0
+		-- the middle line: a smooth curve (a Bezier) from the stairs to the cove
+		local P = { V3(0, 0, z0), V3(4, 0, z0 + 0.42 * L), V3(xEnd + 10, 0, z0 + 0.72 * L), V3(xEnd, 0, z1) }
+		local line = {}
+		for k = 0, 400 do
+			local t = k / 400
+			local u = 1 - t
+			table.insert(line, P[1] * (u * u * u) + P[2] * (3 * u * u * t) + P[3] * (3 * u * t * t) + P[4] * (t * t * t))
+		end
+		local function midX(z)
+			for k = 2, #line do
+				if line[k].Z >= z then
+					local a, b = line[k - 1], line[k]
+					local f = (z - a.Z) / math.max(b.Z - a.Z, 1e-6)
+					return a.X + (b.X - a.X) * f
+				end
+			end
+			return xEnd
+		end
 		local DIRT, DIRT2 = RGB(194, 133, 105), RGB(184, 111, 80)
 		local nc = { CanCollide = false, CanQuery = false }
 		local left, right = 0, 0 -- how far each edge wanders in or out
 		local y = TERRACE1_TOP + 0.15
 		local z = z0
 		while z < z1 do
-			local t = (z - z0) / len
-			-- the middle line: a few uneven waves, fading out at both ends
-			local ends = math.sin(t * math.pi) ^ 0.7
-			local cx = (13 * math.sin(t * 5.3 + 0.4) + 6 * math.sin(t * 11.7 + 2.1) + 2.5 * math.sin(t * 23 + 1)) * ends
-			-- each edge drifts on its own, a little at a time
-			left = math.clamp(left + (rnd() - 0.5) * 1.4, -1.8, 2.2)
-			right = math.clamp(right + (rnd() - 0.5) * 1.4, -1.8, 2.2)
-			local xL = cx - 5.5 - left
-			local xR = cx + 5.5 + right
-			part(m, "BeachPath", V3(xR - xL, 0.3, 1.55), CFrame.new((xL + xR) / 2, y, z + 0.75), DIRT, Mat.Ground, nc)
-			-- darker, trodden patches here and there
-			if rnd() < 0.3 then
-				local pw = 1.5 + rnd() * 2.5
-				part(m, "PathPatch", V3(pw, 0.3, 1.2 + rnd() * 1.2), CFrame.new(xL + pw / 2 + 0.5 + rnd() * math.max(0, xR - xL - pw - 1), y + 0.04, z + 0.75), DIRT2, Mat.Ground, nc)
+			local zc = z + 0.75
+			local cx = midX(zc)
+			left = math.clamp(left + (rnd() - 0.5) * 1, -1.2, 1.5)
+			right = math.clamp(right + (rnd() - 0.5) * 1, -1.2, 1.5)
+			local xL, xR = cx - 5.5 - left, cx + 5.5 + right
+			-- (only on the grass: where the path meets the cove's slanting edge)
+			while xL < xR - 1 and levelAtCell(xL + 0.5, zc) ~= 3 do
+				xL = xL + 0.5
 			end
-			-- pebbles, and now and then a flat stone
-			if rnd() < 0.45 then
-				local s2 = 0.35 + rnd() * 0.4
-				part(m, "PathPebble", V3(s2, 0.25, s2), CFrame.new(xL + 1 + rnd() * (xR - xL - 2), y + 0.2, z + rnd() * 1.5), (rnd() < 0.5) and RGB(139, 155, 180) or RGB(115, 62, 57), Mat.Slate, nc)
+			while xR > xL + 1 and levelAtCell(xR - 0.5, zc) ~= 3 do
+				xR = xR - 0.5
 			end
-			if rnd() < 0.06 then
-				part(m, "PathStone", V3(2 + rnd() * 1.5, 0.3, 1.4 + rnd()), CFrame.new(cx + (rnd() - 0.5) * 4, y + 0.1, z + 0.7) * CFrame.Angles(0, (rnd() - 0.5) * 0.6, 0), RGB(139, 155, 180), Mat.Slate, nc)
-			end
-			-- grass tufts at the edges
-			for _, ex in ipairs({ xL, xR }) do
-				if rnd() < 0.35 then
-					for k = 0, 1 + math.floor(rnd() * 2) do
-						local h = 0.5 + rnd() * 0.6
-						part(m, "PathTuft", V3(0.35, h, 0.35), CFrame.new(ex + (rnd() - 0.5) * 1.2, TERRACE1_TOP + h / 2, z + rnd() * 1.5), (k % 2 == 0) and ISLE.GRASS or ISLE.GRASS2, Mat.Grass, nc)
+			if xR - xL > 1.5 then
+				part(m, "BeachPath", V3(xR - xL, 0.3, 1.55), CFrame.new((xL + xR) / 2, y, zc), DIRT, Mat.Ground, nc)
+				if rnd() < 0.3 and xR - xL > 5 then
+					local pw = 1.5 + rnd() * 2.5
+					part(m, "PathPatch", V3(pw, 0.3, 1.2 + rnd() * 1.2), CFrame.new(xL + pw / 2 + 0.5 + rnd() * math.max(0, xR - xL - pw - 1), y + 0.04, zc), DIRT2, Mat.Ground, nc)
+				end
+				if rnd() < 0.45 then
+					local s2 = 0.35 + rnd() * 0.4
+					part(m, "PathPebble", V3(s2, 0.25, s2), CFrame.new(xL + 0.5 + rnd() * (xR - xL - 1), y + 0.2, z + rnd() * 1.5), (rnd() < 0.5) and RGB(139, 155, 180) or RGB(115, 62, 57), Mat.Slate, nc)
+				end
+				if rnd() < 0.05 then
+					part(m, "PathStone", V3(2 + rnd() * 1.5, 0.3, 1.4 + rnd()), CFrame.new(cx + (rnd() - 0.5) * 4, y + 0.1, zc) * CFrame.Angles(0, (rnd() - 0.5) * 0.6, 0), RGB(139, 155, 180), Mat.Slate, nc)
+				end
+				for _, ex in ipairs({ xL, xR }) do
+					if rnd() < 0.35 and levelAtCell(ex, zc) == 3 then
+						for k = 0, 1 + math.floor(rnd() * 2) do
+							local h = 0.5 + rnd() * 0.6
+							part(m, "PathTuft", V3(0.35, h, 0.35), CFrame.new(ex + (rnd() - 0.5) * 1.2, TERRACE1_TOP + h / 2, z + rnd() * 1.5), (k % 2 == 0) and ISLE.GRASS or ISLE.GRASS2, Mat.Grass, nc)
+						end
 					end
 				end
 			end
 			z = z + 1.5
 		end
 	end
-	zAt = flight(zGrassEnd, TERRACE1_TOP, BEACH_TOP, 0.8, 1)
+	zAt = flight(xEnd, zGrassEnd, TERRACE1_TOP, BEACH_TOP, 0.8, 1)
 	local zBeachEnd = zAt
-	while levelAtCell(0, zBeachEnd + 1) == 2 do
+	while levelAtCell(xEnd, zBeachEnd + 1) == 2 do
 		zBeachEnd = zBeachEnd + 1
 	end
 	for _, sx in ipairs({ -1, 1 }) do
-		local x = sx * (STAIR_HALF + 2.5)
+		local x = xEnd + sx * (STAIR_HALF + 2.5)
 		part(m, "PierLampPost", V3(0.8, 6, 0.8), CFrame.new(x, BEACH_TOP + 3, zAt + 1), RGB(115, 62, 57), Mat.Wood)
 		part(m, "PierLamp", V3(1.2, 1.2, 1.2), CFrame.new(x, BEACH_TOP + 6.4, zAt + 1), RGB(254, 231, 97), Mat.Neon)
 		part(m, "PierLampCap", V3(1.6, 0.4, 1.6), CFrame.new(x, BEACH_TOP + 7.2, zAt + 1), RGB(62, 39, 49), Mat.Metal)
 	end
 	local p0, p1 = zBeachEnd - 10, zBeachEnd + 36
 	local deckY = SEA_Y + 2.2
-	part(m, "Pier", V3(8, 0.6, p1 - p0), CFrame.new(0, deckY, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
+	part(m, "Pier", V3(8, 0.6, p1 - p0), CFrame.new(xEnd, deckY, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
 	for z = p0 + 2, p1, 4 do
-		part(m, "PierPlankLine", V3(8.1, 0.62, 0.2), CFrame.new(0, deckY, z), RGB(115, 62, 57), Mat.WoodPlanks, { CanCollide = false })
+		part(m, "PierPlankLine", V3(8.1, 0.62, 0.2), CFrame.new(xEnd, deckY, z), RGB(115, 62, 57), Mat.WoodPlanks, { CanCollide = false })
 	end
 	for z = p0 + 1, p1 - 1, 8 do
 		for _, sx in ipairs({ -1, 1 }) do
-			part(m, "PierPost", V3(0.9, 7, 0.9), CFrame.new(sx * 3.8, deckY - 2.6, z), RGB(115, 62, 57), Mat.Wood)
-			part(m, "PierRail", V3(0.3, 1.8, 0.3), CFrame.new(sx * 3.8, deckY + 1.1, z), RGB(115, 62, 57), Mat.Wood)
+			part(m, "PierPost", V3(0.9, 7, 0.9), CFrame.new(xEnd + sx * 3.8, deckY - 2.6, z), RGB(115, 62, 57), Mat.Wood)
+			part(m, "PierRail", V3(0.3, 1.8, 0.3), CFrame.new(xEnd + sx * 3.8, deckY + 1.1, z), RGB(115, 62, 57), Mat.Wood)
 		end
 	end
 	for _, sx in ipairs({ -1, 1 }) do
-		part(m, "PierRailBar", V3(0.3, 0.3, p1 - p0), CFrame.new(sx * 3.8, deckY + 1.8, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
+		part(m, "PierRailBar", V3(0.3, 0.3, p1 - p0), CFrame.new(xEnd + sx * 3.8, deckY + 1.8, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
 	end
-	part(m, "PierCrate", V3(2, 2, 2), CFrame.new(2.2, deckY + 1.3, p1 - 3) * CFrame.Angles(0, 0.3, 0), RGB(228, 166, 114), Mat.WoodPlanks)
-	part(m, "PierBarrel", V3(1.8, 2.2, 1.8), CFrame.new(-2.3, deckY + 1.4, p1 - 5), RGB(184, 111, 80), Mat.WoodPlanks)
+	part(m, "PierCrate", V3(2, 2, 2), CFrame.new(xEnd + 2.2, deckY + 1.3, p1 - 3) * CFrame.Angles(0, 0.3, 0), RGB(228, 166, 114), Mat.WoodPlanks)
+	part(m, "PierBarrel", V3(1.8, 2.2, 1.8), CFrame.new(xEnd - 2.3, deckY + 1.4, p1 - 5), RGB(184, 111, 80), Mat.WoodPlanks)
 
 	-- the village: cottages among the trees
 	for _, h in ipairs(ISLE_HOUSES) do
@@ -4556,7 +4654,6 @@ local function buildCastle(parent)
 	for _, x in ipairs({ -76, 76 }) do
 		bartizan(m, V3(x, 0, -121), V3(0, 0, -1))
 	end
-	buildMoat(m)
 	buildGreatHall(m)
 	buildFountain(m)
 	buildPetSanctuary(m)
