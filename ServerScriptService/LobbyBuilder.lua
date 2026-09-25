@@ -5747,9 +5747,8 @@ local function buildSparring(parent)
 end
 
 -- The Quest Board: a wooden notice board with a little roof, by the road
--- between the plaza and the training field. The notes on it are drawn by
--- each player's own screen (QuestBoard client script), because everyone
--- has their own quests. A gold "!" hovers over it when you have a reward
+-- between the plaza and the training field. Walk up and press E: your own
+-- quest menu opens on your screen (LobbyActivities client script). A gold "!" hovers over it when you have a reward
 -- waiting.
 local function buildQuestBoard(parent)
 	local f = folder(parent, "QuestBoard")
@@ -5762,7 +5761,19 @@ local function buildQuestBoard(parent)
 	-- the face the notes are drawn on (its front is local +Z)
 	local face = part(f, "QuestFace", V3(10.6, 6.2, 0.4), O * CFrame.new(0, 6.4, 0.45), RGB(190, 128, 88), Mat.WoodPlanks)
 	CollectionService:AddTag(face, "QuestFace")
-	-- paper notes, in case the notes can't be drawn (they're covered when they are)
+	-- press E at the board to open your quest menu (LobbyActivities opens it)
+	local pp = Instance.new("ProximityPrompt")
+	pp.Name = "QuestPrompt"
+	pp.ActionText = "Quests"
+	pp.ObjectText = "Quest Board"
+	pp.HoldDuration = 0
+	pp.MaxActivationDistance = 14
+	pp.KeyboardKeyCode = Enum.KeyCode.E
+	pp.GamepadKeyCode = Enum.KeyCode.ButtonX
+	pp.RequiresLineOfSight = false
+	pp.Parent = face
+	CollectionService:AddTag(pp, "QuestPrompt")
+	-- paper notes pinned to it
 	for k = -1, 1 do
 		part(f, "Note", V3(2.6, 3.2, 0.1), O * CFrame.new(k * 3.4, 6.6, 0.7) * CFrame.Angles(0, 0, math.rad(k * 4)), RGB(234, 212, 170), Mat.SmoothPlastic, { CanCollide = false })
 	end

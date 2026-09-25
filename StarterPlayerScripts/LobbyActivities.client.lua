@@ -3,11 +3,11 @@
 
 	Your side of two things to do in the lobby:
 
-	  * THE QUEST BOARD - draws today's three quests onto the wooden board by
-	    the south road: what to do, how far along you are, the reward, and a
-	    HAND IN button once it's done. Everyone has their own quests, so each
-	    player's screen draws their own notes on the same board. A gold "!"
-	    bobs over the board while you have one to hand in.
+	  * THE QUEST BOARD - walk up to the wooden board by the south road and
+	    press E: a quest menu opens with today's three quests - what to do,
+	    how far along you are, the reward, and a HAND IN button once it's
+	    done. It closes with the X, or when you walk away. A gold "!" bobs
+	    over the board while you have one to hand in.
 
 	  * SPARRING DUMMIES - when you click a straw dummy you turn to face it
 	    and throw a punch (the server works out the damage; CombatService).
@@ -29,9 +29,9 @@ local FONT = Enum.Font.FredokaOne
 local RGB = Color3.fromRGB
 -- (Endesga-32 colours, like the rest of the game)
 local CORK = RGB(190, 128, 88)
-local PAPER = RGB(234, 212, 170)
-local PAPER_DONE = RGB(190, 230, 160)
-local INK = RGB(38, 43, 68)
+local PAPER = RGB(24, 20, 37) -- (a quest card: the game's black box)
+local PAPER_DONE = RGB(38, 92, 66)
+local INK = RGB(255, 255, 255)
 local RED = RGB(228, 59, 68)
 local GOLD = RGB(254, 174, 52)
 local GREEN = RGB(99, 199, 77)
@@ -79,24 +79,47 @@ local function claim(index)
 	end
 end
 
-local function buildBoard(face)
-	local gui = Instance.new("SurfaceGui")
-	gui.Name = "QuestBoardGui"
-	gui.Adornee = face
-	gui.Face = Enum.NormalId.Back -- (the board's front is its +Z side)
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 60
-	gui.LightInfluence = 0
-	gui.MaxDistance = 90
+local menu -- the ScreenGui
+local function buildMenu()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "QuestMenu"
 	gui.ResetOnSpawn = false
+	gui.Enabled = false
+	gui.DisplayOrder = 5
 	gui.Parent = player:WaitForChild("PlayerGui")
+	menu = gui
 
+	-- the panel: a cork board in the middle of the screen
 	local bg = Instance.new("Frame")
 	bg.Name = "Cork"
 	bg.BackgroundColor3 = CORK
 	bg.BorderSizePixel = 0
-	bg.Size = UDim2.fromScale(1, 1)
+	bg.AnchorPoint = Vector2.new(0.5, 0.5)
+	bg.Position = UDim2.fromScale(0.5, 0.5)
+	bg.Size = UDim2.fromScale(0.62, 0.62)
 	bg.Parent = gui
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1.7
+	aspect.Parent = bg
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(96, 64, 48)
+	edge.Thickness = 6
+	edge.Parent = bg
+
+	local close = Instance.new("TextButton")
+	close.Name = "Close"
+	close.Text = "X"
+	close.Font = FONT
+	close.TextScaled = true
+	close.TextColor3 = RGB(255, 255, 255)
+	close.BackgroundColor3 = RED
+	close.BorderSizePixel = 0
+	close.Size = UDim2.fromScale(0.07, 0.11)
+	close.Position = UDim2.fromScale(0.915, 0.02)
+	close.Parent = bg
+	close.Activated:Connect(function()
+		gui.Enabled = false
+	end)
 
 	header = label(bg, "DAILY QUESTS", UDim2.fromScale(0.9, 0.11), UDim2.fromScale(0.05, 0.02), RGB(255, 255, 255))
 	footer = label(bg, "", UDim2.fromScale(0.9, 0.08), UDim2.fromScale(0.05, 0.9), RGB(255, 255, 255))
@@ -109,7 +132,11 @@ local function buildBoard(face)
 		note.BorderSizePixel = 0
 		note.Size = UDim2.fromScale(0.29, 0.68)
 		note.Position = UDim2.fromScale(0.035 + (i - 1) * 0.322, 0.21)
-		note.Rotation = (i - 2) * 2 -- pinned up a little crooked
+		note.Rotation = (i - 2) * 1.5 -- pinned up a little crooked
+		local ns = Instance.new("UIStroke")
+		ns.Color = RGB(255, 255, 255)
+		ns.Thickness = 2
+		ns.Parent = note
 		note.Parent = bg
 		-- a red pin at the top
 		local pin = Instance.new("Frame")
@@ -124,7 +151,7 @@ local function buildBoard(face)
 		n.text = label(note, "", UDim2.fromScale(0.88, 0.36), UDim2.fromScale(0.06, 0.1))
 		-- progress bar: ten chunky blocks (it's 8-bit)
 		local bar = Instance.new("Frame")
-		bar.BackgroundColor3 = INK
+		bar.BackgroundColor3 = RGB(12, 10, 20)
 		bar.BorderSizePixel = 0
 		bar.Size = UDim2.fromScale(0.88, 0.09)
 		bar.Position = UDim2.fromScale(0.06, 0.49)
@@ -139,7 +166,7 @@ local function buildBoard(face)
 			n.blocks[b] = blk
 		end
 		n.count = label(note, "", UDim2.fromScale(0.88, 0.09), UDim2.fromScale(0.06, 0.59))
-		n.reward = label(note, "", UDim2.fromScale(0.88, 0.1), UDim2.fromScale(0.06, 0.69), RGB(184, 111, 80))
+		n.reward = label(note, "", UDim2.fromScale(0.88, 0.1), UDim2.fromScale(0.06, 0.69), GOLD)
 		local btn = Instance.new("TextButton")
 		btn.Name = "HandIn"
 		btn.Font = FONT
@@ -287,14 +314,36 @@ Remotes:WaitForChild("StateUpdate").OnClientEvent:Connect(function(data)
 	end
 end)
 
-task.spawn(function()
-	local face = CollectionService:GetTagged("QuestFace")[1]
-	while not face do
-		face = CollectionService:GetInstanceAddedSignal("QuestFace"):Wait()
+buildMenu()
+render()
+Remotes:WaitForChild("RequestState"):FireServer()
+
+-- press E at the board: open the menu
+local function hookPrompt(pp)
+	if pp:IsA("ProximityPrompt") then
+		pp.Triggered:Connect(function()
+			render()
+			menu.Enabled = true
+		end)
 	end
-	buildBoard(face)
-	render()
-	Remotes:WaitForChild("RequestState"):FireServer()
+end
+for _, pp in ipairs(CollectionService:GetTagged("QuestPrompt")) do
+	hookPrompt(pp)
+end
+CollectionService:GetInstanceAddedSignal("QuestPrompt"):Connect(hookPrompt)
+
+-- walk away from the board and it closes
+task.spawn(function()
+	while true do
+		task.wait(0.3)
+		if menu.Enabled then
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local board = Config.Stations.Quests
+			if not root or (Vector3.new(root.Position.X - board.X, 0, root.Position.Z - board.Z)).Magnitude > 24 then
+				menu.Enabled = false
+			end
+		end
+	end
 end)
 
 ----------------------------------------------------------------------
