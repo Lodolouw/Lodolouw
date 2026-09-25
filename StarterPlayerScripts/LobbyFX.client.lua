@@ -337,7 +337,7 @@ RunService.Heartbeat:Connect(function(dt)
 			else
 				local g = 0.5 + 0.5 * math.sin(t * w.speed + w.phase)
 				off = w.amp * g
-				tr = w.baseTr + (1 - w.baseTr) * 0.5 * g -- (fainter the further out it reaches)
+				tr = w.baseTr + (1 - w.baseTr) * 0.25 * g -- (a little fainter the further out it reaches)
 			end
 			off = math.floor(off / SNAP + 0.5) * SNAP
 			tr = math.floor(tr * 4 + 0.5) / 4

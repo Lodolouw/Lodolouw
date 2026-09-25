@@ -4317,13 +4317,13 @@ local function buildIsland(parent)
 						if out then
 							for k = 0, 1 do
 								local w = CELL - rnd() * 1.2
-								local at = V3(x, SEA_Y + 0.35 - k * 0.05, z) + out * (CELL / 2 + 0.3 + k * 1.2)
-								local foam = part(m, "Foam", V3(w, 0.1, 1.1 - k * 0.4), CFrame.lookAt(at, at + out), ISLE.FOAM, Mat.SmoothPlastic, {
-									CanCollide = false, CanQuery = false, CastShadow = false, Transparency = k * 0.35,
+								local at = V3(x, SEA_Y + 0.4 - k * 0.05, z) + out * (CELL / 2 + 0.3 + k * 2.2)
+								local foam = part(m, "Foam", V3(w + 0.6, 0.25, 2.2 - k * 0.8), CFrame.lookAt(at, at + out), ISLE.FOAM, Mat.SmoothPlastic, {
+									CanCollide = false, CanQuery = false, CastShadow = false, Transparency = k * 0.15,
 								})
 								foam:SetAttribute("WaveMode", "lap")
 								foam:SetAttribute("WaveDir", out)
-								foam:SetAttribute("WaveAmp", 2 + k * 1.2)
+								foam:SetAttribute("WaveAmp", 3 + k * 1.5)
 								foam:SetAttribute("WaveSpeed", 1.1)
 								foam:SetAttribute("Phase", math.deg(th) * 5 + k * 140)
 								CollectionService:AddTag(foam, "Wave")
@@ -4368,7 +4368,7 @@ local function buildIsland(parent)
 			local at = V3(x, SEA_Y + 0.1, z)
 			local cf = CFrame.lookAt(at, at + dir)
 			local phase, speed = rnd() * 360, 0.08 + rnd() * 0.05
-			for k, piece in ipairs({ { V3(2.8, 0.12, 0.5), CFrame.new() }, { V3(1.4, 0.12, 0.5), CFrame.new(1.9, 0, 0.5) } }) do
+			for k, piece in ipairs({ { V3(5.5, 0.2, 1), CFrame.new() }, { V3(2.8, 0.2, 1), CFrame.new(3.8, 0, 1) } }) do
 				local crest = part(m, "WaveCrest", piece[1], cf * piece[2], ISLE.FOAM, Mat.SmoothPlastic, {
 					CanCollide = false, CanQuery = false, CastShadow = false, Transparency = (k - 1) * 0.2,
 				})
