@@ -564,3 +564,35 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		showBanner("QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins", GREEN, 2.6)
 	end
 end)
+
+----------------------------------------------------------------------
+-- Never stuck in the floor after respawning
+----------------------------------------------------------------------
+-- If a new body turns up with its feet below the ground (it happened after
+-- dying in the Colosseum), lift it out and stand it on top.
+player.CharacterAdded:Connect(function(char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	local root = char:WaitForChild("HumanoidRootPart", 10)
+	if not (hum and root) then
+		return
+	end
+	for _ = 1, 6 do
+		task.wait(0.5)
+		if not char.Parent then
+			return
+		end
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { char }
+		params.RespectCanCollide = true
+		-- the floor right under us, looking down from above our head
+		local hit = workspace:Raycast(root.Position + Vector3.new(0, 8, 0), Vector3.new(0, -12, 0), params)
+		local box, size = char:GetBoundingBox()
+		local feet = box.Position.Y - size.Y / 2
+		if hit and feet < hit.Position.Y - 0.5 then
+			root.AssemblyLinearVelocity = Vector3.zero
+			char:PivotTo(char:GetPivot() + Vector3.new(0, hit.Position.Y - feet + 0.2, 0))
+			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end
+end)
