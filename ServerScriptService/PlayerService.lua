@@ -391,13 +391,14 @@ function PlayerService.QuestProgress(player, kind, amount)
 	end
 	local d = profile.data
 	local changed = ensureQuests(d)
-	-- (only the quest you picked counts)
+	-- (all three count from the start of the day, so whichever you pick
+	-- already has everything you've done today - even before you picked it)
 	for i, q in ipairs(d.Quests.list) do
-		local def = i == d.Quests.pick and Config.QuestById[q.id]
+		local def = Config.QuestById[q.id]
 		if def and def.kind == kind and not q.claimed and q.n < def.goal then
 			q.n = math.min(def.goal, q.n + (amount or 1))
 			changed = true
-			if q.n >= def.goal then
+			if q.n >= def.goal and i == d.Quests.pick then
 				notify(player, "Quest done: " .. Config.questText(def) .. "! Hand it in at the Quest Board.", "ok")
 			end
 		end
