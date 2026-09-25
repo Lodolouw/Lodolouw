@@ -545,13 +545,15 @@ local function buildGround(parent)
 	-- ring so overlapping surfaces never flicker.
 	local PATH_COLOR = RGB(208, 192, 162)
 	local CURB_COLOR = RGB(146, 118, 92)
+	local pathRects = {} -- (every paved rectangle, for the rim round them all)
 	local function pathSlab(name, x0, z0, x1, z1)
 		part(g, name, V3(x1 - x0, 0.55, z1 - z0), CFrame.new((x0 + x1) / 2, 0.275, (z0 + z1) / 2), PATH_COLOR, Mat.Cobblestone)
+		table.insert(pathRects, { x0, z0, x1, z1 })
 	end
-	-- (no curbs: they cut across the junctions - the paths are paved edge to edge)
+	-- (the rim is worked out automatically round the outline of all the
+	-- paths together, so it opens by itself wherever two paths meet)
 	local function curbAlongX() end
 	local function curbAlongZ() end
-	_ = CURB_COLOR
 
 	-- The floorplan: the fountain plaza in the middle, a wide avenue north
 	-- to the Grand Keep (and through it to the Spire), the road east to the
@@ -575,7 +577,7 @@ local function buildGround(parent)
 	curbAlongX(-71.5, -23.5, -8.5)
 	-- south: past the spawn to the south gate, with branches to the Sell
 	-- Shop and into the colosseum
-	pathSlab("PathToYard", -8, 17, 8, SOUTH_WALL - 3)
+	pathSlab("PathToYard", -8, 17, 8, SOUTH_WALL) -- (right up to the gate's paving)
 	pathSlab("PathEastWest", 8, 38, 29, 52)
 	pathSlab("PathEastWest", -12, 84, -8, 96)
 	curbAlongZ(23.5, 37.5, 8.5)
@@ -587,15 +589,82 @@ local function buildGround(parent)
 	-- Central plaza rings (outer ring in the same stone as the paths)
 	cylinder(g, "PlazaOuter", 0.6, 46, CFrame.new(0, 0.3, 0), PATH_COLOR, Mat.Cobblestone)
 	-- brick border round the plaza, open where the paths come in
-	local R, N = 23.6, 56
-	for i = 0, N - 1 do
-		local a = (i + 0.5) / N * math.pi * 2
-		local p = V3(math.cos(a) * R, 0.45, math.sin(a) * R)
-		if math.abs(p.X) > 9.7 and math.abs(p.Z) > 9.7 then
-			local tangent = V3(-math.sin(a), 0, math.cos(a))
-			if false then
-			part(g, "PlazaCurb", V3(1, 0.9, 2 * math.pi * R / N + 0.15), CFrame.lookAt(p, p + tangent), CURB_COLOR, Mat.Brick)
+	-- The rim: a low brick curb all round the outline of the paths and the
+	-- plaza together. Worked out on a 1-stud grid: every square next to the
+	-- paving (but not paved itself) gets curb, then neighbouring squares
+	-- are joined into long pieces. Where paths meet there's no gap in the
+	-- paving, so no curb - every junction opens up by itself.
+	do
+		local OPEN = { { 8, 93, 13, 99 } } -- (the farm path's opening off the south road)
+		local PLAZA_R = 23.2
+		local X0, X1, Z0, Z1 = -118, 118, -112, SOUTH_WALL - 1
+		local function paved(x, z)
+			if x * x + z * z < PLAZA_R * PLAZA_R then
+				return true
 			end
+			for _, r in ipairs(pathRects) do
+				if x > r[1] and x < r[3] and z > r[2] and z < r[4] then
+					return true
+				end
+			end
+			for _, r in ipairs(OPEN) do
+				if x > r[1] and x < r[3] and z > r[2] and z < r[4] then
+					return true
+				end
+			end
+			return false
+		end
+		local NX, NZ = X1 - X0, Z1 - Z0
+		local grid = {}
+		for j = 1, NZ do
+			local row = {}
+			for i = 1, NX do
+				row[i] = paved(X0 + i - 0.5, Z0 + j - 0.5)
+			end
+			grid[j] = row
+		end
+		local function isCurb(i, j)
+			if grid[j][i] then
+				return false
+			end
+			for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+				local r = grid[j + d[2]]
+				if r and r[i + d[1]] then
+					return true
+				end
+			end
+			return false
+		end
+		local open = {}
+		for j = 1, NZ + 1 do
+			local runs = {}
+			if j <= NZ then
+				local i = 1
+				while i <= NX do
+					if isCurb(i, j) then
+						local k = i
+						while k + 1 <= NX and isCurb(k + 1, j) do
+							k = k + 1
+						end
+						runs[i .. ":" .. k] = { i, k }
+						i = k + 1
+					else
+						i = i + 1
+					end
+				end
+			end
+			local nextOpen = {}
+			for key, r in pairs(runs) do
+				nextOpen[key] = { r[1], r[2], open[key] and open[key][3] or j }
+			end
+			for key, o in pairs(open) do
+				if not runs[key] then
+					local x0, x1 = X0 + o[1] - 1, X0 + o[2]
+					local z0, z1 = Z0 + o[3] - 1, Z0 + j - 1
+					part(g, "Curb", V3(x1 - x0, 0.9, z1 - z0), CFrame.new((x0 + x1) / 2, 0.45, (z0 + z1) / 2), CURB_COLOR, Mat.Brick)
+				end
+			end
+			open = nextOpen
 		end
 	end
 	cylinder(g, "PlazaMid", 0.7, 38, CFrame.new(0, 0.35, 0), RGB(232, 214, 178), Mat.Plastic)
@@ -3793,7 +3862,7 @@ local function buildFarm(parent)
 		local COBBLE = { RGB(139, 155, 180), RGB(192, 203, 220), RGB(160, 170, 192) }
 		local nc = { CanCollide = false, CanQuery = false }
 		local up, down = 0, 0
-		for x = 8.5, 62.5, 1.5 do
+		for x = 8, 62, 1.5 do
 			up = math.clamp(up + (rnd() - 0.5) * 0.9, -0.6, 1)
 			down = math.clamp(down + (rnd() - 0.5) * 0.9, -0.6, 1)
 			local zN, zS = 93.5 - up, 98.5 + down
