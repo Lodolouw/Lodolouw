@@ -75,92 +75,18 @@ local function groundBelow(pos, char)
 	return hit and hit.Position or pos
 end
 
--- stand the (possibly tiny) character with its feet on `ground`, facing `look`
-local function standAt(char, ground, look)
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return
-	end
-	local box, size = char:GetBoundingBox()
-	local up = root.Position.Y - (box.Position.Y - size.Y / 2) -- root above the feet
-	local p = ground + Vector3.new(0, up + 0.05, 0)
-	local f = flat(look)
-	root.CFrame = f.Magnitude > 0.01 and CFrame.lookAt(p, p + f) or CFrame.new(p) * root.CFrame.Rotation
-end
-
-local function scale(char, s)
-	pcall(function()
-		char:ScaleTo(s)
-	end)
-end
-
--- Shrinks you from full size down to ShrinkTo while you slide from where you
--- are to `toGround` (the door). You're held still while it happens.
-local function shrinkInto(player, toGround)
+-- If the player's screen didn't manage the trip (it failed, or LobbyActivities
+-- is missing), move them the plain way so they're never left stuck.
+local function ensureAt(player, cf, near)
 	local root, _, char = rootOf(player)
-	if not root then
-		return false
+	if root and (flat(root.Position - cf.Position)).Magnitude > near then
+		pcall(function()
+			char:ScaleTo(1)
+		end)
+		root.Anchored = false
+		local g = groundBelow(cf.Position, char)
+		char:PivotTo(CFrame.new(g + Vector3.new(0, 4, 0)) * cf.Rotation)
 	end
-	root.Anchored = true
-	local from = groundBelow(root.Position, char)
-	local look = flat(toGround - from)
-	local steps = C.ShrinkSteps or 8
-	for k = 1, steps do
-		if not char.Parent then
-			return false
-		end
-		local t = k / steps
-		scale(char, 1 - (1 - (C.ShrinkTo or 0.3)) * t)
-		standAt(char, from:Lerp(toGround, t), look)
-		task.wait(0.07)
-	end
-	task.wait(0.15)
-	return char.Parent ~= nil
-end
-
--- Puts you at `cf` at full size straight away (arriving inside the Colosseum).
-local function appearAt(player, cf)
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return
-	end
-	pcall(function()
-		player:RequestStreamAroundAsync(cf.Position, 3)
-	end)
-	root.Anchored = true
-	scale(char, 1)
-	standAt(char, groundBelow(cf.Position, char), cf.LookVector)
-	root.AssemblyLinearVelocity = Vector3.zero
-	root.Anchored = false
-end
-
--- Pops you out at `cf` (tiny), then grows you back to full size, and lets you go.
-local function growOutAt(player, cf)
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return
-	end
-	pcall(function()
-		player:RequestStreamAroundAsync(cf.Position, 3)
-	end)
-	root.Anchored = true
-	local ground = groundBelow(cf.Position, char)
-	local steps = C.ShrinkSteps or 8
-	local small = C.ShrinkTo or 0.3
-	for k = 0, steps do
-		if not char.Parent then
-			return
-		end
-		scale(char, small + (1 - small) * k / steps)
-		standAt(char, ground, cf.LookVector)
-		task.wait(0.05)
-	end
-	scale(char, 1)
-	standAt(char, ground, cf.LookVector)
-	root.AssemblyLinearVelocity = Vector3.zero
-	root.Anchored = false
 end
 
 local function playerLevel(player)
@@ -432,6 +358,11 @@ end
 
 local going = {} -- [player] = true while they're going down the pipe
 
+-- how long the trip down the pipe takes on the player's screen
+local function pipeTime()
+	return (C.ShrinkSteps or 8) * 0.07 + 0.4
+end
+
 local function enter(player)
 	if sessions[player] or going[player] or player:GetAttribute("SpireFloor") then
 		return
@@ -445,23 +376,27 @@ local function enter(player)
 	if (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
 		return
 	end
+	-- Your own screen shrinks you into the little door and moves you inside
+	-- (LobbyActivities). It has to be done there: your character is moved by
+	-- your computer, and when the server moves it too, the two fight (that's
+	-- what made the trip glitchy).
 	going[player] = true
-	local ok = pcall(function()
-		-- shrink down into the little door...
-		if door and not shrinkInto(player, groundBelow(door.Position, char)) then
-			error("gone")
-		end
-		-- ...and you're inside, just past the Colosseum's gate. No growing here:
-		-- you're already the size of the little colosseum's world
-		appearAt(player, spawnAt.CFrame)
+	pcall(function()
+		player:RequestStreamAroundAsync(spawnAt.Position, 3)
 	end)
+	local doorGround = door and groundBelow(door.Position, char) or root.Position
+	send(player, "PipeIn", doorGround, spawnAt.CFrame, groundBelow(spawnAt.Position, char))
+	task.wait(pipeTime())
 	going[player] = nil
-	if not ok or not rootOf(player) then
-		if player.Character then
-			scale(player.Character, 1)
-		end
+	if not rootOf(player) then
 		return
 	end
+	-- (checked a moment later, once your screen's move has reached the server)
+	task.delay(1.5, function()
+		if sessions[player] then
+			ensureAt(player, spawnAt.CFrame, C.Radius + 20)
+		end
+	end)
 	local s = { player = player, wave = 0, alive = 0, questKills = 0, enemies = {} }
 	sessions[player] = s
 	player:SetAttribute("Colosseum", true)
@@ -485,21 +420,20 @@ local function leave(player)
 	if not back then
 		return
 	end
-	-- out the way you came in: you pop out of the little door tiny, and grow
+	-- out the way you came in: your screen pops you out of the little door tiny, growing
 	going[player] = true
 	pcall(function()
-		if rootOf(player) then
-			growOutAt(player, back.CFrame)
+		player:RequestStreamAroundAsync(back.Position, 3)
+	end)
+	local _, _, char = rootOf(player)
+	send(player, "PipeOut", back.CFrame, groundBelow(back.Position, char))
+	task.wait(pipeTime())
+	going[player] = nil
+	task.delay(1.5, function()
+		if not sessions[player] and not player:GetAttribute("Colosseum") then
+			ensureAt(player, back.CFrame, 60)
 		end
 	end)
-	going[player] = nil
-	if player.Character then
-		scale(player.Character, 1)
-		local r = player.Character:FindFirstChild("HumanoidRootPart")
-		if r then
-			r.Anchored = false
-		end
-	end
 end
 
 ----------------------------------------------------------------------
@@ -514,7 +448,7 @@ function ColosseumService.Start(combatService, playerService)
 		old:Destroy()
 	end
 	remote = Instance.new("RemoteEvent")
-	remote.Name = "ColosseumEvent" -- server -> client: "Arrived", "Left", "State", "Wave", "Kill", "QuestDone"
+	remote.Name = "ColosseumEvent" -- server -> client: "PipeIn", "PipeOut", "Arrived", "Left", "State", "Wave", "Kill", "QuestDone"
 	remote.Parent = ReplicatedStorage
 
 	enemyFolder = workspace:FindFirstChild("ColosseumEnemies") or Instance.new("Folder")

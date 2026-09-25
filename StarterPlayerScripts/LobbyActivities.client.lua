@@ -461,8 +461,98 @@ end
 player:GetAttributeChangedSignal("Colosseum"):Connect(syncTracker)
 syncTracker()
 
-ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b)
-	if kind == "State" and type(a) == "table" then
+-- Down the pipe: you shrink, bit by bit (8-bit steps), sliding into the
+-- mini colosseum's little door - then you're inside the Colosseum, already
+-- small enough for it, so no growing there. Coming out, you pop out of the
+-- little door tiny and grow back. Done here, on your own screen, because
+-- your character is moved by your computer (the server doing it glitched).
+local CC = Config.Colosseum
+local function scaleTo(char, s)
+	pcall(function()
+		char:ScaleTo(s)
+	end)
+end
+-- feet on `ground`, facing `look`
+local function standAt(char, root, ground, look)
+	local box, size = char:GetBoundingBox()
+	local up = root.Position.Y - (box.Position.Y - size.Y / 2)
+	local p = ground + Vector3.new(0, up + 0.05, 0)
+	local f = Vector3.new(look.X, 0, look.Z)
+	root.CFrame = f.Magnitude > 0.01 and CFrame.lookAt(p, p + f) or CFrame.new(p) * root.CFrame.Rotation
+end
+local function groundUnder(pos, char)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	params.RespectCanCollide = true
+	local hit = workspace:Raycast(pos + Vector3.new(0, 3, 0), Vector3.new(0, -12, 0), params)
+	return hit and hit.Position or pos
+end
+
+local piping = false
+local function pipeIn(doorGround, destCF, destGround)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root or piping then
+		return
+	end
+	piping = true
+	root.Anchored = true
+	local from = groundUnder(root.Position, char)
+	local look = doorGround - from
+	local steps = CC.ShrinkSteps or 8
+	for k = 1, steps do
+		if not char.Parent then
+			break
+		end
+		local t = k / steps
+		scaleTo(char, 1 - (1 - (CC.ShrinkTo or 0.3)) * t)
+		standAt(char, root, from:Lerp(doorGround, t), look)
+		task.wait(0.07)
+	end
+	task.wait(0.12)
+	if char.Parent then
+		scaleTo(char, 1)
+		standAt(char, root, destGround, destCF.LookVector)
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.Anchored = false
+	end
+	piping = false
+end
+
+local function pipeOut(backCF, backGround)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root or piping then
+		return
+	end
+	piping = true
+	root.Anchored = true
+	local steps = CC.ShrinkSteps or 8
+	local small = CC.ShrinkTo or 0.3
+	for k = 0, steps do
+		if not char.Parent then
+			break
+		end
+		scaleTo(char, small + (1 - small) * k / steps)
+		standAt(char, root, backGround, backCF.LookVector)
+		task.wait(0.05)
+	end
+	if char.Parent then
+		scaleTo(char, 1)
+		standAt(char, root, backGround, backCF.LookVector)
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.Anchored = false
+	end
+	piping = false
+end
+
+ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b, c)
+	if kind == "PipeIn" then
+		task.spawn(pipeIn, a, b, c)
+	elseif kind == "PipeOut" then
+		task.spawn(pipeOut, a, b)
+	elseif kind == "State" and type(a) == "table" then
 		renderTracker(a)
 	elseif kind == "Arrived" then
 		showBanner("THE COLOSSEUM", GOLD, 1.8)
