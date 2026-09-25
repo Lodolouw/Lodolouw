@@ -4395,7 +4395,7 @@ local function buildIsland(parent)
 					return V3(center.X + math.cos(a) * r, SEA_Y + 0.4, center.Z + math.sin(a) * r)
 				end
 				local p0 = at(th)
-				local step = 4.5 / math.max(radiusAt(th), 1)
+				local step = 2 / math.max(radiusAt(th), 1)
 				local p1 = at(th + step)
 				local mid = (p0 + p1) / 2
 				local tangent = (p1 - p0).Unit
@@ -4403,17 +4403,26 @@ local function buildIsland(parent)
 				if inward:Dot(center - mid) < 0 then
 					inward = -inward
 				end
-				if not (skipAt and skipAt(mid)) then
+				if not (skipAt and skipAt(mid)) and rnd() > 0.12 then
+					-- chunky square blocks of foam, snapped to a pixel grid, a bit
+					-- ragged, with little bubbles trailing behind
+					local function blob(p, size, tr)
+						local q = V3(math.floor(p.X / 0.5 + 0.5) * 0.5, SEA_Y + 0.4, math.floor(p.Z / 0.5 + 0.5) * 0.5)
+						local foam = part(m, "Foam", V3(size, 0.25, size), CFrame.new(q), ISLE.FOAM, Mat.SmoothPlastic, {
+							CanCollide = false, CanQuery = false, CastShadow = false, Transparency = tr,
+						})
+						foam:SetAttribute("WaveMode", "drift")
+						foam:SetAttribute("WaveDir", inward)
+						foam:SetAttribute("WaveAmp", gap)
+						foam:SetAttribute("WaveSpeed", 0.1)
+						foam:SetAttribute("Phase", ring * 180)
+						CollectionService:AddTag(foam, "Wave")
+					end
 					local start = mid - inward * gap
-					local foam = part(m, "Foam", V3(1.5, 0.25, (p1 - p0).Magnitude + 0.6), CFrame.lookAt(start, start + tangent), ISLE.FOAM, Mat.SmoothPlastic, {
-						CanCollide = false, CanQuery = false, CastShadow = false,
-					})
-					foam:SetAttribute("WaveMode", "drift")
-					foam:SetAttribute("WaveDir", inward)
-					foam:SetAttribute("WaveAmp", gap)
-					foam:SetAttribute("WaveSpeed", 0.1)
-					foam:SetAttribute("Phase", ring * 180)
-					CollectionService:AddTag(foam, "Wave")
+					blob(start + inward * ((rnd() - 0.5) * 0.8), 1.6 + math.floor(rnd() * 3) * 0.4, 0)
+					if rnd() < 0.35 then
+						blob(start - inward * (1.8 + rnd() * 1.5) + tangent * ((rnd() - 0.5) * 2), 0.6 + rnd() * 0.5, 0.2)
+					end
 					n = n + 1
 				end
 				th = th + step
