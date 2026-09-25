@@ -352,3 +352,68 @@ RunService.Heartbeat:Connect(function(dt)
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
 	end
 end)
+
+----------------------------------------------------------------------
+-- Sway: palm crowns rocking gently in the ocean breeze (a few degrees,
+-- slowly, in the same 8-bit steps as the waves)
+----------------------------------------------------------------------
+local swaying = {}
+local function addSway(model)
+	if not model:IsA("Model") or swaying[model] then
+		return
+	end
+	local pivot = model.PrimaryPart
+	if not pivot then
+		return
+	end
+	local parts, offsets = {}, {}
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			table.insert(parts, p)
+			table.insert(offsets, pivot.CFrame:ToObjectSpace(p.CFrame))
+		end
+	end
+	swaying[model] = {
+		base = pivot.CFrame,
+		amp = math.rad(model:GetAttribute("SwayAmp") or 3),
+		speed = model:GetAttribute("SwaySpeed") or 1,
+		phase = math.rad(model:GetAttribute("Phase") or 0),
+		parts = parts,
+		offsets = offsets,
+	}
+end
+for _, m in ipairs(CollectionService:GetTagged("Sway")) do
+	addSway(m)
+end
+CollectionService:GetInstanceAddedSignal("Sway"):Connect(function(m)
+	task.defer(addSway, m)
+end)
+local swayClock = 0
+RunService.Heartbeat:Connect(function(dt)
+	swayClock = swayClock + dt
+	if swayClock < 1 / 12 then
+		return
+	end
+	swayClock = 0
+	local t = os.clock()
+	local cam = workspace.CurrentCamera
+	local camPos = cam and cam.CFrame.Position
+	local parts, cfs = {}, {}
+	for model, w in pairs(swaying) do
+		if not model.Parent then
+			swaying[model] = nil
+		elseif not camPos or (camPos - w.base.Position).Magnitude < 500 then
+			-- (mostly one way, the way the breeze blows, with a little wobble)
+			local ax = w.amp * math.sin(t * w.speed + w.phase)
+			local az = w.amp * 0.4 * math.sin(t * w.speed * 1.7 + w.phase * 2)
+			local cf = w.base * CFrame.Angles(ax, 0, az)
+			for i, off in ipairs(w.offsets) do
+				table.insert(parts, w.parts[i])
+				table.insert(cfs, cf * off)
+			end
+		end
+	end
+	if #parts > 0 then
+		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+	end
+end)

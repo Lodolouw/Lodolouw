@@ -4274,6 +4274,12 @@ local function palmTree(m, x, y, z, s, lean)
 		part(m, "PalmTrunk", V3(1.2, 1.55, 1.2) * s, CFrame.new(p) * CFrame.Angles(0, lean, 0), (i % 2 == 0) and RGB(194, 133, 105) or RGB(184, 111, 80), Mat.Wood)
 	end
 	local top = at + dir * offs[7] * s * 1.6 + V3(0, 7 * 1.5 * s + 0.2 * s, 0)
+	-- (the crown is a model of its own: LobbyFX sways it in the ocean breeze)
+	local trunkModel = m
+	local crown = Instance.new("Model")
+	crown.Name = "PalmCrownSway"
+	crown.Parent = trunkModel
+	m = crown
 	for i = 0, 2 do
 		local a = i * 2.1
 		part(m, "Coconut", V3(0.8, 0.8, 0.8) * s, CFrame.new(top + V3(math.cos(a) * 0.7 * s, -0.7 * s, math.sin(a) * 0.7 * s)), RGB(115, 62, 57), Mat.Wood, { CanCollide = false })
@@ -4285,7 +4291,11 @@ local function palmTree(m, x, y, z, s, lean)
 		part(m, "Frond", V3(1.5, 0.3, 4.2) * s, base * CFrame.new(0, 0.3 * s, -2 * s) * CFrame.Angles(0.22, 0, 0), green, Mat.Grass, { CanCollide = false })
 		part(m, "FrondTip", V3(1.2, 0.3, 3.4) * s, base * CFrame.new(0, -0.75 * s, -5.3 * s) * CFrame.Angles(-0.5, 0, 0), green, Mat.Grass, { CanCollide = false })
 	end
-	part(m, "PalmCrown", V3(1.6, 0.8, 1.6) * s, CFrame.new(top), ISLE.GRASS2, Mat.Grass, { CanCollide = false })
+	crown.PrimaryPart = part(m, "PalmCrown", V3(1.6, 0.8, 1.6) * s, CFrame.new(top), ISLE.GRASS2, Mat.Grass, { CanCollide = false })
+	crown:SetAttribute("SwayAmp", 2.5 + rnd() * 1.5) -- degrees: a breeze, not a storm
+	crown:SetAttribute("SwaySpeed", 0.8 + rnd() * 0.4)
+	crown:SetAttribute("Phase", rnd() * 360)
+	CollectionService:AddTag(crown, "Sway")
 end
 
 -- a little cottage on the hillside: cream walls, dark beams, a stepped red
