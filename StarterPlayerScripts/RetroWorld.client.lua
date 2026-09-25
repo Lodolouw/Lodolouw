@@ -702,6 +702,24 @@ local function makeBirds(center)
 		table.insert(flocks, flock)
 	end
 end
+-- SEAGULLS: a few white gulls gliding in pairs and threes round the coast,
+-- low over the beaches (the same flapping birds, just white and grey)
+local function makeGulls(center)
+	for f = 1, (D.Gulls or 5) do
+		local flock = { center = center, r = 285 + f * 22, y = -4 + (f % 3) * 5, speed = ((f % 2 == 0) and -1 or 1) * (0.035 + f * 0.006), phase = f * 1.3, members = {} }
+		for b = 1, 2 + (f % 2) do
+			local rank = math.ceil((b - 1) / 2)
+			table.insert(flock.members, {
+				body = block(V3(0.9, 0.6, 1.6), RGB(255, 255, 255)),
+				w1 = block(V3(2.2, 0.2, 0.9), RGB(192, 203, 220)),
+				w2 = block(V3(2.2, 0.2, 0.9), RGB(192, 203, 220)),
+				slot = V3(((b % 2 == 0) and 1 or -1) * rank * 5, rank * 1.5, rank * 4),
+				flap = rng:NextInteger(0, 3),
+			})
+		end
+		table.insert(flocks, flock)
+	end
+end
 table.insert(steppers, function(now)
 	for i, fl in ipairs(flocks) do
 		local a = fl.phase + now * fl.speed
@@ -906,6 +924,7 @@ local function dressLobby(lobby)
 	local center = V3(0, 0, -10)
 	makeClouds(center)
 	makeBirds(center)
+	makeGulls(V3(0, 0, 50)) -- (round the island's middle)
 	local spire = lobby:FindFirstChild("Spire")
 	if spire and D.Beacon ~= false then
 		pcall(raiseBeacon, spire)
