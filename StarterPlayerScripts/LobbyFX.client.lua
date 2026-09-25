@@ -19,6 +19,12 @@
 	parented inside them, like the iris and pupil, turns with them).
 	MaxTurn = how far (degrees) the eye can turn from where it faces.
 
+	Parts tagged "Wave" (the sea's foam and wave crests) move in little 8-bit
+	steps, twelve times a second. WaveDir = which way, WaveAmp = how far,
+	WaveSpeed, Phase. WaveMode "lap" goes out and back (foam on the shore);
+	"drift" slides one way while fading in and out, then starts again
+	(crests rolling in over the sea).
+
 	Models tagged "Rotor" (like the windmill's sails) turn round their
 	PrimaryPart's front-to-back axis. RotorSpeed = degrees per second.
 	RotorStep = degrees per jump, for an 8-bit look: the sails snap from
@@ -273,5 +279,76 @@ RunService.RenderStepped:Connect(function(dt)
 				workspace:BulkMoveTo(r.parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
 			end
 		end
+	end
+end)
+
+----------------------------------------------------------------------
+-- Waves: foam lapping at the shore, crests drifting in over the sea
+----------------------------------------------------------------------
+local waves = {}
+local function addWave(inst)
+	if not inst:IsA("BasePart") or waves[inst] then
+		return
+	end
+	local dir = inst:GetAttribute("WaveDir")
+	if typeof(dir) ~= "Vector3" then
+		return
+	end
+	waves[inst] = {
+		base = inst.CFrame,
+		dir = dir,
+		amp = inst:GetAttribute("WaveAmp") or 2,
+		speed = inst:GetAttribute("WaveSpeed") or 1,
+		phase = math.rad(inst:GetAttribute("Phase") or 0),
+		drift = inst:GetAttribute("WaveMode") == "drift",
+		baseTr = inst.Transparency,
+	}
+end
+for _, inst in ipairs(CollectionService:GetTagged("Wave")) do
+	addWave(inst)
+end
+CollectionService:GetInstanceAddedSignal("Wave"):Connect(addWave)
+CollectionService:GetInstanceRemovedSignal("Wave"):Connect(function(inst)
+	waves[inst] = nil
+end)
+
+local STEP = 1 / 12 -- (twelve frames a second: the 8-bit look)
+local SNAP = 0.5 -- (and moved in half-stud jumps)
+local waveClock = 0
+RunService.Heartbeat:Connect(function(dt)
+	waveClock = waveClock + dt
+	if waveClock < STEP then
+		return
+	end
+	waveClock = 0
+	local t = os.clock()
+	local cam = workspace.CurrentCamera
+	local camPos = cam and cam.CFrame.Position
+	local parts, cfs = {}, {}
+	for inst, w in pairs(waves) do
+		if not inst.Parent then
+			waves[inst] = nil
+		elseif not camPos or (camPos - w.base.Position).Magnitude < 800 then
+			local off, tr
+			if w.drift then
+				local f = (t * w.speed + w.phase / (2 * math.pi)) % 1
+				off = w.amp * f
+				tr = w.baseTr + (1 - w.baseTr) * (1 - math.sin(f * math.pi))
+			else
+				local g = 0.5 + 0.5 * math.sin(t * w.speed + w.phase)
+				off = w.amp * g
+				tr = w.baseTr + (1 - w.baseTr) * 0.5 * g -- (fainter the further out it reaches)
+			end
+			off = math.floor(off / SNAP + 0.5) * SNAP
+			tr = math.floor(tr * 4 + 0.5) / 4
+			table.insert(parts, inst)
+			table.insert(cfs, w.base + w.dir * off)
+			if inst.Transparency ~= tr then
+				inst.Transparency = tr
+			end
+		end
+	end
+	if #parts > 0 then
+		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
 	end
 end)

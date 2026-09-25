@@ -4292,23 +4292,43 @@ local function buildIsland(parent)
 				local x, z = cellPos(i, j)
 				local wet = grid[j][i - 1] == 1 or grid[j][i + 1] == 1 or grid[j - 1][i] == 1 or grid[j + 1][i] == 1
 					or grid[j][i - 1] == 0 or grid[j][i + 1] == 0 or grid[j - 1][i] == 0 or grid[j + 1][i] == 0
-				if wet and not nearStairs(x, z) and not nearMushroomHouse(x, z) then
+				if wet and not nearMushroomHouse(x, z) then
 					local th = math.atan2(z - ISLE_CZ, x - ISLE_CX)
-					local rocky = math.sin(3 * th + 0.3) > 0.55 or math.sin(5 * th + 2) > 0.85
+					local rocky = (math.sin(3 * th + 0.3) > 0.55 or math.sin(5 * th + 2) > 0.85) and not nearStairs(x, z)
 					if rocky and rnd() < 0.8 then
 						for _ = 1, 1 + math.floor(rnd() * 2) do
 							local s = 2.5 + rnd() * 3.5
 							local p = V3(x + (rnd() - 0.5) * CELL, BEACH_TOP - 1 + s * 0.35, z + (rnd() - 0.5) * CELL)
 							part(m, "CoastRock", V3(s * 1.3, s, s * 1.1), CFrame.new(p) * CFrame.Angles(math.rad((rnd() - 0.5) * 20), rnd() * 3, math.rad((rnd() - 0.5) * 20)), (rnd() < 0.5) and ISLE.ROCK2 or ISLE.ROCK3, Mat.Slate)
 						end
-					elseif rnd() < 0.55 then
-						local w = 2 + rnd() * 3
-						local foam = part(m, "Foam", V3(w, 0.1, 0.6), CFrame.new(x + (rnd() - 0.5) * CELL, SEA_Y + 0.35, z + (rnd() - 0.5) * CELL) * CFrame.Angles(0, rnd() * 3, 0), ISLE.FOAM, Mat.SmoothPlastic, { CanCollide = false, CanQuery = false, CastShadow = false })
-						foam:SetAttribute("PulseSpeed", 0.5 + rnd() * 0.4)
-						foam:SetAttribute("PulseMin", 0)
-						foam:SetAttribute("PulseMax", 0.9)
-						foam:SetAttribute("Phase", rnd() * 360)
-						CollectionService:AddTag(foam, "Pulse")
+					else
+						-- the shoreline: two lines of white foam on the water's
+						-- edge that lap in and out (LobbyFX moves them, in little
+						-- 8-bit steps), each a moment after its neighbour so the
+						-- waves roll along the coast
+						local out
+						for _, n in ipairs({ { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }) do
+							local L = grid[j + n[2]][i + n[1]]
+							if L == 0 or L == 1 then
+								out = V3(n[1], 0, n[2])
+								break
+							end
+						end
+						if out then
+							for k = 0, 1 do
+								local w = CELL - rnd() * 1.2
+								local at = V3(x, SEA_Y + 0.35 - k * 0.05, z) + out * (CELL / 2 + 0.3 + k * 1.2)
+								local foam = part(m, "Foam", V3(w, 0.1, 1.1 - k * 0.4), CFrame.lookAt(at, at + out), ISLE.FOAM, Mat.SmoothPlastic, {
+									CanCollide = false, CanQuery = false, CastShadow = false, Transparency = k * 0.35,
+								})
+								foam:SetAttribute("WaveMode", "lap")
+								foam:SetAttribute("WaveDir", out)
+								foam:SetAttribute("WaveAmp", 2 + k * 1.2)
+								foam:SetAttribute("WaveSpeed", 1.1)
+								foam:SetAttribute("Phase", math.deg(th) * 5 + k * 140)
+								CollectionService:AddTag(foam, "Wave")
+							end
+						end
 					end
 				end
 			end
@@ -4334,6 +4354,31 @@ local function buildIsland(parent)
 			sp:SetAttribute("PulseMax", 1)
 			sp:SetAttribute("Phase", rnd() * 360)
 			CollectionService:AddTag(sp, "Pulse")
+		end
+	end
+
+	-- little "~" wave crests out on the sea, drifting in towards the island
+	-- and fading in and out as they go, like the water in old 8-bit games
+	for _ = 1, 150 do
+		local a = rnd() * math.pi * 2
+		local d = 110 + rnd() * 600
+		local x, z = math.cos(a) * d, ISLE_CZ + math.sin(a) * d
+		if isleLevel(x, z) == 0 and isleLevel(x - math.cos(a) * 16, z - math.sin(a) * 16) == 0 then
+			local dir = V3(-math.cos(a), 0, -math.sin(a)) -- (towards the island)
+			local at = V3(x, SEA_Y + 0.1, z)
+			local cf = CFrame.lookAt(at, at + dir)
+			local phase, speed = rnd() * 360, 0.08 + rnd() * 0.05
+			for k, piece in ipairs({ { V3(2.8, 0.12, 0.5), CFrame.new() }, { V3(1.4, 0.12, 0.5), CFrame.new(1.9, 0, 0.5) } }) do
+				local crest = part(m, "WaveCrest", piece[1], cf * piece[2], ISLE.FOAM, Mat.SmoothPlastic, {
+					CanCollide = false, CanQuery = false, CastShadow = false, Transparency = (k - 1) * 0.2,
+				})
+				crest:SetAttribute("WaveMode", "drift")
+				crest:SetAttribute("WaveDir", dir)
+				crest:SetAttribute("WaveAmp", 14)
+				crest:SetAttribute("WaveSpeed", speed)
+				crest:SetAttribute("Phase", phase)
+				CollectionService:AddTag(crest, "Wave")
+			end
 		end
 	end
 
