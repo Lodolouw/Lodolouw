@@ -60,30 +60,88 @@ local function flat(v)
 	return Vector3.new(v.X, 0, v.Z)
 end
 
--- Puts the character's feet on the floor at `cf` (the same way the Spire does).
-local function moveCharacter(player, cf)
+----------------------------------------------------------------------
+-- Going down the pipe: you shrink, bit by bit (8-bit steps), into the
+-- mini colosseum's little door, and pop back out growing the same way.
+----------------------------------------------------------------------
+local function groundBelow(pos, char)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char, enemyFolder }
+	params.RespectCanCollide = true
+	local hit = workspace:Raycast(pos + Vector3.new(0, 4, 0), Vector3.new(0, -40, 0), params)
+	return hit and hit.Position or pos
+end
+
+-- stand the (possibly tiny) character with its feet on `ground`, facing `look`
+local function standAt(char, ground, look)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	local box, size = char:GetBoundingBox()
+	local up = root.Position.Y - (box.Position.Y - size.Y / 2) -- root above the feet
+	local p = ground + Vector3.new(0, up + 0.05, 0)
+	local f = flat(look)
+	root.CFrame = f.Magnitude > 0.01 and CFrame.lookAt(p, p + f) or CFrame.new(p) * root.CFrame.Rotation
+end
+
+local function scale(char, s)
+	pcall(function()
+		char:ScaleTo(s)
+	end)
+end
+
+-- Shrinks you from full size down to ShrinkTo while you slide from where you
+-- are to `toGround` (the door). You're held still while it happens.
+local function shrinkInto(player, toGround)
 	local root, _, char = rootOf(player)
 	if not root then
 		return false
 	end
+	root.Anchored = true
+	local from = groundBelow(root.Position, char)
+	local look = flat(toGround - from)
+	local steps = C.ShrinkSteps or 8
+	for k = 1, steps do
+		if not char.Parent then
+			return false
+		end
+		local t = k / steps
+		scale(char, 1 - (1 - (C.ShrinkTo or 0.3)) * t)
+		standAt(char, from:Lerp(toGround, t), look)
+		task.wait(0.07)
+	end
+	task.wait(0.15)
+	return char.Parent ~= nil
+end
+
+-- Pops you out at `cf` (tiny), then grows you back to full size, and lets you go.
+local function growOutAt(player, cf)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
 	pcall(function()
 		player:RequestStreamAroundAsync(cf.Position, 3)
 	end)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { char }
-	params.RespectCanCollide = true
-	local spot = cf.Position
-	local hit = workspace:Raycast(spot + Vector3.new(0, 4, 0), Vector3.new(0, -30, 0), params)
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	local hip = (hum and hum.RigType == Enum.HumanoidRigType.R6) and 2 or ((hum and hum.HipHeight > 0) and hum.HipHeight or 2)
-	if hit then
-		spot = Vector3.new(spot.X, hit.Position.Y + hip + root.Size.Y / 2 + 0.25, spot.Z)
+	root.Anchored = true
+	local ground = groundBelow(cf.Position, char)
+	local steps = C.ShrinkSteps or 8
+	local small = C.ShrinkTo or 0.3
+	for k = 0, steps do
+		if not char.Parent then
+			return
+		end
+		scale(char, small + (1 - small) * k / steps)
+		standAt(char, ground, cf.LookVector)
+		task.wait(0.05)
 	end
-	local target = CFrame.new(spot) * cf.Rotation
+	scale(char, 1)
+	standAt(char, ground, cf.LookVector)
 	root.AssemblyLinearVelocity = Vector3.zero
-	char:PivotTo(target * root.CFrame:ToObjectSpace(char:GetPivot()))
-	return true
+	root.Anchored = false
 end
 
 local function playerLevel(player)
@@ -353,19 +411,35 @@ local function endSession(player)
 	s.enemies = {}
 end
 
+local going = {} -- [player] = true while they're going down the pipe
+
 local function enter(player)
-	if sessions[player] or player:GetAttribute("SpireFloor") then
+	if sessions[player] or going[player] or player:GetAttribute("SpireFloor") then
 		return
 	end
-	local root = rootOf(player)
+	local root, _, char = rootOf(player)
 	local spawnAt = CollectionService:GetTagged("ColosseumSpawn")[1]
+	local door = CollectionService:GetTagged("ColosseumDoor")[1]
 	if not (root and spawnAt) then
 		return
 	end
 	if (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
 		return
 	end
-	if not moveCharacter(player, spawnAt.CFrame) then
+	going[player] = true
+	local ok = pcall(function()
+		-- shrink down into the little door...
+		if door and not shrinkInto(player, groundBelow(door.Position, char)) then
+			error("gone")
+		end
+		-- ...and pop out, growing, just inside the Colosseum's gate
+		growOutAt(player, spawnAt.CFrame)
+	end)
+	going[player] = nil
+	if not ok or not rootOf(player) then
+		if player.Character then
+			scale(player.Character, 1)
+		end
 		return
 	end
 	local s = { player = player, wave = 0, alive = 0, questKills = 0, enemies = {} }
@@ -381,16 +455,32 @@ local function enter(player)
 end
 
 local function leave(player)
-	if not sessions[player] then
+	if not sessions[player] or going[player] then
 		return
 	end
 	endSession(player)
 	player:SetAttribute("Colosseum", nil)
-	local back = CollectionService:GetTagged("ColosseumReturn")[1]
-	if back then
-		moveCharacter(player, back.CFrame)
-	end
 	send(player, "Left")
+	local back = CollectionService:GetTagged("ColosseumReturn")[1]
+	if not back then
+		return
+	end
+	-- out the way you came in: shrink where you stand, pop out of the little door growing
+	going[player] = true
+	pcall(function()
+		local root, _, char = rootOf(player)
+		if root and shrinkInto(player, groundBelow(root.Position, char)) then
+			growOutAt(player, back.CFrame)
+		end
+	end)
+	going[player] = nil
+	if player.Character then
+		scale(player.Character, 1)
+		local r = player.Character:FindFirstChild("HumanoidRootPart")
+		if r then
+			r.Anchored = false
+		end
+	end
 end
 
 ----------------------------------------------------------------------
@@ -446,7 +536,10 @@ function ColosseumService.Start(combatService, playerService)
 	for _, p in ipairs(Players:GetPlayers()) do
 		watch(p)
 	end
-	Players.PlayerRemoving:Connect(endSession)
+	Players.PlayerRemoving:Connect(function(player)
+		endSession(player)
+		going[player] = nil
+	end)
 
 	-- (the dummies stop the moment you die, instead of beating on your body)
 	task.spawn(function()

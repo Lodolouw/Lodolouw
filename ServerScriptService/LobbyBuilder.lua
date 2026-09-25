@@ -5689,148 +5689,166 @@ local Extras = (function()
 		return m
 	end
 
-	-- The Colosseum's gate in the lobby: a sandstone gatehouse with a dark
-	-- archway, red banners and crossed swords. Walk up and press E to go in.
 	local SAND_STONE = RGB(228, 166, 114)
 	local SAND_DARK = RGB(184, 111, 80)
 	local SAND_LIGHT = RGB(234, 212, 170)
 
-	-- The mini colosseum in the lobby, where the training field used to be:
-	-- built like a sand castle - a round crenellated wall on a sandy mound,
-	-- four bucket-shaped towers with little flags, and the stands and sand
-	-- floor inside. The gate (below) is set into its north side.
-	local function miniColosseum(f)
+	-- The mini colosseum in the lobby, where the training field used to be.
+	-- It's a model, built like a sand castle: a round crenellated wall with
+	-- arches on a sandy mound, bucket-shaped towers with flags, bunting
+	-- between them, a little moat with a plank bridge, and the stands and
+	-- sand floor inside. Its gatehouse faces the south road, with a door far
+	-- too small to walk through - press E and you shrink down into it, bit by
+	-- bit, like going down a pipe (ColosseumService does that).
+	local function buildColosseumGate(parent)
+		local f = folder(parent, "ColosseumGate")
 		local C = Config.Colosseum
 		local c = C.LobbyModel
-		local R = 27
+		local R = C.LobbyRadius
 		local rng = Random.new(11)
-		-- the sandy mound it sits on
+		local turn = math.rad(C.GateTurn or 90)
+		-- the gatehouse's frame: local +Z is the way out, towards the road
+		local G = CFrame.new(c) * CFrame.Angles(0, turn, 0) * CFrame.new(0, 0, R)
+		local gateDir = G.LookVector * -1 -- (+Z of G, pointing out)
+
+		-- the sandy mound, and the arena floor inside
 		cylinder(f, "Mound", 1, R * 2 + 8, CFrame.new(c.X, 0.5, c.Z), SAND_LIGHT, Mat.Sand)
-		cylinder(f, "ArenaSand", 0.3, R * 2 - 12, CFrame.new(c.X, 1.1, c.Z), RGB(228, 166, 114), Mat.Sand)
-		local N = 28
+		cylinder(f, "ArenaSand", 0.3, R * 2 - 14, CFrame.new(c.X, 1.1, c.Z), RGB(228, 166, 114), Mat.Sand)
+		cylinder(f, "ArenaRing", 0.32, 12, CFrame.new(c.X, 1.12, c.Z), RGB(190, 128, 88), Mat.Sand)
+
+		local N = 32
 		local arc = math.pi * 2 / N
+		local towerAngles = {}
+		for k = 0, 4 do
+			towerAngles[k + 1] = turn + math.rad(36 + k * 72) -- five towers, none on the gate
+		end
 		for i = 0, N - 1 do
 			local a = (i + 0.5) * arc
 			local dir = V3(math.sin(a), 0, math.cos(a))
 			local function at(r, y)
 				return CFrame.lookAt(c + dir * r + V3(0, y, 0), c + V3(0, y, 0))
 			end
-			-- (left open where the gate stands, on the north side)
-			local wallPos = c + dir * R
-			local gateGap = dir.Z < 0 and math.abs(wallPos.X - C.GatePosition.X) < 12
-			if not gateGap then
+			local atGate = dir:Dot(gateDir) > math.cos(math.rad(14))
+			if not atGate then
 				local shade = (i % 2 == 0) and SAND_STONE or RGB(222, 158, 106)
-				part(f, "SandWall", V3(arc * R + 0.5, 13, 3.2), at(R, 7.5), shade, Mat.Sand)
-				-- a lip where the bucket was patted flat, then battlements
-				part(f, "SandLip", V3(arc * R + 0.7, 0.8, 3.8), at(R, 13.4), SAND_LIGHT, Mat.Sand)
+				part(f, "SandWall", V3(arc * R + 0.5, 12, 3.2), at(R, 7), shade, Mat.Sand)
+				-- where the bucket was patted flat, then battlements
+				part(f, "SandLip", V3(arc * R + 0.7, 0.8, 3.8), at(R, 12.6), SAND_LIGHT, Mat.Sand)
 				if i % 2 == 0 then
-					part(f, "SandMerlon", V3(arc * R * 0.55, 2, 3.2), at(R, 14.8), shade, Mat.Sand)
+					part(f, "SandMerlon", V3(arc * R * 0.55, 2, 3.2), at(R, 14), shade, Mat.Sand)
 				end
-				-- arches round the outside, two storeys (dark blocks)
-				part(f, "Arch", V3(2, 3.2, 0.3), at(R + 1.62, 4.2), SAND_DARK, Mat.Sand, { CanCollide = false })
-				part(f, "ArchHigh", V3(2, 2.6, 0.3), at(R + 1.62, 9.6), SAND_DARK, Mat.Sand, { CanCollide = false })
+				-- two storeys of arches round the outside
+				part(f, "Arch", V3(2, 3, 0.3), at(R + 1.62, 3.9), SAND_DARK, Mat.Sand, { CanCollide = false })
+				part(f, "ArchHigh", V3(2, 2.4, 0.3), at(R + 1.62, 9), SAND_DARK, Mat.Sand, { CanCollide = false })
 			end
-			-- the stands inside, with little spectators
+			-- the moat: a ring of water round the mound (the bridge crosses it at the gate)
+			if dir:Dot(gateDir) < math.cos(math.rad(4)) then
+				part(f, "Moat", V3(arc * (R + 6) + 0.6, 0.3, 3), at(R + 6, 0.2), RGB(0, 153, 219), Mat.SmoothPlastic, { CanCollide = false })
+				part(f, "MoatBank", V3(arc * (R + 7.8) + 0.6, 0.6, 0.8), at(R + 7.8, 0.3), SAND_LIGHT, Mat.Sand)
+			end
+			-- the stands inside, with little spectators cheering
 			for k = 1, 3 do
 				local r = R - 1.6 - k * 2.4
 				local h = 1 + (4 - k) * 2.2
 				part(f, "MiniStand", V3(arc * r + 0.4, h, 2.4), at(r, h / 2 + 1), (k % 2 == 0) and SAND_DARK or RGB(200, 140, 96), Mat.Sand)
-				if rng:NextNumber() < 0.6 then
-					local col = ({ RGB(228, 59, 68), RGB(254, 174, 52), RGB(99, 199, 77), RGB(0, 153, 219), RGB(255, 255, 255) })[rng:NextInteger(1, 5)]
+				if rng:NextNumber() < 0.65 then
+					local col = ({ RGB(228, 59, 68), RGB(254, 174, 52), RGB(99, 199, 77), RGB(0, 153, 219), RGB(255, 255, 255), RGB(181, 80, 136) })[rng:NextInteger(1, 6)]
 					part(f, "MiniFan", V3(0.9, 1.2, 0.7), at(r, h + 1.6), col, Mat.SmoothPlastic, { CanCollide = false })
+					part(f, "MiniFanHead", V3(0.7, 0.7, 0.7), at(r, h + 2.55), RGB(255, 214, 170), Mat.SmoothPlastic, { CanCollide = false })
 				end
 			end
 		end
-		-- four bucket towers, with flags
-		for k = 0, 3 do
-			local a = math.rad(45 + k * 90)
-			local p = c + V3(math.sin(a), 0, math.cos(a)) * R
-			part(f, "Bucket", V3(8, 18, 8), CFrame.new(p.X, 10, p.Z), SAND_STONE, Mat.Sand)
-			part(f, "BucketLip", V3(9, 1, 9), CFrame.new(p.X, 19.5, p.Z), SAND_LIGHT, Mat.Sand)
-			for _, d in ipairs({ { -3.4, -3.4 }, { 3.4, -3.4 }, { -3.4, 3.4 }, { 3.4, 3.4 } }) do
-				part(f, "BucketMerlon", V3(2, 2, 2), CFrame.new(p.X + d[1], 21, p.Z + d[2]), SAND_STONE, Mat.Sand)
-			end
-			part(f, "Window", V3(8.2, 2.4, 1.4), CFrame.new(p.X, 12, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
-			part(f, "Window", V3(1.4, 2.4, 8.2), CFrame.new(p.X, 12, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
-			part(f, "FlagPole", V3(0.4, 6, 0.4), CFrame.new(p.X, 23, p.Z), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
-			part(f, "Flag", V3(0.2, 2, 3), CFrame.new(p.X, 25, p.Z + 1.6), BANNER_RED, Mat.Fabric, { CanCollide = false })
-		end
-		-- sea shells pressed into the mound, like a real sand castle
-		for k = 1, 10 do
-			local a = rng:NextNumber() * math.pi * 2
-			local p = c + V3(math.sin(a), 0, math.cos(a)) * (R + 2.5)
-			local col = ({ RGB(246, 117, 122), RGB(255, 255, 255), RGB(254, 231, 97) })[rng:NextInteger(1, 3)]
-			part(f, "Shell", V3(1.2, 0.3, 1), CFrame.new(p.X, 1.1, p.Z) * CFrame.Angles(0, a, 0), col, Mat.SmoothPlastic, { CanCollide = false })
-		end
-	end
 
-	local function buildColosseumGate(parent)
-		local f = folder(parent, "ColosseumGate")
-		local C = Config.Colosseum
-		-- faces north, onto the road from the plaza (local +Z is its front)
-		local O = CFrame.new(C.GatePosition) * CFrame.Angles(0, math.pi, 0)
-		-- trodden sand in front of it
-		part(f, "GateSand", V3(34, 0.3, 14), O * CFrame.new(0, 0.15, 7), RGB(190, 128, 88), Mat.Ground)
-		-- the wall with the archway (blocks round a 10-wide, 12-high gap)
-		part(f, "WallL", V3(8, 16, 5), O * CFrame.new(-9, 8, 0), SAND_STONE, Mat.Sandstone)
-		part(f, "WallR", V3(8, 16, 5), O * CFrame.new(9, 8, 0), SAND_STONE, Mat.Sandstone)
-		part(f, "Lintel", V3(10, 4, 5), O * CFrame.new(0, 14, 0), SAND_STONE, Mat.Sandstone)
-		-- a stepped (8-bit) arch inside the gap
-		for k = 1, 3 do
-			local w = 10 - k * 2
-			local side = (10 - w) / 2
-			for _, sx in ipairs({ -1, 1 }) do
-				part(f, "ArchStep", V3(side, 1, 5), O * CFrame.new(sx * (w / 2 + side / 2), 12.5 - k, 0), SAND_STONE, Mat.Sandstone)
+		-- bucket towers, each a different height, with flags; bunting between
+		local tops = {}
+		for k, a in ipairs(towerAngles) do
+			local p = c + V3(math.sin(a), 0, math.cos(a)) * R
+			local h = 17 + (k % 3) * 2.5
+			part(f, "Bucket", V3(8, h, 8), CFrame.new(p.X, h / 2 + 1, p.Z), SAND_STONE, Mat.Sand)
+			part(f, "BucketBand", V3(8.3, 1, 8.3), CFrame.new(p.X, h * 0.45, p.Z), SAND_DARK, Mat.Sand)
+			part(f, "BucketLip", V3(9, 1, 9), CFrame.new(p.X, h + 1.5, p.Z), SAND_LIGHT, Mat.Sand)
+			for _, d in ipairs({ { -3.4, -3.4 }, { 3.4, -3.4 }, { -3.4, 3.4 }, { 3.4, 3.4 } }) do
+				part(f, "BucketMerlon", V3(2, 2, 2), CFrame.new(p.X + d[1], h + 3, p.Z + d[2]), SAND_STONE, Mat.Sand)
+			end
+			part(f, "Window", V3(8.2, 2.4, 1.4), CFrame.new(p.X, h * 0.7, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
+			part(f, "Window", V3(1.4, 2.4, 8.2), CFrame.new(p.X, h * 0.7, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
+			part(f, "FlagPole", V3(0.4, 6, 0.4), CFrame.new(p.X, h + 5, p.Z), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
+			part(f, "Flag", V3(0.2, 2, 3), CFrame.new(p.X, h + 7, p.Z + 1.6), (k % 2 == 0) and BANNER_BLUE or BANNER_RED, Mat.Fabric, { CanCollide = false })
+			tops[k] = V3(p.X, h + 1, p.Z)
+		end
+		local bunting = { RGB(228, 59, 68), RGB(254, 174, 52), RGB(0, 153, 219), RGB(99, 199, 77) }
+		for k = 1, #tops do
+			local a, b = tops[k], tops[k % #tops + 1]
+			local n = 9
+			for j = 1, n - 1 do
+				local t = j / n
+				local p = a:Lerp(b, t) - V3(0, math.sin(t * math.pi) * 3, 0) -- (the string sags)
+				part(f, "Bunting", V3(1.1, 1.1, 0.15), CFrame.lookAt(p, p + (b - a)) * CFrame.Angles(0, math.pi / 2, math.rad(45)), bunting[(j % #bunting) + 1], Mat.Fabric, { CanCollide = false })
 			end
 		end
-		-- the dark doorway (the prompt on it takes you in)
-		local door = part(f, "Doorway", V3(10, 12, 1), O * CFrame.new(0, 6, -1.5), RGB(24, 20, 37), Mat.SmoothPlastic)
-		-- towers either side, with crenellations, banners and torches
+
+		-- the gatehouse: a square block in the ring, with a door far too small for you
+		part(f, "Gatehouse", V3(14, 16, 6), G * CFrame.new(0, 9, 0), SAND_STONE, Mat.Sand)
+		part(f, "GateLip", V3(15, 1, 7), G * CFrame.new(0, 17.5, 0), SAND_LIGHT, Mat.Sand)
+		for x = -6, 6, 3 do
+			part(f, "GateMerlon", V3(1.8, 2, 1.8), G * CFrame.new(x, 19, 2.2), SAND_STONE, Mat.Sand)
+		end
+		-- the little door (3 wide, 4 high) and a stepped arch round it
+		local door = part(f, "Doorway", V3(3, 4, 0.4), G * CFrame.new(0, 3, 3.05), RGB(24, 20, 37), Mat.SmoothPlastic)
+		part(f, "DoorArch", V3(4.4, 0.8, 0.5), G * CFrame.new(0, 5.4, 3.1), SAND_LIGHT, Mat.Sand)
+		part(f, "DoorArchTop", V3(2.6, 0.8, 0.5), G * CFrame.new(0, 6.2, 3.1), SAND_LIGHT, Mat.Sand)
 		for _, sx in ipairs({ -1, 1 }) do
-			part(f, "Tower", V3(7, 22, 7), O * CFrame.new(sx * 15.5, 11, 0), SAND_DARK, Mat.Sandstone)
-			for _, dx in ipairs({ -2.4, 2.4 }) do
-				for _, dz in ipairs({ -2.4, 2.4 }) do
-					part(f, "Merlon", V3(1.6, 1.8, 1.6), O * CFrame.new(sx * 15.5 + dx, 22.9, dz), SAND_DARK, Mat.Sandstone)
-				end
-			end
-			part(f, "Banner", V3(3.4, 8, 0.3), O * CFrame.new(sx * 15.5, 13, 3.65), BANNER_RED, Mat.Fabric, { CanCollide = false })
-			part(f, "BannerTrim", V3(3.4, 0.6, 0.35), O * CFrame.new(sx * 15.5, 8.8, 3.65), GOLD, Mat.Fabric, { CanCollide = false })
-			part(f, "Torch", V3(0.6, 2, 0.6), O * CFrame.new(sx * 6.8, 9, 2.8), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
-			local flame = part(f, "Flame", V3(0.8, 0.8, 0.8), O * CFrame.new(sx * 6.8, 10.3, 2.8), RGB(254, 174, 52), Mat.Neon, { CanCollide = false })
+			part(f, "DoorPost", V3(0.7, 4.4, 0.5), G * CFrame.new(sx * 1.85, 3.2, 3.1), SAND_LIGHT, Mat.Sand)
+			-- banners and torches either side
+			part(f, "Banner", V3(2.6, 7, 0.3), G * CFrame.new(sx * 4.6, 10, 3.15), BANNER_RED, Mat.Fabric, { CanCollide = false })
+			part(f, "BannerTrim", V3(2.6, 0.5, 0.35), G * CFrame.new(sx * 4.6, 6.7, 3.15), GOLD, Mat.Fabric, { CanCollide = false })
+			part(f, "Torch", V3(0.5, 1.6, 0.5), G * CFrame.new(sx * 2.8, 5, 3.4), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
+			local flame = part(f, "Flame", V3(0.7, 0.7, 0.7), G * CFrame.new(sx * 2.8, 6.1, 3.4), RGB(254, 174, 52), Mat.Neon, { CanCollide = false })
 			local l = Instance.new("PointLight")
 			l.Color = RGB(255, 170, 90)
-			l.Range = 16
+			l.Range = 14
 			l.Brightness = 1.2
 			l.Parent = flame
 		end
-		for x = -10.5, 10.5, 3.5 do
-			part(f, "Merlon", V3(2, 1.8, 2), O * CFrame.new(x, 16.9, 0), SAND_STONE, Mat.Sandstone)
-		end
-		-- crossed swords and a shield over the arch
+		-- crossed swords and a shield over the door
 		for _, a in ipairs({ -40, 40 }) do
-			part(f, "Sword", V3(0.6, 7, 0.3), O * CFrame.new(0, 14, 2.7) * CFrame.Angles(0, 0, math.rad(a)), RGB(192, 203, 220), Mat.Metal, { CanCollide = false })
+			part(f, "Sword", V3(0.5, 5.6, 0.3), G * CFrame.new(0, 11.5, 3.3) * CFrame.Angles(0, 0, math.rad(a)), RGB(192, 203, 220), Mat.Metal, { CanCollide = false })
 		end
-		part(f, "Shield", V3(2.6, 2.6, 0.4), O * CFrame.new(0, 14, 2.9), BANNER_RED, Mat.Metal, { CanCollide = false })
-		part(f, "ShieldBoss", V3(1, 1, 0.5), O * CFrame.new(0, 14, 3.0), GOLD, Mat.Metal, { CanCollide = false })
-		titleSign(f, O * CFrame.new(0, 21, 3), "COLOSSEUM", nil, RGB(254, 174, 52), 300, 90)
+		part(f, "Shield", V3(2.2, 2.2, 0.4), G * CFrame.new(0, 11.5, 3.45), BANNER_RED, Mat.Metal, { CanCollide = false })
+		part(f, "ShieldBoss", V3(0.8, 0.8, 0.5), G * CFrame.new(0, 11.5, 3.55), GOLD, Mat.Metal, { CanCollide = false })
+		titleSign(f, G * CFrame.new(0, 24, 3), "COLOSSEUM", nil, RGB(254, 174, 52), 300, 110)
+		-- a sand path and a plank bridge over the moat, up to the door
+		part(f, "GatePath", V3(5, 0.4, 14), G * CFrame.new(0, 0.2, 10), RGB(190, 128, 88), Mat.Ground)
+		for z = 5.5, 9.5, 1 do
+			part(f, "Plank", V3(6, 0.4, 0.8), G * CFrame.new(0, 0.55, z), (z % 2 == 0.5) and SAND_DARK or RGB(158, 104, 66), Mat.WoodPlanks)
+		end
 
 		local pp = Instance.new("ProximityPrompt")
 		pp.Name = "ColosseumPrompt"
 		pp.ActionText = "Enter"
 		pp.ObjectText = "Colosseum"
 		pp.HoldDuration = 0
-		pp.MaxActivationDistance = 14
+		pp.MaxActivationDistance = 12
 		pp.KeyboardKeyCode = Enum.KeyCode.E
 		pp.GamepadKeyCode = Enum.KeyCode.ButtonX
 		pp.RequiresLineOfSight = false
 		pp.Parent = door
 		CollectionService:AddTag(pp, "ColosseumEntrance")
-
-		-- where you come back out: in front of the gate, facing away from it
-		local back = anchorPart(f, "ColosseumReturn", O * CFrame.new(0, 3, 9))
+		-- the door's spot on the ground (where you shrink into) and where you pop back out
+		local doorSpot = anchorPart(f, "ColosseumDoor", G * CFrame.new(0, 1, 3.4))
+		CollectionService:AddTag(doorSpot, "ColosseumDoor")
+		local back = anchorPart(f, "ColosseumReturn", G * CFrame.new(0, 3, 8) * CFrame.Angles(0, math.pi, 0))
 		CollectionService:AddTag(back, "ColosseumReturn")
 
-		miniColosseum(f)
+		-- sea shells pressed into the mound, like a real sand castle
+		for k = 1, 14 do
+			local a = rng:NextNumber() * math.pi * 2
+			local p = c + V3(math.sin(a), 0, math.cos(a)) * (R + 2.5)
+			if (p - (G * CFrame.new(0, 0, 3)).Position).Magnitude > 6 then
+				local col = ({ RGB(246, 117, 122), RGB(255, 255, 255), RGB(254, 231, 97) })[rng:NextInteger(1, 3)]
+				part(f, "Shell", V3(1.2, 0.3, 1), CFrame.new(p.X, 1.1, p.Z) * CFrame.Angles(0, a, 0), col, Mat.SmoothPlastic, { CanCollide = false })
+			end
+		end
 
 		-- the dummy template ColosseumService copies
 		local old = ServerStorage:FindFirstChild("ColosseumDummy")

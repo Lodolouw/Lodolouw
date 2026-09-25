@@ -48,8 +48,13 @@ Config.StationTurn = {
 Config.Colosseum = {
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 62, -- the sand floor
-	GatePosition = Vector3.new(-62, 0, 58), -- the gate in the lobby (in the mini colosseum where the training field was)
-	LobbyModel = Vector3.new(-62, 0, 88), -- the middle of that mini colosseum
+	-- the mini colosseum in the lobby (where the training field was), and its little door
+	LobbyModel = Vector3.new(-66, 0, 94), -- its middle
+	LobbyRadius = 30,
+	GateTurn = 90, -- the gate faces east, onto the south road
+	GatePosition = Vector3.new(-32.6, 0, 94), -- the door (you shrink into it here)
+	ShrinkTo = 0.3, -- how small you get going through the door (like a pipe)
+	ShrinkSteps = 8, -- in this many 8-bit steps
 	EnterRange = 20,
 
 	HitsToKill = 4, -- punches a dummy takes from a player at its level (no gear)
