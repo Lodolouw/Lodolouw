@@ -101,6 +101,15 @@ local function rootHeight(char)
 	return (hip > 0 and hip or 2) + half
 end
 
+-- Tells the movement guard (PlayerService) this move is the server's own,
+-- so it doesn't put the player back where they came from.
+local function allowMove(player, destination, seconds)
+	if player and destination then
+		player:SetAttribute("MoveTo", destination)
+		player:SetAttribute("MoveUntil", workspace:GetServerTimeNow() + (seconds or 3))
+	end
+end
+
 local function moveCharacter(player, char, cf)
 	-- make sure the area around the destination is loaded for this player
 	-- (only matters if the place uses streaming), then move them there
@@ -119,6 +128,7 @@ local function moveCharacter(player, char, cf)
 		spot = Vector3.new(spot.X, floor.Y + rootHeight(char) + 0.25, spot.Z)
 	end
 	local target = CFrame.new(spot) * cf.Rotation
+	allowMove(player, spot)
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
 	-- move the model so the ROOT lands on the target, whatever the model's pivot is

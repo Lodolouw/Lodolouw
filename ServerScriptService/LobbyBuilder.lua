@@ -5027,6 +5027,12 @@ local function buildIsland(parent)
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		if hum and root and hum.Health > 0 and not char:GetAttribute("WashedBack") then
 			char:SetAttribute("WashedBack", true)
+			-- (tells the movement guard in PlayerService this jump is the server's own)
+			local player = game:GetService("Players"):GetPlayerFromCharacter(char)
+			if player then
+				player:SetAttribute("MoveTo", spawnAt.Position)
+				player:SetAttribute("MoveUntil", Workspace:GetServerTimeNow() + 3)
+			end
 			root.AssemblyLinearVelocity = Vector3.zero
 			root.CFrame = spawnAt
 			task.delay(1, function()

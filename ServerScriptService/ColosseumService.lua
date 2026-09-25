@@ -76,6 +76,15 @@ local function groundBelow(pos, char)
 	return hit and hit.Position or pos
 end
 
+-- Tells the movement guard (PlayerService) this move is the server's own,
+-- so it doesn't put the player back where they came from.
+local function allowMove(player, destination, seconds)
+	if player and destination then
+		player:SetAttribute("MoveTo", destination)
+		player:SetAttribute("MoveUntil", workspace:GetServerTimeNow() + (seconds or 3))
+	end
+end
+
 -- If the player's screen didn't manage the trip (it failed, or LobbyActivities
 -- is missing), move them the plain way so they're never left stuck.
 local function ensureAt(player, cf, near)
@@ -86,6 +95,7 @@ local function ensureAt(player, cf, near)
 		end)
 		root.Anchored = false
 		local g = groundBelow(cf.Position, char)
+		allowMove(player, g, 3)
 		char:PivotTo(CFrame.new(g + Vector3.new(0, 4, 0)) * cf.Rotation)
 	end
 end
@@ -467,7 +477,9 @@ local function enter(player)
 		player:RequestStreamAroundAsync(spawnAt.Position, 3)
 	end)
 	local doorGround = door and groundBelow(door.Position, char) or root.Position
-	send(player, "PipeIn", doorGround, spawnAt.CFrame, groundBelow(spawnAt.Position, char))
+	local inside = groundBelow(spawnAt.Position, char)
+	allowMove(player, inside, pipeTime() + 3) -- (their own screen makes this jump)
+	send(player, "PipeIn", doorGround, spawnAt.CFrame, inside)
 	task.wait(pipeTime())
 	going[player] = nil
 	if not rootOf(player) then
@@ -495,6 +507,14 @@ local function leave(player)
 	if not sessions[player] or going[player] then
 		return
 	end
+	-- (only from the exit door: leaving heals you to full, so it mustn't work
+	-- from the middle of a fight by firing the prompt from anywhere)
+	local exitPrompt = CollectionService:GetTagged("ColosseumExit")[1]
+	local exitDoor = exitPrompt and exitPrompt.Parent
+	local root = rootOf(player)
+	if not root or (exitDoor and exitDoor:IsA("BasePart") and (root.Position - exitDoor.Position).Magnitude > 24) then
+		return
+	end
 	endSession(player)
 	player:SetAttribute("Colosseum", nil)
 	send(player, "Left")
@@ -513,7 +533,9 @@ local function leave(player)
 		player:RequestStreamAroundAsync(back.Position, 3)
 	end)
 	local _, _, char = rootOf(player)
-	send(player, "PipeOut", back.CFrame, groundBelow(back.Position, char))
+	local outside = groundBelow(back.Position, char)
+	allowMove(player, outside, pipeTime() + 3) -- (their own screen makes this jump)
+	send(player, "PipeOut", back.CFrame, outside)
 	task.wait(pipeTime())
 	going[player] = nil
 	task.delay(1.5, function()

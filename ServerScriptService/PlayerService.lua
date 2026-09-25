@@ -37,6 +37,7 @@ local lastHit = {} -- [player] = os.clock() of last accepted training hit
 local combos = {} -- [player] = { count, zone, lastAt } for manual training hits
 local started = {} -- [player] = true once onPlayerAdded ran
 local hookedPrompts = {}
+local allowRequest, saneArg -- (the request budget and argument checks, below)
 local remotes = {}
 local handlers = {}
 local isStarted = false
@@ -216,36 +217,101 @@ local function highestCleared(d)
 	return best
 end
 
-local function loadData(player)
-	if not store then
-		return nil, false
-	end
-	local key = "u_" .. player.UserId
-	for attempt = 1, 2 do
-		local ok, result = pcall(function()
-			return store:GetAsync(key)
-		end)
-		if ok then
-			return result, true -- result is nil for brand-new players
+-- SAVING, SAFELY. Only one server may own a player's save at a time: when a
+-- server loads it, it writes its own id into it (a "lock"), keeps that fresh
+-- with every autosave, and lets go when the player leaves. Another server
+-- that loads the save while it's locked waits for the lock to be let go -
+-- so hopping servers can never load an old copy of your save before the last
+-- server has finished writing the new one (that would let you open a chest,
+-- hop, and have it back; with trading, it would copy items). A lock older than
+-- LOCK_EXPIRES is from a server that crashed, and is taken over.
+local LOCK_EXPIRES = 240 -- seconds
+local JOB = game.JobId
+
+-- A copy of the data safe to write: no NaN or infinite numbers (one of those
+-- makes the whole save fail to write), nothing absurdly deep.
+local function cleanCopy(v, depth)
+	if type(v) == "number" then
+		if v ~= v or v == math.huge or v == -math.huge then
+			return 0
 		end
-		if attempt == 1 then
-			task.wait(1)
+		return v
+	elseif type(v) == "table" then
+		if depth > 8 then
+			return nil
 		end
+		local t = {}
+		for k, x in pairs(v) do
+			t[k] = cleanCopy(x, depth + 1)
+		end
+		return t
 	end
-	return nil, false
+	return v
 end
 
-local function saveProfile(player)
+-- returns: saved data (nil for a new player), whether it may be saved, and
+-- whether another server still had it locked the whole time
+local function loadData(player)
+	if not store then
+		return nil, false, false
+	end
+	local key = "u_" .. player.UserId
+	local lockedTries = 0
+	for attempt = 1, 10 do
+		local locked = false
+		local ok, result = pcall(function()
+			return store:UpdateAsync(key, function(old)
+				if type(old) == "table" and old._lockJob and old._lockJob ~= JOB
+					and os.time() - (tonumber(old._lockTime) or 0) < LOCK_EXPIRES then
+					locked = true
+					return nil -- (not ours yet: leave it exactly as it is)
+				end
+				old = type(old) == "table" and old or {}
+				old._lockJob = JOB
+				old._lockTime = os.time()
+				return old
+			end)
+		end)
+		if ok and not locked then
+			return result, true, false
+		end
+		if locked then
+			lockedTries = lockedTries + 1
+		end
+		if not player.Parent then
+			return nil, false, false
+		end
+		task.wait(locked and 5 or 1.5) -- (give the other server time to finish saving)
+	end
+	return nil, false, lockedTries >= 5
+end
+
+-- `release` = true when the player is leaving: the lock is let go
+local function saveProfile(player, release)
 	local profile = profiles[player]
 	if not profile or not profile.canSave or not store then
 		return
 	end
 	local key = "u_" .. player.UserId
 	for attempt = 1, 3 do
+		local stolen = false
 		local ok, err = pcall(function()
-			store:SetAsync(key, profile.data)
+			store:UpdateAsync(key, function(old)
+				if type(old) == "table" and old._lockJob and old._lockJob ~= JOB then
+					stolen = true
+					return nil -- (another server owns it now: never write over its copy)
+				end
+				local out = cleanCopy(profile.data, 0)
+				out._lockJob = (not release) and JOB or nil
+				out._lockTime = os.time()
+				return out
+			end)
 		end)
 		if ok then
+			if stolen then
+				profile.canSave = false
+				warn("[PlayerService] " .. player.Name .. "'s save is owned by another server now - not saving here")
+			end
 			return
 		end
 		warn("[PlayerService] save failed (" .. attempt .. "/3): " .. tostring(err))
@@ -699,9 +765,14 @@ end
 -- Stat points: spend `n` (1-100) on a stat, or reset them all (free)
 handlers.SpendStat = function(player, d, arg)
 	local stat = type(arg) == "table" and arg.stat
-	local n = type(arg) == "table" and tonumber(arg.n) or 1
-	if not Config.StatById[stat] then
+	local n = type(arg) == "table" and arg.n or 1
+	if type(stat) ~= "string" or not Config.StatById[stat] then
 		return false, "Unknown stat."
+	end
+	-- (a real, whole number: NaN or infinity here used to be written straight
+	-- into your stats, and a save with NaN in it can't be written at all)
+	if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
+		return false, "Bad amount."
 	end
 	n = math.clamp(math.floor(n), 1, 100)
 	n = math.min(n, Config.statPointsLeft(d))
@@ -833,8 +904,14 @@ local function onPlayerAdded(player)
 	started[player] = true
 	player:SetAttribute("CurrentZone", 0)
 
-	local saved, ok = loadData(player)
+	local saved, ok, stillLocked = loadData(player)
 	if not player.Parent then
+		return
+	end
+	if stillLocked then
+		-- (still being saved by the server they just left: never play on a copy
+		-- that might be out of date)
+		player:Kick("Your save is still being written by another server. Please rejoin in a minute.")
 		return
 	end
 
@@ -872,7 +949,7 @@ local function onPlayerAdded(player)
 end
 
 local function onPlayerRemoving(player)
-	saveProfile(player)
+	saveProfile(player, true) -- (and let go of the lock)
 	profiles[player] = nil
 	dirty[player] = nil
 	lastHit[player] = nil
@@ -883,6 +960,52 @@ end
 ----------------------------------------------------------------------
 -- Remotes
 ----------------------------------------------------------------------
+-- ASKING THE SERVER, FAIRLY. Each player gets a small budget of requests
+-- (refilling 10 a second, up to 20 saved up): far more than any real player
+-- clicks, but a script firing thousands a second is simply ignored instead of
+-- lagging the whole server.
+local budgets = setmetatable({}, { __mode = "k" }) -- (forgets players who leave)
+allowRequest = function(player)
+	local now = os.clock()
+	local b = budgets[player]
+	if not b then
+		b = { tokens = 20, at = now }
+		budgets[player] = b
+	end
+	b.tokens = math.min(20, b.tokens + (now - b.at) * 10)
+	b.at = now
+	if b.tokens < 1 then
+		return false
+	end
+	b.tokens = b.tokens - 1
+	return true
+end
+
+-- What a client sends is checked before any handler sees it: numbers must be
+-- real numbers (no NaN, no infinity), and tables small and shallow. Handlers
+-- still check that the values make sense for what they do.
+saneArg = function(v, depth)
+	local t = type(v)
+	if t == "number" then
+		return v == v and v ~= math.huge and v ~= -math.huge
+	elseif t == "string" then
+		return #v <= 100
+	elseif t == "table" then
+		if depth >= 2 then
+			return false
+		end
+		local count = 0
+		for k, x in pairs(v) do
+			count = count + 1
+			if count > 20 or not saneArg(k, depth + 1) or not saneArg(x, depth + 1) then
+				return false
+			end
+		end
+		return true
+	end
+	return t == "nil" or t == "boolean" or t == "Instance"
+end
+
 local function buildRemotes()
 	local old = ReplicatedStorage:FindFirstChild("Remotes")
 	if old then
@@ -910,7 +1033,7 @@ local function buildRemotes()
 	folder.Parent = ReplicatedStorage
 
 	remotes.RequestState.OnServerEvent:Connect(function(player)
-		if profiles[player] then
+		if profiles[player] and allowRequest(player) then
 			markDirty(player)
 		end
 	end)
@@ -941,6 +1064,12 @@ local function buildRemotes()
 	end)
 
 	remotes.Action.OnServerInvoke = function(player, name, arg)
+		if not allowRequest(player) then
+			return false, "Slow down!"
+		end
+		if not saneArg(arg, 0) then
+			return false, "Bad request."
+		end
 		local profile = profiles[player]
 		local handler = type(name) == "string" and handlers[name]
 		if not profile or not handler then
@@ -966,6 +1095,112 @@ local function hookPrompt(prompt)
 			remotes.OpenPanel:FireClient(player, panel)
 		end
 	end)
+end
+
+----------------------------------------------------------------------
+-- The movement guard
+----------------------------------------------------------------------
+-- Each player's own computer moves their character (that's how Roblox
+-- works), so a cheat can move it anywhere: teleport, run at double speed,
+-- fly. The server watches every character ten times a second and, if it
+-- moved in a way no player can, puts it back where it last stood fairly:
+--   * a TELEPORT: more than TELEPORT_STUDS in one tick
+--   * a SPEED hack: faster, averaged over SPEED_WINDOW seconds, than their
+--     walk speed allows (with room for rolls and being knocked about)
+--   * FLYING: no ground under them for FLY_SECONDS without falling
+-- The server's own moves (travelling to the Spire, the Colosseum's pipe,
+-- the sea washing you back) are allowed: whatever moves a player sets
+--   player:SetAttribute("MoveTo", destination)
+--   player:SetAttribute("MoveUntil", workspace:GetServerTimeNow() + seconds)
+-- first, and a jump to within MOVE_TO_SLACK studs of that spot is fine.
+-- (A client can't set those: attributes a client sets never reach the server.)
+local TELEPORT_STUDS = 60
+local SPEED_WINDOW = 3
+local SPEED_SLACK = 12 -- studs a second on top of walk speed * 1.35
+local FLY_SECONDS = 2.5
+local MOVE_TO_SLACK = 45
+local guard = setmetatable({}, { __mode = "k" })
+
+local function flatMag(v)
+	return Vector3.new(v.X, 0, v.Z).Magnitude
+end
+
+local function sanctioned(player, pos)
+	local to = player:GetAttribute("MoveTo")
+	local untilT = player:GetAttribute("MoveUntil")
+	return typeof(to) == "Vector3" and type(untilT) == "number" and workspace:GetServerTimeNow() <= untilT
+		and (pos - to).Magnitude <= MOVE_TO_SLACK
+end
+
+local function checkMovement(player, dt)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not (hum and root) or hum.Health <= 0 then
+		return
+	end
+	local pos = root.Position
+	local g = guard[player]
+	if not g or g.char ~= char then
+		-- a new body (joined, respawned): start watching from where it is
+		g = { char = char, last = pos, good = pos, history = {}, air = 0, strikes = 0 }
+		guard[player] = g
+		return
+	end
+	local now = os.clock()
+	if sanctioned(player, pos) then
+		-- a move the server asked for: start again from here
+		g.last, g.good, g.history, g.air = pos, pos, {}, 0
+		return
+	end
+
+	local why = nil
+	-- 1. teleports
+	if flatMag(pos - g.last) > TELEPORT_STUDS or pos.Y - g.last.Y > TELEPORT_STUDS then
+		why = "teleport"
+	end
+	-- 2. speed, averaged so a roll or a knock-back never counts
+	table.insert(g.history, { t = now, pos = pos })
+	while #g.history > 0 and now - g.history[1].t > SPEED_WINDOW do
+		table.remove(g.history, 1)
+	end
+	local oldest = g.history[1]
+	if not why and oldest and now - oldest.t > SPEED_WINDOW * 0.8 then
+		local d = PlayerService.GetData(player)
+		local limit = Config.walkSpeedFor(player, d) * 1.35 + SPEED_SLACK
+		if flatMag(pos - oldest.pos) / (now - oldest.t) > limit then
+			why = "speed"
+		end
+	end
+	-- 3. flying: nothing under them, and not coming down
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	local ground = workspace:Raycast(pos, Vector3.new(0, -16, 0), params)
+	if ground or pos.Y < g.last.Y - 0.3 then
+		g.air = 0
+	else
+		g.air = g.air + dt
+		if g.air > FLY_SECONDS and not why then
+			why = "flying"
+		end
+	end
+
+	if why then
+		-- back to where they last stood fairly, stopped dead
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.CFrame = CFrame.new(g.good) * (root.CFrame - root.Position)
+		g.last, g.history, g.air = g.good, {}, 0
+		g.strikes = g.strikes + 1
+		if g.strikes == 1 or g.strikes % 20 == 0 then
+			warn(string.format("[PlayerService] movement guard: %s (%s) - put back (%d times)", player.Name, why, g.strikes))
+		end
+		return
+	end
+	g.last = pos
+	if ground then
+		g.good = pos -- (standing on something, having moved fairly)
+	end
 end
 
 ----------------------------------------------------------------------
@@ -1050,6 +1285,23 @@ function PlayerService.Start()
 		end
 	end)
 
+	-- The movement guard, ten times a second
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(0.1)
+			local now = os.clock()
+			local dt = now - last
+			last = now
+			for _, player in ipairs(Players:GetPlayers()) do
+				local ok, err = pcall(checkMovement, player, dt)
+				if not ok then
+					warn("[PlayerService] movement guard failed: " .. tostring(err))
+				end
+			end
+		end
+	end)
+
 	-- Autosave
 	task.spawn(function()
 		while true do
@@ -1062,7 +1314,7 @@ function PlayerService.Start()
 
 	game:BindToClose(function()
 		for _, p in ipairs(Players:GetPlayers()) do
-			task.spawn(saveProfile, p)
+			task.spawn(saveProfile, p, true)
 		end
 		task.wait(3)
 	end)
