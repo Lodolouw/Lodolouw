@@ -870,25 +870,25 @@ end
 local NEW_TREES = {
 	{ pineTree, 60, -88, 1 }, { roundTree, 76, -104, 0.9 }, { blossomTree, 96, -76, 0.9 },
 	{ pineTree, -60, 24, 1 }, { roundTree, -86, 30, 0.9 }, { blossomTree, -30, -40, 0.9 },
-	{ blossomTree, 28, -40, 0.9 }, { pineTree, 90, 22, 0.9 }, { roundTree, 40, 80, 0.9 },
-	{ pineTree, 96, 150, 0.9 }, { blossomTree, 28, 110, 0.9 }, { pineTree, -30, 164, 0.8 },
+	{ blossomTree, 28, -40, 0.9 }, { pineTree, 90, 22, 0.9 }, { roundTree, 96, 70, 0.9 },
+	{ pineTree, 96, 150, 0.9 }, { blossomTree, 62, 160, 0.9 }, { pineTree, -30, 164, 0.8 },
 	{ roundTree, -100, 152, 0.9 },
 }
 
 local ROCKS = {
 	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -64, 40, 0.8 },
-	{ 60, 100, 0.9 }, { -104, 160, 0.9 }, { 20, 160, 0.8 },
+	{ 90, 150, 0.9 }, { -104, 160, 0.9 }, { 20, 160, 0.8 },
 }
 
 local BUSHES = {
 	{ -30, 16, 0.8 }, { 30, 16, 0.8 }, { -20, -30, 0.7 }, { 20, -30, 0.7 },
 	{ 34, -58, 0.9 }, { -108, 0, 1 }, { 96, 36, 0.9 }, { 24, 66, 0.8 },
-	{ -24, 44, 0.8 }, { 90, 100, 0.9 }, { -60, 160, 0.9 },
+	{ -24, 44, 0.8 }, { 76, 160, 0.9 }, { -60, 160, 0.9 },
 }
 
 local FLOWER_PATCHES = {
 	{ -40, 18 }, { 40, 24 }, { -28, -14 }, { 28, -14 }, { -95, 12 },
-	{ 22, 90 }, { 80, 80 }, { 24, 130 }, { 50, 160 }, { -80, 40 },
+	{ 12, 150 }, { 60, 150 }, { 80, 150 }, { 50, 160 }, { -80, 40 },
 }
 
 local function buildDecor(parent)
@@ -3234,13 +3234,12 @@ local function buildMountain(parent)
 end
 
 ----------------------------------------------------------------------
--- The castle rebuild: Grand Keep, ramparts, turrets, south gatehouse,
+-- The castle rebuild: Grand Keep, turrets, south gatehouse,
 -- moat and the Lakeside outside the walls
 ----------------------------------------------------------------------
 -- Gives the castle the storybook personality of the reference pictures:
 -- red cone roofs on every tower, a Grand Keep rising over the Spire gate,
--- little turrets hanging off the outside of the walls, walls you can walk
--- along the top of, a gatehouse with a drawbridge over a moat on the south
+-- little turrets hanging off the outside of the walls, a gatehouse with a drawbridge over a moat on the south
 -- side, and outside it a grassy shelf with a fishing lake whose stream
 -- pours off the edge of the island as a waterfall.
 local KEEP_STONE = RGB(150, 146, 160)
@@ -3325,69 +3324,6 @@ local function bartizan(parent, pos, out)
 	cylinder(m, "Ledge", 1.2, 11.4, CFrame.new(c + V3(0, 48.6, 0)), STONE_DARK, Mat.Cobblestone)
 	part(m, "Slit", V3(1, 4, 0.5), CFrame.lookAt(c + V3(0, 40, 0) + out * 5, c + V3(0, 40, 0) + out * 6), RGB(28, 28, 36), Mat.SmoothPlastic)
 	coneRoof(m, c + V3(0, 49.2, 0), 6.5, 15, ROOF_RED, 9)
-end
-
--- The walk along the top of the walls: a stone walkway sitting on corbels
--- along the inside of each wall, platforms that step round the inside of
--- the corner towers, and a long staircase up from the south corners.
-local function buildRamparts(parent)
-	local m = folder(parent, "Ramparts")
-	local Y = WALL_HEIGHT -- walkway top
-	local function walk(x0, z0, x1, z1)
-		part(m, "Walkway", V3(x1 - x0, 1, z1 - z0), CFrame.new((x0 + x1) / 2, Y - 0.5, (z0 + z1) / 2), STONE_DARK, Mat.Slate)
-		-- corbels under the inner edge, every 6 studs
-		local alongX = (x1 - x0) > (z1 - z0)
-		local len = alongX and (x1 - x0) or (z1 - z0)
-		for t = 3, len - 3, 6 do
-			local p = alongX and V3(x0 + t, Y - 2.2, z0 + 1) or V3(x0 + 1, Y - 2.2, z0 + t)
-			part(m, "WalkCorbel", V3(1.4, 2.4, 1.4), CFrame.new(p), STONE_DARK, Mat.Cobblestone)
-		end
-	end
-	local S = SOUTH_WALL - 3 -- the south wall's inner face
-	for _, sx in ipairs({ -1, 1 }) do
-		local function wx(a, b) -- an x range on this side
-			local p, q = sx * a, sx * b
-			return math.min(p, q), math.max(p, q)
-		end
-		-- side wall (sx = -1 west, +1 east)
-		local a, b = wx(110, 115)
-		walk(a, -102, b, S - 13)
-		-- round the inside of the south corner tower
-		a, b = wx(92, 115)
-		walk(a, S - 23, b, S - 13)
-		a, b = wx(92, 102)
-		walk(a, S - 23, b, S)
-		-- along the south wall, up to the gatehouse towers
-		a, b = wx(36, 92)
-		walk(a, S - 5, b, S)
-		-- round the inside of the north corner tower, then along the north wall
-		a, b = wx(92, 115)
-		walk(a, -102, b, -92)
-		a, b = wx(92, 102)
-		walk(a, -115, b, -92)
-		a, b = wx(46, 92)
-		walk(a, -115, b, -110)
-		-- a lookout balcony where the north walk ends at the keep
-		part(m, "LookoutRail", V3(1, 3, 5), CFrame.new(sx * 46.5, Y + 1.5, -112.5), STONE, Mat.Cobblestone)
-		-- the staircase up, climbing out towards the corner platform
-		local steps = math.floor(Y / 0.5)
-		local tread = 0.8
-		for k = 1, steps do
-			local h = k * 0.5
-			local x = sx * (92 + 0.2 - (steps - k + 0.5) * tread)
-			part(m, "RampartStair", V3(tread + 0.02, h, 7), CFrame.new(x, h / 2, S - 19.5), (k % 2 == 0) and STONE or STONE_DARK, Mat.Slate)
-		end
-		-- a torch at the bottom so the stairs are easy to spot
-		local bottomX = sx * (92 - steps * tread - 1.5)
-		part(m, "StairPost", V3(1.2, 6, 1.2), CFrame.new(bottomX, 3, S - 15.5), STONE_DARK, Mat.Cobblestone)
-		local bowl = cylinder(m, "StairBrazier", 1, 2.6, CFrame.new(bottomX, 6.3, S - 15.5), RGB(58, 58, 66), Mat.Metal)
-		local fire = Instance.new("Fire")
-		fire.Size = 4
-		fire.Heat = 7
-		fire.Color = RGB(255, 140, 40)
-		fire.SecondaryColor = RGB(255, 220, 90)
-		fire.Parent = bowl
-	end
 end
 
 -- The south gatehouse: a round arch in the south wall between two big
@@ -3817,7 +3753,7 @@ local function buildRiver(parent)
 	end
 end
 
--- A windmill in the south-east corner, over a little pumpkin patch
+-- A windmill in the south-east corner...
 local function buildWindmill(parent)
 	local m = folder(parent, "Windmill")
 	local x, z = 72, 128
@@ -3833,12 +3769,135 @@ local function buildWindmill(parent)
 		part(m, "MillArm", V3(0.6, 16, 0.4), c, RGB(90, 60, 40), Mat.Wood, { CanCollide = false })
 		part(m, "MillSail", V3(3.4, 12, 0.2), c * CFrame.new(1.9, 1, 0), RGB(245, 240, 228), Mat.Fabric, { CanCollide = false })
 	end
-	for i = 0, 9 do
-		local px, pz = 40 + (i % 5) * 6, 98 + math.floor(i / 5) * 6
-		ball(m, "Pumpkin", 2.4 + rnd() * 0.8, CFrame.new(px, 1, pz), RGB(240, 140, 40), Mat.SmoothPlastic)
-		part(m, "PumpkinStem", V3(0.3, 0.8, 0.3), CFrame.new(px, 2.4, pz), RGB(80, 120, 50), Mat.Wood, { CanCollide = false })
+	-- ...and the farm round it, Stardew Valley style: tilled plots of mixed
+	-- crops with a scarecrow, a stepping-stone path, a shipping bin, a well,
+	-- a chicken coop with chickens pecking about, sunflowers by the fence.
+	local SOIL, SOIL_DARK = RGB(122, 84, 56), RGB(96, 64, 44)
+	local LEAF, LEAF_DARK = RGB(92, 176, 72), RGB(62, 140, 60)
+	local function crop(kind, x, z)
+		if kind == "pumpkin" then
+			ball(m, "Pumpkin", 2.2 + rnd() * 0.6, CFrame.new(x, 1.5, z), RGB(240, 140, 40), Mat.SmoothPlastic)
+			part(m, "PumpkinStem", V3(0.3, 0.7, 0.3), CFrame.new(x, 2.8, z), RGB(80, 120, 50), Mat.Wood, { CanCollide = false })
+			part(m, "PumpkinLeaf", V3(1.4, 0.2, 1), CFrame.new(x + 1.2, 1, z + 0.6) * CFrame.Angles(0, rnd() * 3, 0), LEAF, Mat.Grass, { CanCollide = false })
+		elseif kind == "cauliflower" then
+			for i = 0, 3 do
+				local a = i * math.pi / 2 + 0.4
+				part(m, "Leaf", V3(1.6, 0.3, 0.8), CFrame.new(x + math.cos(a) * 0.9, 1, z + math.sin(a) * 0.9) * CFrame.Angles(0, -a, 0.3), LEAF_DARK, Mat.Grass, { CanCollide = false })
+			end
+			ball(m, "Cauliflower", 1.6, CFrame.new(x, 1.5, z), RGB(246, 240, 222), Mat.SmoothPlastic, { CanCollide = false })
+		elseif kind == "parsnip" then
+			part(m, "ParsnipTop", V3(0.9, 0.5, 0.9), CFrame.new(x, 1.05, z), RGB(236, 214, 160), Mat.SmoothPlastic, { CanCollide = false })
+			for i = 0, 2 do
+				part(m, "Leaf", V3(0.3, 1.6, 0.3), CFrame.new(x, 2, z) * CFrame.Angles(0.35, i * 2.1, 0) * CFrame.new(0, 0.3, 0), LEAF, Mat.Grass, { CanCollide = false })
+			end
+		elseif kind == "corn" then
+			part(m, "Stalk", V3(0.4, 5, 0.4), CFrame.new(x, 3.3, z), LEAF_DARK, Mat.Grass, { CanCollide = false })
+			part(m, "CornLeaf", V3(2.4, 0.2, 0.6), CFrame.new(x, 3, z) * CFrame.Angles(0, rnd() * 3, 0.4), LEAF, Mat.Grass, { CanCollide = false })
+			part(m, "Cob", V3(0.6, 1.4, 0.6), CFrame.new(x + 0.45, 4, z), RGB(250, 214, 80), Mat.SmoothPlastic, { CanCollide = false })
+			part(m, "Tassel", V3(0.3, 0.8, 0.3), CFrame.new(x, 6.1, z), RGB(220, 190, 110), Mat.Grass, { CanCollide = false })
+		else -- strawberries
+			ball(m, "Bush", 1.6, CFrame.new(x, 1.3, z), LEAF, Mat.Grass, { CanCollide = false })
+			for i = 0, 2 do
+				ball(m, "Berry", 0.5, CFrame.new(x + math.cos(i * 2.1) * 0.7, 1.4, z + math.sin(i * 2.1) * 0.7), RGB(230, 50, 60), Mat.SmoothPlastic, { CanCollide = false })
+			end
+		end
 	end
-	fence(m, V3(34, 0, 110), V3(66, 0, 110))
+	local function plot(x0, z0, x1, z1, kinds)
+		part(m, "Tilled", V3(x1 - x0, 0.5, z1 - z0), CFrame.new((x0 + x1) / 2, 0.25, (z0 + z1) / 2), SOIL, Mat.Ground)
+		local row = 0
+		for z = z0 + 2, z1 - 2, 4 do
+			row = row + 1
+			part(m, "Furrow", V3(x1 - x0 - 1, 0.35, 1.8), CFrame.new((x0 + x1) / 2, 0.6, z), SOIL_DARK, Mat.Ground, { CanCollide = false })
+			local kind = kinds[(row - 1) % #kinds + 1]
+			for x = x0 + 2, x1 - 2, 3 do
+				if rnd() < 0.88 then
+					crop(kind, x, z)
+				end
+			end
+		end
+		-- a wooden border round the plot
+		for _, zz in ipairs({ z0 - 0.3, z1 + 0.3 }) do
+			part(m, "PlotEdge", V3(x1 - x0 + 1.2, 0.8, 0.6), CFrame.new((x0 + x1) / 2, 0.4, zz), PLANK, Mat.WoodPlanks)
+		end
+		for _, xx in ipairs({ x0 - 0.3, x1 + 0.3 }) do
+			part(m, "PlotEdge", V3(0.6, 0.8, z1 - z0), CFrame.new(xx, 0.4, (z0 + z1) / 2), PLANK, Mat.WoodPlanks)
+		end
+	end
+	plot(22, 78, 50, 102, { "parsnip", "cauliflower", "strawberry", "parsnip", "cauliflower", "strawberry" })
+	plot(22, 112, 50, 136, { "corn", "pumpkin", "corn", "pumpkin", "corn", "pumpkin" })
+
+	-- the scarecrow, keeping watch over the first plot
+	local sx, sz = 51.5 + 2.5, 90
+	part(m, "ScarecrowPost", V3(0.7, 8, 0.7), CFrame.new(sx, 4, sz), RGB(110, 76, 46), Mat.Wood)
+	part(m, "ScarecrowArms", V3(0.6, 0.6, 6), CFrame.new(sx, 5.8, sz), RGB(110, 76, 46), Mat.Wood)
+	part(m, "ScarecrowShirt", V3(1.6, 2.6, 3.4), CFrame.new(sx, 5.2, sz), RGB(70, 110, 170), Mat.Fabric)
+	part(m, "ScarecrowPatch", V3(1.7, 0.8, 0.8), CFrame.new(sx, 5, sz + 0.8), RGB(200, 70, 60), Mat.Fabric)
+	ball(m, "ScarecrowHead", 2.4, CFrame.new(sx, 8, sz), RGB(230, 200, 120), Mat.Fabric)
+	part(m, "ScarecrowEye", V3(0.2, 0.4, 0.4), CFrame.new(sx - 1.15, 8.2, sz - 0.5), RGB(30, 26, 30), Mat.SmoothPlastic)
+	part(m, "ScarecrowEye", V3(0.2, 0.4, 0.4), CFrame.new(sx - 1.15, 8.2, sz + 0.5), RGB(30, 26, 30), Mat.SmoothPlastic)
+	cylinder(m, "HatBrim", 0.3, 4.4, CFrame.new(sx, 9, sz), RGB(170, 130, 70), Mat.Fabric)
+	cylinder(m, "HatTop", 1.4, 2.2, CFrame.new(sx, 9.8, sz), RGB(170, 130, 70), Mat.Fabric)
+	for _, dz in ipairs({ -3.1, 3.1 }) do
+		part(m, "Straw", V3(0.3, 0.8, 0.3), CFrame.new(sx, 5.5, sz + dz), RGB(230, 200, 120), Mat.Grass, { CanCollide = false })
+	end
+
+	-- stepping stones from the south road, between the plots
+	for i = 0, 10 do
+		local x = 12 + i * 5
+		part(m, "SteppingStone", V3(3.4, 0.35, 3) , CFrame.new(x + (rnd() - 0.5), 0.2, 107 + (rnd() - 0.5) * 1.5) * CFrame.Angles(0, rnd() * 0.6, 0), RGB(170, 170, 180), Mat.Slate)
+	end
+	-- the shipping bin (drop your harvest in!)
+	part(m, "ShippingBin", V3(5, 3, 3.4), CFrame.new(56, 1.5, 102.5), PLANK, Mat.WoodPlanks)
+	part(m, "BinLid", V3(5.4, 0.5, 3.8), CFrame.new(56, 3.25, 102.5), RGB(120, 80, 46), Mat.WoodPlanks)
+	part(m, "BinBand", V3(5.1, 0.4, 3.5), CFrame.new(56, 2.2, 102.5), RGB(70, 66, 74), Mat.Metal)
+	-- the well
+	local wx, wz = 62, 88
+	cylinder(m, "WellRing", 3, 7, CFrame.new(wx, 1.5, wz), RGB(160, 160, 172), Mat.Cobblestone)
+	cylinder(m, "WellWater", 0.2, 5.4, CFrame.new(wx, 2.6, wz), WATER, Mat.SmoothPlastic, { CanCollide = false })
+	for _, d in ipairs({ -3, 3 }) do
+		part(m, "WellPost", V3(0.6, 6, 0.6), CFrame.new(wx + d, 5.5, wz), RGB(110, 76, 46), Mat.Wood)
+	end
+	part(m, "WellBar", V3(6.6, 0.5, 0.5), CFrame.new(wx, 7, wz), RGB(90, 60, 40), Mat.Wood)
+	for _, s in ipairs({ -1, 1 }) do
+		part(m, "WellRoof", V3(8, 0.4, 3.4), CFrame.new(wx, 9, wz + s * 1.4) * CFrame.Angles(s * 0.6, 0, 0), ROOF_RED, Mat.WoodPlanks)
+	end
+	part(m, "Bucket", V3(1, 1.1, 1), CFrame.new(wx, 5, wz), RGB(130, 90, 56), Mat.WoodPlanks, { CanCollide = false })
+
+	-- the chicken coop, and its chickens
+	local cx, cz = 88, 90
+	part(m, "Coop", V3(10, 6, 9), CFrame.new(cx, 3.5, cz), RGB(196, 120, 80), Mat.WoodPlanks)
+	part(m, "CoopBase", V3(10.6, 1, 9.6), CFrame.new(cx, 0.5, cz), RGB(110, 76, 46), Mat.Wood)
+	for _, s in ipairs({ -1, 1 }) do
+		part(m, "CoopRoof", V3(11, 0.5, 6), CFrame.new(cx, 7.7, cz + s * 2.4) * CFrame.Angles(s * 0.55, 0, 0), ROOF_RED, Mat.WoodPlanks)
+	end
+	part(m, "CoopDoor", V3(0.3, 3, 2.4), CFrame.new(cx - 5.1, 2.5, cz), RGB(90, 60, 40), Mat.WoodPlanks)
+	part(m, "CoopRamp", V3(3, 0.3, 2.4), CFrame.new(cx - 6.4, 0.7, cz) * CFrame.Angles(0, 0, -0.35), RGB(150, 104, 62), Mat.WoodPlanks)
+	for i = 1, 6 do
+		local hx, hz = 68 + rnd() * 26, 74 + rnd() * 14
+		local turn = CFrame.new(hx, 0, hz) * CFrame.Angles(0, rnd() * 6.28, 0)
+		local white = i % 3 ~= 0
+		local body = white and RGB(250, 248, 240) or RGB(190, 120, 70)
+		part(m, "ChickenBody", V3(1.4, 1.2, 1.8), turn * CFrame.new(0, 0.9, 0), body, Mat.SmoothPlastic)
+		part(m, "ChickenHead", V3(0.8, 0.9, 0.8), turn * CFrame.new(0, 1.8, -0.9), body, Mat.SmoothPlastic)
+		part(m, "ChickenComb", V3(0.3, 0.4, 0.5), turn * CFrame.new(0, 2.4, -0.9), RGB(230, 50, 50), Mat.SmoothPlastic, { CanCollide = false })
+		part(m, "ChickenBeak", V3(0.3, 0.25, 0.4), turn * CFrame.new(0, 1.8, -1.45), RGB(250, 190, 60), Mat.SmoothPlastic, { CanCollide = false })
+		part(m, "ChickenTail", V3(0.8, 0.8, 0.4), turn * CFrame.new(0, 1.4, 1), body, Mat.SmoothPlastic, { CanCollide = false })
+	end
+
+	-- fence round the farm, with a gap where the stepping stones come in,
+	-- and sunflowers growing along it
+	fence(m, V3(18, 0, 74), V3(66, 0, 74))
+	fence(m, V3(18, 0, 74), V3(18, 0, 103))
+	fence(m, V3(18, 0, 111), V3(18, 0, 140))
+	fence(m, V3(18, 0, 140), V3(60, 0, 140))
+	for i = 0, 6 do
+		local fx = 22 + i * 6
+		local h = 6 + rnd() * 1.5
+		part(m, "SunflowerStem", V3(0.4, h, 0.4), CFrame.new(fx, h / 2, 76.5), LEAF_DARK, Mat.Grass, { CanCollide = false })
+		discZ(m, "SunflowerPetals", 0.3, 2.8, CFrame.new(fx, h, 76.3), RGB(255, 210, 50), Mat.SmoothPlastic, { CanCollide = false })
+		discZ(m, "SunflowerMiddle", 0.4, 1.3, CFrame.new(fx, h, 76.1), RGB(110, 70, 40), Mat.SmoothPlastic, { CanCollide = false })
+	end
+	titleSign(m, CFrame.new(14, 8, 107), "Farm", nil, RGB(140, 220, 100), 220, 70)
 end
 
 -- A rocky cliff at the east end of the lake, with a waterfall pouring off
@@ -3871,7 +3930,6 @@ end
 local function buildCastle(parent)
 	local m = folder(parent, "Castle")
 	buildKeep(m)
-	buildRamparts(m)
 	buildSouthGate(m)
 	-- turrets hanging off the outside of the walls
 	for _, z in ipairs({ -50, 30, 110 }) do
@@ -4512,7 +4570,7 @@ function LobbyBuilder.Build()
 		{ "Training Yard", buildYard },
 		{ "The Spire", buildSpire },
 		{ "Castle gate", buildCastleGate },
-		{ "Castle (keep, ramparts, south gate, lakeside)", buildCastle },
+		{ "Castle (keep, south gate, lakeside, farm)", buildCastle },
 		{ "Mountain and mist", buildMountain },
 		{ "Slime arena (Spire floor 1)", buildSlimeArena },
 		{ "Castle and nature decorations", buildDecor },
