@@ -1688,7 +1688,9 @@ local function targetPoint(model)
 end
 
 local function lockable(model)
-	return model and model.Parent and model:IsA("Model") and (model:GetAttribute("Health") or 0) > 0
+	-- (someone else's Colosseum dummy isn't yours to fight)
+	local owner = model and model:GetAttribute("Owner")
+	return model and model.Parent and model:IsA("Model") and (model:GetAttribute("Health") or 0) > 0 and (owner == nil or owner == player.UserId)
 end
 
 -- the enemy closest to the middle of the screen, within range
@@ -1835,10 +1837,17 @@ local function setActive(on)
 	end
 end
 
+-- on in a Spire arena, and in the Colosseum
+local function inFight()
+	return player:GetAttribute("SpireFloor") ~= nil or player:GetAttribute("Colosseum") == true
+end
 player:GetAttributeChangedSignal("SpireFloor"):Connect(function()
-	setActive(player:GetAttribute("SpireFloor") ~= nil)
+	setActive(inFight())
 end)
-setActive(player:GetAttribute("SpireFloor") ~= nil)
+player:GetAttributeChangedSignal("Colosseum"):Connect(function()
+	setActive(inFight())
+end)
+setActive(inFight())
 
 -- A fresh body starts clean: nothing from the last life (a roll, a punch, a
 -- held facing, a lock-on, the slow-motion beat) carries over onto it.

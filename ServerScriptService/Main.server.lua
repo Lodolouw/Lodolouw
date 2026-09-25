@@ -87,3 +87,9 @@ local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)
 end
+
+-- The Colosseum: the wave arena for farming (needs combat and player data)
+local ColosseumService = load("ColosseumService", 3)
+if CombatService and PlayerService then
+	start("ColosseumService", ColosseumService and ColosseumService.Start, CombatService, PlayerService)
+end

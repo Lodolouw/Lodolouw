@@ -9,8 +9,9 @@
 	    done. It closes with the X, or when you walk away. A gold "!" bobs
 	    over the board while you have one to hand in.
 
-	  * SPARRING DUMMIES - when you click a straw dummy you turn to face it
-	    and throw a punch (the server works out the damage; CombatService).
+	  * THE COLOSSEUM - hides other players' dummies (everyone farms on their
+	    own), and shows the wave and the quest at the top of the screen, with
+	    the rewards popping up as you beat dummies.
 
 	The server decides everything (PlayerService / CombatService); this only
 	shows it and asks.
@@ -347,78 +348,129 @@ task.spawn(function()
 end)
 
 ----------------------------------------------------------------------
--- Sparring dummies: turn to face it and throw a punch
+-- The Colosseum
 ----------------------------------------------------------------------
--- (the same two punches as on the training pads, taking turns)
-local PUNCH_ANIMATION_IDS = { "140534557983022", "128188028965818" }
-local tracks, trackAnimator = {}, nil
-local punchIndex = 0
-local lastPunch = 0
-
-local function punchTrack(id)
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local animator = hum and hum:FindFirstChildOfClass("Animator")
-	if not animator then
-		return nil
-	end
-	if animator ~= trackAnimator then
-		tracks, trackAnimator = {}, animator
-	end
-	if not tracks[id] then
-		local anim = Instance.new("Animation")
-		anim.AnimationId = "rbxassetid://" .. id
-		local ok, track = pcall(function()
-			return animator:LoadAnimation(anim)
+-- Everyone farms on their own: other players' dummies are taken off this
+-- screen the moment they appear (the server keeps them; we just don't show
+-- them). Yours carry your UserId as their Owner.
+local function hideIfNotMine(model)
+	local owner = model:GetAttribute("Owner")
+	if owner and owner ~= player.UserId then
+		task.defer(function()
+			model.Parent = nil -- (only here, on this screen)
 		end)
-		if not ok then
-			return nil
+	end
+end
+task.spawn(function()
+	local folder = workspace:WaitForChild("ColosseumEnemies", 60)
+	if folder then
+		for _, m in ipairs(folder:GetChildren()) do
+			hideIfNotMine(m)
 		end
-		track.Priority = Enum.AnimationPriority.Action2
-		track.Looped = false
-		tracks[id] = track
+		folder.ChildAdded:Connect(hideIfNotMine)
 	end
-	return tracks[id]
+end)
+
+-- The tracker at the top of the screen: the wave, and the quest
+local tracker = Instance.new("ScreenGui")
+tracker.Name = "ColosseumHud"
+tracker.ResetOnSpawn = false
+tracker.Enabled = false
+tracker.Parent = player:WaitForChild("PlayerGui")
+
+local box = Instance.new("Frame")
+box.Name = "Box"
+box.BackgroundColor3 = RGB(12, 10, 20)
+box.BorderSizePixel = 0
+box.AnchorPoint = Vector2.new(0.5, 0)
+box.Position = UDim2.new(0.5, 0, 0, 12)
+box.Size = UDim2.fromOffset(340, 104)
+box.Parent = tracker
+local boxEdge = Instance.new("UIStroke")
+boxEdge.Color = RGB(255, 255, 255)
+boxEdge.Thickness = 3
+boxEdge.Parent = box
+
+local waveLabel = label(box, "COLOSSEUM", UDim2.new(1, -20, 0, 26), UDim2.fromOffset(10, 6), GOLD)
+local questLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 36), RGB(255, 255, 255))
+local qbar = Instance.new("Frame")
+qbar.BackgroundColor3 = RGB(38, 43, 68)
+qbar.BorderSizePixel = 0
+qbar.Position = UDim2.fromOffset(10, 60)
+qbar.Size = UDim2.new(1, -20, 0, 12)
+qbar.Parent = box
+local qblocks = {}
+for b = 1, 10 do
+	local blk = Instance.new("Frame")
+	blk.BorderSizePixel = 0
+	blk.Size = UDim2.new(0.1, -2, 1, -4)
+	blk.Position = UDim2.new((b - 1) * 0.1, 1, 0, 2)
+	blk.Parent = qbar
+	qblocks[b] = blk
+end
+local rewardLabel = label(box, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 78), GREY)
+
+-- a big line across the middle of the screen (WAVE 3 / QUEST COMPLETE!)
+local banner = label(tracker, "", UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.26, 0), GOLD)
+banner.Visible = false
+local bannerStroke = Instance.new("UIStroke")
+bannerStroke.Thickness = 3
+bannerStroke.Color = RGB(24, 20, 37)
+bannerStroke.Parent = banner
+local bannerToken = 0
+local function showBanner(text, color, seconds)
+	bannerToken = bannerToken + 1
+	local mine = bannerToken
+	banner.Text = text
+	banner.TextColor3 = color or GOLD
+	banner.Visible = true
+	task.delay(seconds or 1.6, function()
+		if bannerToken == mine then
+			banner.Visible = false
+		end
+	end)
 end
 
-local function onSparClick(model)
-	local now = os.clock()
-	local interval = (Config.Spar and Config.Spar.HitInterval) or 0.3
-	if now - lastPunch < interval then
-		return
-	end
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return
-	end
-	local target = model:GetPivot().Position
-	local flat = Vector3.new(target.X - root.Position.X, 0, target.Z - root.Position.Z)
-	if flat.Magnitude > ((Config.Spar and Config.Spar.Range) or 16) or flat.Magnitude < 0.1 then
-		return
-	end
-	lastPunch = now
-	root.CFrame = CFrame.lookAt(root.Position, root.Position + flat)
-	punchIndex = punchIndex % #PUNCH_ANIMATION_IDS + 1
-	local track = punchTrack(PUNCH_ANIMATION_IDS[punchIndex])
-	if track then
-		-- speed it up to fit between two punches
-		local speed = (track.Length > 0) and math.clamp(track.Length / interval, 1, 4) or 1.5
-		track:Play(0.05, 1, speed)
-	end
+-- "+12 XP" popping up under the tracker for each dummy you beat
+local function popReward(text)
+	local l = label(tracker, text, UDim2.fromOffset(300, 22), UDim2.new(0.5, -150, 0, 124), GREEN)
+	task.spawn(function()
+		for k = 1, 16 do
+			l.Position = UDim2.new(0.5, -150, 0, 124 + k * 2)
+			l.TextTransparency = k / 16
+			task.wait(1 / 20)
+		end
+		l:Destroy()
+	end)
 end
 
-local function addDummy(model)
-	local click = model:FindFirstChildOfClass("ClickDetector") or model:WaitForChild("ClickDetector", 10)
-	if click then
-		click.MouseClick:Connect(function(who)
-			if who == player then
-				onSparClick(model)
-			end
-		end)
+local function renderTracker(st)
+	waveLabel.Text = "COLOSSEUM  -  WAVE " .. tostring(math.max(1, st.wave or 0))
+	local q, goal = st.quest or 0, st.goal or 10
+	questLabel.Text = "QUEST: Defeat dummies  " .. q .. " / " .. goal
+	local filled = math.floor(q / goal * 10 + 1e-6)
+	for b, blk in ipairs(qblocks) do
+		blk.BackgroundColor3 = (b <= filled) and GOLD or RGB(58, 68, 102)
 	end
+	rewardLabel.Text = "Reward: " .. Config.format(st.questPower or 0) .. " XP + " .. Config.format(st.questCoins or 0) .. " coins"
 end
-for _, m in ipairs(CollectionService:GetTagged("SparDummy")) do
-	task.spawn(addDummy, m)
+
+local function syncTracker()
+	tracker.Enabled = player:GetAttribute("Colosseum") == true
 end
-CollectionService:GetInstanceAddedSignal("SparDummy"):Connect(addDummy)
+player:GetAttributeChangedSignal("Colosseum"):Connect(syncTracker)
+syncTracker()
+
+ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b)
+	if kind == "State" and type(a) == "table" then
+		renderTracker(a)
+	elseif kind == "Arrived" then
+		showBanner("THE COLOSSEUM", GOLD, 1.8)
+	elseif kind == "Wave" then
+		showBanner("WAVE " .. tostring(a), RGB(255, 255, 255), 1.4)
+	elseif kind == "Kill" then
+		popReward("+" .. Config.format(a) .. " XP   +" .. Config.format(b) .. " coins")
+	elseif kind == "QuestDone" then
+		showBanner("QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins", GREEN, 2.6)
+	end
+end)

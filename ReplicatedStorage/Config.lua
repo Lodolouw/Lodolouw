@@ -35,16 +35,54 @@ Config.StationTurn = {
 }
 
 ----------------------------------------------------------------------
--- Sparring dummies (between the fountain and the training field)
+-- The Colosseum (a wave arena for farming)
 ----------------------------------------------------------------------
--- Click one to punch it. You hit it exactly as hard as you'd hit the boss
--- of the next Spire floor you haven't beaten, so the number tells you if
--- you're ready - and roughly how many punches that boss will take.
-Config.Spar = {
-	Dummies = { Vector3.new(-50, 0, 33), Vector3.new(-62, 0, 33), Vector3.new(-74, 0, 33) },
-	HitInterval = 0.3, -- seconds between punches (clicking faster does nothing)
-	Range = 16, -- how close you have to stand
+-- Walk through the Colosseum gate (between the fountain and the training
+-- field) and you're taken to your own fight in the Colosseum: straw dummies
+-- hop in wave after wave and try to squash you. Nobody else can see or hit
+-- your dummies, and theirs can't hurt you - everyone farms on their own.
+-- Dummies are always your level, so a fight takes the same few punches
+-- whatever your level; the rewards grow as you do. A quest runs the whole
+-- time: defeat QuestKills dummies for a big lump of Power (XP) and coins, and
+-- it starts straight over again.
+Config.Colosseum = {
+	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
+	Radius = 62, -- the sand floor
+	GatePosition = Vector3.new(-62, 0, 30), -- the gate in the lobby
+	EnterRange = 20,
+
+	HitsToKill = 4, -- punches a dummy takes from a player at its level (no gear)
+	WaveSize = { 3, 7 }, -- dummies in the first wave, and the most in one wave
+	WaveBreak = 2.5, -- seconds between waves
+
+	-- how a dummy fights
+	HopTime = 0.55, -- one hop
+	HopHeight = 6,
+	HopReach = 13, -- the furthest one hop goes
+	Rest = { 0.35, 0.9 }, -- the pause between hops
+	SlamRange = 7, -- after landing this close to you it winds up a slam...
+	SlamTell = 0.7, -- ...shows a red ring for this long...
+	SlamDamage = 0.12, -- ...and takes this much of your max health if you're in it
+
+	-- rewards, worked out from how much Power your level needs to reach the next
+	KillPower = 0.012, -- each dummy: this share of the Power between your level and the next
+	KillCoins = { 4, 1 }, -- each dummy: 4 coins + 1 per level
+	QuestKills = 10,
+	QuestPower = 0.2, -- the quest: a fifth of the way to your next level...
+	QuestCoins = { 60, 12 }, -- ...and 60 coins + 12 per level
 }
+
+-- The rewards for a player of this level (kill = one dummy, quest = the whole quest)
+function Config.colosseumRewards(level)
+	local C = Config.Colosseum
+	local gap = math.max(1, Config.powerForLevel(level + 1) - Config.powerForLevel(level))
+	return {
+		killPower = math.max(1, math.floor(gap * C.KillPower)),
+		killCoins = C.KillCoins[1] + C.KillCoins[2] * level,
+		questPower = math.max(1, math.floor(gap * C.QuestPower)),
+		questCoins = C.QuestCoins[1] + C.QuestCoins[2] * level,
+	}
+end
 
 ----------------------------------------------------------------------
 -- Daily quests (the Quest Board)
@@ -54,7 +92,7 @@ Config.Spar = {
 -- walk to the Quest Board and hand it in for the coins. Hand in all of the
 -- day's quests for a bonus treasure chest from the hardest boss you've beaten.
 --   kind: train = hits on a training pad, combo = reach a 100-hit combo,
---         spar = punches on a sparring dummy, boss = Spire bosses beaten,
+--         arena = dummies beaten in the Colosseum, boss = Spire bosses beaten,
 --         sell = items sold, chest = treasure chests opened
 Config.Quests = {
 	PerDay = 3,
@@ -63,8 +101,8 @@ Config.Quests = {
 		{ id = "Train300", kind = "train", goal = 300, reward = 150, text = "Train on a pad %d times" },
 		{ id = "Train1000", kind = "train", goal = 1000, reward = 400, text = "Train on a pad %d times" },
 		{ id = "Combo", kind = "combo", goal = 1, reward = 250, text = "Hit a 100-punch training combo" },
-		{ id = "Spar50", kind = "spar", goal = 50, reward = 100, text = "Punch a sparring dummy %d times" },
-		{ id = "Spar150", kind = "spar", goal = 150, reward = 250, text = "Punch a sparring dummy %d times" },
+		{ id = "Arena30", kind = "arena", goal = 30, reward = 150, text = "Beat %d dummies in the Colosseum" },
+		{ id = "Arena100", kind = "arena", goal = 100, reward = 400, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Boss1", kind = "boss", goal = 1, reward = 300, text = "Defeat a Spire boss" },
 		{ id = "Boss3", kind = "boss", goal = 3, reward = 800, text = "Defeat %d Spire bosses" },
 		{ id = "Sell25", kind = "sell", goal = 25, reward = 150, text = "Sell %d items at the shop" },

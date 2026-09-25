@@ -5640,30 +5640,27 @@ end
 -- Public
 ----------------------------------------------------------------------
 ----------------------------------------------------------------------
--- Sparring dummies and the Quest Board
+-- The Colosseum (gate in the lobby, arena far away) and the Quest Board
 ----------------------------------------------------------------------
--- Straw sparring dummies on a patch of trodden dirt between the fountain
--- and the training field. They're the same shape as the dummies on the
--- pads (post, fat body, head, arms, bullseye), but plain straw and wood.
--- Click one to punch it: CombatService works out how hard you hit (the
--- same way it does in the Spire) and shows the number, so you can tell
--- if you're strong enough for the next boss.
+-- The Colosseum's enemies are straw dummies: the same shape as the dummies
+-- on the training pads (post, fat body, head, arms, bullseye), but plain
+-- straw and wood. One is built here as a template (in ServerStorage) and
+-- ColosseumService copies it for every dummy it sends at you.
 local STRAW = RGB(228, 166, 114) -- (Endesga warm straw)
 local STRAW_DARK = RGB(184, 111, 80)
 local ROPE = RGB(116, 63, 57)
 local SPAR_WOOD = RGB(158, 104, 66)
 
-local function sparDummy(parent, index, pos)
+local function colosseumDummy()
 	local m = Instance.new("Model")
-	m.Name = "SparDummy" .. index
-	m.Parent = parent
-	-- faces north, towards the road the players come along
-	local O = CFrame.new(pos) * CFrame.Angles(0, math.pi, 0)
-	part(m, "Stand", V3(4, 0.6, 4), O * CFrame.new(0, 0.3, 0), RGB(96, 64, 48), Mat.Wood)
-	part(m, "Post", V3(1.2, 7, 1.2), O * CFrame.new(0, 3.5, 0), SPAR_WOOD, Mat.Wood)
+	m.Name = "ColosseumDummy"
+	-- built round the origin, facing -Z (the way a Model "looks")
+	local O = CFrame.Angles(0, math.pi, 0)
+	part(m, "Stand", V3(3.4, 0.8, 3.4), O * CFrame.new(0, 0.4, 0), RGB(96, 64, 48), Mat.Wood)
+	part(m, "Post", V3(1.2, 3.4, 1.2), O * CFrame.new(0, 2.2, 0), SPAR_WOOD, Mat.Wood)
 	local torso = part(m, "Torso", V3(4, 4.4, 2.6), O * CFrame.new(0, 5.4, 0), STRAW, Mat.Fabric)
-	part(m, "RopeTop", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 6.9, 0), ROPE, Mat.Fabric, { CanCollide = false })
-	part(m, "RopeLow", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 3.9, 0), ROPE, Mat.Fabric, { CanCollide = false })
+	part(m, "RopeTop", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 6.9, 0), ROPE, Mat.Fabric)
+	part(m, "RopeLow", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 3.9, 0), ROPE, Mat.Fabric)
 	part(m, "Arms", V3(8.4, 1, 1), O * CFrame.new(0, 6.4, -0.1), SPAR_WOOD, Mat.Wood)
 	for _, sx in ipairs({ -1, 1 }) do
 		part(m, "Mitt", V3(1.4, 1.4, 1.4), O * CFrame.new(sx * 4.4, 6.4, -0.1), STRAW_DARK, Mat.Fabric)
@@ -5671,79 +5668,184 @@ local function sparDummy(parent, index, pos)
 	part(m, "Head", V3(2.6, 2.6, 2.6), O * CFrame.new(0, 9.1, 0), STRAW, Mat.Fabric)
 	-- straw sticking out of the top of its head
 	for k = -1, 1 do
-		part(m, "Tuft", V3(0.4, 0.8, 0.4), O * CFrame.new(k * 0.7, 10.7, k * 0.3), STRAW_DARK, Mat.Fabric, { CanCollide = false })
+		part(m, "Tuft", V3(0.4, 0.8, 0.4), O * CFrame.new(k * 0.7, 10.7, k * 0.3), STRAW_DARK, Mat.Fabric)
 	end
-	-- button eyes and a stitched mouth
+	-- angry button eyes, cross brows and a stitched mouth (it wants a fight)
 	for _, sx in ipairs({ -1, 1 }) do
-		part(m, "Eye", V3(0.5, 0.5, 0.2), O * CFrame.new(sx * 0.6, 9.4, 1.35), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
+		part(m, "Eye", V3(0.5, 0.5, 0.2), O * CFrame.new(sx * 0.6, 9.4, 1.35), RGB(24, 20, 37), Mat.SmoothPlastic)
+		part(m, "Brow", V3(0.8, 0.22, 0.2), O * CFrame.new(sx * 0.6, 9.95, 1.36) * CFrame.Angles(0, 0, math.rad(sx * -18)), RGB(24, 20, 37), Mat.SmoothPlastic)
 	end
-	part(m, "Stitch", V3(1.2, 0.2, 0.2), O * CFrame.new(0, 8.5, 1.35), ROPE, Mat.SmoothPlastic, { CanCollide = false })
+	part(m, "Stitch", V3(1.2, 0.2, 0.2), O * CFrame.new(0, 8.5, 1.35), ROPE, Mat.SmoothPlastic)
 	-- a painted target on its chest (square rings: it's 8-bit)
-	part(m, "Target", V3(2.2, 2.2, 0.1), O * CFrame.new(0, 5.4, 1.33), RGB(228, 59, 68), Mat.SmoothPlastic, { CanCollide = false })
-	part(m, "TargetMid", V3(1.4, 1.4, 0.1), O * CFrame.new(0, 5.4, 1.38), RGB(255, 255, 255), Mat.SmoothPlastic, { CanCollide = false })
-	part(m, "TargetCore", V3(0.6, 0.6, 0.1), O * CFrame.new(0, 5.4, 1.43), RGB(228, 59, 68), Mat.SmoothPlastic, { CanCollide = false })
-
-	-- it rocks from its feet when hit
-	m.WorldPivot = O
+	part(m, "Target", V3(2.2, 2.2, 0.1), O * CFrame.new(0, 5.4, 1.33), RGB(228, 59, 68), Mat.SmoothPlastic)
+	part(m, "TargetMid", V3(1.4, 1.4, 0.1), O * CFrame.new(0, 5.4, 1.38), RGB(255, 255, 255), Mat.SmoothPlastic)
+	part(m, "TargetCore", V3(0.6, 0.6, 0.1), O * CFrame.new(0, 5.4, 1.43), RGB(228, 59, 68), Mat.SmoothPlastic)
+	for _, p in ipairs(m:GetDescendants()) do
+		if p:IsA("BasePart") then
+			-- you walk through them (they only hurt you by landing on you), and
+			-- nobody bumps into someone else's invisible dummy
+			p.CanCollide = false
+			p.CanTouch = false
+		end
+	end
 	m.PrimaryPart = torso
-	m:SetAttribute("HitRadius", 2.4)
-
-	local click = Instance.new("ClickDetector")
-	click.MaxActivationDistance = 18
-	click.Parent = m
-
-	-- who hit it last, and how hard (CombatService fills this in)
-	local anchor = anchorPart(m, "InfoAnchor", O * CFrame.new(0, 13.2, 0))
-	local bb = billboard(anchor, "SparInfo", UDim2.fromScale(12, 3), 60)
-	local box = Instance.new("Frame")
-	box.Name = "Box"
-	box.BackgroundColor3 = RGB(12, 10, 20)
-	box.BackgroundTransparency = 0.15
-	box.Size = UDim2.fromScale(1, 1)
-	box.ZIndex = 0
-	box.Parent = bb
-	local edge = Instance.new("UIStroke")
-	edge.Color = RGB(255, 255, 255)
-	edge.Thickness = 3
-	edge.Parent = box
-	billLabel(bb, "Title", "SPARRING DUMMY", RGB(254, 174, 52), UDim2.fromScale(0.05, 0.06), UDim2.fromScale(0.9, 0.42))
-	billLabel(bb, "Line", "Click to punch it!", RGB(255, 255, 255), UDim2.fromScale(0.05, 0.52), UDim2.fromScale(0.9, 0.4))
-	CollectionService:AddTag(m, "SparDummy")
+	m.WorldPivot = CFrame.new()
 	return m
 end
 
-local function buildSparring(parent)
-	local f = folder(parent, "Sparring")
-	local spots = Config.Spar and Config.Spar.Dummies or {}
-	if #spots == 0 then
-		return
-	end
-	-- trodden dirt under them, a little wider than the row
-	local x0, x1, z0, z1 = math.huge, -math.huge, math.huge, -math.huge
-	for _, p in ipairs(spots) do
-		x0, x1 = math.min(x0, p.X), math.max(x1, p.X)
-		z0, z1 = math.min(z0, p.Z), math.max(z1, p.Z)
-	end
-	x0, x1, z0, z1 = x0 - 9, x1 + 9, z0 - 7, z1 + 7
-	part(f, "SparDirt", V3(x1 - x0, 0.3, z1 - z0), CFrame.new((x0 + x1) / 2, 0.15, (z0 + z1) / 2), RGB(190, 128, 88), Mat.Ground)
-	-- stepping-stone blocks round the edge, so it doesn't look like a rug
-	for x = x0 + 1, x1 - 1, 3 do
-		for _, z in ipairs({ z0, z1 }) do
-			part(f, "SparEdge", V3(2, 0.35, 1.2), CFrame.new(x, 0.18, z), RGB(160, 104, 72), Mat.Ground, { CanCollide = false })
+-- The Colosseum's gate in the lobby: a sandstone gatehouse with a dark
+-- archway, red banners and crossed swords. Walk up and press E to go in.
+local SAND_STONE = RGB(228, 166, 114)
+local SAND_DARK = RGB(184, 111, 80)
+local SAND_LIGHT = RGB(234, 212, 170)
+
+local function buildColosseumGate(parent)
+	local f = folder(parent, "ColosseumGate")
+	local C = Config.Colosseum
+	-- faces north, onto the road from the plaza (local +Z is its front)
+	local O = CFrame.new(C.GatePosition) * CFrame.Angles(0, math.pi, 0)
+	-- trodden sand in front of it
+	part(f, "GateSand", V3(34, 0.3, 14), O * CFrame.new(0, 0.15, 7), RGB(190, 128, 88), Mat.Ground)
+	-- the wall with the archway (blocks round a 10-wide, 12-high gap)
+	part(f, "WallL", V3(8, 16, 5), O * CFrame.new(-9, 8, 0), SAND_STONE, Mat.Sandstone)
+	part(f, "WallR", V3(8, 16, 5), O * CFrame.new(9, 8, 0), SAND_STONE, Mat.Sandstone)
+	part(f, "Lintel", V3(10, 4, 5), O * CFrame.new(0, 14, 0), SAND_STONE, Mat.Sandstone)
+	-- a stepped (8-bit) arch inside the gap
+	for k = 1, 3 do
+		local w = 10 - k * 2
+		local side = (10 - w) / 2
+		for _, sx in ipairs({ -1, 1 }) do
+			part(f, "ArchStep", V3(side, 1, 5), O * CFrame.new(sx * (w / 2 + side / 2), 12.5 - k, 0), SAND_STONE, Mat.Sandstone)
 		end
 	end
-	for i, p in ipairs(spots) do
-		sparDummy(f, i, p + V3(0, 0.3, 0))
+	-- the dark doorway (the prompt on it takes you in)
+	local door = part(f, "Doorway", V3(10, 12, 1), O * CFrame.new(0, 6, -1.5), RGB(24, 20, 37), Mat.SmoothPlastic)
+	-- towers either side, with crenellations, banners and torches
+	for _, sx in ipairs({ -1, 1 }) do
+		part(f, "Tower", V3(7, 22, 7), O * CFrame.new(sx * 15.5, 11, 0), SAND_DARK, Mat.Sandstone)
+		for _, dx in ipairs({ -2.4, 2.4 }) do
+			for _, dz in ipairs({ -2.4, 2.4 }) do
+				part(f, "Merlon", V3(1.6, 1.8, 1.6), O * CFrame.new(sx * 15.5 + dx, 22.9, dz), SAND_DARK, Mat.Sandstone)
+			end
+		end
+		part(f, "Banner", V3(3.4, 8, 0.3), O * CFrame.new(sx * 15.5, 13, 3.65), BANNER_RED, Mat.Fabric, { CanCollide = false })
+		part(f, "BannerTrim", V3(3.4, 0.6, 0.35), O * CFrame.new(sx * 15.5, 8.8, 3.65), GOLD, Mat.Fabric, { CanCollide = false })
+		part(f, "Torch", V3(0.6, 2, 0.6), O * CFrame.new(sx * 6.8, 9, 2.8), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
+		local flame = part(f, "Flame", V3(0.8, 0.8, 0.8), O * CFrame.new(sx * 6.8, 10.3, 2.8), RGB(254, 174, 52), Mat.Neon, { CanCollide = false })
+		local l = Instance.new("PointLight")
+		l.Color = RGB(255, 170, 90)
+		l.Range = 16
+		l.Brightness = 1.2
+		l.Parent = flame
 	end
-	-- a weapon rack at the end of the row: just for looks
-	local rx, rz = x0 + 2.5, (z0 + z1) / 2
-	part(f, "RackPost", V3(0.8, 5, 0.8), CFrame.new(rx, 2.8, rz - 2.5), SPAR_WOOD, Mat.Wood)
-	part(f, "RackPost", V3(0.8, 5, 0.8), CFrame.new(rx, 2.8, rz + 2.5), SPAR_WOOD, Mat.Wood)
-	part(f, "RackBar", V3(0.8, 0.6, 6.2), CFrame.new(rx, 4.6, rz), SPAR_WOOD, Mat.Wood)
-	for k = -1, 1 do
-		part(f, "RackSword", V3(0.3, 4.4, 0.7), CFrame.new(rx + 0.6, 3.2, rz + k * 1.6), RGB(192, 203, 220), Mat.Metal, { CanCollide = false })
-		part(f, "RackHilt", V3(0.5, 0.4, 1.4), CFrame.new(rx + 0.6, 4.9, rz + k * 1.6), RGB(116, 63, 57), Mat.Wood, { CanCollide = false })
+	for x = -10.5, 10.5, 3.5 do
+		part(f, "Merlon", V3(2, 1.8, 2), O * CFrame.new(x, 16.9, 0), SAND_STONE, Mat.Sandstone)
 	end
+	-- crossed swords and a shield over the arch
+	for _, a in ipairs({ -40, 40 }) do
+		part(f, "Sword", V3(0.6, 7, 0.3), O * CFrame.new(0, 14, 2.7) * CFrame.Angles(0, 0, math.rad(a)), RGB(192, 203, 220), Mat.Metal, { CanCollide = false })
+	end
+	part(f, "Shield", V3(2.6, 2.6, 0.4), O * CFrame.new(0, 14, 2.9), BANNER_RED, Mat.Metal, { CanCollide = false })
+	part(f, "ShieldBoss", V3(1, 1, 0.5), O * CFrame.new(0, 14, 3.0), GOLD, Mat.Metal, { CanCollide = false })
+	titleSign(f, O * CFrame.new(0, 21, 3), "COLOSSEUM", nil, RGB(254, 174, 52), 300, 90)
+
+	local pp = Instance.new("ProximityPrompt")
+	pp.Name = "ColosseumPrompt"
+	pp.ActionText = "Enter"
+	pp.ObjectText = "Colosseum"
+	pp.HoldDuration = 0
+	pp.MaxActivationDistance = 14
+	pp.KeyboardKeyCode = Enum.KeyCode.E
+	pp.GamepadKeyCode = Enum.KeyCode.ButtonX
+	pp.RequiresLineOfSight = false
+	pp.Parent = door
+	CollectionService:AddTag(pp, "ColosseumEntrance")
+
+	-- where you come back out: in front of the gate, facing away from it
+	local back = anchorPart(f, "ColosseumReturn", O * CFrame.new(0, 3, 9))
+	CollectionService:AddTag(back, "ColosseumReturn")
+
+	-- the dummy template ColosseumService copies
+	local old = ServerStorage:FindFirstChild("ColosseumDummy")
+	if old then
+		old:Destroy()
+	end
+	colosseumDummy().Parent = ServerStorage
+end
+
+-- The Colosseum itself, far from the lobby: a round sand floor ringed by a
+-- sandstone wall with pillars and banners, and stepped stands behind it
+-- full of little 8-bit spectators. The gate on the north side takes you home.
+local function buildColosseum(parent)
+	local f = folder(parent, "Colosseum")
+	local C = Config.Colosseum
+	local c = C.Center
+	local R = C.Radius
+	-- the floor: sand, with a darker ring round the middle
+	cylinder(f, "Floor", 4, R * 2 + 12, CFrame.new(c.X, c.Y - 2, c.Z), RGB(228, 166, 114), Mat.Sand)
+	cylinder(f, "FloorRing", 0.1, 30, CFrame.new(c.X, c.Y + 0.05, c.Z), RGB(190, 128, 88), Mat.Sand, { CanCollide = false })
+	cylinder(f, "FloorCore", 0.12, 22, CFrame.new(c.X, c.Y + 0.06, c.Z), RGB(228, 166, 114), Mat.Sand, { CanCollide = false })
+	local N = 48
+	local rng = Random.new(7)
+	local crowd = { RGB(228, 59, 68), RGB(254, 174, 52), RGB(99, 199, 77), RGB(0, 153, 219), RGB(181, 80, 136), RGB(255, 255, 255), RGB(246, 117, 122), RGB(44, 232, 245) }
+	local skin = { RGB(255, 214, 170), RGB(228, 166, 114), RGB(184, 111, 80), RGB(116, 63, 57) }
+	local arc = 2 * math.pi / N
+	local wr = R + 2
+	for i = 0, N - 1 do
+		local a = (i + 0.5) / N * math.pi * 2
+		local dir = V3(math.sin(a), 0, math.cos(a))
+		local function at(r, y)
+			return CFrame.lookAt(c + dir * r + V3(0, y, 0), c + V3(0, y, 0))
+		end
+		-- (the two pieces straight north are left open for the way out)
+		local gateSide = dir.Z < -0.99
+		if not gateSide then
+			part(f, "Wall", V3(arc * wr + 0.6, 12, 4), at(wr, 6), (i % 2 == 0) and SAND_STONE or RGB(222, 158, 106), Mat.Sandstone)
+			part(f, "WallCap", V3(arc * wr + 0.6, 1, 4.6), at(wr, 12.5), SAND_LIGHT, Mat.Sandstone)
+			if i % 4 == 0 then
+				part(f, "Pillar", V3(2.2, 12, 1.4), at(wr - 2.6, 6), SAND_LIGHT, Mat.Sandstone)
+			end
+			if i % 8 == 2 then
+				part(f, "Banner", V3(3.4, 7, 0.3), at(wr - 2.15, 8), BANNER_RED, Mat.Fabric, { CanCollide = false })
+				part(f, "BannerTrim", V3(3.4, 0.6, 0.35), at(wr - 2.15, 4.8), GOLD, Mat.Fabric, { CanCollide = false })
+			end
+		end
+		-- the stands: steps going up and back, with a spectator on most
+		for k = 1, 5 do
+			local r = wr + k * 3.2 - 0.3
+			local h = 12 + k * 2.4
+			part(f, "Stand", V3(arc * r + 0.8, h, 3.3), at(r, h / 2), (k % 2 == 0) and SAND_DARK or RGB(160, 96, 70), Mat.Sandstone)
+			if rng:NextNumber() < 0.7 then
+				local off = (rng:NextNumber() - 0.5) * arc * r * 0.6
+				local cf = at(r, h) * CFrame.new(off, 0, 0)
+				part(f, "Fan", V3(1.6, 2, 1), cf * CFrame.new(0, 1, 0), crowd[rng:NextInteger(1, #crowd)], Mat.SmoothPlastic, { CanCollide = false })
+				part(f, "FanHead", V3(1.2, 1.2, 1.2), cf * CFrame.new(0, 2.6, 0), skin[rng:NextInteger(1, #skin)], Mat.SmoothPlastic, { CanCollide = false })
+			end
+		end
+		-- the back wall, too tall to climb out over
+		part(f, "BackWall", V3(arc * (wr + 22) + 1, 34, 3), at(wr + 22, 17), SAND_DARK, Mat.Sandstone)
+	end
+	-- the way out: a gate in the north wall
+	local exitCF = CFrame.lookAt(c + V3(0, 0, -(wr + 1)), c)
+	part(f, "ExitFrame", V3(16, 3, 5), exitCF * CFrame.new(0, 13.5, 0), SAND_LIGHT, Mat.Sandstone)
+	for _, sx in ipairs({ -1, 1 }) do
+		part(f, "ExitPost", V3(3, 12, 5), exitCF * CFrame.new(sx * 6.5, 6, 0), SAND_LIGHT, Mat.Sandstone)
+	end
+	local door = part(f, "ExitDoor", V3(10, 12, 1), exitCF * CFrame.new(0, 6, 2), RGB(24, 20, 37), Mat.SmoothPlastic)
+	local pp = Instance.new("ProximityPrompt")
+	pp.ActionText = "Leave"
+	pp.ObjectText = "Colosseum"
+	pp.HoldDuration = 0.4
+	pp.MaxActivationDistance = 14
+	pp.KeyboardKeyCode = Enum.KeyCode.E
+	pp.GamepadKeyCode = Enum.KeyCode.ButtonX
+	pp.RequiresLineOfSight = false
+	pp.Parent = door
+	CollectionService:AddTag(pp, "ColosseumExit")
+	titleSign(f, exitCF * CFrame.new(0, 18, 0), "EXIT", nil, RGB(255, 255, 255), 160, 90)
+	-- where you arrive: just inside the gate, looking in
+	local spawnAt = anchorPart(f, "ColosseumSpawn", CFrame.lookAt(c + V3(0, 3, -(R - 10)), c + V3(0, 3, 0)))
+	CollectionService:AddTag(spawnAt, "ColosseumSpawn")
 end
 
 -- The Quest Board: a wooden notice board with a little roof, by the road
@@ -5823,7 +5925,8 @@ function LobbyBuilder.Build()
 		{ "Armory (blacksmith)", buildCraftBench },
 		-- (the Prestige Shrine is gone: the plaza is open paving now)
 		{ "Training Yard", buildYard },
-		{ "Sparring dummies", buildSparring },
+		{ "Colosseum gate", buildColosseumGate },
+		{ "Colosseum", buildColosseum },
 		{ "Quest Board", buildQuestBoard },
 		{ "The Spire", buildSpire },
 		{ "Castle gate", buildCastleGate },
