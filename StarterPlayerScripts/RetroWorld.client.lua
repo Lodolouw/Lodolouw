@@ -792,26 +792,25 @@ local PATHS = {
 local COBBLES = { RGB(139, 155, 180), RGB(192, 203, 220), RGB(139, 155, 180), RGB(160, 170, 192) }
 local function cobble(slab)
 	local size, top = slab.Size, slab.Position.Y + slab.Size.Y / 2
-	slab.Color = RGB(58, 68, 102) -- (the thin mortar lines between them)
+	local plaza = slab.Parent and slab.Parent:FindFirstChild("PlazaOuter")
+	slab.Color = RGB(90, 105, 136)
 	local cell = 2.2
-	local hx, hz = size.X / 2 - 0.05, size.Z / 2 - 0.05
-	local nx, nz = math.ceil(size.X / cell) + 1, math.ceil(size.Z / cell)
+	local nx, nz = math.floor(size.X / cell), math.floor(size.Z / cell)
 	for iz = 0, nz - 1 do
 		local shift = (iz % 2 == 0) and 0 or cell / 2
-		-- (cobbles at the ends and the sides are cut to fit, so the whole path
-		-- is paved right up to its edges with no bare strips)
-		local z0 = math.max(-hz, -size.Z / 2 + iz * cell + 0.08)
-		local z1 = math.min(hz, -size.Z / 2 + (iz + 1) * cell - 0.08)
-		for ix = -1, nx - 1 do
-			local x0 = math.max(-hx, -size.X / 2 + ix * cell + shift + 0.08)
-			local x1 = math.min(hx, -size.X / 2 + (ix + 1) * cell + shift - 0.08)
-			if x1 - x0 > 0.3 and z1 - z0 > 0.3 then
-				local at = V3(slab.Position.X + (x0 + x1) / 2, top + 0.04, slab.Position.Z + (z0 + z1) / 2)
-				if rng:NextNumber() < 0.025 then
-					block(V3(x1 - x0, 0.1, z1 - z0), GRASS[rng:NextInteger(1, #GRASS)]).CFrame = CFrame.new(at)
+		for ix = 0, nx - 1 do
+			local x = -size.X / 2 + (ix + 0.5) * cell + shift
+			local z = -size.Z / 2 + (iz + 0.5) * cell
+			local at = V3(slab.Position.X + x, top + 0.04, slab.Position.Z + z)
+			-- (the ends of the paths reach in under the plaza: the plaza has
+			-- its own cobbles there)
+			local inPlaza = plaza and V3(at.X - plaza.Position.X, 0, at.Z - plaza.Position.Z).Magnitude < plaza.Size.Y / 2 - 0.2
+			if math.abs(x) < size.X / 2 - 0.9 and not inPlaza then
+				if rng:NextNumber() < 0.06 then
+					block(V3(0.8, 0.12, 0.8), GRASS[rng:NextInteger(1, #GRASS)]).CFrame = CFrame.new(at)
 				else
-					local w, d = x1 - x0 - rng:NextNumber() * 0.1, z1 - z0 - rng:NextNumber() * 0.1
-					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at)
+					local w, d = cell - 0.35 - rng:NextNumber() * 0.4, cell - 0.35 - rng:NextNumber() * 0.4
+					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
 				end
 			end
 		end
@@ -829,7 +828,7 @@ local function cobblePlaza(ground)
 	for _, n in ipairs({ "PlazaInner", "PlazaMid", "PlazaOuter" }) do
 		local d = ground:FindFirstChild(n)
 		if d then
-			d.Color = RGB(58, 68, 102)
+			d.Color = RGB(90, 105, 136)
 			table.insert(rings, { r = d.Size.Y / 2, top = d.Position.Y + d.Size.X / 2 })
 		end
 	end
@@ -861,8 +860,8 @@ local function cobblePlaza(ground)
 				end
 				if top then
 					local at = V3(center.X + x, top + 0.04, center.Z + z)
-					local w, d = cell - 0.16 - rng:NextNumber() * 0.1, cell - 0.16 - rng:NextNumber() * 0.1
-					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at)
+					local w, d = cell - 0.35 - rng:NextNumber() * 0.4, cell - 0.35 - rng:NextNumber() * 0.4
+					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
 				end
 			end
 		end

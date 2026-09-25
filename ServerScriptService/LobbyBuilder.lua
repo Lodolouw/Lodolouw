@@ -561,23 +561,23 @@ local function buildGround(parent)
 	-- Sell Shop and the colosseum to the south gate.
 	local Y = Config.Yard
 	-- north: the avenue to the keep, and the floor of the passage through it
-	pathSlab("PathToGate", -9, -74, 9, -23)
+	pathSlab("PathToGate", -9, -74, 9, -17) -- (tucked under the plaza's edge: no grass gaps)
 	curbAlongZ(-74, -23.5, -9.5)
 	curbAlongZ(-74, -23.5, 9.5)
 	pathSlab("StairLanding", -12, -112, 12, -74)
 	-- east: to the forge's front door
-	pathSlab("PathEastWest", 23, -8, 80, 8)
+	pathSlab("PathEastWest", 17, -8, 80, 8)
 	pathSlab("PathToForge", 62, -19, 80, -8)
 	curbAlongX(23.5, 80, 8.5)
 	curbAlongX(23.5, 61.5, -8.5)
 	-- west: to the Pet Sanctuary garden
-	pathSlab("PathEastWest", -88, -8, -23, 8)
+	pathSlab("PathEastWest", -88, -8, -17, 8)
 	pathSlab("PathForgeSide", -88, -58, -72, -8)
 	curbAlongX(-88, -23.5, 8.5)
 	curbAlongX(-71.5, -23.5, -8.5)
 	-- south: past the spawn to the south gate, with branches to the Sell
 	-- Shop and into the colosseum
-	pathSlab("PathToYard", -8, 23, 8, SOUTH_WALL - 3)
+	pathSlab("PathToYard", -8, 17, 8, SOUTH_WALL - 3)
 	pathSlab("PathEastWest", 8, 38, 29, 52)
 	pathSlab("PathEastWest", -12, 84, -8, 96)
 	curbAlongZ(23.5, 37.5, 8.5)
