@@ -399,6 +399,7 @@ local WALL_HEIGHT = 46
 -- other three (which stay 118 studs out from the middle).
 local SOUTH_EXT = 56
 local SOUTH_WALL = 118 + SOUTH_EXT
+local SOUTH_GATE_HALF = 16 -- half the width of the gap for the south gatehouse
 
 -- A tall stone castle wall segment between two points: crenellated merlons
 -- along the top, and moss/ivy climbing the inner face. Much taller than a
@@ -613,7 +614,9 @@ local function buildGround(parent)
 	-- Boundary walls (the north wall has a gap for the bridge to the Spire)
 	wall(g, "WallNorthW", V3(-120, 0, -118), V3(-16, 0, -118))
 	wall(g, "WallNorthE", V3(16, 0, -118), V3(120, 0, -118))
-	wall(g, "WallSouth", V3(-120, 0, SOUTH_WALL), V3(120, 0, SOUTH_WALL))
+	-- (the south wall has a gap too: the new south gatehouse and drawbridge)
+	wall(g, "WallSouthW", V3(-120, 0, SOUTH_WALL), V3(-SOUTH_GATE_HALF, 0, SOUTH_WALL))
+	wall(g, "WallSouthE", V3(SOUTH_GATE_HALF, 0, SOUTH_WALL), V3(120, 0, SOUTH_WALL))
 	wall(g, "WallWest", V3(-118, 0, -120), V3(-118, 0, SOUTH_WALL + 2))
 	wall(g, "WallEast", V3(118, 0, -120), V3(118, 0, SOUTH_WALL + 2))
 
@@ -667,6 +670,22 @@ local WOOD = RGB(150, 105, 65)
 local GOLD = RGB(235, 190, 70)
 local BANNER_RED = RGB(170, 45, 50)
 local BANNER_BLUE = RGB(45, 75, 165)
+local ROOF_RED = RGB(196, 58, 52)
+
+-- A pointed cone roof, built from stacked discs that shrink to a point
+-- (Roblox has no cone shape). Alternate rings are a shade darker, like rows
+-- of roof tiles, and a gold finial sits on the tip. `base` is the centre of
+-- the bottom of the cone.
+local function coneRoof(parent, base, radius, height, color, steps)
+	steps = steps or 12
+	local h = height / steps
+	local dark = color:Lerp(RGB(0, 0, 0), 0.18)
+	for i = 0, steps - 1 do
+		local d = radius * 2 * (1 - i / steps)
+		cylinder(parent, "Roof" .. i, h + 0.05, math.max(d, 0.6), CFrame.new(base + V3(0, h * (i + 0.5), 0)), (i % 2 == 0) and color or dark, Mat.SmoothPlastic)
+	end
+	ball(parent, "RoofTip", math.max(1.2, radius * 0.14), CFrame.new(base + V3(0, height + 0.3, 0)), GOLD, Mat.Metal)
+end
 
 -- Round tower on a wall corner: stone body with a band, crenellated top,
 -- a pointed roof made of stacked shrinking discs, arrow slits facing the
@@ -684,12 +703,10 @@ local function cornerTower(parent, x, z, roofColor)
 		local a = i / 10 * math.pi * 2
 		part(m, "Merlon" .. i, V3(3.2, 4, 3.2), CFrame.new(x + math.cos(a) * 10, H + 4, z + math.sin(a) * 10) * CFrame.Angles(0, -a, 0), STONE_DARK, Mat.Cobblestone)
 	end
-	for i = 0, 4 do
-		cylinder(m, "Roof" .. i, 3, 18 - i * 3.6, CFrame.new(x, H + 4.5 + i * 3, z), roofColor, Mat.SmoothPlastic)
-	end
-	cylinder(m, "RoofTip", 2, 1.4, CFrame.new(x, H + 19, z), GOLD, Mat.SmoothPlastic)
-	cylinder(m, "FlagPole", 8, 0.5, CFrame.new(x, H + 23, z), RGB(70, 60, 50), Mat.Wood)
-	part(m, "Flag", V3(0.3, 3, 5), CFrame.new(x, H + 25.5, z + 2.6), roofColor, Mat.Fabric)
+	-- a tall pointed cone roof (red, like a storybook castle), overhanging a little
+	coneRoof(m, V3(x, H + 2.5, z), 12.5, 30, roofColor)
+	cylinder(m, "FlagPole", 8, 0.5, CFrame.new(x, H + 36, z), RGB(70, 60, 50), Mat.Wood)
+	part(m, "Flag", V3(0.3, 3, 5), CFrame.new(x, H + 38.5, z + 2.6), roofColor, Mat.Fabric)
 	-- arrow slits on the side facing the middle of the lobby
 	local inward = V3(-x, 0, -z).Unit
 	for _, y in ipairs({ H * 0.45, H * 0.85 }) do
@@ -911,10 +928,10 @@ local function buildDecor(parent)
 	local d = folder(parent, "CastleAndNature")
 
 	-- Castle: towers on the four corners (red/blue roofs alternating)
-	cornerTower(d, -112, -112, BANNER_RED)
-	cornerTower(d, 112, -112, BANNER_BLUE)
-	cornerTower(d, -112, SOUTH_WALL - 6, BANNER_BLUE)
-	cornerTower(d, 112, SOUTH_WALL - 6, BANNER_RED)
+	cornerTower(d, -112, -112, ROOF_RED)
+	cornerTower(d, 112, -112, ROOF_RED)
+	cornerTower(d, -112, SOUTH_WALL - 6, ROOF_RED)
+	cornerTower(d, 112, SOUTH_WALL - 6, ROOF_RED)
 
 	-- Banners and torches on the inside of each wall. Inner faces sit 3
 	-- studs in from each wall's centre line.
@@ -922,13 +939,13 @@ local function buildDecor(parent)
 	for i, x in ipairs({ -100, -80, 80, 100 }) do
 		banner(d, V3(x, 32, N), V3(0, 0, 1), i % 2 == 0 and BANNER_BLUE or BANNER_RED)
 	end
-	for i, x in ipairs({ -90, -45, 45, 90 }) do
+	for i, x in ipairs({ -90, -50, 50, 90 }) do
 		banner(d, V3(x, 32, S), V3(0, 0, -1), i % 2 == 0 and BANNER_RED or BANNER_BLUE)
 	end
 	for _, x in ipairs({ -72, -56, 56, 72 }) do -- clear of the gate towers
 		wallTorch(d, V3(x, 16, N), V3(0, 0, 1))
 	end
-	for _, x in ipairs({ -68, -22, 22, 68 }) do
+	for _, x in ipairs({ -68, -40, 40, 68 }) do
 		wallTorch(d, V3(x, 16, S), V3(0, 0, -1))
 	end
 	for _, z in ipairs({ -65, -5, 35, 85, 125, 155 }) do
@@ -1889,7 +1906,14 @@ local function buildYard(parent)
 				part(yard, "ParapetMerlon", V3(1.6, 1.2, 1.6), CFrame.new(p.X, H + 2.5, p.Z), stone, Mat.Slate)
 			end
 		end
-		parapet(V3(-halfW, 0, back - 0.6), V3(halfW, 0, back - 0.6))
+		-- (a gap in the middle of the back, with steps down to the south gate)
+		parapet(V3(-halfW, 0, back - 0.6), V3(-10, 0, back - 0.6))
+		parapet(V3(10, 0, back - 0.6), V3(halfW, 0, back - 0.6))
+		for k = 1, math.floor(H / 0.5) do
+			local h = k * 0.5
+			local z = back + (math.floor(H / 0.5) - k + 0.5) * 0.95
+			part(yard, "BackStair", V3(20, h, 0.97), CFrame.new(0, h / 2, z), (k % 2 == 0) and stone or stoneDark, Mat.Slate)
+		end
 		parapet(V3(-halfW + 0.6, 0, front + 2), V3(-halfW + 0.6, 0, back - 0.6))
 		parapet(V3(halfW - 0.6, 0, front + 2), V3(halfW - 0.6, 0, back - 0.6))
 		-- braziers at the front corners, burning
@@ -3190,7 +3214,8 @@ local function wallFootRocks(parent)
 		local tEnd = alongX and (WALL_OUTER + 4) or (WALL_OUTER + SOUTH_EXT + 4)
 		while t < tEnd do
 			local w = 9 + rnd() * 7
-			local skip = isNorth and math.abs(t) < 17 -- the stairs' abutment goes out here
+			local skip = (isNorth and math.abs(t) < 17) -- the stairs' abutment goes out here
+				or (isSouth and math.abs(t) < 40) -- the south gatehouse and drawbridge
 			if not skip then
 				local h = 8 + rnd() * 7
 				local d = 6 + rnd() * 5
@@ -3268,6 +3293,428 @@ local function buildMountain(parent)
 			hum.Health = 0
 		end
 	end)
+end
+
+----------------------------------------------------------------------
+-- The castle rebuild: Grand Keep, ramparts, turrets, south gatehouse,
+-- moat and the Lakeside outside the walls
+----------------------------------------------------------------------
+-- Gives the castle the storybook personality of the reference pictures:
+-- red cone roofs on every tower, a Grand Keep rising over the Spire gate,
+-- little turrets hanging off the outside of the walls, walls you can walk
+-- along the top of, a gatehouse with a drawbridge over a moat on the south
+-- side, and outside it a grassy shelf with a fishing lake whose stream
+-- pours off the edge of the island as a waterfall.
+local KEEP_STONE = RGB(150, 146, 160)
+local KEEP_DARK = RGB(104, 100, 116)
+local WATER = RGB(64, 136, 214)
+local PLANK = RGB(150, 104, 62)
+
+-- where the Lakeside shelf sits (south of the moat)
+local MOAT_Z0, MOAT_Z1 = SOUTH_WALL + 4, SOUTH_WALL + 22
+local SHELF_Z1 = MOAT_Z1 + 96
+local SHELF_HALF_X = 110
+-- the fishing lake: a square hole in the shelf (its corners hidden by rocks)
+local LAKE_X0, LAKE_X1, LAKE_Z0, LAKE_Z1 = 20, 82, MOAT_Z1 + 20, MOAT_Z1 + 72
+
+-- A Grand Keep built up over the Spire gate: the gate towers grow a second,
+-- narrower storey with tall cone roofs, and a great hall with a steep red
+-- roof and a glowing rose window bridges between them over the archway.
+-- (Later its hall becomes the Auction House.)
+local function buildKeep(parent)
+	local m = folder(parent, "GrandKeep")
+	local zc = (GATE_Z0 + GATE_Z1) / 2
+	local base = GATE_H + 8 + 3 -- the top of the gate towers' parapets
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * (GATE_HALF_W + 10)
+		local h = 24
+		cylinder(m, "KeepTowerUpper", h, 18, CFrame.new(x, base + h / 2, zc), KEEP_STONE, Mat.Cobblestone)
+		cylinder(m, "KeepTowerBand", 1.2, 19.4, CFrame.new(x, base + h * 0.55, zc), KEEP_DARK, Mat.Cobblestone)
+		-- windows looking over the lobby, glowing warm at night
+		for _, a in ipairs({ -0.5, 0, 0.5 }) do
+			local dir = V3(math.sin(a), 0, math.cos(a))
+			local p = V3(x, base + 12, zc) + dir * 9
+			part(m, "KeepWindow", V3(1.6, 4, 0.4), CFrame.lookAt(p, p + dir), RGB(255, 200, 110), Mat.Neon)
+		end
+		coneRoof(m, V3(x, base + h, zc), 11.5, 34, ROOF_RED, 14)
+		cylinder(m, "FlagPole", 8, 0.5, CFrame.new(x, base + h + 38, zc), RGB(70, 60, 50), Mat.Wood)
+		part(m, "Flag", V3(0.3, 3.4, 6), CFrame.new(x, base + h + 40.5, zc + 3.1), sx < 0 and BANNER_RED or BANNER_BLUE, Mat.Fabric)
+	end
+	-- the great hall between the towers, sitting on top of the gate
+	local hallY0, hallH = GATE_H + 6, 20
+	local halfW = GATE_HALF_W - 1
+	part(m, "Hall", V3(halfW * 2, hallH, GATE_Z1 - GATE_Z0), CFrame.new(0, hallY0 + hallH / 2, zc), KEEP_STONE, Mat.Cobblestone)
+	part(m, "HallBand", V3(halfW * 2 + 0.6, 1, GATE_Z1 - GATE_Z0 + 0.6), CFrame.new(0, hallY0 + hallH, zc), KEEP_DARK, Mat.Cobblestone)
+	-- steep red roof, ridge running east-west
+	local roofH, run = 18, (GATE_Z1 - GATE_Z0) / 2 + 1
+	for _, s in ipairs({ -1, 1 }) do
+		local w = Instance.new("WedgePart")
+		w.Name = "HallRoof"
+		w.Anchored = true
+		w.Size = V3(halfW * 2 + 2, roofH, run)
+		w.CFrame = CFrame.fromMatrix(V3(0, hallY0 + hallH + roofH / 2, zc + s * run / 2), V3(-s, 0, 0), V3(0, 1, 0), V3(0, 0, -s))
+		w.Color = ROOF_RED
+		w.Material = Mat.SmoothPlastic
+		w.TopSurface = Enum.SurfaceType.Smooth
+		w.BottomSurface = Enum.SurfaceType.Smooth
+		w.Parent = m
+	end
+	-- a little spire on the ridge, and the rose window facing the lobby
+	coneRoof(m, V3(0, hallY0 + hallH + roofH - 4, zc), 3, 16, ROOF_RED, 8)
+	local face = GATE_Z1 + 0.25
+	discZ(m, "RoseRing", 0.5, 11, CFrame.new(0, hallY0 + 10, face), KEEP_DARK, Mat.Cobblestone)
+	discZ(m, "RoseWindow", 0.6, 8.6, CFrame.new(0, hallY0 + 10, face), RGB(90, 170, 255), Mat.Neon)
+	for i = 0, 3 do
+		part(m, "RoseSpoke", V3(0.5, 8.6, 0.7), CFrame.new(0, hallY0 + 10, face) * CFrame.Angles(0, 0, i * math.pi / 4), KEEP_DARK, Mat.Cobblestone)
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "HallWindow", V3(2, 6, 0.5), CFrame.new(sx * 13, hallY0 + 9, face), RGB(255, 200, 110), Mat.Neon)
+		banner(m, V3(sx * 7, hallY0 + 4, face + 0.1), V3(0, 0, 1), sx < 0 and BANNER_RED or BANNER_BLUE)
+	end
+end
+
+-- A little turret hanging off the outside of a wall, on stepped corbels,
+-- with its own cone roof. `out` points away from the castle.
+local function bartizan(parent, pos, out)
+	local m = Instance.new("Model")
+	m.Name = "Turret"
+	m.Parent = parent
+	local c = pos + out * 5
+	for i = 0, 3 do
+		cylinder(m, "Corbel" .. i, 1.6, 3 + i * 2.2, CFrame.new(c + V3(0, 26 + i * 1.6, 0)), STONE_DARK, Mat.Cobblestone)
+	end
+	cylinder(m, "Body", 16, 10, CFrame.new(c + V3(0, 40, 0)), STONE, Mat.Cobblestone)
+	cylinder(m, "Ledge", 1.2, 11.4, CFrame.new(c + V3(0, 48.6, 0)), STONE_DARK, Mat.Cobblestone)
+	part(m, "Slit", V3(1, 4, 0.5), CFrame.lookAt(c + V3(0, 40, 0) + out * 5, c + V3(0, 40, 0) + out * 6), RGB(28, 28, 36), Mat.SmoothPlastic)
+	coneRoof(m, c + V3(0, 49.2, 0), 6.5, 15, ROOF_RED, 9)
+end
+
+-- The walk along the top of the walls: a stone walkway sitting on corbels
+-- along the inside of each wall, platforms that step round the inside of
+-- the corner towers, and a long staircase up from the south corners.
+local function buildRamparts(parent)
+	local m = folder(parent, "Ramparts")
+	local Y = WALL_HEIGHT -- walkway top
+	local function walk(x0, z0, x1, z1)
+		part(m, "Walkway", V3(x1 - x0, 1, z1 - z0), CFrame.new((x0 + x1) / 2, Y - 0.5, (z0 + z1) / 2), STONE_DARK, Mat.Slate)
+		-- corbels under the inner edge, every 6 studs
+		local alongX = (x1 - x0) > (z1 - z0)
+		local len = alongX and (x1 - x0) or (z1 - z0)
+		for t = 3, len - 3, 6 do
+			local p = alongX and V3(x0 + t, Y - 2.2, z0 + 1) or V3(x0 + 1, Y - 2.2, z0 + t)
+			part(m, "WalkCorbel", V3(1.4, 2.4, 1.4), CFrame.new(p), STONE_DARK, Mat.Cobblestone)
+		end
+	end
+	local S = SOUTH_WALL - 3 -- the south wall's inner face
+	for _, sx in ipairs({ -1, 1 }) do
+		local function wx(a, b) -- an x range on this side
+			local p, q = sx * a, sx * b
+			return math.min(p, q), math.max(p, q)
+		end
+		-- side wall (sx = -1 west, +1 east)
+		local a, b = wx(110, 115)
+		walk(a, -102, b, S - 13)
+		-- round the inside of the south corner tower
+		a, b = wx(92, 115)
+		walk(a, S - 23, b, S - 13)
+		a, b = wx(92, 102)
+		walk(a, S - 23, b, S)
+		-- along the south wall, up to the gatehouse towers
+		a, b = wx(36, 92)
+		walk(a, S - 5, b, S)
+		-- round the inside of the north corner tower, then along the north wall
+		a, b = wx(92, 115)
+		walk(a, -102, b, -92)
+		a, b = wx(92, 102)
+		walk(a, -115, b, -92)
+		a, b = wx(46, 92)
+		walk(a, -115, b, -110)
+		-- a lookout balcony where the north walk ends at the keep
+		part(m, "LookoutRail", V3(1, 3, 5), CFrame.new(sx * 46.5, Y + 1.5, -112.5), STONE, Mat.Cobblestone)
+		-- the staircase up, climbing out towards the corner platform
+		local steps = math.floor(Y / 0.5)
+		local tread = 0.8
+		for k = 1, steps do
+			local h = k * 0.5
+			local x = sx * (92 + 0.2 - (steps - k + 0.5) * tread)
+			part(m, "RampartStair", V3(tread + 0.02, h, 7), CFrame.new(x, h / 2, S - 19.5), (k % 2 == 0) and STONE or STONE_DARK, Mat.Slate)
+		end
+		-- a torch at the bottom so the stairs are easy to spot
+		local bottomX = sx * (92 - steps * tread - 1.5)
+		part(m, "StairPost", V3(1.2, 6, 1.2), CFrame.new(bottomX, 3, S - 15.5), STONE_DARK, Mat.Cobblestone)
+		local bowl = cylinder(m, "StairBrazier", 1, 2.6, CFrame.new(bottomX, 6.3, S - 15.5), RGB(58, 58, 66), Mat.Metal)
+		local fire = Instance.new("Fire")
+		fire.Size = 4
+		fire.Heat = 7
+		fire.Color = RGB(255, 140, 40)
+		fire.SecondaryColor = RGB(255, 220, 90)
+		fire.Parent = bowl
+	end
+end
+
+-- The south gatehouse: a round arch in the south wall between two big
+-- round towers with cone roofs, the portcullis pulled up, and the
+-- drawbridge let down over the moat.
+local function buildSouthGate(parent)
+	local m = folder(parent, "SouthGate")
+	local z = SOUTH_WALL
+	local depth = 10
+	local H = WALL_HEIGHT + 4
+	local SPRING, R = 16, 12 -- the arch: straight sides up to SPRING, then a half circle
+	local function archTop(x)
+		if math.abs(x) >= R then
+			return nil
+		end
+		return SPRING + math.sqrt(R * R - x * x)
+	end
+	-- the piers either side of the arch
+	for _, sx in ipairs({ -1, 1 }) do
+		local w = SOUTH_GATE_HALF - R
+		part(m, "GatePier", V3(w + 0.2, H, depth), CFrame.new(sx * (R + w / 2), H / 2, z), STONE, Mat.Cobblestone)
+	end
+	-- stone above the arch, in thin slices that follow the curve
+	for x0 = -R, R - 1 do
+		local bottom = math.min(archTop(x0 + 0.001) or SPRING, archTop(x0 + 0.999) or SPRING)
+		part(m, "GateArchFill", V3(1.02, H - bottom, depth), CFrame.new(x0 + 0.5, (H + bottom) / 2, z), STONE, Mat.Cobblestone)
+	end
+	-- the arch ring on both faces
+	for _, face in ipairs({ z - depth / 2 - 0.3, z + depth / 2 + 0.3 }) do
+		for k = 0, 11 do
+			local a0, a1 = k / 12 * math.pi, (k + 1) / 12 * math.pi
+			local p0 = V3(math.cos(a0) * (R + 1), SPRING + math.sin(a0) * (R + 1), face)
+			local p1 = V3(math.cos(a1) * (R + 1), SPRING + math.sin(a1) * (R + 1), face)
+			local mid = (p0 + p1) / 2
+			part(m, "Voussoir", V3(2.2, 1.4, (p1 - p0).Magnitude + 0.3), CFrame.lookAt(mid, mid + (p1 - p0).Unit, V3(0, 0, 1)), STONE_DARK, Mat.Cobblestone)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			part(m, "Jamb", V3(2, SPRING, 1.2), CFrame.new(sx * (R + 1), SPRING / 2, face), STONE_DARK, Mat.Cobblestone)
+		end
+		-- merlons along the top
+		for x = -SOUTH_GATE_HALF + 2, SOUTH_GATE_HALF - 2, 5 do
+			part(m, "Merlon", V3(3, 3.4, 2), CFrame.new(x, H + 1.7, face), STONE_DARK, Mat.Cobblestone)
+		end
+	end
+	-- the portcullis, raised: only its spiked bottom shows
+	local PB = SPRING + 5
+	for x = -10, 10, 2 do
+		local top = archTop(x)
+		if top and top > PB + 1 then
+			part(m, "PortcullisBar", V3(0.7, top - PB + 1, 0.7), CFrame.new(x, (top + 1 + PB) / 2, z), GATE_IRON, Mat.Metal)
+			part(m, "PortcullisSpike", V3(0.5, 1.4, 0.5), CFrame.new(x, PB - 0.6, z), GATE_IRON, Mat.Metal)
+		end
+	end
+	part(m, "PortcullisRail", V3(R * 2 - 2, 0.6, 0.6), CFrame.new(0, PB + 0.5, z), GATE_IRON, Mat.Metal)
+	-- a shield over the arch on the outside
+	discZ(m, "Crest", 0.6, 7, CFrame.new(0, SPRING + R + 6, z + depth / 2 + 0.4), BANNER_RED, Mat.SmoothPlastic)
+	discZ(m, "CrestStar", 0.7, 3, CFrame.new(0, SPRING + R + 6, z + depth / 2 + 0.5), GOLD, Mat.Metal)
+
+	-- the two big towers
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * (SOUTH_GATE_HALF + 10)
+		local TH = WALL_HEIGHT + 16
+		cylinder(m, "GateTower", TH + 8, 20, CFrame.new(x, TH / 2 - 4, z), STONE, Mat.Cobblestone)
+		cylinder(m, "GateTowerPlinth", 12, 23, CFrame.new(x, -2, z), STONE_DARK, Mat.Cobblestone)
+		cylinder(m, "GateTowerBand", 1.4, 21.4, CFrame.new(x, TH * 0.6, z), STONE_DARK, Mat.Cobblestone)
+		cylinder(m, "GateTowerLedge", 2, 23, CFrame.new(x, TH + 1, z), STONE_DARK, Mat.Cobblestone)
+		for i = 0, 9 do
+			local a = i / 10 * math.pi * 2
+			part(m, "Merlon", V3(3.2, 4, 3.2), CFrame.new(x + math.cos(a) * 10, TH + 4, z + math.sin(a) * 10) * CFrame.Angles(0, -a, 0), STONE_DARK, Mat.Cobblestone)
+		end
+		coneRoof(m, V3(x, TH + 2.5, z), 12.5, 32, ROOF_RED, 14)
+		cylinder(m, "FlagPole", 8, 0.5, CFrame.new(x, TH + 38, z), RGB(70, 60, 50), Mat.Wood)
+		part(m, "Flag", V3(0.3, 3, 5), CFrame.new(x, TH + 40.5, z + 2.6), sx < 0 and BANNER_BLUE or BANNER_RED, Mat.Fabric)
+		-- torches and banners on both faces, beside the arch
+		wallTorch(m, V3(sx * 14.5, 12, z + depth / 2), V3(0, 0, 1))
+		wallTorch(m, V3(sx * 14.5, 12, z - depth / 2), V3(0, 0, -1))
+		banner(m, V3(x, 30, z + 10.1), V3(0, 0, 1), sx < 0 and BANNER_BLUE or BANNER_RED)
+	end
+	-- a path from the gate to the steps at the back of the training yard
+	part(m, "GatePath", V3(12, 0.55, SOUTH_WALL - 150), CFrame.new(0, 0.275, (SOUTH_WALL + 150) / 2 - 2), RGB(208, 192, 162), Mat.Cobblestone)
+	titleSign(m, CFrame.new(0, SPRING + R + 13, z + depth / 2 + 1), "Lakeside", nil, RGB(120, 200, 255), 300, 90)
+
+	-- the drawbridge, let down across the moat, with chains up to the gatehouse
+	local bz0, bz1 = z + depth / 2, MOAT_Z1 + 1
+	part(m, "Drawbridge", V3(R * 2 - 2, 1, bz1 - bz0), CFrame.new(0, 0.1, (bz0 + bz1) / 2), PLANK, Mat.WoodPlanks)
+	for x = -R + 2, R - 2, 4 do
+		part(m, "BridgeBand", V3(0.6, 1.1, bz1 - bz0), CFrame.new(x, 0.15, (bz0 + bz1) / 2), RGB(60, 58, 64), Mat.Metal)
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		chain(m, V3(sx * (R - 2), SPRING + 4, z + depth / 2), V3(sx * (R - 2), 0.8, bz1 - 1), 0.5)
+	end
+end
+
+-- Outside the south gate: the moat, and a grassy shelf with a fishing lake.
+-- The lake's stream runs to the edge of the island and pours off it as a
+-- waterfall into the mist. A mushroom-cap hut and a wooden dock wait for
+-- fishing (coming later).
+local function buildLakeside(parent)
+	local m = folder(parent, "Lakeside")
+	local GRASS = RGB(96, 192, 84)
+	-- the moat: a sunken channel with water in it, all along the south wall
+	part(m, "MoatBed", V3(236, 2, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(0, -6, (MOAT_Z0 + MOAT_Z1) / 2 - 2), RGB(84, 80, 72), Mat.Slate)
+	part(m, "MoatWater", V3(236, 3.5, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(0, -3.25, (MOAT_Z0 + MOAT_Z1) / 2 - 2), WATER, Mat.SmoothPlastic, {
+		Transparency = 0.3, CanCollide = false, CanQuery = false,
+	})
+	-- the shelf, as four slabs round the hole the lake sits in
+	local function slab(x0, z0, x1, z1)
+		part(m, "Shelf", V3(x1 - x0, 6, z1 - z0), CFrame.new((x0 + x1) / 2, -3, (z0 + z1) / 2), GRASS, Mat.Plastic, {
+			TopSurface = Enum.SurfaceType.Studs,
+		})
+	end
+	slab(-SHELF_HALF_X, MOAT_Z1, LAKE_X0, SHELF_Z1)
+	slab(LAKE_X1, MOAT_Z1, SHELF_HALF_X, SHELF_Z1)
+	slab(LAKE_X0, MOAT_Z1, LAKE_X1, LAKE_Z0)
+	slab(LAKE_X0, LAKE_Z1, LAKE_X1, SHELF_Z1)
+	-- the lake
+	local lw, ld = LAKE_X1 - LAKE_X0, LAKE_Z1 - LAKE_Z0
+	local lc = V3((LAKE_X0 + LAKE_X1) / 2, 0, (LAKE_Z0 + LAKE_Z1) / 2)
+	part(m, "LakeBed", V3(lw, 2, ld), CFrame.new(lc.X, -6, lc.Z), RGB(196, 176, 120), Mat.Sand)
+	part(m, "LakeWater", V3(lw, 4.2, ld), CFrame.new(lc.X, -3.2, lc.Z), WATER, Mat.SmoothPlastic, {
+		Transparency = 0.25, CanCollide = false, CanQuery = false,
+	})
+	-- rocks round the rim (they also round off the square corners)
+	for i = 0, 27 do
+		local t = i / 28
+		local p
+		if t < 0.25 then
+			p = V3(LAKE_X0 + lw * t * 4, 0, LAKE_Z0)
+		elseif t < 0.5 then
+			p = V3(LAKE_X1, 0, LAKE_Z0 + ld * (t - 0.25) * 4)
+		elseif t < 0.75 then
+			p = V3(LAKE_X1 - lw * (t - 0.5) * 4, 0, LAKE_Z1)
+		else
+			p = V3(LAKE_X0, 0, LAKE_Z1 - ld * (t - 0.75) * 4)
+		end
+		local nearStream = math.abs(p.X - 51) < 7 and p.Z > LAKE_Z1 - 1
+		local nearDock = p.X < LAKE_X0 + 1 and math.abs(p.Z - (lc.Z - 4)) < 6
+		if not nearStream and not nearDock then
+			local s = 3 + rnd() * 3
+			part(m, "ShoreRock", V3(s * 1.4, s, s * 1.2), CFrame.new(p.X, -0.6 + rnd(), p.Z) * CFrame.Angles(math.rad((rnd() - 0.5) * 20), rnd() * math.pi, 0), rockColor(rnd() * 0.2), Mat.Slate)
+		end
+	end
+	for _, c in ipairs({ { LAKE_X0, LAKE_Z0 }, { LAKE_X1, LAKE_Z0 }, { LAKE_X0, LAKE_Z1 }, { LAKE_X1, LAKE_Z1 } }) do
+		part(m, "CornerRock", V3(12, 5, 12), CFrame.new(c[1], -0.5, c[2]) * CFrame.Angles(0, rnd() * math.pi, 0), rockColor(0.1), Mat.Slate)
+	end
+	-- lily pads and reeds
+	for _ = 1, 9 do
+		local p = V3(LAKE_X0 + 8 + rnd() * (lw - 16), 0, LAKE_Z0 + 8 + rnd() * (ld - 16))
+		cylinder(m, "LilyPad", 0.2, 2.6 + rnd() * 1.6, CFrame.new(p.X, -1.05, p.Z), RGB(70, 160, 70), Mat.SmoothPlastic, { CanCollide = false })
+		if rnd() < 0.4 then
+			ball(m, "LilyFlower", 0.9, CFrame.new(p.X + 0.5, -0.7, p.Z), RGB(255, 170, 200), Mat.SmoothPlastic, { CanCollide = false })
+		end
+	end
+	for _ = 1, 14 do
+		local side = rnd() < 0.5
+		local p = side and V3(LAKE_X1 - 2 - rnd() * 3, 0, LAKE_Z0 + 4 + rnd() * (ld - 8)) or V3(LAKE_X0 + 6 + rnd() * (lw - 12), 0, LAKE_Z0 + 2 + rnd() * 3)
+		part(m, "Reed", V3(0.3, 4 + rnd() * 2, 0.3), CFrame.new(p.X, 0.5, p.Z) * CFrame.Angles(math.rad((rnd() - 0.5) * 16), 0, math.rad((rnd() - 0.5) * 16)), RGB(90, 150, 70), Mat.Grass, { CanCollide = false })
+	end
+
+	-- the stream from the lake to the edge, and the waterfall off it
+	local sx0, sx1 = 46, 56
+	part(m, "StreamBed", V3(sx1 - sx0, 1, SHELF_Z1 - LAKE_Z1 + 2), CFrame.new((sx0 + sx1) / 2, -1.5, (LAKE_Z1 + SHELF_Z1) / 2), RGB(84, 80, 72), Mat.Slate)
+	part(m, "Stream", V3(sx1 - sx0, 0.3, SHELF_Z1 - LAKE_Z1 + 2), CFrame.new((sx0 + sx1) / 2, 0.2, (LAKE_Z1 + SHELF_Z1) / 2), WATER, Mat.SmoothPlastic, {
+		Transparency = 0.2, CanCollide = false, CanQuery = false,
+	})
+	for _, sx in ipairs({ sx0 - 1, sx1 + 1 }) do
+		part(m, "StreamBank", V3(2, 1.6, SHELF_Z1 - LAKE_Z1), CFrame.new(sx, 0.3, (LAKE_Z1 + SHELF_Z1) / 2), rockColor(0.1), Mat.Slate)
+	end
+	-- a little stone footbridge over the stream
+	part(m, "FootBridge", V3(sx1 - sx0 + 6, 1, 6), CFrame.new((sx0 + sx1) / 2, 1.2, LAKE_Z1 + 14), STONE, Mat.Cobblestone)
+	local fallX = (sx0 + sx1) / 2
+	part(m, "Waterfall", V3(sx1 - sx0, 150, 2), CFrame.new(fallX, -75, SHELF_Z1 + 1.2), RGB(150, 205, 255), Mat.SmoothPlastic, {
+		Transparency = 0.25, CanCollide = false, CanQuery = false, CastShadow = false,
+	})
+	for i = 0, 3 do
+		part(m, "WaterfallStreak", V3(1.2, 150, 0.3), CFrame.new(fallX - 3.6 + i * 2.4, -75, SHELF_Z1 + 2.3), RGB(235, 248, 255), Mat.SmoothPlastic, {
+			Transparency = 0.45, CanCollide = false, CanQuery = false, CastShadow = false,
+		})
+	end
+	local lip = anchorPart(m, "WaterfallSpray", CFrame.new(fallX, 0, SHELF_Z1 + 1.5))
+	lip.Size = V3(sx1 - sx0, 1, 1)
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 14
+	e.Color = ColorSequence.new(RGB(240, 250, 255))
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 6) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(1.5, 2.5)
+	e.Speed = NumberRange.new(4, 8)
+	e.Acceleration = V3(0, -12, 0)
+	e.SpreadAngle = Vector2.new(30, 30)
+	e.EmissionDirection = Enum.NormalId.Back
+	e.Parent = lip
+
+	-- the fishing dock, out into the lake from the west shore
+	local dz = lc.Z - 4
+	part(m, "Dock", V3(28, 0.8, 6), CFrame.new(LAKE_X0 + 10, 0.6, dz), PLANK, Mat.WoodPlanks)
+	for x = LAKE_X0 - 2, LAKE_X0 + 22, 6 do
+		for _, oz in ipairs({ -2.6, 2.6 }) do
+			part(m, "DockPost", V3(0.9, 7, 0.9), CFrame.new(x, -2.2, dz + oz), RGB(110, 76, 46), Mat.Wood)
+		end
+	end
+	part(m, "Barrel", V3(2.4, 3, 2.4), CFrame.new(LAKE_X0 + 20, 2.5, dz + 1.6), RGB(130, 86, 50), Mat.WoodPlanks)
+	-- the fishing hut: a round stone stem under a big red mushroom cap
+	local hx, hz = -24, dz
+	cylinder(m, "HutStem", 11, 14, CFrame.new(hx, 5.5, hz), RGB(236, 222, 196), Mat.Plastic)
+	part(m, "HutDoor", V3(0.4, 6, 4), CFrame.new(hx + 7, 3, hz), RGB(110, 70, 44), Mat.WoodPlanks)
+	ball(m, "HutWindow", 2.4, CFrame.new(hx + 6.2, 7.5, hz - 4), RGB(255, 210, 120), Mat.Neon)
+	cylinder(m, "HutCapUnder", 1, 22, CFrame.new(hx, 11.5, hz), RGB(245, 232, 210), Mat.Plastic)
+	coneRoof(m, V3(hx, 12, hz), 12, 10, RGB(220, 60, 60), 7)
+	for i = 0, 6 do
+		local a = i / 7 * math.pi * 2
+		local r = 6 + (i % 2) * 2.5
+		ball(m, "HutSpot", 2.2, CFrame.new(hx + math.cos(a) * r, 12 + (12 - r) * 10 / 12 * 0.95, hz + math.sin(a) * r), RGB(255, 245, 235), Mat.SmoothPlastic, { CanCollide = false })
+	end
+	titleSign(m, CFrame.new(hx, 26, hz), "Fishing Hut", nil, RGB(120, 200, 255), 300, 70)
+
+	-- a path from the drawbridge to the hut and the dock
+	part(m, "LakePath", V3(10, 0.55, dz - MOAT_Z1 + 5), CFrame.new(0, 0.275, (MOAT_Z1 + dz) / 2 + 2.5), RGB(208, 192, 162), Mat.Cobblestone)
+	part(m, "LakePathWest", V3(hx + 7 + 5, 0.55, 8), CFrame.new((hx + 7 - 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
+	part(m, "LakePathEast", V3(LAKE_X0 - 5, 0.55, 8), CFrame.new((LAKE_X0 + 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
+
+	-- a fence round the edge of the shelf so nobody walks off by accident
+	fence(m, V3(-SHELF_HALF_X + 2, 0, MOAT_Z1 + 2), V3(-SHELF_HALF_X + 2, 0, SHELF_Z1 - 2))
+	fence(m, V3(SHELF_HALF_X - 2, 0, MOAT_Z1 + 2), V3(SHELF_HALF_X - 2, 0, SHELF_Z1 - 2))
+	fence(m, V3(-SHELF_HALF_X + 2, 0, SHELF_Z1 - 2), V3(sx0 - 3, 0, SHELF_Z1 - 2))
+	fence(m, V3(sx1 + 3, 0, SHELF_Z1 - 2), V3(SHELF_HALF_X - 2, 0, SHELF_Z1 - 2))
+
+	-- nature
+	for _, t in ipairs({
+		{ pineTree, -96, MOAT_Z1 + 16, 1.1 }, { roundTree, -78, MOAT_Z1 + 66, 0.9 }, { pineTree, -96, MOAT_Z1 + 84, 0.9 },
+		{ roundTree, 96, MOAT_Z1 + 14, 0.85 }, { pineTree, 98, MOAT_Z1 + 80, 1 }, { blossomTree, -62, MOAT_Z1 + 20, 0.9 },
+		{ blossomTree, 94, MOAT_Z1 + 50, 0.8 }, { pineTree, -28, MOAT_Z1 + 86, 0.8 },
+	}) do
+		t[1](m, t[2], t[3], t[4])
+	end
+	for _, f in ipairs({ { -80, MOAT_Z1 + 40 }, { -40, MOAT_Z1 + 70 }, { 14, MOAT_Z1 + 84 }, { 90, MOAT_Z1 + 30 }, { -16, MOAT_Z1 + 14 } }) do
+		flowers(m, f[1], f[2], 3.5)
+	end
+	for _, b in ipairs({ { -104, MOAT_Z1 + 40 }, { 104, MOAT_Z1 + 64 }, { -60, MOAT_Z1 + 88 } }) do
+		bush(m, b[1], b[2], 0.9)
+	end
+	rocks(m, -70, MOAT_Z1 + 50, 1.2)
+	rocks(m, 92, MOAT_Z1 + 88, 1)
+
+	-- the mountain under the shelf, joining the one under the castle
+	squareMountain(m, 0, (MOAT_Z0 + SHELF_Z1) / 2, SHELF_HALF_X, (SHELF_Z1 - MOAT_Z0) / 2, -6, 4)
+end
+
+local function buildCastle(parent)
+	local m = folder(parent, "Castle")
+	buildKeep(m)
+	buildRamparts(m)
+	buildSouthGate(m)
+	-- turrets hanging off the outside of the walls
+	for _, z in ipairs({ -50, 30, 110 }) do
+		bartizan(m, V3(-121, 0, z), V3(-1, 0, 0))
+		bartizan(m, V3(121, 0, z), V3(1, 0, 0))
+	end
+	for _, x in ipairs({ -70, 70 }) do
+		bartizan(m, V3(x, 0, SOUTH_WALL + 3), V3(0, 0, 1))
+	end
+	for _, x in ipairs({ -76, 76 }) do
+		bartizan(m, V3(x, 0, -121), V3(0, 0, -1))
+	end
+	buildLakeside(m)
 end
 
 ----------------------------------------------------------------------
@@ -3888,6 +4335,7 @@ function LobbyBuilder.Build()
 		{ "Training Yard", buildYard },
 		{ "The Spire", buildSpire },
 		{ "Castle gate", buildCastleGate },
+		{ "Castle (keep, ramparts, south gate, lakeside)", buildCastle },
 		{ "Mountain and mist", buildMountain },
 		{ "Slime arena (Spire floor 1)", buildSlimeArena },
 		{ "Castle and nature decorations", buildDecor },
