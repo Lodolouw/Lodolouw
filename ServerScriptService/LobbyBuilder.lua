@@ -3170,7 +3170,12 @@ end
 local WALL_OUTER = 121 -- outside face of the boundary walls
 local function wallFootRocks(parent)
 	local function boulder(pos, size, yaw)
-		local cf = CFrame.new(pos) * CFrame.Angles(math.rad((rnd() - 0.5) * 24), yaw, math.rad((rnd() - 0.5) * 24))
+		-- (reach all the way down into the grass below, so no rock hangs in the air)
+		local top = pos.Y + size.Y / 2
+		local bottom = -15.5
+		pos = V3(pos.X, (top + bottom) / 2, pos.Z)
+		size = V3(size.X, top - bottom, size.Z)
+		local cf = CFrame.new(pos) * CFrame.Angles(math.rad((rnd() - 0.5) * 8), yaw, math.rad((rnd() - 0.5) * 8))
 		part(parent, "WallRock", size, cf, rockColor(rnd() * 0.25), Mat.Slate, { CastShadow = false })
 		if rnd() < 0.25 then
 			part(parent, "WallRockMoss", V3(size.X * 0.7, 0.6, size.Z * 0.7), cf * CFrame.new(0, size.Y / 2, 0), RGB(96, 150, 74), Mat.LeafyGrass, { CanCollide = false, CastShadow = false })
