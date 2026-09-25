@@ -3458,36 +3458,94 @@ local function buildGreatHall(parent)
 	titleSign(m, CFrame.new(0, 30, z1 + 2), "The Spire", nil, RGB(140, 180, 255), 300, 90)
 end
 
--- The fountain in the middle of the plaza: a round basin, a pillar with two
--- tiers of bowls, and water spilling down.
+-- The fountain in the middle of the plaza, in pixel-art style: a round
+-- basin rimmed with chunky stone blocks, blue water with light ripples, a
+-- stepped plinth, and on it a stone angel - a Roblox character with
+-- feathered wings - holding up a jug that pours water into the basin.
 local function buildFountain(parent)
 	local m = Instance.new("Model")
 	m.Name = "Fountain"
 	m.Parent = parent
-	local stone, dark = RGB(196, 190, 204), RGB(140, 136, 152)
-	cylinder(m, "BasinWall", 2.2, 20, CFrame.new(0, 1.1, 0), stone, Mat.Slate)
-	cylinder(m, "BasinRim", 0.6, 21, CFrame.new(0, 2.5, 0), dark, Mat.Slate)
-	cylinder(m, "Water", 0.4, 18.6, CFrame.new(0, 2.05, 0), WATER, Mat.SmoothPlastic, { Transparency = 0.2, CanCollide = false })
-	cylinder(m, "Pillar", 9, 2.6, CFrame.new(0, 6.5, 0), stone, Mat.Slate)
-	cylinder(m, "BowlLow", 1.2, 9, CFrame.new(0, 6, 0), dark, Mat.Slate)
-	cylinder(m, "BowlLowWater", 0.3, 8, CFrame.new(0, 6.5, 0), WATER, Mat.SmoothPlastic, { CanCollide = false })
-	cylinder(m, "BowlHigh", 1, 5, CFrame.new(0, 10, 0), dark, Mat.Slate)
-	cylinder(m, "BowlHighWater", 0.3, 4.2, CFrame.new(0, 10.45, 0), WATER, Mat.SmoothPlastic, { CanCollide = false })
-	ball(m, "Top", 1.8, CFrame.new(0, 11.6, 0), GOLD, Mat.Metal)
-	-- water falling from the bowls, in thin rings
-	cylinder(m, "SpillLow", 3.6, 8.4, CFrame.new(0, 4.1, 0), RGB(170, 215, 255), Mat.SmoothPlastic, { Transparency = 0.55, CanCollide = false, CanQuery = false })
-	cylinder(m, "SpillHigh", 3, 4.6, CFrame.new(0, 8.3, 0), RGB(170, 215, 255), Mat.SmoothPlastic, { Transparency = 0.55, CanCollide = false, CanQuery = false })
-	local spout = anchorPart(m, "Spout", CFrame.new(0, 11.8, 0))
+	local STONE, STONE2, STONE3 = RGB(192, 203, 220), RGB(139, 155, 180), RGB(90, 105, 136)
+	local WATER_C, RIPPLE = RGB(0, 153, 219), RGB(44, 232, 245)
+	local nc = { CanCollide = false }
+	local R = 9.5
+	-- the basin: water, and a rim of stone blocks all round
+	cylinder(m, "BasinFloor", 1.4, R * 2, CFrame.new(0, 0.7, 0), STONE3, Mat.Slate)
+	cylinder(m, "Water", 0.3, R * 2 - 1.5, CFrame.new(0, 1.55, 0), WATER_C, Mat.SmoothPlastic, { CanCollide = false })
+	for i = 0, 5 do
+		local a = i * 1.05 + 0.3
+		local r = 3.5 + (i % 3) * 1.6
+		part(m, "Ripple", V3(1.6, 0.1, 0.4), CFrame.new(math.cos(a) * r, 1.72, math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0), RIPPLE, Mat.SmoothPlastic, nc)
+	end
+	local N = 20
+	for i = 0, N - 1 do
+		local a = i / N * math.pi * 2
+		local cf = CFrame.new(math.cos(a) * (R - 0.6), 0, math.sin(a) * (R - 0.6)) * CFrame.Angles(0, -a + math.pi / 2, 0)
+		local len = 2 * math.pi * (R - 0.6) / N + 0.25
+		part(m, "RimBlock", V3(len, 2.6, 1.6), cf * CFrame.new(0, 1.3, 0), (i % 2 == 0) and STONE or STONE2, Mat.Slate)
+		part(m, "RimTop", V3(len + 0.05, 0.4, 2), cf * CFrame.new(0, 2.8, 0.1), STONE, Mat.Slate)
+		part(m, "RimLip", V3(len, 0.3, 0.4), cf * CFrame.new(0, 2.45, -0.95), STONE3, Mat.Slate, nc)
+	end
+	-- the stepped plinth
+	part(m, "Plinth1", V3(4.4, 1.6, 4.4), CFrame.new(0, 2.2, 0), STONE2, Mat.Slate)
+	part(m, "Plinth2", V3(3.4, 1.4, 3.4), CFrame.new(0, 3.7, 0), STONE, Mat.Slate)
+	part(m, "Plinth3", V3(3.8, 0.4, 3.8), CFrame.new(0, 4.6, 0), STONE2, Mat.Slate)
+	-- the angel: a stone Roblox character (legs, torso, arms, blocky head)
+	local S = 1.25 -- (a little bigger than life)
+	local base = CFrame.new(0, 4.8, 0) * CFrame.Angles(0, math.rad(180), 0) -- (faces south, towards the spawn)
+	local function b(name, size, x, y, z, color, extra)
+		return part(m, name, size * S, base * CFrame.new(x * S, y * S, z * S), color or STONE, Mat.Slate, extra or nc)
+	end
+	b("AngelLegL", V3(1, 2, 1), -0.5, 1, 0)
+	b("AngelLegR", V3(1, 2, 1), 0.5, 1, 0, STONE2)
+	b("AngelTorso", V3(2, 2, 1), 0, 3, 0)
+	b("AngelRobe", V3(2.2, 0.4, 1.2), 0, 2.2, 0, STONE2)
+	b("AngelHead", V3(1.2, 1.2, 1.2), 0, 4.6, 0)
+	b("AngelFace", V3(0.8, 0.15, 0.1), 0, 4.55, -0.62, STONE3)
+	b("AngelHalo", V3(1.5, 0.15, 1.5), 0, 5.55, 0, RGB(254, 231, 97))
+	-- arms hinged at the shoulders, reaching forward to hold the jug at
+	-- chest height, tipped so it pours into the basin
+	for _, side in ipairs({ -1, 1 }) do
+		local shoulder = base * CFrame.new(side * 1.5 * S, 4 * S, 0)
+		part(m, "AngelArm", V3(1, 2, 1) * S, shoulder * CFrame.Angles(math.rad(-55), 0, 0) * CFrame.new(0, -1 * S, 0), (side < 0) and STONE or STONE2, Mat.Slate, nc)
+	end
+	local jug = base * CFrame.new(0, 2.9 * S, -1.9 * S) * CFrame.Angles(math.rad(-50), 0, 0)
+	part(m, "Jug", V3(1.5, 1.7, 1.5) * S, jug, STONE2, Mat.Slate, nc)
+	part(m, "JugNeck", V3(0.8, 0.6, 0.8) * S, jug * CFrame.new(0, 1.1 * S, 0), STONE, Mat.Slate, nc)
+	-- feathered wings, spread out behind: stepped rows of flat blocks
+	for _, side in ipairs({ -1, 1 }) do
+		for k = 0, 3 do
+			local len = 3.2 - k * 0.55
+			local cf = base * CFrame.new(side * (1.2 + len / 2) * S, (4.6 - k * 0.75) * S, 0.8 * S) * CFrame.Angles(0, 0, side * math.rad(18 - k * 4))
+			part(m, "Wing", V3(len, 0.7, 0.4) * S, cf, (k % 2 == 0) and STONE or STONE2, Mat.Slate, nc)
+		end
+		part(m, "WingTip", V3(0.8, 1.4, 0.4) * S, base * CFrame.new(side * 4.3 * S, 5.4 * S, 0.8 * S), STONE, Mat.Slate, nc)
+	end
+	-- the water pouring from the jug into the basin
+	local mouth = (jug * CFrame.new(0, 1.4 * S, 0)).Position
+	local land = V3(mouth.X, 1.7, mouth.Z) + (mouth - V3(0, mouth.Y, 0)).Unit * 5
+	for k = 0, 5 do
+		local t0, t1 = k / 6, (k + 1) / 6
+		local function arc(t)
+			local p = mouth:Lerp(land, t)
+			return p + V3(0, math.sin(t * math.pi * 0.5) * 2.5 * (1 - t), 0)
+		end
+		local a, c = arc(t0), arc(t1)
+		part(m, "Pour", V3(0.45, 0.45, (c - a).Magnitude + 0.15), CFrame.lookAt((a + c) / 2, c), (k % 2 == 0) and RIPPLE or WATER_C, Mat.SmoothPlastic, { CanCollide = false, Transparency = 0.15 })
+	end
+	local splash = anchorPart(m, "Splash", CFrame.new(land))
+	splash.Size = V3(2, 0.4, 2)
 	local e = Instance.new("ParticleEmitter")
-	e.Rate = 18
-	e.Color = ColorSequence.new(RGB(210, 235, 255))
+	e.Rate = 14
+	e.Color = ColorSequence.new(RGB(210, 240, 255))
 	e.Size = NumberSequence.new(0.5, 0.2)
-	e.Lifetime = NumberRange.new(0.8, 1.1)
-	e.Speed = NumberRange.new(6, 8)
-	e.SpreadAngle = Vector2.new(25, 25)
-	e.Acceleration = V3(0, -30, 0)
+	e.Lifetime = NumberRange.new(0.5, 0.8)
+	e.Speed = NumberRange.new(3, 5)
+	e.SpreadAngle = Vector2.new(35, 35)
+	e.Acceleration = V3(0, -20, 0)
 	e.EmissionDirection = Enum.NormalId.Top
-	e.Parent = spout
+	e.Parent = splash
 end
 
 -- The Pet Sanctuary (north-west): a fenced flower garden round a tall
@@ -5493,6 +5551,10 @@ function LobbyBuilder.Build()
 	local lobby = Instance.new("Model")
 	lobby.Name = "Lobby"
 	lobby.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	-- (always drawn in full detail, never swapped for a blurry far-away version)
+	pcall(function()
+		lobby.LevelOfDetail = Enum.ModelLevelOfDetail.Disabled
+	end)
 
 	-- Each piece is built on its own: if one of them hits an error, the
 	-- rest of the lobby still appears and the game still starts, and the

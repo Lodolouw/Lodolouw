@@ -140,7 +140,7 @@ local function restyleAll(root)
 	local list = root:GetDescendants()
 	local i = 0
 	while i < #list do
-		for _ = 1, 300 do
+		for _ = 1, 1500 do
 			i = i + 1
 			local p = list[i]
 			if not p then
@@ -1073,7 +1073,57 @@ local lobby = Workspace:WaitForChild("Lobby", 60)
 if not lobby then
 	return
 end
-task.spawn(restyleAll, lobby)
+-- THE WARM-UP: a short retro loading screen while the lobby is recoloured,
+-- dressed and its textures loaded, so nothing pops in bit by bit in front
+-- of you. It lifts as soon as everything's ready (and never stays longer
+-- than a few seconds).
+local warm = { restyled = false, dressed = false }
+do
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "RetroWarmUp"
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 1000
+	gui.ResetOnSpawn = false
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.fromScale(1, 1)
+	bg.BackgroundColor3 = RGB(24, 20, 37)
+	bg.BorderSizePixel = 0
+	bg.Parent = gui
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.new(1, 0, 0, 40)
+	label.Position = UDim2.fromScale(0, 0.5)
+	label.AnchorPoint = Vector2.new(0, 0.5)
+	label.Font = Enum.Font.Arcade
+	label.TextSize = 32
+	label.TextColor3 = RGB(255, 255, 255)
+	label.Text = "* Loading the island..."
+	label.Parent = bg
+	gui.Parent = playerGui
+	task.spawn(function()
+		pcall(function()
+			game:GetService("ContentProvider"):PreloadAsync({ lobby })
+		end)
+	end)
+	task.spawn(function()
+		local start, dots = os.clock(), 0
+		while not (warm.restyled and warm.dressed) and os.clock() - start < 8 do
+			dots = dots % 3 + 1
+			label.Text = "* Loading the island" .. string.rep(".", dots)
+			task.wait(0.3)
+		end
+		for i = 1, 10 do
+			bg.BackgroundTransparency = i / 10
+			label.TextTransparency = i / 10
+			task.wait(0.04)
+		end
+		gui:Destroy()
+	end)
+end
+task.spawn(function()
+	restyleAll(lobby)
+	warm.restyled = true
+end)
 lobby.DescendantAdded:Connect(function(d)
 	task.defer(function()
 		pcall(restyle, d)
@@ -1082,7 +1132,10 @@ end)
 if W.Flavour ~= false then
 	findSpots(lobby)
 end
-task.spawn(dressLobby, lobby)
+task.spawn(function()
+	pcall(dressLobby, lobby)
+	warm.dressed = true
+end)
 
 -- THE BOSS ARENAS get the same look: palette colours, flat materials and
 -- pixel flames (only how they look, only on your screen - the fights and
