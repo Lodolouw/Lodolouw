@@ -4037,7 +4037,8 @@ local function buildFarm(parent)
 		end
 	end
 	part(m, "MillAxle", V3(1, 1, 2), CFrame.new(x, 22, z - 5.2), FARM.DARK, Mat.Wood)
-	sails:SetAttribute("RotorSpeed", 32) -- degrees per second
+	sails:SetAttribute("RotorSpeed", 45) -- degrees per second...
+	sails:SetAttribute("RotorStep", 15) -- ...in 15-degree jumps, like sprite frames
 	CollectionService:AddTag(sails, "Rotor")
 
 	-- the dirt path from the road to the cottage, and the yard in front of it

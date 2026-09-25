@@ -21,6 +21,9 @@
 
 	Models tagged "Rotor" (like the windmill's sails) turn round their
 	PrimaryPart's front-to-back axis. RotorSpeed = degrees per second.
+	RotorStep = degrees per jump, for an 8-bit look: the sails snap from
+	one angle to the next like frames of a sprite instead of gliding
+	(0 or missing = smooth).
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -230,9 +233,11 @@ local function addRotor(model)
 	rotors[model] = {
 		base = hub.CFrame,
 		speed = math.rad(model:GetAttribute("RotorSpeed") or 30),
+		step = math.rad(model:GetAttribute("RotorStep") or 0),
 		parts = parts,
 		offsets = offsets,
 		angle = 0,
+		shown = nil,
 	}
 end
 for _, m in ipairs(CollectionService:GetTagged("Rotor")) do
@@ -252,9 +257,15 @@ RunService.RenderStepped:Connect(function(dt)
 			rotors[model] = nil
 		else
 			r.angle = (r.angle + r.speed * dt) % (math.pi * 2)
-			-- (only worth moving when someone could see it)
-			if not cam or (cam.CFrame.Position - r.base.Position).Magnitude < 500 then
-				local hubCF = r.base * CFrame.Angles(0, 0, r.angle)
+			-- the angle it's drawn at: snapped to whole steps for the 8-bit look
+			local shown = r.angle
+			if r.step > 0 then
+				shown = math.floor(r.angle / r.step) * r.step
+			end
+			-- (only moved when that changes, and when someone could see it)
+			if shown ~= r.shown and (not cam or (cam.CFrame.Position - r.base.Position).Magnitude < 500) then
+				r.shown = shown
+				local hubCF = r.base * CFrame.Angles(0, 0, shown)
 				local cfs = table.create(#r.parts)
 				for i, off in ipairs(r.offsets) do
 					cfs[i] = hubCF * off
