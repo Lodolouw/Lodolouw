@@ -675,7 +675,7 @@ local function buildGround(parent)
 		end
 		-- the plaza's rim: a smooth ring hugging its round edge, open where the
 		-- roads come in
-		local RR, NR = PLAZA_R + 0.5, 72
+		local RR, NR = PLAZA_R - 0.7, 72 -- (right on the plaza's edge, flush with its cobbles)
 		for n = 0, NR - 1 do
 			local a = (n + 0.5) / NR * math.pi * 2
 			local p = V3(math.cos(a) * RR, 0.45, math.sin(a) * RR)
