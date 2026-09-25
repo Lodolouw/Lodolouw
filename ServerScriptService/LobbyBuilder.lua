@@ -598,10 +598,8 @@ local function buildGround(parent)
 		local NOCURB = { { 7, 88, 20, 104 } } -- (the farm path leaves the south road here: no rim)
 		local PLAZA_R = 23.2
 		local X0, X1, Z0, Z1 = -118, 118, -112, SOUTH_WALL - 1
+		-- (paved by a path: the plaza's round edge has its own smooth rim)
 		local function paved(x, z)
-			if x * x + z * z < PLAZA_R * PLAZA_R then
-				return true
-			end
 			for _, r in ipairs(pathRects) do
 				if x > r[1] and x < r[3] and z > r[2] and z < r[4] then
 					return true
@@ -628,8 +626,8 @@ local function buildGround(parent)
 		end
 		local function isCurb(i, j)
 			local cx, cz = X0 + i - 0.5, Z0 + j - 0.5
-			if cx * cx + cz * cz < (PLAZA_R + 1.2) ^ 2 then
-				return false -- (the plaza gets its own smooth round rim, below)
+			if cx * cx + cz * cz < (PLAZA_R - 0.4) ^ 2 then
+				return false -- (inside the plaza, which gets its own smooth round rim, below)
 			end
 			if grid[j][i] or noCurb(cx, cz) then
 				return false
