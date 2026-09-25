@@ -110,22 +110,16 @@ end
 ----------------------------------------------------------------------
 -- The dummies
 ----------------------------------------------------------------------
--- Where a dummy's feet are, and putting them somewhere. Worked out from its
--- body (the one anchored piece; everything else is welded to it), not from
--- the model's pivot - that got lost on the way and sank dummies into the sand.
+-- Where a dummy's feet are, and putting them somewhere. The model's pivot is
+-- its body (every piece is anchored and moves with it), 5.4 studs above its
+-- feet and built facing backwards - so both are worked out from that.
 local FOOT = 5.4 -- the body's middle above the feet
-local TURN = CFrame.Angles(0, math.pi, 0) -- (the body is built facing backwards)
+local TURN = CFrame.Angles(0, math.pi, 0)
 local function feet(model)
-	local body = model.PrimaryPart
-	return body and body.CFrame * TURN * CFrame.new(0, -FOOT, 0) or model:GetPivot()
+	return model:GetPivot() * TURN * CFrame.new(0, -FOOT, 0)
 end
 local function place(model, cf)
-	local body = model.PrimaryPart
-	if body then
-		body.CFrame = cf * CFrame.new(0, FOOT, 0) * TURN
-	else
-		model:PivotTo(cf)
-	end
+	model:PivotTo(cf * CFrame.new(0, FOOT, 0) * TURN)
 end
 
 local function inArena(pos)

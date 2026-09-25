@@ -5682,26 +5682,15 @@ local Extras = (function()
 				-- nobody bumps into someone else's invisible dummy
 				p.CanCollide = false
 				p.CanTouch = false
-				-- Welded to the body, which is the only anchored piece: moving the
-				-- dummy moves ONE part and the rest comes along. (Moving every piece
-				-- on its own reached players' screens out of step, so dummies came
-				-- apart and lay about in bits.)
-				if p ~= torso then
-					p.Anchored = false
-					p.Massless = true
-					local w = Instance.new("WeldConstraint")
-					w.Part0 = torso
-					w.Part1 = p
-					w.Parent = p
-				end
 			end
 		end
 		-- (a dummy arrives on your screen whole, never a piece at a time)
 		pcall(function()
 			m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 		end)
+		-- the model's pivot IS its body (ColosseumService places dummies by it)
 		m.PrimaryPart = torso
-		m.WorldPivot = CFrame.new()
+		torso.PivotOffset = CFrame.new()
 		return m
 	end
 
