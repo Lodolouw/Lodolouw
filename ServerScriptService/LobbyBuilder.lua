@@ -3473,10 +3473,18 @@ local function buildFountain(parent)
 	-- the basin: water, and a rim of stone blocks all round
 	cylinder(m, "BasinFloor", 1.4, R * 2, CFrame.new(0, 0.7, 0), STONE3, Mat.Slate)
 	cylinder(m, "Water", 0.3, R * 2 - 1.5, CFrame.new(0, 1.55, 0), WATER_C, Mat.SmoothPlastic, { CanCollide = false })
-	for i = 0, 5 do
-		local a = i * 1.05 + 0.3
-		local r = 3.5 + (i % 3) * 1.6
-		part(m, "Ripple", V3(1.6, 0.1, 0.4), CFrame.new(math.cos(a) * r, 1.72, math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0), RIPPLE, Mat.SmoothPlastic, nc)
+	-- ripples drifting out across the basin, fading as they go (LobbyFX)
+	for i = 0, 13 do
+		local a = i / 14 * math.pi * 2 + (i % 2) * 0.2
+		local dir = V3(math.cos(a), 0, math.sin(a))
+		local p = dir * 3.2 + V3(0, 1.72, 0)
+		local rip = part(m, "Ripple", V3(1.4, 0.1, 0.35), CFrame.lookAt(p, p + V3(-dir.Z, 0, dir.X)), RIPPLE, Mat.SmoothPlastic, nc)
+		rip:SetAttribute("WaveMode", "drift")
+		rip:SetAttribute("WaveDir", dir)
+		rip:SetAttribute("WaveAmp", 4.6)
+		rip:SetAttribute("WaveSpeed", 0.4)
+		rip:SetAttribute("Phase", (i % 3) * 120 + i * 17)
+		CollectionService:AddTag(rip, "Wave")
 	end
 	local N = 20
 	for i = 0, N - 1 do
@@ -3522,7 +3530,7 @@ local function buildFountain(parent)
 	for i = 0, 3 do
 		local a = i * math.pi / 2 + math.pi / 4
 		local p = V3(math.cos(a) * 3.6, 1.7, math.sin(a) * 3.6)
-		part(m, "Jet", V3(0.5, 1.6, 0.5), CFrame.new(p + V3(0, 0.8, 0)), RIPPLE, Mat.SmoothPlastic, { CanCollide = false, Transparency = 0.2 })
+		fx(part(m, "Jet", V3(0.5, 1.6, 0.5), CFrame.new(p + V3(0, 0.8, 0)), RIPPLE, Mat.SmoothPlastic, { CanCollide = false, Transparency = 0.2 }), { BobAmp = 0.35, BobSpeed = 6, Phase = i * 90 })
 		local jet = anchorPart(m, "JetSpray", CFrame.new(p + V3(0, 1.6, 0)))
 		jet.Size = V3(0.6, 0.2, 0.6)
 		local e = Instance.new("ParticleEmitter")
