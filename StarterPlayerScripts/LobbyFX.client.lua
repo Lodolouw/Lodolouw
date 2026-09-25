@@ -18,6 +18,9 @@
 	Parts tagged "WatchingEye" turn to look at your character (anything
 	parented inside them, like the iris and pupil, turns with them).
 	MaxTurn = how far (degrees) the eye can turn from where it faces.
+
+	Models tagged "Rotor" (like the windmill's sails) turn round their
+	PrimaryPart's front-to-back axis. RotorSpeed = degrees per second.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -201,6 +204,63 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		else
 			eyes[inst] = nil
+		end
+	end
+end)
+
+----------------------------------------------------------------------
+-- Rotors: the windmill's sails turning round their hub
+----------------------------------------------------------------------
+local rotors = {}
+local function addRotor(model)
+	if not model:IsA("Model") or rotors[model] then
+		return
+	end
+	local hub = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+	if not hub then
+		return
+	end
+	local parts, offsets = {}, {}
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			table.insert(parts, p)
+			table.insert(offsets, hub.CFrame:ToObjectSpace(p.CFrame))
+		end
+	end
+	rotors[model] = {
+		base = hub.CFrame,
+		speed = math.rad(model:GetAttribute("RotorSpeed") or 30),
+		parts = parts,
+		offsets = offsets,
+		angle = 0,
+	}
+end
+for _, m in ipairs(CollectionService:GetTagged("Rotor")) do
+	addRotor(m)
+end
+CollectionService:GetInstanceAddedSignal("Rotor"):Connect(function(m)
+	task.defer(addRotor, m) -- (let its parts arrive first)
+end)
+CollectionService:GetInstanceRemovedSignal("Rotor"):Connect(function(m)
+	rotors[m] = nil
+end)
+
+RunService.RenderStepped:Connect(function(dt)
+	local cam = workspace.CurrentCamera
+	for model, r in pairs(rotors) do
+		if not model.Parent then
+			rotors[model] = nil
+		else
+			r.angle = (r.angle + r.speed * dt) % (math.pi * 2)
+			-- (only worth moving when someone could see it)
+			if not cam or (cam.CFrame.Position - r.base.Position).Magnitude < 500 then
+				local hubCF = r.base * CFrame.Angles(0, 0, r.angle)
+				local cfs = table.create(#r.parts)
+				for i, off in ipairs(r.offsets) do
+					cfs[i] = hubCF * off
+				end
+				workspace:BulkMoveTo(r.parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+			end
 		end
 	end
 end)

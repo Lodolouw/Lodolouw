@@ -560,7 +560,8 @@ local function buildGround(parent)
 	pathSlab("PathEastWest", 8, 38, 29, 52)
 	pathSlab("PathEastWest", -12, 84, -8, 96)
 	curbAlongZ(23.5, 37.5, 8.5)
-	curbAlongZ(52.5, SOUTH_WALL - 3, 8.5)
+	curbAlongZ(52.5, 93.5, 8.5) -- (a gap where the farm path joins)
+	curbAlongZ(98.5, SOUTH_WALL - 3, 8.5)
 	curbAlongZ(23.5, 83.5, -8.5)
 	curbAlongZ(96.5, SOUTH_WALL - 3, -8.5)
 
@@ -3757,7 +3758,7 @@ end
 -- of the castle, in the game's pixel palette. A half-timbered cottage with a
 -- stepped tile roof and a smoking chimney, long rows of crops in tilled
 -- soil, a windmill, a chicken coop, a well, a scarecrow, barrels, crates and
--- hay, big leafy trees, and a chunky wooden fence with a gate arch.
+-- hay, big leafy trees, and a chunky wooden fence open to the road.
 local FARM = {
 	CREAM = RGB(234, 212, 170), TIMBER = RGB(115, 62, 57), DARK = RGB(62, 39, 49),
 	WOOD = RGB(184, 111, 80), TAN = RGB(228, 166, 114), ROOF = RGB(190, 74, 47), ROOF2 = RGB(162, 38, 51),
@@ -4020,19 +4021,27 @@ local function buildFarm(parent)
 	part(m, "MillDoor", V3(4, 6, 0.5), CFrame.new(x, 3, z - 7.9), FARM.WOOD, Mat.WoodPlanks)
 	part(m, "MillDoorFrame", V3(4.8, 6.6, 0.3), CFrame.new(x, 3.3, z - 7.8), FARM.TIMBER, Mat.WoodPlanks)
 	part(m, "MillWindow", V3(1.6, 2, 0.4), CFrame.new(x, 15, z - 6.2), FARM.GLOW, Mat.Neon)
+	-- the sails: a model of their own, turned slowly round the hub on
+	-- every player's screen by LobbyFX (tagged "Rotor")
+	local sails = Instance.new("Model")
+	sails.Name = "MillSails"
+	sails.Parent = m
 	local hub = CFrame.new(x, 22, z - 6.5)
-	part(m, "MillHub", V3(2, 2, 1.6), hub, FARM.DARK, Mat.Wood)
+	sails.PrimaryPart = part(sails, "MillHub", V3(2, 2, 1.6), hub, FARM.DARK, Mat.Wood)
 	for i = 0, 3 do
 		local c = hub * CFrame.Angles(0, 0, i * math.pi / 2 + 0.3) * CFrame.new(0, 8, -0.4)
-		part(m, "MillArm", V3(0.7, 16, 0.5), c, FARM.TIMBER, Mat.Wood, { CanCollide = false })
-		part(m, "MillSail", V3(3.4, 11, 0.2), c * CFrame.new(2, 1.5, 0), FARM.WHITE, Mat.Fabric, { CanCollide = false })
+		part(sails, "MillArm", V3(0.7, 16, 0.5), c, FARM.TIMBER, Mat.Wood, { CanCollide = false })
+		part(sails, "MillSail", V3(3.4, 11, 0.2), c * CFrame.new(2, 1.5, 0), FARM.WHITE, Mat.Fabric, { CanCollide = false })
 		for k = -1, 1 do
-			part(m, "MillSlat", V3(3.6, 0.25, 0.3), c * CFrame.new(2, 1.5 + k * 3.6, 0.1), FARM.TIMBER, Mat.Wood, { CanCollide = false })
+			part(sails, "MillSlat", V3(3.6, 0.25, 0.3), c * CFrame.new(2, 1.5 + k * 3.6, 0.1), FARM.TIMBER, Mat.Wood, { CanCollide = false })
 		end
 	end
+	part(m, "MillAxle", V3(1, 1, 2), CFrame.new(x, 22, z - 5.2), FARM.DARK, Mat.Wood)
+	sails:SetAttribute("RotorSpeed", 32) -- degrees per second
+	CollectionService:AddTag(sails, "Rotor")
 
 	-- the dirt path from the road to the cottage, and the yard in front of it
-	part(m, "FarmPath", V3(46, 0.3, 5), CFrame.new(41, 0.15, 96), FARM.DIRT, Mat.Ground)
+	part(m, "FarmPath", V3(55.5, 0.3, 5), CFrame.new(36.25, 0.15, 96), FARM.DIRT, Mat.Ground)
 	part(m, "FarmYard", V3(15, 0.3, 26), CFrame.new(71.5, 0.15, 93), FARM.DIRT, Mat.Ground)
 	for _, s in ipairs({ { 30, 93.2 }, { 44, 98.9 }, { 57, 93.1 } }) do
 		part(m, "PathPebble", V3(1, 0.2, 0.7), CFrame.new(s[1], 0.35, s[2]), FARM.STONE, Mat.Slate, { CanCollide = false })
@@ -4137,7 +4146,7 @@ local function buildFarm(parent)
 	blockBush(m, 97, 140, 0.9)
 	blockBush(m, 21.5, 76, 0.9)
 
-	-- a few sunflowers either side of the gate, facing the road: pixel
+	-- a few sunflowers either side of the entrance, facing the road: pixel
 	-- flowers with a plus of petals, corner petals and a brown middle
 	for _, zz in ipairs({ 86, 89.5, 102.5, 106 }) do
 		local h = 5 + (zz % 2) * 0.8
@@ -4153,45 +4162,12 @@ local function buildFarm(parent)
 		part(m, "SunflowerMiddle", V3(0.3, 0.8, 0.8), CFrame.new(20.45, h, zz), FARM.TIMBER, Mat.SmoothPlastic, nc)
 	end
 
-	-- the fence, with a gate arch where the path comes in from the road
+	-- the fence, with an open gap where the path comes in from the road
 	farmFence(m, V3(18, 0, 72), V3(100, 0, 72))
 	farmFence(m, V3(18, 0, 144), V3(100, 0, 144))
 	farmFence(m, V3(100, 0, 72), V3(100, 0, 144))
 	farmFence(m, V3(18, 0, 72), V3(18, 0, 92.6))
 	farmFence(m, V3(18, 0, 99.4), V3(18, 0, 144))
-	for _, gz in ipairs({ 92.6, 99.4 }) do
-		part(m, "GatePost", V3(1.4, 10.6, 1.4), CFrame.new(18, 5.3, gz), FARM.TIMBER, Mat.WoodPlanks)
-		part(m, "GatePostCap", V3(1.8, 0.5, 1.8), CFrame.new(18, 10.8, gz), FARM.WOOD, Mat.WoodPlanks)
-	end
-	part(m, "GateBeam", V3(1, 1, 9.6), CFrame.new(18, 9.9, 96), FARM.WOOD, Mat.WoodPlanks)
-	part(m, "GateBoardEdge", V3(0.3, 2.4, 6.4), CFrame.new(17.75, 8.2, 96), FARM.TIMBER, Mat.WoodPlanks)
-	part(m, "GateBoard", V3(0.4, 2, 6), CFrame.new(17.6, 8.2, 96), FARM.TAN, Mat.WoodPlanks)
-	for _, gz in ipairs({ 94, 98 }) do
-		part(m, "GateChain", V3(0.2, 0.5, 0.2), CFrame.new(17.6, 9.45, gz), FARM.DARK, Mat.Metal, { CanCollide = false })
-	end
-	-- "FARM" in pixel letters on the board, facing the road
-	local FONT3 = {
-		F = { "111", "100", "110", "100", "100" }, A = { "010", "101", "111", "101", "101" },
-		R = { "110", "101", "110", "101", "101" }, M = { "10001", "11011", "10101", "10001", "10001" },
-	}
-	local px = 0.3
-	local word = "FARM"
-	local widthPx = -1
-	for i = 1, #word do
-		widthPx = widthPx + #FONT3[string.sub(word, i, i)][1] + 1
-	end
-	local zAt = 96 - widthPx * px / 2 + px / 2
-	for i = 1, #word do
-		local glyph = FONT3[string.sub(word, i, i)]
-		for row = 1, 5 do
-			for col = 1, #glyph[row] do
-				if string.sub(glyph[row], col, col) == "1" then
-					part(m, "GateLetter", V3(0.12, px, px), CFrame.new(17.35, 8.2 + (3 - row) * px, zAt + (col - 1) * px), FARM.TIMBER, Mat.SmoothPlastic, { CanCollide = false })
-				end
-			end
-		end
-		zAt = zAt + (#glyph[1] + 1) * px
-	end
 end
 
 -- A rocky cliff at the east end of the lake, with a waterfall pouring off
