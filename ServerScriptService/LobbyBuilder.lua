@@ -1257,6 +1257,35 @@ local function buildUpgradeShop(parent)
 	-- plants and lanterns. The shopkeeper stands at a counter out front.
 	-- Faces the plaza (local +Z = towards the middle of the lobby).
 	local m = folder(parent, "UpgradeShop")
+
+	-- 8-bit: every round piece of this house is built as a "pixel circle"
+	-- instead - rows of blocks that step in towards the edge, like a circle
+	-- drawn on graph paper - and balls become stacked blocks.
+	local function cylinder(p, name, height, dia, cf, color, material, extra)
+		local r = dia / 2
+		local step = dia > 14 and 2 or (dia > 5 and 1 or 0.5)
+		for z = -r + step / 2, r, step do
+			local w = math.floor(2 * math.sqrt(math.max(0, r * r - z * z)) / step + 0.5) * step
+			if w > 0 then
+				part(p, name, V3(w, height, step), cf * CFrame.new(0, 0, z), color, material, extra)
+			end
+		end
+	end
+	local function discZ(p, name, thickness, dia, cf, color, material, extra)
+		local r = dia / 2
+		local step = dia > 5 and 1 or 0.5
+		for y = -r + step / 2, r, step do
+			local w = math.floor(2 * math.sqrt(math.max(0, r * r - y * y)) / step + 0.5) * step
+			if w > 0 then
+				part(p, name, V3(w, step, thickness), cf * CFrame.new(0, y, 0), color, material, extra)
+			end
+		end
+	end
+	local function ball(p, name, dia, cf, color, material, extra)
+		part(p, name, V3(dia * 0.9, dia * 0.5, dia * 0.9), cf, color, material, extra)
+		part(p, name, V3(dia * 0.6, dia * 0.9, dia * 0.6), cf, color, material, extra)
+	end
+
 	local O = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(Config.StationTurn.Upgrades or -90), 0)
 	local STEM_Z, STEM_R = -3, 9 -- stem centre (local z) and radius
 	local capRed, capRedDark = RGB(204, 50, 44), RGB(184, 40, 36)
