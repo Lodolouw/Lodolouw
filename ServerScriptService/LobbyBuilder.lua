@@ -5730,8 +5730,11 @@ local Extras = (function()
 
 		-- the sandy mound, and the arena floor inside
 		C("Mound", 1, R * 2 + 8, CFrame.new(0, 0.5, 0), SAND_LIGHT, flat)
-		C("ArenaSand", 0.4, R * 2 - 14, CFrame.new(0, 1.1, 0), RGB(228, 166, 114), inside and Mat.Sand or flat)
-		C("ArenaRing", 0.6, 12, CFrame.new(0, 1.2, 0), RGB(190, 128, 88), inside and Mat.Sand or flat)
+		-- (in the real arena the sand grips: you stop where you mean to, and
+		-- don't slide about after a dodge or a knock)
+		local grip = inside and PhysicalProperties and { CustomPhysicalProperties = PhysicalProperties.new(0.7, 2, 0, 100, 100) } or nil
+		C("ArenaSand", 0.4, R * 2 - 14, CFrame.new(0, 1.1, 0), RGB(228, 166, 114), inside and Mat.Sand or flat, grip)
+		C("ArenaRing", 0.6, 12, CFrame.new(0, 1.2, 0), RGB(190, 128, 88), inside and Mat.Sand or flat, grip)
 
 		local N = 32
 		local arc = math.pi * 2 / N
