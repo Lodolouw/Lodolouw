@@ -5892,10 +5892,10 @@ local Extras = (function()
 		colosseumDummy().Parent = ServerStorage
 	end
 
-	-- The real Colosseum, far from the lobby: the same sand castle, 1.8 times
+	-- The real Colosseum, far from the lobby: the same sand castle, 2.6 times
 	-- as big, its sand floor level with Config.Colosseum.Center. Its gate is on
 	-- the north side and the door (the way out) is on the inside.
-	local ARENA_SCALE = 1.8
+	local ARENA_SCALE = 2.6
 	local function buildColosseum(parent)
 		local f = folder(parent, "Colosseum")
 		local C = Config.Colosseum

@@ -110,6 +110,24 @@ end
 ----------------------------------------------------------------------
 -- The dummies
 ----------------------------------------------------------------------
+-- Where a dummy's feet are, and putting them somewhere. Worked out from its
+-- body (the one anchored piece; everything else is welded to it), not from
+-- the model's pivot - that got lost on the way and sank dummies into the sand.
+local FOOT = 5.4 -- the body's middle above the feet
+local TURN = CFrame.Angles(0, math.pi, 0) -- (the body is built facing backwards)
+local function feet(model)
+	local body = model.PrimaryPart
+	return body and body.CFrame * TURN * CFrame.new(0, -FOOT, 0) or model:GetPivot()
+end
+local function place(model, cf)
+	local body = model.PrimaryPart
+	if body then
+		body.CFrame = cf * CFrame.new(0, FOOT, 0) * TURN
+	else
+		model:PivotTo(cf)
+	end
+end
+
 local function inArena(pos)
 	local d = flat(pos - C.Center)
 	if d.Magnitude > C.Radius - 5 then
@@ -121,7 +139,7 @@ end
 -- A dummy's slam: a red ring on the sand, a short hop, and down it comes.
 local function slam(s, e)
 	local model = e.model
-	local at = model:GetPivot().Position
+	local at = feet(model).Position
 	local ring = Instance.new("Part")
 	ring.Name = "SlamRing"
 	ring.Shape = Enum.PartType.Cylinder
@@ -137,7 +155,7 @@ local function slam(s, e)
 	ring.Parent = model -- (inside the dummy, so only its owner sees it)
 
 	-- the wind-up: it crouches and shakes
-	local base = model:GetPivot()
+	local base = feet(model)
 	local t0 = os.clock()
 	while os.clock() - t0 < C.SlamTell do
 		if not e.alive then
@@ -146,14 +164,14 @@ local function slam(s, e)
 		end
 		local k = (os.clock() - t0) / C.SlamTell
 		ring.Transparency = 0.55 - 0.3 * k
-		model:PivotTo(base * CFrame.new((rng:NextNumber() - 0.5) * 0.4, -0.6 * k, 0))
+		place(model, base * CFrame.new((rng:NextNumber() - 0.5) * 0.4, -0.6 * k, 0))
 		task.wait(1 / 20)
 	end
 	-- up...
 	local t1 = os.clock()
 	while os.clock() - t1 < 0.28 and e.alive do
 		local k = (os.clock() - t1) / 0.28
-		model:PivotTo(base * CFrame.new(0, math.sin(k * math.pi) * 4, 0))
+		place(model, base * CFrame.new(0, math.sin(k * math.pi) * 4, 0))
 		task.wait(1 / 30)
 	end
 	ring:Destroy()
@@ -161,7 +179,7 @@ local function slam(s, e)
 		return
 	end
 	-- ...and down: anyone standing in the ring gets squashed
-	model:PivotTo(base)
+	place(model, base)
 	local root, hum = rootOf(s.player)
 	if root and (flat(root.Position - at)).Magnitude <= C.SlamRange + 1 then
 		local away = flat(root.Position - at)
@@ -192,14 +210,14 @@ end
 -- One hop towards `dest`, in an arc, turning to face the player.
 local function hop(e, dest, faceTo)
 	local model = e.model
-	local from = model:GetPivot().Position
+	local from = feet(model).Position
 	local t0 = os.clock()
 	while e.alive do
 		local k = math.min(1, (os.clock() - t0) / C.HopTime)
 		local p = from:Lerp(dest, k) + Vector3.new(0, 4 * k * (1 - k) * C.HopHeight, 0)
 		local look = flat(faceTo - p)
 		local cf = look.Magnitude > 0.1 and CFrame.lookAt(p, p + look) or CFrame.new(p)
-		model:PivotTo(cf)
+		place(model, cf)
 		if k >= 1 then
 			break
 		end
@@ -210,15 +228,15 @@ end
 -- What one dummy does, over and over, until it's beaten (or you leave)
 local function brain(s, e)
 	-- dropping in from the sky
-	local land = e.model:GetPivot().Position
+	local land = feet(e.model).Position
 	local t0 = os.clock()
 	while e.alive and os.clock() - t0 < 0.5 do
 		local k = (os.clock() - t0) / 0.5
-		e.model:PivotTo(CFrame.new(land + Vector3.new(0, 40 * (1 - k * k), 0)) * e.model:GetPivot().Rotation)
+		place(e.model, CFrame.new(land + Vector3.new(0, 40 * (1 - k * k), 0)) * feet(e.model).Rotation)
 		task.wait(1 / 30)
 	end
 	if e.alive then
-		e.model:PivotTo(CFrame.new(land) * e.model:GetPivot().Rotation)
+		place(e.model, CFrame.new(land) * feet(e.model).Rotation)
 	end
 	while e.alive and sessions[s.player] == s do
 		task.wait(rng:NextNumber(C.Rest[1], C.Rest[2]))
@@ -229,15 +247,19 @@ local function brain(s, e)
 		if not root then
 			break
 		end
-		local pos = e.model:GetPivot().Position
+		local pos = feet(e.model).Position
 		local to = flat(root.Position - pos)
 		if to.Magnitude <= C.SlamRange then
 			slam(s, e)
 		else
-			-- hop most of the way towards you, a little to one side
-			local step = math.min(C.HopReach, to.Magnitude - 3)
-			local side = to.Unit:Cross(Vector3.new(0, 1, 0)) * rng:NextNumber(-3, 3)
-			local dest = inArena(pos + to.Unit * step + side)
+			-- hop towards its own spot round you (each dummy has a different
+			-- one), so they close in from all sides instead of piling up
+			local slot = root.Position + Vector3.new(math.cos(e.slot), 0, math.sin(e.slot)) * 5
+			local go = flat(slot - pos)
+			local dest = pos
+			if go.Magnitude > 0.5 then
+				dest = inArena(pos + go.Unit * math.min(C.HopReach, go.Magnitude))
+			end
 			hop(e, dest, root.Position)
 		end
 	end
@@ -281,11 +303,11 @@ local function spawnWave(s)
 		onHit.Name = "OnHit"
 		onHit.Parent = model
 		local look = flat(root.Position - spot)
-		model:PivotTo(CFrame.lookAt(spot, spot + (look.Magnitude > 0.1 and look or Vector3.new(0, 0, 1))))
+		place(model, CFrame.lookAt(spot, spot + (look.Magnitude > 0.1 and look or Vector3.new(0, 0, 1))))
 		model.Parent = enemyFolder
 		CollectionService:AddTag(model, "CombatTarget")
 
-		local e = { model = model, alive = true }
+		local e = { model = model, alive = true, slot = (i / count) * math.pi * 2 + rng:NextNumber(-0.3, 0.3) }
 		s.enemies[model] = e
 		s.alive = s.alive + 1
 		onHit.Event:Connect(function(_, _, killed)
