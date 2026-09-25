@@ -3802,32 +3802,40 @@ local function buildWindmill(parent)
 			end
 		end
 	end
-	local function plot(x0, z0, x1, z1, kinds)
-		part(m, "Tilled", V3(x1 - x0, 0.5, z1 - z0), CFrame.new((x0 + x1) / 2, 0.25, (z0 + z1) / 2), SOIL, Mat.Ground)
-		local row = 0
-		for z = z0 + 2, z1 - 2, 4 do
-			row = row + 1
-			part(m, "Furrow", V3(x1 - x0 - 1, 0.35, 1.8), CFrame.new((x0 + x1) / 2, 0.6, z), SOIL_DARK, Mat.Ground, { CanCollide = false })
-			local kind = kinds[(row - 1) % #kinds + 1]
-			for x = x0 + 2, x1 - 2, 3 do
-				if rnd() < 0.88 then
+	-- the ground: warm sandy dirt over the whole farm, like Stardew's
+	part(m, "FarmDirt", V3(80, 0.24, 64), CFrame.new(59, 0.12, 107), RGB(214, 170, 104), Mat.Sand)
+	-- small square patches of tilled soil, 3 x 3 crops each (or bean trellises)
+	local function patch(cx, cz, kind)
+		part(m, "Tilled", V3(9, 0.4, 9), CFrame.new(cx, 0.3, cz), SOIL, Mat.Ground)
+		for i = -1, 1 do
+			for k = -1, 1 do
+				local x, z = cx + i * 2.8, cz + k * 2.8
+				part(m, "Mound", V3(2.2, 0.3, 2.2), CFrame.new(x, 0.6, z), SOIL_DARK, Mat.Ground, { CanCollide = false })
+				if kind == "beans" then
+					if k == 0 then
+						part(m, "Stake", V3(0.3, 5, 0.3), CFrame.new(x, 2.9, z), RGB(150, 110, 70), Mat.Wood, { CanCollide = false })
+						for j = 0, 3 do
+							part(m, "Vine", V3(0.9, 0.7, 0.9), CFrame.new(x + (j % 2 - 0.5) * 0.5, 1.4 + j * 1.1, z), (j % 2 == 0) and LEAF or LEAF_DARK, Mat.Grass, { CanCollide = false })
+						end
+						ball(m, "Bean", 0.4, CFrame.new(x + 0.4, 3, z + 0.3), RGB(120, 200, 70), Mat.SmoothPlastic, { CanCollide = false })
+					end
+				else
 					crop(kind, x, z)
 				end
 			end
 		end
-		-- a wooden border round the plot
-		for _, zz in ipairs({ z0 - 0.3, z1 + 0.3 }) do
-			part(m, "PlotEdge", V3(x1 - x0 + 1.2, 0.8, 0.6), CFrame.new((x0 + x1) / 2, 0.4, zz), PLANK, Mat.WoodPlanks)
-		end
-		for _, xx in ipairs({ x0 - 0.3, x1 + 0.3 }) do
-			part(m, "PlotEdge", V3(0.6, 0.8, z1 - z0), CFrame.new(xx, 0.4, (z0 + z1) / 2), PLANK, Mat.WoodPlanks)
+	end
+	local KINDS = { "cauliflower", "beans", "strawberry", "parsnip", "pumpkin", "cauliflower", "beans", "corn", "strawberry" }
+	local n = 0
+	for _, cz in ipairs({ 96, 118, 131 }) do
+		for _, cx in ipairs({ 25, 37, 49 }) do
+			n = n + 1
+			patch(cx, cz, KINDS[n])
 		end
 	end
-	plot(22, 78, 50, 102, { "parsnip", "cauliflower", "strawberry", "parsnip", "cauliflower", "strawberry" })
-	plot(22, 112, 50, 136, { "corn", "pumpkin", "corn", "pumpkin", "corn", "pumpkin" })
 
 	-- the scarecrow, keeping watch over the first plot
-	local sx, sz = 51.5 + 2.5, 90
+	local sx, sz = 57, 118
 	part(m, "ScarecrowPost", V3(0.7, 8, 0.7), CFrame.new(sx, 4, sz), RGB(110, 76, 46), Mat.Wood)
 	part(m, "ScarecrowArms", V3(0.6, 0.6, 6), CFrame.new(sx, 5.8, sz), RGB(110, 76, 46), Mat.Wood)
 	part(m, "ScarecrowShirt", V3(1.6, 2.6, 3.4), CFrame.new(sx, 5.2, sz), RGB(70, 110, 170), Mat.Fabric)
@@ -3893,10 +3901,91 @@ local function buildWindmill(parent)
 	for i = 0, 6 do
 		local fx = 22 + i * 6
 		local h = 6 + rnd() * 1.5
-		part(m, "SunflowerStem", V3(0.4, h, 0.4), CFrame.new(fx, h / 2, 76.5), LEAF_DARK, Mat.Grass, { CanCollide = false })
-		discZ(m, "SunflowerPetals", 0.3, 2.8, CFrame.new(fx, h, 76.3), RGB(255, 210, 50), Mat.SmoothPlastic, { CanCollide = false })
-		discZ(m, "SunflowerMiddle", 0.4, 1.3, CFrame.new(fx, h, 76.1), RGB(110, 70, 40), Mat.SmoothPlastic, { CanCollide = false })
+		part(m, "SunflowerStem", V3(0.4, h, 0.4), CFrame.new(fx, h / 2, 138), LEAF_DARK, Mat.Grass, { CanCollide = false })
+		discZ(m, "SunflowerPetals", 0.3, 2.8, CFrame.new(fx, h, 137.8), RGB(255, 210, 50), Mat.SmoothPlastic, { CanCollide = false })
+		discZ(m, "SunflowerMiddle", 0.4, 1.3, CFrame.new(fx, h, 137.6), RGB(110, 70, 40), Mat.SmoothPlastic, { CanCollide = false })
 	end
+
+	-- the farmhouse: log walls, a red tiled roof, a porch with a step,
+	-- a door, shuttered windows with a flower box, a chimney, and a
+	-- mailbox by the path. Faces south, over the crops.
+	local LOG, LOG_DARK = RGB(186, 120, 66), RGB(150, 92, 50)
+	local HX, HZ = 38, 81
+	part(m, "HouseWalls", V3(22, 11, 10), CFrame.new(HX, 5.5, HZ), LOG, Mat.WoodPlanks)
+	for y = 1.5, 10, 2 do
+		part(m, "LogLine", V3(22.2, 0.3, 10.2), CFrame.new(HX, y, HZ), LOG_DARK, Mat.WoodPlanks, { CanCollide = false })
+	end
+	for _, dx in ipairs({ -11, 11 }) do
+		part(m, "CornerLog", V3(1.2, 11.4, 1.2), CFrame.new(HX + dx, 5.7, HZ + 5), LOG_DARK, Mat.Wood)
+	end
+	for _, s in ipairs({ -1, 1 }) do
+		part(m, "HouseRoof", V3(25, 0.8, 8.4), CFrame.new(HX, 13.6, HZ + s * 3.2) * CFrame.Angles(s * 0.62, 0, 0), RGB(196, 70, 52), Mat.WoodPlanks)
+		for k = 0, 2 do
+			part(m, "RoofTiles", V3(25.2, 0.3, 0.4), CFrame.new(HX, 13.6, HZ + s * 3.2) * CFrame.Angles(s * 0.62, 0, 0) * CFrame.new(0, 0.5, (k - 1) * 2.6), RGB(160, 50, 40), Mat.WoodPlanks, { CanCollide = false })
+		end
+	end
+	for _, dx in ipairs({ -11, 11 }) do
+		local w = Instance.new("WedgePart")
+		w.Name = "Gable"
+		w.Anchored = true
+		for _, s in ipairs({ -1, 1 }) do
+			local g = w:Clone()
+			g.Size = V3(0.8, 4.4, 5)
+			g.CFrame = CFrame.fromMatrix(V3(HX + dx, 13.2, HZ + s * 2.5), V3(0, 0, s):Cross(V3(0, 1, 0)), V3(0, 1, 0), V3(0, 0, -s))
+			g.Color = LOG
+			g.Material = Mat.WoodPlanks
+			g.Parent = m
+		end
+		w:Destroy()
+	end
+	part(m, "Chimney", V3(2.6, 7, 2.6), CFrame.new(HX + 7, 15, HZ - 2), RGB(150, 140, 136), Mat.Cobblestone)
+	-- porch
+	local front = HZ + 5
+	part(m, "Porch", V3(24, 0.8, 4), CFrame.new(HX, 0.9, front + 2), RGB(160, 110, 66), Mat.WoodPlanks)
+	part(m, "PorchStep", V3(5, 0.4, 1.4), CFrame.new(HX, 0.4, front + 4.6), RGB(160, 110, 66), Mat.WoodPlanks)
+	for _, dx in ipairs({ -11, -3, 3, 11 }) do
+		part(m, "PorchPost", V3(0.6, 6.5, 0.6), CFrame.new(HX + dx, 4.2, front + 3.7), LOG_DARK, Mat.Wood)
+	end
+	part(m, "PorchRoof", V3(24.4, 0.5, 4.6), CFrame.new(HX, 7.6, front + 2) * CFrame.Angles(0.2, 0, 0), RGB(196, 70, 52), Mat.WoodPlanks)
+	part(m, "Door", V3(3.2, 6, 0.3), CFrame.new(HX, 4.3, front + 0.15), RGB(120, 72, 40), Mat.WoodPlanks)
+	ball(m, "DoorKnob", 0.4, CFrame.new(HX + 1, 4.3, front + 0.4), GOLD, Mat.Metal)
+	for _, dx in ipairs({ -6.5, 6.5 }) do
+		part(m, "Window", V3(3.4, 3, 0.3), CFrame.new(HX + dx, 5.5, front + 0.15), RGB(255, 214, 140), Mat.Neon)
+		part(m, "WindowCross", V3(0.3, 3, 0.35), CFrame.new(HX + dx, 5.5, front + 0.2), LOG_DARK, Mat.Wood, { CanCollide = false })
+		for _, sx in ipairs({ -1, 1 }) do
+			part(m, "Shutter", V3(1.2, 3.2, 0.3), CFrame.new(HX + dx + sx * 2.4, 5.5, front + 0.2), RGB(70, 130, 90), Mat.WoodPlanks, { CanCollide = false })
+		end
+		part(m, "FlowerBox", V3(3.8, 0.8, 0.9), CFrame.new(HX + dx, 3.7, front + 0.55), LOG_DARK, Mat.WoodPlanks, { CanCollide = false })
+		for k = -1, 1 do
+			ball(m, "BoxFlower", 0.8, CFrame.new(HX + dx + k * 1.1, 4.4, front + 0.6), FLOWER_COLORS[(k + 2) % #FLOWER_COLORS + 1], Mat.SmoothPlastic, { CanCollide = false })
+		end
+	end
+	-- a potted plant and a barrel on the porch
+	part(m, "Pot", V3(1.6, 1.4, 1.6), CFrame.new(HX + 9, 2, front + 1.5), RGB(190, 100, 60), Mat.SmoothPlastic)
+	ball(m, "PotFlowers", 1.8, CFrame.new(HX + 9, 3.3, front + 1.5), RGB(255, 120, 170), Mat.Grass, { CanCollide = false })
+	part(m, "PorchBarrel", V3(2, 2.6, 2), CFrame.new(HX - 9, 2.6, front + 1.5), RGB(130, 86, 50), Mat.WoodPlanks)
+	-- the mailbox
+	part(m, "MailPost", V3(0.5, 3.4, 0.5), CFrame.new(HX + 16, 1.7, front + 5), LOG_DARK, Mat.Wood)
+	part(m, "MailBox", V3(1.4, 1.2, 2), CFrame.new(HX + 16, 3.7, front + 5), RGB(90, 110, 170), Mat.Metal)
+	part(m, "MailFlag", V3(0.2, 1, 0.4), CFrame.new(HX + 16.8, 4.2, front + 5.4), RGB(220, 50, 50), Mat.SmoothPlastic, { CanCollide = false })
+
+	-- a row of bee houses beside the house
+	for i = 0, 2 do
+		local bx = 21.5
+		local bz = 78 + i * 3.4
+		part(m, "BeeHouse", V3(2.4, 2.6, 2.4), CFrame.new(bx, 1.9, bz), RGB(214, 170, 100), Mat.WoodPlanks)
+		part(m, "BeeLegs", V3(2, 0.6, 2), CFrame.new(bx, 0.3, bz), LOG_DARK, Mat.Wood)
+		part(m, "BeeRoof", V3(2.8, 0.5, 2.8), CFrame.new(bx, 3.45, bz), RGB(150, 92, 50), Mat.WoodPlanks)
+		part(m, "BeeHole", V3(0.2, 0.5, 0.8), CFrame.new(bx + 1.21, 2.2, bz), RGB(40, 30, 20), Mat.SmoothPlastic, { CanCollide = false })
+	end
+	-- hedges growing along the inside of the fence, and an old tree stump
+	for z = 92, 136, 5 do
+		if math.abs(z - 107) > 4 then
+			ball(m, "Hedge", 3.6 + rnd(), CFrame.new(20.4, 1.4, z), (z % 2 == 0) and LEAF or LEAF_DARK, Mat.Grass, { CanCollide = false })
+		end
+	end
+	cylinder(m, "Stump", 1.6, 3.4, CFrame.new(62, 0.8, 134), RGB(140, 96, 60), Mat.Wood)
+	cylinder(m, "StumpTop", 0.2, 2.8, CFrame.new(62, 1.7, 134), RGB(214, 176, 120), Mat.Wood, { CanCollide = false })
 	titleSign(m, CFrame.new(14, 8, 107), "Farm", nil, RGB(140, 220, 100), 220, 70)
 end
 
