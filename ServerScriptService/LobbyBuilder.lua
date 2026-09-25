@@ -1233,7 +1233,7 @@ local function buildUpgradeShop(parent)
 	-- welcome mat (Hud's station spot, local z = 13). The "Open Upgrades"
 	-- prompt hangs on an invisible marker right by him.
 	local top = anchorPart(m, "PromptSpot", O * CFrame.new(0, 3, 9.5))
-	avatarNPC(m, NPC_MODELS.Toad, "Toad", facingCustomer(O, 0, 8.6), 0.8, function()
+	avatarNPC(m, NPC_MODELS.Toad, "Toad", facingCustomer(O, 0, 8.6), Config.Stations.Upgrades.Y + 0.8, function()
 		npc(m, O, 0, 8.6, RGB(90, 160, 90), RGB(200, 50, 44))
 	end)
 
@@ -3061,13 +3061,13 @@ local function buildSpire(parent)
 end
 
 ----------------------------------------------------------------------
--- Mountain and mist
+-- Rock under the castle and the Spire
 ----------------------------------------------------------------------
 -- The castle sits on top of a mountain: rocky cliffs drop away beneath the
 -- walls (and beneath the Spire's crag across the chasm), getting wider as
 -- they go down, until they vanish into layers of mist.
-local MIST_TOP = -70 -- first (faintest) mist layer
-local MIST_FLOOR = -195 -- solid cloud floor: nothing below this is ever seen
+local SEA_Y = -48 -- the surface of the sea round the castle's island
+local ISLAND_FLOOR = SEA_Y - 20 -- the sea floor: rock is only built down to here
 local ROCK_TOP = { RGB(112, 104, 100), RGB(98, 94, 96), RGB(124, 116, 110) }
 local ROCK_DEEP = { RGB(96, 102, 116), RGB(86, 92, 106), RGB(106, 112, 126) }
 
@@ -3084,38 +3084,9 @@ end
 
 local LAYER_H = 24
 
--- A square-ish mountain under a rectangular top (the lobby island)
-local function squareMountain(parent, cx, cz, halfX, halfZ, topY, spread)
-	local layers = math.ceil((topY - MIST_FLOOR) / LAYER_H) + 1
-	for L = 0, layers - 1 do
-		local y1 = topY - L * LAYER_H
-		local e = spread * L ^ 1.3
-		local hx, hz = halfX + e, halfZ + e
-		local depth01 = L / (layers - 1)
-		part(parent, "MountainCore", V3(hx * 2, LAYER_H + 4, hz * 2), CFrame.new(cx, y1 - LAYER_H / 2, cz), rockColor(depth01), Mat.Slate, { CastShadow = false })
-		-- jagged cliff blocks all round the edge of this layer
-		for side = 0, 3 do
-			local alongX = side % 2 == 0
-			local len = alongX and hx * 2 or hz * 2
-			local out = (side < 2) and 1 or -1
-			local t = -len / 2
-			while t < len / 2 do
-				local w = 22 + rnd() * 14
-				local d = 6 + rnd() * 10
-				local h = LAYER_H + 4 + rnd() * 12
-				local o = (alongX and hz or hx) + rnd() * 5 - 1
-				local pos = alongX and V3(cx + t + w / 2, y1 - h / 2 + rnd() * 3, cz + out * o) or V3(cx + out * o, y1 - h / 2 + rnd() * 3, cz + t + w / 2)
-				local size = alongX and V3(w, h, d) or V3(d, h, w)
-				crag(parent, pos, size, (rnd() - 0.5) * 0.3, rockColor(depth01))
-				t = t + w * 0.8
-			end
-		end
-	end
-end
-
 -- A round mountain under a round top (the Spire's crag)
 local function roundMountain(parent, cx, cz, radius, topY, spread)
-	local layers = math.ceil((topY - MIST_FLOOR) / LAYER_H) + 1
+	local layers = math.ceil((topY - ISLAND_FLOOR) / LAYER_H) + 1
 	for L = 0, layers - 1 do
 		local y1 = topY - L * LAYER_H
 		local r = radius + spread * L ^ 1.3
@@ -3184,59 +3155,9 @@ local function wallFootRocks(parent)
 	end
 end
 
-local function buildMountain(parent)
-	local m = folder(parent, "MountainAndMist")
-
-	-- under the lobby (flush with the castle walls at the top)
-	squareMountain(m, 0, SOUTH_EXT / 2, 122, 122 + SOUTH_EXT / 2, -6, 5)
-	wallFootRocks(m)
-	-- under the Spire's crag, across the chasm
-	roundMountain(m, 0, SPIRE_Z, SPIRE_ROCK_R + 2, -26, 4)
-
-	-- Mist: stacked see-through layers, fainter at the top, then a solid
-	-- cloud floor. Nobody can stand on it.
-	local MIST = RGB(214, 220, 232)
-	local layersT = { 0.86, 0.8, 0.72, 0.6, 0.42 }
-	for i, tr in ipairs(layersT) do
-		local y = MIST_TOP - (i - 1) * (MIST_FLOOR - MIST_TOP) / -#layersT
-		part(m, "Mist", V3(2048, 1, 2048), CFrame.new(0, y, -60), MIST, Mat.SmoothPlastic, {
-			Transparency = tr, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
-		})
-	end
-	part(m, "CloudFloor", V3(2048, 1, 2048), CFrame.new(0, MIST_FLOOR, -60), MIST, Mat.SmoothPlastic, {
-		CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
-	})
-	-- slow drifting fog puffs just above the mist
-	for _, c in ipairs({ { -260, -60 }, { 260, -60 }, { 0, 200 }, { 0, -330 } }) do
-		local puff = anchorPart(m, "FogPuffs", CFrame.new(c[1], MIST_TOP + 12, c[2]))
-		puff.Size = V3(500, 1, 500)
-		local e = Instance.new("ParticleEmitter")
-		e.Rate = 2
-		e.Color = ColorSequence.new(RGB(235, 240, 248))
-		e.LightEmission = 0.15
-		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 50), NumberSequenceKeypoint.new(1, 90) })
-		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.82), NumberSequenceKeypoint.new(1, 1) })
-		e.Lifetime = NumberRange.new(18, 26)
-		e.Speed = NumberRange.new(1, 3)
-		e.SpreadAngle = Vector2.new(180, 5)
-		e.Parent = puff
-	end
-
-	-- anyone who falls into the mist respawns
-	local kill = part(m, "MistKillZone", V3(2048, 4, 2048), CFrame.new(0, MIST_FLOOR - 20, -60), RGB(255, 255, 255), Mat.SmoothPlastic, {
-		Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false,
-	})
-	kill.Touched:Connect(function(hit)
-		local hum = hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.Health = 0
-		end
-	end)
-end
-
 ----------------------------------------------------------------------
 -- The castle rebuild: Grand Keep, turrets, south gatehouse,
--- moat and the Lakeside outside the walls
+-- the moat outside the walls
 ----------------------------------------------------------------------
 -- Gives the castle the storybook personality of the reference pictures:
 -- red cone roofs on every tower, a Grand Keep rising over the Spire gate,
@@ -3248,12 +3169,9 @@ local KEEP_DARK = RGB(104, 100, 116)
 local WATER = RGB(64, 136, 214)
 local PLANK = RGB(150, 104, 62)
 
--- where the Lakeside shelf sits (south of the moat)
+-- the moat, south of the south wall
 local MOAT_Z0, MOAT_Z1 = SOUTH_WALL + 4, SOUTH_WALL + 22
-local SHELF_Z1 = MOAT_Z1 + 96
-local SHELF_HALF_X = 110
--- the fishing lake: a square hole in the shelf (its corners hidden by rocks)
-local LAKE_X0, LAKE_X1, LAKE_Z0, LAKE_Z1 = 20, 82, MOAT_Z1 + 20, MOAT_Z1 + 72
+local TERRACE1_TOP = -14 -- the first green terrace below the castle (see the island)
 
 -- A Grand Keep built up over the Spire gate: the gate towers grow a second,
 -- narrower storey with tall cone roofs, and a great hall with a steep red
@@ -3403,7 +3321,7 @@ local function buildSouthGate(parent)
 		wallTorch(m, V3(sx * 14.5, 12, z - depth / 2), V3(0, 0, -1))
 		banner(m, V3(x, 30, z + 10.1), V3(0, 0, 1), sx < 0 and BANNER_BLUE or BANNER_RED)
 	end
-	titleSign(m, CFrame.new(0, SPRING + R + 13, z + depth / 2 + 1), "Lakeside", nil, RGB(120, 200, 255), 300, 90)
+	titleSign(m, CFrame.new(0, SPRING + R + 13, z + depth / 2 + 1), "Beach", nil, RGB(120, 200, 255), 300, 90)
 
 	-- the drawbridge, let down across the moat, with chains up to the gatehouse
 	local bz0, bz1 = z + depth / 2, MOAT_Z1 + 1
@@ -3416,146 +3334,17 @@ local function buildSouthGate(parent)
 	end
 end
 
--- Outside the south gate: the moat, and a grassy shelf with a fishing lake.
--- The lake's stream runs to the edge of the island and pours off it as a
--- waterfall into the mist. A mushroom-cap hut and a wooden dock wait for
--- fishing (coming later).
-local function buildLakeside(parent)
-	local m = folder(parent, "Lakeside")
-	local GRASS = RGB(96, 192, 84)
-	-- the moat: a sunken channel with water in it, all along the south wall
+-- Outside the south gate: the moat, a sunken channel with water in it all
+-- along the south wall, and a grassy bank beyond it where the drawbridge
+-- comes down (then stairs lead on down the island to the beach).
+local function buildMoat(parent)
+	local m = folder(parent, "Moat")
 	part(m, "MoatBed", V3(236, 2, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(0, -6, (MOAT_Z0 + MOAT_Z1) / 2 - 2), RGB(84, 80, 72), Mat.Slate)
 	part(m, "MoatWater", V3(236, 3.5, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(0, -3.25, (MOAT_Z0 + MOAT_Z1) / 2 - 2), WATER, Mat.SmoothPlastic, {
 		Transparency = 0.3, CanCollide = false, CanQuery = false,
 	})
-	-- the shelf, as four slabs round the hole the lake sits in
-	local function slab(x0, z0, x1, z1)
-		part(m, "Shelf", V3(x1 - x0, 6, z1 - z0), CFrame.new((x0 + x1) / 2, -3, (z0 + z1) / 2), GRASS, Mat.Plastic, {
-			TopSurface = Enum.SurfaceType.Studs,
-		})
-	end
-	slab(-SHELF_HALF_X, MOAT_Z1, LAKE_X0, SHELF_Z1)
-	slab(LAKE_X1, MOAT_Z1, SHELF_HALF_X, SHELF_Z1)
-	slab(LAKE_X0, MOAT_Z1, LAKE_X1, LAKE_Z0)
-	slab(LAKE_X0, LAKE_Z1, LAKE_X1, SHELF_Z1)
-	-- the lake
-	local lw, ld = LAKE_X1 - LAKE_X0, LAKE_Z1 - LAKE_Z0
-	local lc = V3((LAKE_X0 + LAKE_X1) / 2, 0, (LAKE_Z0 + LAKE_Z1) / 2)
-	part(m, "LakeBed", V3(lw, 2, ld), CFrame.new(lc.X, -6, lc.Z), RGB(196, 176, 120), Mat.Sand)
-	part(m, "LakeWater", V3(lw, 4.2, ld), CFrame.new(lc.X, -3.2, lc.Z), WATER, Mat.SmoothPlastic, {
-		Transparency = 0.25, CanCollide = false, CanQuery = false,
-	})
-	-- rocks round the rim (they also round off the square corners)
-	for i = 0, 27 do
-		local t = i / 28
-		local p
-		if t < 0.25 then
-			p = V3(LAKE_X0 + lw * t * 4, 0, LAKE_Z0)
-		elseif t < 0.5 then
-			p = V3(LAKE_X1, 0, LAKE_Z0 + ld * (t - 0.25) * 4)
-		elseif t < 0.75 then
-			p = V3(LAKE_X1 - lw * (t - 0.5) * 4, 0, LAKE_Z1)
-		else
-			p = V3(LAKE_X0, 0, LAKE_Z1 - ld * (t - 0.75) * 4)
-		end
-		local nearStream = math.abs(p.X - 51) < 7 and p.Z > LAKE_Z1 - 1
-		local nearDock = p.X < LAKE_X0 + 1 and math.abs(p.Z - (lc.Z - 4)) < 6
-		if not nearStream and not nearDock then
-			local s = 3 + rnd() * 3
-			part(m, "ShoreRock", V3(s * 1.4, s, s * 1.2), CFrame.new(p.X, -0.6 + rnd(), p.Z) * CFrame.Angles(math.rad((rnd() - 0.5) * 20), rnd() * math.pi, 0), rockColor(rnd() * 0.2), Mat.Slate)
-		end
-	end
-	for _, c in ipairs({ { LAKE_X0, LAKE_Z0 }, { LAKE_X1, LAKE_Z0 }, { LAKE_X0, LAKE_Z1 }, { LAKE_X1, LAKE_Z1 } }) do
-		part(m, "CornerRock", V3(12, 5, 12), CFrame.new(c[1], -0.5, c[2]) * CFrame.Angles(0, rnd() * math.pi, 0), rockColor(0.1), Mat.Slate)
-	end
-	-- lily pads and reeds
-	for _ = 1, 9 do
-		local p = V3(LAKE_X0 + 8 + rnd() * (lw - 16), 0, LAKE_Z0 + 8 + rnd() * (ld - 16))
-		cylinder(m, "LilyPad", 0.2, 2.6 + rnd() * 1.6, CFrame.new(p.X, -1.05, p.Z), RGB(70, 160, 70), Mat.SmoothPlastic, { CanCollide = false })
-		if rnd() < 0.4 then
-			ball(m, "LilyFlower", 0.9, CFrame.new(p.X + 0.5, -0.7, p.Z), RGB(255, 170, 200), Mat.SmoothPlastic, { CanCollide = false })
-		end
-	end
-	for _ = 1, 14 do
-		local side = rnd() < 0.5
-		local p = side and V3(LAKE_X1 - 2 - rnd() * 3, 0, LAKE_Z0 + 4 + rnd() * (ld - 8)) or V3(LAKE_X0 + 6 + rnd() * (lw - 12), 0, LAKE_Z0 + 2 + rnd() * 3)
-		part(m, "Reed", V3(0.3, 4 + rnd() * 2, 0.3), CFrame.new(p.X, 0.5, p.Z) * CFrame.Angles(math.rad((rnd() - 0.5) * 16), 0, math.rad((rnd() - 0.5) * 16)), RGB(90, 150, 70), Mat.Grass, { CanCollide = false })
-	end
-
-	-- the stream from the lake to the edge, and the waterfall off it
-	local sx0, sx1 = 46, 56
-	part(m, "StreamBed", V3(sx1 - sx0, 1, SHELF_Z1 - LAKE_Z1 + 2), CFrame.new((sx0 + sx1) / 2, -1.5, (LAKE_Z1 + SHELF_Z1) / 2), RGB(84, 80, 72), Mat.Slate)
-	part(m, "Stream", V3(sx1 - sx0, 0.3, SHELF_Z1 - LAKE_Z1 + 2), CFrame.new((sx0 + sx1) / 2, 0.2, (LAKE_Z1 + SHELF_Z1) / 2), WATER, Mat.SmoothPlastic, {
-		Transparency = 0.2, CanCollide = false, CanQuery = false,
-	})
-	for _, sx in ipairs({ sx0 - 1, sx1 + 1 }) do
-		part(m, "StreamBank", V3(2, 1.6, SHELF_Z1 - LAKE_Z1), CFrame.new(sx, 0.3, (LAKE_Z1 + SHELF_Z1) / 2), rockColor(0.1), Mat.Slate)
-	end
-	-- a little stone footbridge over the stream
-	part(m, "FootBridge", V3(sx1 - sx0 + 6, 1, 6), CFrame.new((sx0 + sx1) / 2, 1.2, LAKE_Z1 + 14), STONE, Mat.Cobblestone)
-	local fallX = (sx0 + sx1) / 2
-	part(m, "Waterfall", V3(sx1 - sx0, 150, 2), CFrame.new(fallX, -75, SHELF_Z1 + 1.2), RGB(150, 205, 255), Mat.SmoothPlastic, {
-		Transparency = 0.25, CanCollide = false, CanQuery = false, CastShadow = false,
-	})
-	for i = 0, 3 do
-		part(m, "WaterfallStreak", V3(1.2, 150, 0.3), CFrame.new(fallX - 3.6 + i * 2.4, -75, SHELF_Z1 + 2.3), RGB(235, 248, 255), Mat.SmoothPlastic, {
-			Transparency = 0.45, CanCollide = false, CanQuery = false, CastShadow = false,
-		})
-	end
-	local lip = anchorPart(m, "WaterfallSpray", CFrame.new(fallX, 0, SHELF_Z1 + 1.5))
-	lip.Size = V3(sx1 - sx0, 1, 1)
-	local e = Instance.new("ParticleEmitter")
-	e.Rate = 14
-	e.Color = ColorSequence.new(RGB(240, 250, 255))
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 6) })
-	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1) })
-	e.Lifetime = NumberRange.new(1.5, 2.5)
-	e.Speed = NumberRange.new(4, 8)
-	e.Acceleration = V3(0, -12, 0)
-	e.SpreadAngle = Vector2.new(30, 30)
-	e.EmissionDirection = Enum.NormalId.Back
-	e.Parent = lip
-
-	-- the fishing dock, out into the lake from the west shore
-	local dz = lc.Z - 4
-	part(m, "Dock", V3(28, 0.8, 6), CFrame.new(LAKE_X0 + 10, 0.6, dz), PLANK, Mat.WoodPlanks)
-	for x = LAKE_X0 - 2, LAKE_X0 + 22, 6 do
-		for _, oz in ipairs({ -2.6, 2.6 }) do
-			part(m, "DockPost", V3(0.9, 7, 0.9), CFrame.new(x, -2.2, dz + oz), RGB(110, 76, 46), Mat.Wood)
-		end
-	end
-	part(m, "Barrel", V3(2.4, 3, 2.4), CFrame.new(LAKE_X0 + 20, 2.5, dz + 1.6), RGB(130, 86, 50), Mat.WoodPlanks)
-	local hx = Config.Stations.Upgrades.X + 20 -- the mushroom house's front door
-	-- a path from the drawbridge to the hut and the dock
-	part(m, "LakePath", V3(10, 0.55, dz - MOAT_Z1 + 5), CFrame.new(0, 0.275, (MOAT_Z1 + dz) / 2 + 2.5), RGB(208, 192, 162), Mat.Cobblestone)
-	part(m, "LakePathWest", V3(-5 - hx, 0.55, 8), CFrame.new((hx - 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
-	part(m, "LakePathEast", V3(LAKE_X0 - 5, 0.55, 8), CFrame.new((LAKE_X0 + 5) / 2, 0.275, dz), RGB(208, 192, 162), Mat.Cobblestone)
-
-	-- a fence round the edge of the shelf so nobody walks off by accident
-	fence(m, V3(-SHELF_HALF_X + 2, 0, MOAT_Z1 + 2), V3(-SHELF_HALF_X + 2, 0, SHELF_Z1 - 2))
-	fence(m, V3(SHELF_HALF_X - 2, 0, MOAT_Z1 + 2), V3(SHELF_HALF_X - 2, 0, SHELF_Z1 - 2))
-	fence(m, V3(-SHELF_HALF_X + 2, 0, SHELF_Z1 - 2), V3(sx0 - 3, 0, SHELF_Z1 - 2))
-	fence(m, V3(sx1 + 3, 0, SHELF_Z1 - 2), V3(SHELF_HALF_X - 2, 0, SHELF_Z1 - 2))
-
-	-- nature
-	for _, t in ipairs({
-		{ pineTree, -96, MOAT_Z1 + 16, 1.1 }, { roundTree, -78, MOAT_Z1 + 66, 0.9 }, { pineTree, -96, MOAT_Z1 + 84, 0.9 },
-		{ roundTree, 96, MOAT_Z1 + 14, 0.85 }, { pineTree, 98, MOAT_Z1 + 80, 1 }, { blossomTree, -62, MOAT_Z1 + 20, 0.9 },
-		{ blossomTree, 94, MOAT_Z1 + 50, 0.8 }, { pineTree, -28, MOAT_Z1 + 86, 0.8 },
-	}) do
-		t[1](m, t[2], t[3], t[4])
-	end
-	for _, f in ipairs({ { -80, MOAT_Z1 + 40 }, { -40, MOAT_Z1 + 70 }, { 14, MOAT_Z1 + 84 }, { 90, MOAT_Z1 + 30 }, { -16, MOAT_Z1 + 14 } }) do
-		flowers(m, f[1], f[2], 3.5)
-	end
-	for _, b in ipairs({ { -104, MOAT_Z1 + 40 }, { 104, MOAT_Z1 + 64 }, { -60, MOAT_Z1 + 88 } }) do
-		bush(m, b[1], b[2], 0.9)
-	end
-	rocks(m, -70, MOAT_Z1 + 50, 1.2)
-	rocks(m, 92, MOAT_Z1 + 88, 1)
-
-	-- the mountain under the shelf, joining the one under the castle
-	squareMountain(m, 0, (MOAT_Z0 + SHELF_Z1) / 2, SHELF_HALF_X, (SHELF_Z1 - MOAT_Z0) / 2, -6, 4)
+	part(m, "MoatBank", V3(256, 6, 3), CFrame.new(0, -3, MOAT_Z1 + 1.5), RGB(90, 105, 136), Mat.Slate)
+	part(m, "MoatBankTop", V3(256.4, 0.6, 3.4), CFrame.new(0, -0.3, MOAT_Z1 + 1.5), RGB(99, 199, 77), Mat.Grass)
 end
 
 -- The Grand Keep's main building, south of the Spire gate: two tall stone
@@ -3785,26 +3574,28 @@ local function farmFence(m, a, b)
 end
 
 -- a big leafy tree made of chunky blocks
-local function farmTree(m, x, z, s)
-	part(m, "Trunk", V3(2.4, 9, 2.4) * s, CFrame.new(x, 4.5 * s, z), FARM.TIMBER, Mat.Wood)
-	part(m, "Root", V3(4, 1, 1.2) * s, CFrame.new(x, 0.5 * s, z), FARM.TIMBER, Mat.Wood)
-	part(m, "Root", V3(1.2, 1, 4) * s, CFrame.new(x, 0.5 * s, z), FARM.TIMBER, Mat.Wood)
-	part(m, "Branch", V3(1.2, 4, 1.2) * s, CFrame.new(x + 1.6 * s, 8.5 * s, z) * CFrame.Angles(0, 0, math.rad(-35)), FARM.TIMBER, Mat.Wood)
-	part(m, "Canopy", V3(12, 6, 12) * s, CFrame.new(x, 11 * s, z), FARM.LEAF2, Mat.Grass)
-	part(m, "CanopyTop", V3(9, 4, 9) * s, CFrame.new(x - 0.5 * s, 15.5 * s, z + 0.5 * s), FARM.LEAF, Mat.Grass)
-	part(m, "CanopyCrown", V3(5, 2, 5) * s, CFrame.new(x + 0.5 * s, 18.2 * s, z - 0.5 * s), FARM.LEAF, Mat.Grass)
+local function farmTree(m, x, z, s, y0)
+	y0 = y0 or 0
+	part(m, "Trunk", V3(2.4, 9, 2.4) * s, CFrame.new(x, y0 + 4.5 * s, z), FARM.TIMBER, Mat.Wood)
+	part(m, "Root", V3(4, 1, 1.2) * s, CFrame.new(x, y0 + 0.5 * s, z), FARM.TIMBER, Mat.Wood)
+	part(m, "Root", V3(1.2, 1, 4) * s, CFrame.new(x, y0 + 0.5 * s, z), FARM.TIMBER, Mat.Wood)
+	part(m, "Branch", V3(1.2, 4, 1.2) * s, CFrame.new(x + 1.6 * s, y0 + 8.5 * s, z) * CFrame.Angles(0, 0, math.rad(-35)), FARM.TIMBER, Mat.Wood)
+	part(m, "Canopy", V3(12, 6, 12) * s, CFrame.new(x, y0 + 11 * s, z), FARM.LEAF2, Mat.Grass)
+	part(m, "CanopyTop", V3(9, 4, 9) * s, CFrame.new(x - 0.5 * s, y0 + 15.5 * s, z + 0.5 * s), FARM.LEAF, Mat.Grass)
+	part(m, "CanopyCrown", V3(5, 2, 5) * s, CFrame.new(x + 0.5 * s, y0 + 18.2 * s, z - 0.5 * s), FARM.LEAF, Mat.Grass)
 	for _, o in ipairs({ { 5, 9.5, 2 }, { -5, 10, -2 }, { 1.5, 9, -5 }, { -2, 9.5, 5 } }) do
-		part(m, "CanopyLump", V3(6, 4, 6) * s, CFrame.new(x + o[1] * s, o[2] * s, z + o[3] * s), (o[1] > 0) and FARM.LEAF2 or FARM.LEAF3, Mat.Grass)
+		part(m, "CanopyLump", V3(6, 4, 6) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), (o[1] > 0) and FARM.LEAF2 or FARM.LEAF3, Mat.Grass)
 	end
 	for _, o in ipairs({ { 3, 14, 3 }, { -3.5, 13.5, -2 } }) do
-		part(m, "CanopyLight", V3(3, 2, 3) * s, CFrame.new(x + o[1] * s, o[2] * s, z + o[3] * s), FARM.LEAF, Mat.Grass)
+		part(m, "CanopyLight", V3(3, 2, 3) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), FARM.LEAF, Mat.Grass)
 	end
 end
 
-local function blockBush(m, x, z, s)
-	part(m, "Bush", V3(3.4, 2.4, 3.4) * s, CFrame.new(x, 1.2 * s, z), FARM.LEAF2, Mat.Grass, { CanCollide = false })
-	part(m, "Bush", V3(2.4, 1.8, 2.4) * s, CFrame.new(x + 1 * s, 2.6 * s, z - 0.4 * s), FARM.LEAF, Mat.Grass, { CanCollide = false })
-	part(m, "Bush", V3(2, 1.6, 2) * s, CFrame.new(x - 1.4 * s, 1.1 * s, z + 1.2 * s), FARM.LEAF3, Mat.Grass, { CanCollide = false })
+local function blockBush(m, x, z, s, y0)
+	y0 = y0 or 0
+	part(m, "Bush", V3(3.4, 2.4, 3.4) * s, CFrame.new(x, y0 + 1.2 * s, z), FARM.LEAF2, Mat.Grass, { CanCollide = false })
+	part(m, "Bush", V3(2.4, 1.8, 2.4) * s, CFrame.new(x + 1 * s, y0 + 2.6 * s, z - 0.4 * s), FARM.LEAF, Mat.Grass, { CanCollide = false })
+	part(m, "Bush", V3(2, 1.6, 2) * s, CFrame.new(x - 1.4 * s, y0 + 1.1 * s, z + 1.2 * s), FARM.LEAF3, Mat.Grass, { CanCollide = false })
 end
 
 -- one crop plant, standing on soil whose top is at height y
@@ -4171,31 +3962,408 @@ local function buildFarm(parent)
 	farmFence(m, V3(18, 0, 99.4), V3(18, 0, 144))
 end
 
--- A rocky cliff at the east end of the lake, with a waterfall pouring off
--- its top into the water (like the pictures).
-local function buildLakeFalls(parent)
-	local m = folder(parent, "LakeFalls")
-	local cx, cz = 98, (LAKE_Z0 + LAKE_Z1) / 2
-	for i = 0, 9 do
-		local h = 18 + rnd() * 20
-		part(m, "Cliff", V3(10 + rnd() * 6, h, 12 + rnd() * 6), CFrame.new(cx + (rnd() - 0.3) * 12, h / 2 - 2, cz - 30 + i * 6.5) * CFrame.Angles(0, (rnd() - 0.5) * 0.5, 0), rockColor(rnd() * 0.3), Mat.Slate)
+
+----------------------------------------------------------------------
+-- The island and the sea
+----------------------------------------------------------------------
+-- The castle stands on top of an island in the middle of the sea (like the
+-- reference picture): under its walls the rock steps down in green
+-- hexagon terraces - with trees, bushes and a few little cottages - to sandy
+-- beaches, then light shallows and the open sea, twinkling in the sun,
+-- with sailboats bobbing on it and small islets further out (one with a
+-- lighthouse). From the south gate, stone stairs lead down the terraces
+-- to the beach, where the mushroom house and a wooden pier stand. The Spire stands on its own rocky islet,
+-- reached by the bridge. Anyone who falls into the sea is washed back to
+-- the spawn.
+local ISLE = {
+	GRASS = RGB(99, 199, 77), GRASS2 = RGB(62, 137, 72), ROCK = RGB(139, 155, 180), ROCK2 = RGB(90, 105, 136),
+	SAND = RGB(234, 212, 170), SAND2 = RGB(232, 183, 150), SEA = RGB(0, 153, 219), SHALLOW = RGB(44, 232, 245),
+	FOAM = RGB(255, 255, 255),
+}
+local STAIR_HALF = 7 -- half the width of the stairs down to the beach
+-- The island is a hexagon (flat sides north and south), centred a little
+-- south of the plaza, with the castle inside it and room for the beach.
+-- Each terrace is a hexagon a bit bigger and lower than the one above.
+local HEX_CZ = 110
+local SQRT3 = math.sqrt(3)
+local TERRACES = {
+	{ name = "Terrace", R = 280, top = TERRACE1_TOP, cap = ISLE.GRASS, body = ISLE.ROCK, capT = 1.4 },
+	{ name = "LowTerrace", R = 294, top = -24, cap = ISLE.GRASS2, body = ISLE.ROCK2, capT = 1.4 },
+	{ name = "LowestTerrace", R = 308, top = -34, cap = ISLE.GRASS, body = ISLE.ROCK, capT = 1.4 },
+	{ name = "Beach", R = 360, top = SEA_Y + 1.5, cap = ISLE.SAND, body = ISLE.SAND2, capT = 1 },
+}
+local SHALLOWS_R = 372
+
+-- is (x, z) inside the island's hexagon of radius R?
+local function inHex(x, z, R)
+	local dx, dz = math.abs(x), math.abs(z - HEX_CZ)
+	return dz <= SQRT3 / 2 * R and SQRT3 / 2 * dx + dz / 2 <= SQRT3 / 2 * R
+end
+-- is (x, z) on the castle's own rock, with a margin?
+local function onCastleRock(x, z, margin)
+	return math.abs(x) < 128 + margin and z > -128 - margin and z < MOAT_Z1 + margin
+end
+-- is (x, z) on (or right beside) the stairs and pier down to the beach?
+local function nearFalls(x, z)
+	return z > MOAT_Z1 - 2 and math.abs(x) < STAIR_HALF + 7
+end
+-- a regular hexagon from y0 to y1: three boxes turned 60 degrees apart
+local function hexSlab(m, name, R, y0, y1, color, mat, extra)
+	for k = 0, 2 do
+		part(m, name, V3(R, y1 - y0, R * SQRT3), CFrame.new(0, (y0 + y1) / 2, HEX_CZ) * CFrame.Angles(0, k * math.pi / 3, 0), color, mat, extra)
 	end
-	part(m, "CliffTop", V3(16, 2, 20), CFrame.new(cx + 2, 34, cz), RGB(96, 180, 84), Mat.Grass)
-	part(m, "Falls", V3(1.5, 36, 10), CFrame.new(LAKE_X1 + 4, 16, cz), RGB(150, 205, 255), Mat.SmoothPlastic, { Transparency = 0.25, CanCollide = false, CanQuery = false })
-	for i = 0, 2 do
-		part(m, "FallsStreak", V3(0.3, 36, 1), CFrame.new(LAKE_X1 + 3.1, 16, cz - 3 + i * 3), RGB(235, 248, 255), Mat.SmoothPlastic, { Transparency = 0.4, CanCollide = false, CanQuery = false })
+end
+-- the six edges of a hexagon: start corner, end corner, outward direction
+local function hexEdges(R)
+	local edges = {}
+	for k = 0, 5 do
+		local a0, a1, an = math.rad(k * 60), math.rad(k * 60 + 60), math.rad(k * 60 + 30)
+		table.insert(edges, {
+			V3(math.cos(a0) * R, 0, HEX_CZ + math.sin(a0) * R),
+			V3(math.cos(a1) * R, 0, HEX_CZ + math.sin(a1) * R),
+			V3(math.cos(an), 0, math.sin(an)),
+		})
 	end
-	local foam = anchorPart(m, "FallsFoam", CFrame.new(LAKE_X1 + 1, -0.5, cz))
-	foam.Size = V3(4, 1, 10)
-	local e = Instance.new("ParticleEmitter")
-	e.Rate = 16
-	e.Color = ColorSequence.new(RGB(240, 250, 255))
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 4) })
-	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
-	e.Lifetime = NumberRange.new(1, 1.6)
-	e.Speed = NumberRange.new(3, 6)
-	e.SpreadAngle = Vector2.new(60, 60)
-	e.Parent = foam
+	return edges
+end
+
+local function buildTerrace(m, t)
+	local shadow = { CastShadow = false }
+	hexSlab(m, t.name, t.R, ISLAND_FLOOR, t.top - t.capT, t.body, Mat.Slate, shadow)
+	hexSlab(m, t.name .. "Top", t.R + 0.6, t.top - t.capT, t.top, t.cap, Mat.Grass, shadow)
+	-- a few chunky lumps along each edge, so it isn't too perfect
+	for _, e in ipairs(hexEdges(t.R)) do
+		local a, b, n = e[1], e[2], e[3]
+		local len, dir = (b - a).Magnitude, (b - a).Unit
+		local s = 14 + rnd() * 10
+		while s < len - 14 do
+			local w = 8 + rnd() * 12
+			local c = a + dir * s
+			if not nearFalls(c.X, c.Z) then
+				local d = 1.5 + rnd() * 3
+				local top = t.top - ((rnd() < 0.3) and 1.2 or 0)
+				local cf = CFrame.lookAt(c + n * (d / 2 - 0.5), c + n * (d / 2 - 0.5) + dir)
+				local bodyH = top - t.capT - ISLAND_FLOOR
+				part(m, t.name .. "Lump", V3(d, bodyH, w), cf + V3(0, ISLAND_FLOOR + bodyH / 2, 0), t.body, Mat.Slate, shadow)
+				part(m, t.name .. "LumpTop", V3(d + 0.6, t.capT, w + 0.6), cf + V3(0, top - t.capT / 2, 0), t.cap, Mat.Grass, shadow)
+			end
+			s = s + w + 8 + rnd() * 20
+		end
+	end
+end
+
+-- a little cottage on the hillside: cream walls, dark beams, a stepped red
+-- roof and a chimney. `cf` is the middle of its floor; it faces local +Z.
+local function isleHouse(m, cf, roof)
+	local function p(name, size, x, y, z, color, mat, extra)
+		return part(m, name, size, cf * CFrame.new(x, y, z), color, mat or Mat.Plastic, extra)
+	end
+	local nc = { CanCollide = false }
+	p("HousePlinth", V3(9, 1, 7.6), 0, 0.5, 0, ISLE.ROCK2, Mat.Slate)
+	p("HouseWalls", V3(8, 6, 6.6), 0, 4, 0, RGB(234, 212, 170))
+	for _, x in ipairs({ -4, 4 }) do
+		for _, z in ipairs({ -3.3, 3.3 }) do
+			p("HouseBeam", V3(0.5, 6.2, 0.5), x, 4, z, RGB(115, 62, 57), Mat.WoodPlanks, nc)
+		end
+	end
+	p("HouseBeam", V3(8.4, 0.5, 6.9), 0, 6.9, 0, RGB(115, 62, 57), Mat.WoodPlanks, nc)
+	for _, s in ipairs({ -1, 1 }) do
+		for k = 0, 3 do
+			p("HouseRoof", V3(9.4, 1, 1.4), 0, 10.6 - k * 1, s * (0.6 + k * 1.05), (k % 2 == 0) and roof or roof:Lerp(RGB(0, 0, 0), 0.2), Mat.Slate)
+		end
+	end
+	p("HouseAttic", V3(8, 2.4, 4.6), 0, 8.2, 0, RGB(234, 212, 170))
+	p("HouseChimney", V3(1.4, 4, 1.4), 2.4, 10.4, -1.2, ISLE.ROCK, Mat.Cobblestone)
+	p("HouseDoor", V3(1.8, 3.2, 0.3), -1.6, 2.6, 3.35, RGB(184, 111, 80), Mat.WoodPlanks, nc)
+	p("HouseWindow", V3(1.6, 1.4, 0.3), 1.8, 4.2, 3.35, RGB(254, 231, 97), Mat.Neon, nc)
+	p("HouseWindowFrame", V3(2, 1.8, 0.2), 1.8, 4.2, 3.3, RGB(115, 62, 57), Mat.WoodPlanks, nc)
+end
+
+-- a small islet out at sea: a stack of rock, a grassy top, a ring of sand
+-- and light shallows round it, and a tree or two
+local function islet(m, cx, cz, r, top, trees)
+	local function ring(name, rad, y0, y1, color, mat, extra)
+		for k = 0, 2 do
+			part(m, name, V3(rad * 2, y1 - y0, rad * 2), CFrame.new(cx, (y0 + y1) / 2, cz) * CFrame.Angles(0, k * math.pi / 6, 0), color, mat, extra)
+		end
+	end
+	ring("IsletShallows", r + 16, SEA_Y + 0.2, SEA_Y + 0.35, ISLE.SHALLOW, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
+	ring("IsletSand", r + 7, ISLAND_FLOOR, SEA_Y + 1.2, ISLE.SAND, Mat.Sand, { CastShadow = false })
+	ring("IsletRock", r, ISLAND_FLOOR, top - 1.2, ISLE.ROCK, Mat.Slate, { CastShadow = false })
+	ring("IsletTop", r + 0.4, top - 1.2, top, ISLE.GRASS, Mat.Grass, { CastShadow = false })
+	for i = 1, trees do
+		local a = rnd() * math.pi * 2
+		local d = rnd() * r * 0.45
+		farmTree(m, cx + math.cos(a) * d, cz + math.sin(a) * d, 0.55 + rnd() * 0.3, top)
+	end
+	for _ = 1, 3 do
+		local a = rnd() * math.pi * 2
+		local s = 3 + rnd() * 3
+		part(m, "IsletBoulder", V3(s * 1.3, s, s), CFrame.new(cx + math.cos(a) * (r + 4), SEA_Y + 1 + s * 0.3, cz + math.sin(a) * (r + 4)) * CFrame.Angles(0, rnd() * 3, 0), ISLE.ROCK2, Mat.Slate)
+	end
+end
+
+-- a little sailboat, bobbing on the waves (LobbyFX moves it)
+local function sailboat(m, x, z, yaw, sail, phase)
+	local cf = CFrame.new(x, SEA_Y, z) * CFrame.Angles(0, yaw, 0)
+	local bob = { BobAmp = 0.35, BobSpeed = 1.3, Phase = phase }
+	local function p(name, size, lx, ly, lz, color, mat)
+		fx(part(m, name, size, cf * CFrame.new(lx, ly, lz), color, mat or Mat.WoodPlanks, { CanCollide = false }), bob)
+	end
+	p("Hull", V3(3, 1.4, 8), 0, 0.3, 0, RGB(184, 111, 80))
+	p("HullBow", V3(2, 1.4, 2), 0, 0.3, -4.2, RGB(184, 111, 80))
+	p("HullTrim", V3(3.2, 0.4, 8.2), 0, 1.1, 0, RGB(115, 62, 57))
+	p("Deck", V3(2.4, 0.2, 7.4), 0, 1.05, 0, RGB(228, 166, 114))
+	p("Mast", V3(0.4, 10, 0.4), 0, 6, -0.5, RGB(115, 62, 57), Mat.Wood)
+	p("Boom", V3(0.3, 0.3, 4.6), 0, 2.4, 1.6, RGB(115, 62, 57), Mat.Wood)
+	p("Sail", V3(0.2, 7.4, 4.2), 0.25, 6.2, 1.5, RGB(255, 255, 255), Mat.Fabric)
+	p("SailStripe", V3(0.25, 1, 4.2), 0.3, 5, 1.5, sail, Mat.Fabric)
+	p("Flag", V3(0.1, 0.6, 1.2), 0, 11.2, -0.1, sail, Mat.Fabric)
+end
+
+local function buildIsland(parent)
+	local m = folder(parent, "IslandAndSea")
+
+	-- the castle's rock: under the walls and the moat
+	for _, r in ipairs({ { -128, 128, -128, MOAT_Z1 + 3 } }) do
+		part(m, "IslandRock", V3(r[2] - r[1], -6 - ISLAND_FLOOR, r[4] - r[3]), CFrame.new((r[1] + r[2]) / 2, (ISLAND_FLOOR - 6) / 2, (r[3] + r[4]) / 2), ISLE.ROCK2, Mat.Slate, { CastShadow = false })
+	end
+	-- rock closing off both ends of the moat
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "MoatEnd", V3(10, 7, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(sx * 123, -3.5, (MOAT_Z0 + MOAT_Z1) / 2), ISLE.ROCK2, Mat.Slate)
+	end
+	wallFootRocks(m)
+
+	-- the terraces down to the beach
+	for _, t in ipairs(TERRACES) do
+		buildTerrace(m, t)
+	end
+	-- the shallows: a light band of water all round the beach
+	hexSlab(m, "Shallows", SHALLOWS_R, SEA_Y + 0.15, SEA_Y + 0.3, ISLE.SHALLOW, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
+	-- white foam lapping at the beach, twinkling in and out
+	local beach = TERRACES[#TERRACES]
+	for _, e in ipairs(hexEdges(beach.R + 3)) do
+		local a, b = e[1], e[2]
+		local len, dir = (b - a).Magnitude, (b - a).Unit
+		local s = 3
+		while s < len - 3 do
+			local c = a + dir * s + e[3] * (rnd() * 3)
+			local w = 2 + rnd() * 4
+			local foam = part(m, "Foam", V3(0.6, 0.1, w), CFrame.lookAt(c, c + dir) + V3(0, SEA_Y + 0.4, 0), ISLE.FOAM, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
+			foam:SetAttribute("PulseSpeed", 0.5 + rnd() * 0.4)
+			foam:SetAttribute("PulseMin", 0)
+			foam:SetAttribute("PulseMax", 0.9)
+			foam:SetAttribute("Phase", rnd() * 360)
+			CollectionService:AddTag(foam, "Pulse")
+			s = s + 7 + rnd() * 5
+		end
+	end
+
+	-- the sea: one big flat sheet (four, as parts can't be bigger than 2048)
+	for _, t in ipairs({ { -750, -835 }, { 750, -835 }, { -750, 615 }, { 750, 615 } }) do
+		part(m, "Sea", V3(1500, 1, 1450), CFrame.new(t[1], SEA_Y - 0.5, t[2]), ISLE.SEA, Mat.SmoothPlastic, {
+			CanCollide = false, CanQuery = false, CastShadow = false,
+		})
+	end
+	-- sparkles on the water, twinkling in and out
+	for _ = 1, 120 do
+		local a = rnd() * math.pi * 2
+		local d = 200 + rnd() * 600
+		local x, z = math.cos(a) * d, HEX_CZ + math.sin(a) * d
+		local nearSpire = (x * x + (z - SPIRE_Z) ^ 2) < 118 * 118
+		if not inHex(x, z, SHALLOWS_R + 10) and not nearSpire then
+			local w = 1.5 + rnd() * 3.5
+			local sp = part(m, "Sparkle", V3(w, 0.1, 0.5), CFrame.new(x, SEA_Y + 0.08, z), ISLE.FOAM, Mat.SmoothPlastic, { CanCollide = false, CanQuery = false, CastShadow = false })
+			sp:SetAttribute("PulseSpeed", 0.35 + rnd() * 0.5)
+			sp:SetAttribute("PulseMin", 0.1)
+			sp:SetAttribute("PulseMax", 1)
+			sp:SetAttribute("Phase", rnd() * 360)
+			CollectionService:AddTag(sp, "Pulse")
+		end
+	end
+
+	-- the Spire's islet: its crag goes down into the sea, ringed with sand
+	roundMountain(m, 0, SPIRE_Z, SPIRE_ROCK_R + 2, -26, 4)
+	for k = 0, 2 do
+		local turn = CFrame.Angles(0, k * math.pi / 6, 0)
+		part(m, "SpireBeach", V3(188, SEA_Y + 1.5 - ISLAND_FLOOR, 200), CFrame.new(0, (SEA_Y + 1.5 + ISLAND_FLOOR) / 2, SPIRE_Z) * turn, ISLE.SAND, Mat.Sand, { CastShadow = false })
+		part(m, "SpireShallows", V3(208, 0.15, 208), CFrame.new(0, SEA_Y + 0.25, SPIRE_Z) * turn, ISLE.SHALLOW, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
+	end
+	for i = 0, 13 do
+		local a = i / 14 * math.pi * 2 + rnd() * 0.2
+		local s = 4 + rnd() * 5
+		part(m, "SpireBoulder", V3(s * 1.4, s, s * 1.1), CFrame.new(math.sin(a) * (88 + rnd() * 4), SEA_Y + 1 + s * 0.3, SPIRE_Z + math.cos(a) * (88 + rnd() * 4)) * CFrame.Angles(0, rnd() * 3, math.rad((rnd() - 0.5) * 16)), ISLE.ROCK2, Mat.Slate)
+	end
+
+	-- stone stairs from the drawbridge down the terraces to the beach, one
+	-- flight per terrace, with a low wall either side and a path between
+	local STEP_C, STEP_C2, WALL_C = RGB(192, 203, 220), RGB(139, 155, 180), RGB(90, 105, 136)
+	local function flight(zStart, yTop, yBottom, maxRise, tread)
+		local n = math.ceil((yTop - yBottom) / maxRise)
+		local rise = (yTop - yBottom) / n
+		for i = 1, n - 1 do
+			local top = yTop - i * rise
+			local z = zStart + (i - 0.5) * tread
+			part(m, "BeachStair", V3(STAIR_HALF * 2, top - yBottom, tread + 0.02), CFrame.new(0, (top + yBottom) / 2, z), (i % 2 == 0) and STEP_C or STEP_C2, Mat.Slate)
+		end
+		local zEnd = zStart + (n - 1) * tread
+		-- the side walls, sloping down with the steps
+		for _, sx in ipairs({ -1, 1 }) do
+			local x = sx * (STAIR_HALF + 0.6)
+			local a, b = V3(x, yTop + 0.8, zStart), V3(x, yBottom + 0.8 + rise, zEnd)
+			part(m, "StairWall", V3(1.2, 2.4, (b - a).Magnitude + 1.2), CFrame.lookAt((a + b) / 2, b), WALL_C, Mat.Slate)
+			part(m, "StairWallFoot", V3(1.2, math.max(0.1, yTop - yBottom), 1.2), CFrame.new(x, (yTop + yBottom) / 2, zStart), WALL_C, Mat.Slate)
+		end
+		return zEnd
+	end
+	local function walk(z0, z1, y)
+		if z1 - z0 > 0.5 then
+			part(m, "BeachPath", V3(STAIR_HALF * 2 - 2, 0.3, z1 - z0), CFrame.new(0, y + 0.15, (z0 + z1) / 2), ISLE.SAND2, Mat.Ground, { CanCollide = false })
+		end
+	end
+	local zAt, yAt = MOAT_Z1 + 3, 0
+	zAt = flight(zAt, 0, TERRACES[1].top, 0.5, 1)
+	for i, t in ipairs(TERRACES) do
+		local edge = HEX_CZ + SQRT3 / 2 * t.R
+		if i < #TERRACES then
+			walk(zAt, edge, t.top)
+			zAt = flight(edge, t.top, TERRACES[i + 1].top, 0.8, 1)
+		end
+		yAt = t.top
+	end
+	-- a lantern post either side of the foot of the last flight
+	for _, sx in ipairs({ -1, 1 }) do
+		local x = sx * (STAIR_HALF + 2.5)
+		part(m, "PierLampPost", V3(0.8, 6, 0.8), CFrame.new(x, yAt + 3, zAt + 1), RGB(115, 62, 57), Mat.Wood)
+		part(m, "PierLamp", V3(1.2, 1.2, 1.2), CFrame.new(x, yAt + 6.4, zAt + 1), RGB(254, 231, 97), Mat.Neon)
+		part(m, "PierLampCap", V3(1.6, 0.4, 1.6), CFrame.new(x, yAt + 7.2, zAt + 1), RGB(62, 39, 49), Mat.Metal)
+	end
+	-- the wooden pier, straight on out over the sand and the shallows
+	local beachEdge = HEX_CZ + SQRT3 / 2 * TERRACES[#TERRACES].R
+	local p0, p1 = zAt + 4, beachEdge + 34
+	local deckY = SEA_Y + 2.2
+	part(m, "Pier", V3(8, 0.6, p1 - p0), CFrame.new(0, deckY, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
+	for z = p0 + 2, p1, 4 do
+		part(m, "PierPlankLine", V3(8.1, 0.62, 0.2), CFrame.new(0, deckY, z), RGB(115, 62, 57), Mat.WoodPlanks, { CanCollide = false })
+	end
+	for z = p0 + 1, p1 - 1, 8 do
+		for _, sx in ipairs({ -1, 1 }) do
+			part(m, "PierPost", V3(0.9, 6, 0.9), CFrame.new(sx * 3.8, deckY - 2.2, z), RGB(115, 62, 57), Mat.Wood)
+			part(m, "PierRail", V3(0.3, 1.8, 0.3), CFrame.new(sx * 3.8, deckY + 1.1, z), RGB(115, 62, 57), Mat.Wood)
+		end
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "PierRailBar", V3(0.3, 0.3, p1 - p0), CFrame.new(sx * 3.8, deckY + 1.8, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
+	end
+	part(m, "PierCrate", V3(2, 2, 2), CFrame.new(2.2, deckY + 1.3, p1 - 3) * CFrame.Angles(0, 0.3, 0), RGB(228, 166, 114), Mat.WoodPlanks)
+	part(m, "PierBarrel", V3(1.8, 2.2, 1.8), CFrame.new(-2.3, deckY + 1.4, p1 - 5), RGB(184, 111, 80), Mat.WoodPlanks)
+
+	-- a little village of cottages on the wide east and west slopes
+	local T1 = TERRACES[1].top
+	local HOUSES = {
+		{ -182, 60, -90, RGB(190, 74, 47) }, { -208, 128, -90, RGB(162, 38, 51) }, { -170, 196, -90, RGB(18, 78, 137) },
+		{ 186, 40, 90, RGB(162, 38, 51) }, { 210, 118, 90, RGB(190, 74, 47) }, { 174, 196, 90, RGB(190, 74, 47) },
+	}
+	for _, h in ipairs(HOUSES) do
+		isleHouse(m, CFrame.new(h[1], T1, h[2]) * CFrame.Angles(0, math.rad(h[3]), 0), h[4])
+	end
+	-- trees and bushes on the terraces
+	local function scatter(i, count)
+		local t = TERRACES[i]
+		local inner = TERRACES[i - 1]
+		local placed, tries = 0, 0
+		while placed < count and tries < count * 20 do
+			tries = tries + 1
+			local x = (rnd() * 2 - 1) * t.R
+			local z = HEX_CZ + (rnd() * 2 - 1) * t.R
+			local ok = inHex(x, z, t.R - 5) and not nearFalls(x, z)
+			if ok and inner then
+				ok = not inHex(x, z, inner.R + 5)
+			elseif ok then
+				ok = not onCastleRock(x, z, 8)
+			end
+			if ok then
+				for _, h in ipairs(HOUSES) do
+					if math.abs(x - h[1]) < 12 and math.abs(z - h[2]) < 12 then
+						ok = false
+					end
+				end
+				if math.abs(x) < 24 and z < -110 then
+					ok = false -- (the bridge's piers stand here)
+				end
+			end
+			if ok then
+				placed = placed + 1
+				if rnd() < 0.72 then
+					farmTree(m, x, z, 0.6 + rnd() * 0.4, t.top)
+				else
+					blockBush(m, x, z, 0.9 + rnd() * 0.6, t.top)
+				end
+			end
+		end
+	end
+	scatter(1, 70)
+	scatter(2, 26)
+	scatter(3, 26)
+	-- a few boulders on the beach
+	for _ = 1, 26 do
+		local x = (rnd() * 2 - 1) * beach.R
+		local z = HEX_CZ + (rnd() * 2 - 1) * beach.R
+		if inHex(x, z, beach.R - 2) and not inHex(x, z, TERRACES[#TERRACES - 1].R + 2) and not nearFalls(x, z) then
+			local s = 2 + rnd() * 3
+			part(m, "BeachRock", V3(s * 1.3, s, s), CFrame.new(x, beach.top + s * 0.3, z) * CFrame.Angles(0, rnd() * 3, math.rad((rnd() - 0.5) * 14)), ISLE.ROCK, Mat.Slate)
+		end
+	end
+
+	-- islets out at sea, one with a lighthouse, and boats sailing between
+	islet(m, -470, -140, 26, -34, 2)
+	islet(m, 520, 190, 34, -32, 2)
+	islet(m, -360, 560, 20, -38, 1)
+	islet(m, 380, -480, 24, -36, 1)
+	do
+		local lx, lz, base = 520, 190, -32
+		for k = 0, 5 do
+			cylinder(m, "Lighthouse", 5, 9 - k * 0.5, CFrame.new(lx + 12, base + 2.5 + k * 5, lz - 8), (k % 2 == 0) and ISLE.FOAM or RGB(228, 59, 68), Mat.Plastic)
+		end
+		cylinder(m, "LighthouseDeck", 0.8, 8.5, CFrame.new(lx + 12, base + 30.4, lz - 8), RGB(58, 68, 102), Mat.Metal)
+		local lamp = cylinder(m, "LighthouseLamp", 3.4, 5, CFrame.new(lx + 12, base + 32.5, lz - 8), RGB(254, 231, 97), Mat.Neon)
+		lamp:SetAttribute("PulseSpeed", 0.5)
+		lamp:SetAttribute("PulseMin", 0)
+		lamp:SetAttribute("PulseMax", 0.45)
+		CollectionService:AddTag(lamp, "Pulse")
+		coneRoof(m, V3(lx + 12, base + 34.2, lz - 8), 3.6, 5, RGB(190, 74, 47), 5)
+	end
+	sailboat(m, -410, 30, 0.6, RGB(228, 59, 68), 0)
+	sailboat(m, 380, -150, -0.9, RGB(18, 78, 137), 120)
+	sailboat(m, 150, 520, 2.2, RGB(254, 174, 52), 240)
+	sailboat(m, -200, -330, 1.3, RGB(62, 137, 72), 60)
+
+	-- falling in the sea washes you back to the spawn
+	local spawnAt = CFrame.new(0, 4, 34)
+	local function washBack(hit)
+		local char = hit and hit.Parent
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if hum and root and hum.Health > 0 and not char:GetAttribute("WashedBack") then
+			char:SetAttribute("WashedBack", true)
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.CFrame = spawnAt
+			task.delay(1, function()
+				char:SetAttribute("WashedBack", nil)
+			end)
+		end
+	end
+	for _, t in ipairs({ { -750, -835 }, { 750, -835 }, { -750, 615 }, { 750, 615 } }) do
+		local splash = part(m, "SeaReturn", V3(1500, 2, 1450), CFrame.new(t[1], SEA_Y - 4, t[2]), RGB(255, 255, 255), Mat.SmoothPlastic, {
+			Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false,
+		})
+		splash.Touched:Connect(washBack)
+	end
+	-- (and as a last safety net, anything far below is caught too)
+	local kill = part(m, "VoidKillZone", V3(2048, 4, 2048), CFrame.new(0, -240, -60), RGB(255, 255, 255), Mat.SmoothPlastic, {
+		Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false,
+	})
+	kill.Touched:Connect(washBack)
 end
 
 local function buildCastle(parent)
@@ -4213,8 +4381,7 @@ local function buildCastle(parent)
 	for _, x in ipairs({ -76, 76 }) do
 		bartizan(m, V3(x, 0, -121), V3(0, 0, -1))
 	end
-	buildLakeside(m)
-	buildLakeFalls(m)
+	buildMoat(m)
 	buildGreatHall(m)
 	buildFountain(m)
 	buildPetSanctuary(m)
@@ -4841,8 +5008,8 @@ function LobbyBuilder.Build()
 		{ "Training Yard", buildYard },
 		{ "The Spire", buildSpire },
 		{ "Castle gate", buildCastleGate },
-		{ "Castle (keep, south gate, lakeside, farm)", buildCastle },
-		{ "Mountain and mist", buildMountain },
+		{ "Castle (keep, south gate, moat, farm)", buildCastle },
+		{ "Island and sea", buildIsland },
 		{ "Slime arena (Spire floor 1)", buildSlimeArena },
 		{ "Castle and nature decorations", buildDecor },
 	}
