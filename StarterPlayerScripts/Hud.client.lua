@@ -1462,6 +1462,7 @@ local rightCol = create("Frame", {
 
 local autoBtn = create("TextButton", {
 	LayoutOrder = 2,
+	Visible = false, -- (auto-train went with the training pads)
 	Size = UDim2.fromOffset(200, 60),
 	BackgroundColor3 = C.red,
 	Text = "",
@@ -1971,7 +1972,7 @@ end
 local function renderHint()
 	-- in a Spire arena the lobby's advice is noise: the fight has the top of the
 	-- screen (the boss's name and health bar live there)
-	hintBanner.Visible = player:GetAttribute("SpireFloor") == nil
+	hintBanner.Visible = player:GetAttribute("SpireFloor") == nil and not player:GetAttribute("Colosseum")
 	if not state then
 		hint.Text = "Loading..."
 		return
@@ -1991,13 +1992,8 @@ local function renderHint()
 	elseif Config.statPointsLeft(state) > 0 then
 		message = "You have " .. Config.statPointsLeft(state) .. " stat points! Spend them in STATS."
 	else
-		message = "Step onto a glowing dummy pad and click to grow stronger!"
-		for _, z in ipairs(Config.Zones) do
-			if state.Power < z.req then
-				message = "Reach Level " .. z.level .. " to unlock the " .. z.name .. "!"
-				break
-			end
-		end
+		-- (the training pads are gone: you grow by fighting in the Colosseum)
+		message = "Enter the Colosseum and beat dummies to grow stronger!"
 	end
 	hint.Text = message
 end
@@ -2280,6 +2276,7 @@ end)
 
 player:GetAttributeChangedSignal("CurrentZone"):Connect(renderHint)
 player:GetAttributeChangedSignal("SpireFloor"):Connect(renderHint)
+player:GetAttributeChangedSignal("Colosseum"):Connect(renderHint)
 
 ----------------------------------------------------------------------
 -- Move speed fix

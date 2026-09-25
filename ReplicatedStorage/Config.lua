@@ -48,7 +48,8 @@ Config.StationTurn = {
 Config.Colosseum = {
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 62, -- the sand floor
-	GatePosition = Vector3.new(-62, 0, 30), -- the gate in the lobby
+	GatePosition = Vector3.new(-62, 0, 58), -- the gate in the lobby (in the mini colosseum where the training field was)
+	LobbyModel = Vector3.new(-62, 0, 88), -- the middle of that mini colosseum
 	EnterRange = 20,
 
 	HitsToKill = 4, -- punches a dummy takes from a player at its level (no gear)
@@ -91,16 +92,13 @@ end
 -- from the pool below - never two of the same kind on one day. Finish one,
 -- walk to the Quest Board and hand it in for the coins. Hand in all of the
 -- day's quests for a bonus treasure chest from the hardest boss you've beaten.
---   kind: train = hits on a training pad, combo = reach a 100-hit combo,
---         arena = dummies beaten in the Colosseum, boss = Spire bosses beaten,
+--   kind: arena = dummies beaten in the Colosseum, boss = Spire bosses beaten,
 --         sell = items sold, chest = treasure chests opened
 Config.Quests = {
 	PerDay = 3,
 	BonusChest = true,
 	Pool = {
-		{ id = "Train300", kind = "train", goal = 300, reward = 150, text = "Train on a pad %d times" },
-		{ id = "Train1000", kind = "train", goal = 1000, reward = 400, text = "Train on a pad %d times" },
-		{ id = "Combo", kind = "combo", goal = 1, reward = 250, text = "Hit a 100-punch training combo" },
+		{ id = "Arena10", kind = "arena", goal = 10, reward = 80, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Arena30", kind = "arena", goal = 30, reward = 150, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Arena100", kind = "arena", goal = 100, reward = 400, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Boss1", kind = "boss", goal = 1, reward = 300, text = "Defeat a Spire boss" },

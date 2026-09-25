@@ -748,12 +748,6 @@ local function buildGround(parent)
 		end
 	end
 
-	-- Training yard slab, under all the pads
-	local first, last = Config.zonePosition(1), Config.zonePosition(#Config.Zones)
-	local halfW = Y.PerRow * Y.Spacing / 2
-	part(g, "YardSlab", V3(halfW * 2, 0.6, last.Z - first.Z + Y.PadSize + 6), CFrame.new(Y.CenterX or 0, 0.3, (first.Z + last.Z) / 2), RGB(86, 96, 122), Mat.Plastic, {
-		TopSurface = Enum.SurfaceType.Studs,
-	})
 
 	-- Boundary walls (the north wall has a gap for the bridge to the Spire)
 	wall(g, "WallNorthW", V3(-120, 0, -118), V3(-16, 0, -118))
@@ -5043,7 +5037,7 @@ local function buildCastle(parent)
 	buildGreatHall(m)
 	buildFountain(m)
 	buildPetSanctuary(m)
-	buildFarmField(m)
+	-- (the training field is gone: the Colosseum stands there now)
 	buildRiver(m)
 	buildFarm(m)
 end
@@ -5701,6 +5695,75 @@ local Extras = (function()
 	local SAND_DARK = RGB(184, 111, 80)
 	local SAND_LIGHT = RGB(234, 212, 170)
 
+	-- The mini colosseum in the lobby, where the training field used to be:
+	-- built like a sand castle - a round crenellated wall on a sandy mound,
+	-- four bucket-shaped towers with little flags, and the stands and sand
+	-- floor inside. The gate (below) is set into its north side.
+	local function miniColosseum(f)
+		local C = Config.Colosseum
+		local c = C.LobbyModel
+		local R = 27
+		local rng = Random.new(11)
+		-- the sandy mound it sits on
+		cylinder(f, "Mound", 1, R * 2 + 8, CFrame.new(c.X, 0.5, c.Z), SAND_LIGHT, Mat.Sand)
+		cylinder(f, "ArenaSand", 0.3, R * 2 - 12, CFrame.new(c.X, 1.1, c.Z), RGB(228, 166, 114), Mat.Sand)
+		local N = 28
+		local arc = math.pi * 2 / N
+		for i = 0, N - 1 do
+			local a = (i + 0.5) * arc
+			local dir = V3(math.sin(a), 0, math.cos(a))
+			local function at(r, y)
+				return CFrame.lookAt(c + dir * r + V3(0, y, 0), c + V3(0, y, 0))
+			end
+			-- (left open where the gate stands, on the north side)
+			local wallPos = c + dir * R
+			local gateGap = dir.Z < 0 and math.abs(wallPos.X - C.GatePosition.X) < 12
+			if not gateGap then
+				local shade = (i % 2 == 0) and SAND_STONE or RGB(222, 158, 106)
+				part(f, "SandWall", V3(arc * R + 0.5, 13, 3.2), at(R, 7.5), shade, Mat.Sand)
+				-- a lip where the bucket was patted flat, then battlements
+				part(f, "SandLip", V3(arc * R + 0.7, 0.8, 3.8), at(R, 13.4), SAND_LIGHT, Mat.Sand)
+				if i % 2 == 0 then
+					part(f, "SandMerlon", V3(arc * R * 0.55, 2, 3.2), at(R, 14.8), shade, Mat.Sand)
+				end
+				-- arches round the outside, two storeys (dark blocks)
+				part(f, "Arch", V3(2, 3.2, 0.3), at(R + 1.62, 4.2), SAND_DARK, Mat.Sand, { CanCollide = false })
+				part(f, "ArchHigh", V3(2, 2.6, 0.3), at(R + 1.62, 9.6), SAND_DARK, Mat.Sand, { CanCollide = false })
+			end
+			-- the stands inside, with little spectators
+			for k = 1, 3 do
+				local r = R - 1.6 - k * 2.4
+				local h = 1 + (4 - k) * 2.2
+				part(f, "MiniStand", V3(arc * r + 0.4, h, 2.4), at(r, h / 2 + 1), (k % 2 == 0) and SAND_DARK or RGB(200, 140, 96), Mat.Sand)
+				if rng:NextNumber() < 0.6 then
+					local col = ({ RGB(228, 59, 68), RGB(254, 174, 52), RGB(99, 199, 77), RGB(0, 153, 219), RGB(255, 255, 255) })[rng:NextInteger(1, 5)]
+					part(f, "MiniFan", V3(0.9, 1.2, 0.7), at(r, h + 1.6), col, Mat.SmoothPlastic, { CanCollide = false })
+				end
+			end
+		end
+		-- four bucket towers, with flags
+		for k = 0, 3 do
+			local a = math.rad(45 + k * 90)
+			local p = c + V3(math.sin(a), 0, math.cos(a)) * R
+			part(f, "Bucket", V3(8, 18, 8), CFrame.new(p.X, 10, p.Z), SAND_STONE, Mat.Sand)
+			part(f, "BucketLip", V3(9, 1, 9), CFrame.new(p.X, 19.5, p.Z), SAND_LIGHT, Mat.Sand)
+			for _, d in ipairs({ { -3.4, -3.4 }, { 3.4, -3.4 }, { -3.4, 3.4 }, { 3.4, 3.4 } }) do
+				part(f, "BucketMerlon", V3(2, 2, 2), CFrame.new(p.X + d[1], 21, p.Z + d[2]), SAND_STONE, Mat.Sand)
+			end
+			part(f, "Window", V3(8.2, 2.4, 1.4), CFrame.new(p.X, 12, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
+			part(f, "Window", V3(1.4, 2.4, 8.2), CFrame.new(p.X, 12, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
+			part(f, "FlagPole", V3(0.4, 6, 0.4), CFrame.new(p.X, 23, p.Z), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
+			part(f, "Flag", V3(0.2, 2, 3), CFrame.new(p.X, 25, p.Z + 1.6), BANNER_RED, Mat.Fabric, { CanCollide = false })
+		end
+		-- sea shells pressed into the mound, like a real sand castle
+		for k = 1, 10 do
+			local a = rng:NextNumber() * math.pi * 2
+			local p = c + V3(math.sin(a), 0, math.cos(a)) * (R + 2.5)
+			local col = ({ RGB(246, 117, 122), RGB(255, 255, 255), RGB(254, 231, 97) })[rng:NextInteger(1, 3)]
+			part(f, "Shell", V3(1.2, 0.3, 1), CFrame.new(p.X, 1.1, p.Z) * CFrame.Angles(0, a, 0), col, Mat.SmoothPlastic, { CanCollide = false })
+		end
+	end
+
 	local function buildColosseumGate(parent)
 		local f = folder(parent, "ColosseumGate")
 		local C = Config.Colosseum
@@ -5766,6 +5829,8 @@ local Extras = (function()
 		-- where you come back out: in front of the gate, facing away from it
 		local back = anchorPart(f, "ColosseumReturn", O * CFrame.new(0, 3, 9))
 		CollectionService:AddTag(back, "ColosseumReturn")
+
+		miniColosseum(f)
 
 		-- the dummy template ColosseumService copies
 		local old = ServerStorage:FindFirstChild("ColosseumDummy")
@@ -5929,7 +5994,6 @@ function LobbyBuilder.Build()
 		{ "Upgrade Shop", buildUpgradeShop },
 		{ "Armory (blacksmith)", buildCraftBench },
 		-- (the Prestige Shrine is gone: the plaza is open paving now)
-		{ "Training Yard", buildYard },
 		{ "Colosseum gate", Extras.gate },
 		{ "Colosseum", Extras.colosseum },
 		{ "Quest Board", Extras.questBoard },
