@@ -3576,7 +3576,20 @@ local function buildFountain(parent)
 	cylinder(m, "Bowl", 0.9 * S, 3.4 * S, bowlCF, STONE, Mat.Slate, nc)
 	cylinder(m, "BowlFoot", 0.5 * S, 1.6 * S, bowlCF * CFrame.new(0, -0.6 * S, 0), STONE2, Mat.Slate, nc)
 	cylinder(m, "BowlWater", 0.2, 2.8 * S, bowlCF * CFrame.new(0, 0.4 * S, 0), WATER_C, Mat.SmoothPlastic, nc)
-	fx(part(m, "Bubble", V3(0.8, 1, 0.8), bowlCF * CFrame.new(0, 0.9 * S, 0), RIPPLE, Mat.SmoothPlastic, nc), { BobAmp = 0.3, BobSpeed = 5 })
+	-- little ripples drifting out across the bowl, like the basin's
+	local bowlTop = (bowlCF * CFrame.new(0, 0.4 * S, 0)).Position + V3(0, 0.12, 0)
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		local dir = V3(math.cos(a), 0, math.sin(a))
+		local p = bowlTop + dir * 0.3
+		local rip = part(m, "BowlRipple", V3(0.6, 0.08, 0.2), CFrame.lookAt(p, p + V3(-dir.Z, 0, dir.X)), RIPPLE, Mat.SmoothPlastic, nc)
+		rip:SetAttribute("WaveMode", "drift")
+		rip:SetAttribute("WaveDir", dir)
+		rip:SetAttribute("WaveAmp", 1.3 * S)
+		rip:SetAttribute("WaveSpeed", 0.5)
+		rip:SetAttribute("Phase", (i % 2) * 180 + i * 23)
+		CollectionService:AddTag(rip, "Wave")
+	end
 	local spray = anchorPart(m, "Spray", bowlCF * CFrame.new(0, 0.8 * S, 0))
 	spray.Size = V3(1, 0.2, 1)
 	local e = Instance.new("ParticleEmitter")
