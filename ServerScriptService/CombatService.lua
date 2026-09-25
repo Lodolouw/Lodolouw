@@ -120,7 +120,11 @@ function CombatService.DamageAgainst(player, target)
 	else
 		base = CombatService.PunchDamage(player, floor)
 	end
-	-- your gear: more damage, and a chance of a critical hit
+	return CombatService.WithGear(player, base)
+end
+
+-- Your gear on top of a punch: more damage, and a chance of a critical hit
+function CombatService.WithGear(player, base)
 	local gear = gearOf(player)
 	local dmg = base * (1 + gear.Damage / 100)
 	local crit = critRng:NextNumber() * 100 < gear.Crit
@@ -807,6 +811,152 @@ local function onAction(player, action, arg, swing)
 end
 
 ----------------------------------------------------------------------
+-- Sparring dummies (in the lobby)
+----------------------------------------------------------------------
+-- Click a straw dummy to punch it. You hit it exactly as hard as you'd hit
+-- the boss of the next Spire floor you haven't beaten (gear and crits
+-- included), so the number means something: the sign over it says how many
+-- of those punches that boss would take. It can't be killed; it just rocks
+-- back on its stand.
+local SP = Config.Spar or {}
+local sparLast = {} -- [player] = os.clock() of their last punch
+local sparRocking = {} -- [model] = true while it's rocking
+
+-- the floor you're working towards: one past the highest you've beaten
+local function nextFloor(player)
+	local d = PlayerService and PlayerService.GetData(player)
+	local best = 0
+	for key, n in pairs((d and d.Cleared) or {}) do
+		local id = tonumber(key)
+		if id and n > 0 and id > best then
+			best = id
+		end
+	end
+	local floors = Config.Spire.Floors
+	return floors[math.min(best + 1, #floors)]
+end
+
+-- rocks back from the punch, then wobbles to a stop (a little spring)
+local function rock(model, away)
+	local origin = model:GetAttribute("SparOrigin")
+	if not origin then
+		origin = model:GetPivot()
+		model:SetAttribute("SparOrigin", origin)
+	end
+	local foot = origin.Position
+	local axis = Vector3.new(0, 1, 0):Cross(away)
+	if axis.Magnitude < 0.01 then
+		return
+	end
+	axis = axis.Unit
+	-- a fresh punch while it's still rocking just kicks it again
+	model:SetAttribute("SparKick", (model:GetAttribute("SparKick") or 0) + 1)
+	if sparRocking[model] then
+		model:SetAttribute("SparAxis", axis)
+		return
+	end
+	sparRocking[model] = true
+	model:SetAttribute("SparAxis", axis)
+	task.spawn(function()
+		local angle, speed = 0, 0
+		local kicks = 0
+		local t0 = os.clock()
+		while model.Parent do
+			local dt = task.wait(1 / 30)
+			local k = model:GetAttribute("SparKick") or 0
+			if k ~= kicks then
+				kicks = k
+				speed = speed + 2.4 -- (radians a second, away from the fist)
+				t0 = os.clock()
+			end
+			-- spring back upright, losing a little each swing
+			speed = speed + (-angle * 90 - speed * 7) * dt
+			angle = math.clamp(angle + speed * dt, -0.35, 0.35)
+			local ax = model:GetAttribute("SparAxis") or axis
+			model:PivotTo(CFrame.new(foot) * CFrame.fromAxisAngle(ax, angle) * CFrame.new(-foot) * origin)
+			if os.clock() - t0 > 0.4 and math.abs(angle) < 0.004 and math.abs(speed) < 0.05 then
+				break
+			end
+		end
+		if model.Parent then
+			model:PivotTo(origin)
+		end
+		sparRocking[model] = nil
+	end)
+end
+
+local function sparHit(player, model)
+	local now = os.clock()
+	if now - (sparLast[player] or 0) < (SP.HitInterval or 0.3) then
+		return
+	end
+	if fighters[player] then
+		return -- (you're in an arena)
+	end
+	local _, root, char = charParts(player)
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then
+		return
+	end
+	local origin = model:GetAttribute("SparOrigin") or model:GetPivot()
+	local chest = origin.Position + Vector3.new(0, 5.4, 0)
+	local toward = chest - root.Position
+	local flat = Vector3.new(toward.X, 0, toward.Z)
+	if flat.Magnitude > (SP.Range or 16) or flat.Magnitude < 0.01 then
+		return
+	end
+	sparLast[player] = now
+
+	-- (your screen turns you to face it and plays the punch: LobbyActivities)
+	local floor = nextFloor(player)
+	local dmg, crit = CombatService.WithGear(player, CombatService.PunchDamage(player, floor))
+	local weight = crit and 3 or 1
+	send(player, "Hit", chest, dmg, false, weight) -- (the number, the thump and the camera, on your screen)
+	impact(chest - flat.Unit * 1.6, flat, weight)
+	fistStreak(char, flat, weight)
+	rock(model, flat.Unit)
+
+	-- the sign: who hit it, and how many of those the next boss would take
+	local sign = model:FindFirstChild("SparInfo", true)
+	if sign then
+		local boss = floor and Config.Bosses and Config.Bosses[floor.id]
+		local hp = (boss and boss.HealthPunches or 30) * math.max(1, Config.powerForLevel(floor and floor.level or 1))
+		local hits = math.max(1, math.ceil(hp / dmg))
+		local title = sign:FindFirstChild("Title")
+		local line = sign:FindFirstChild("Line")
+		if title then
+			title.Text = player.DisplayName .. ": " .. Config.format(dmg) .. (crit and " CRIT!" or "")
+		end
+		if line then
+			local short = (boss and boss.Short) or (floor and floor.boss) or "the boss"
+			line.Text = short .. " in ~" .. Config.format(hits) .. (hits == 1 and " hit" or " hits")
+		end
+	end
+
+	if PlayerService and PlayerService.QuestProgress then
+		PlayerService.QuestProgress(player, "spar", 1)
+	end
+end
+
+local function addSparDummy(model)
+	if not model:IsA("Model") then
+		return
+	end
+	local click = model:FindFirstChildOfClass("ClickDetector")
+	if not click then
+		click = Instance.new("ClickDetector")
+		click.MaxActivationDistance = 18
+		click.Parent = model
+	end
+	click.MouseClick:Connect(function(player)
+		local ok, err = pcall(sparHit, player, model)
+		if not ok then
+			warn("[CombatService] sparring hit failed: " .. tostring(err))
+		end
+	end)
+end
+
+----------------------------------------------------------------------
 -- Start
 ----------------------------------------------------------------------
 function CombatService.Start(playerService)
@@ -845,6 +995,12 @@ function CombatService.Start(playerService)
 	CollectionService:GetInstanceRemovedSignal("CombatTarget"):Connect(function(m)
 		targets[m] = nil
 	end)
+
+	-- the sparring dummies in the lobby
+	for _, m in ipairs(CollectionService:GetTagged("SparDummy")) do
+		addSparDummy(m)
+	end
+	CollectionService:GetInstanceAddedSignal("SparDummy"):Connect(addSparDummy)
 
 	-- dying in an arena: show YOU DIED, and have SpireService put you back at the doors
 	local function hookDeath(player, char)
@@ -891,6 +1047,7 @@ function CombatService.Start(playerService)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		fighters[player] = nil
+		sparLast[player] = nil
 	end)
 
 	-- stamina regen, and keep each fighter's screen up to date (~8 times a second)

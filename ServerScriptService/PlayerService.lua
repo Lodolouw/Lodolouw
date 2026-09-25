@@ -5,6 +5,7 @@
 	  * per-player data (Power = XP, Coins, Loot, Upgrades, Talismans, Stats, Gear) + DataStore saving
 	  * training on the dummy pads (manual clicks + auto-train)
 	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, stat points, gear
+	  * daily quests (the Quest Board)
 	  * remotes for the HUD
 
 	Hooks for your future arena scripts:
@@ -13,6 +14,7 @@
 	    PlayerService.AddCoins(player, 50)
 	    PlayerService.AddPower(player, 10)
 	    PlayerService.GetData(player)               --> the live data table (or nil)
+	    PlayerService.QuestProgress(player, "spar", 1) --> counts towards today's quests of that kind
 ]]
 
 local Players = game:GetService("Players")
@@ -74,6 +76,9 @@ local function defaultData()
 		NextId = 1, -- (each item gets a new, never-reused id)
 		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
 		Stats = {}, -- stat points spent: [stat] = points (see Config.StatPoints)
+		-- today's quests (see Config.Quests): which day they're for, and for
+		-- each one how far along you are and whether you've handed it in
+		Quests = { day = 0, list = {}, bonus = false },
 	}
 end
 
@@ -163,6 +168,19 @@ local function mergeSaved(saved)
 			local n = saved.Chests[tostring(floorId)]
 			if type(n) == "number" and n > 0 then
 				d.Chests[tostring(floorId)] = math.floor(n)
+			end
+		end
+	end
+	-- quests: only real ones, and only kept if they're still today's
+	-- (anything older is thrown away and today's are dealt out fresh)
+	if type(saved.Quests) == "table" and saved.Quests.day == Config.questDay() and type(saved.Quests.list) == "table" then
+		d.Quests.day = saved.Quests.day
+		d.Quests.bonus = saved.Quests.bonus == true
+		for _, q in ipairs(saved.Quests.list) do
+			local def = type(q) == "table" and Config.QuestById[q.id]
+			if def then
+				local n = type(q.n) == "number" and math.clamp(math.floor(q.n), 0, def.goal) or 0
+				table.insert(d.Quests.list, { id = def.id, n = n, claimed = q.claimed == true })
 			end
 		end
 	end
@@ -341,6 +359,47 @@ local function nextCombo(player, zoneIndex, now)
 end
 
 ----------------------------------------------------------------------
+-- Daily quests
+----------------------------------------------------------------------
+-- Deals out today's quests if the ones you have are from another day.
+-- Returns true if it did (so the screen needs the new ones).
+local function ensureQuests(d)
+	local today = Config.questDay()
+	if d.Quests.day == today and #d.Quests.list > 0 then
+		return false
+	end
+	d.Quests = { day = today, list = {}, bonus = false }
+	for _, id in ipairs(Config.questsForDay(today)) do
+		table.insert(d.Quests.list, { id = id, n = 0, claimed = false })
+	end
+	return true
+end
+
+-- Something happened that counts towards quests of this kind
+-- ("train", "combo", "spar", "boss", "sell", "chest").
+function PlayerService.QuestProgress(player, kind, amount)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	local d = profile.data
+	local changed = ensureQuests(d)
+	for _, q in ipairs(d.Quests.list) do
+		local def = Config.QuestById[q.id]
+		if def and def.kind == kind and not q.claimed and q.n < def.goal then
+			q.n = math.min(def.goal, q.n + (amount or 1))
+			changed = true
+			if q.n >= def.goal then
+				notify(player, "Quest done: " .. Config.questText(def) .. "! Hand it in at the Quest Board.", "ok")
+			end
+		end
+	end
+	if changed then
+		markDirty(player)
+	end
+end
+
+----------------------------------------------------------------------
 -- Public API (for your arena scripts)
 ----------------------------------------------------------------------
 function PlayerService.GetData(player)
@@ -385,6 +444,7 @@ function PlayerService.RecordBossKill(player, floorId)
 	d.Cleared[key] = before + 1
 	player:SetAttribute("SpireCleared", highestCleared(d))
 	markDirty(player)
+	PlayerService.QuestProgress(player, "boss", 1)
 	return before == 0
 end
 
@@ -439,6 +499,7 @@ handlers.OpenChest = function(player, d, floorId)
 	local rec = { id = def.id, r = Items.rollStats(def, chestRng), t = os.time() }
 	d.Items[uid] = rec
 	markDirty(player)
+	PlayerService.QuestProgress(player, "chest", 1)
 	-- the whole server hears about the big ones
 	local rarity = Items.RarityById[def.rarity]
 	if rarity.rank >= Items.RarityById.Legendary.rank then
@@ -562,6 +623,7 @@ handlers.Sell = function(player, d, arg)
 	local coins = math.floor(total * s.coinMult)
 	d.Coins = d.Coins + coins
 	markDirty(player)
+	PlayerService.QuestProgress(player, "sell", items)
 	return true, "Sold " .. items .. (items == 1 and " item" or " items") .. " for " .. Config.format(coins) .. " coins!"
 end
 
@@ -652,6 +714,48 @@ handlers.ResetStats = function(player, d)
 	return true, "Stat points refunded."
 end
 
+-- Hand in a finished quest at the Quest Board (arg = its place on the board, 1-3)
+handlers.ClaimQuest = function(player, d, index)
+	if not nearStation(player, "Quests") then
+		return false, "Walk up to the Quest Board first!"
+	end
+	if ensureQuests(d) then
+		markDirty(player)
+		return false, "A new day - new quests!"
+	end
+	local q = type(index) == "number" and d.Quests.list[index]
+	local def = q and Config.QuestById[q.id]
+	if not def then
+		return false, "There's no such quest."
+	end
+	if q.claimed then
+		return false, "You've already handed that one in."
+	end
+	if q.n < def.goal then
+		return false, "Not finished yet!"
+	end
+	q.claimed = true
+	d.Coins = d.Coins + def.reward
+	local msg = "+" .. Config.format(def.reward) .. " coins!"
+	-- all of today's handed in: a treasure chest from the hardest boss you've beaten
+	local all = true
+	for _, other in ipairs(d.Quests.list) do
+		if not other.claimed then
+			all = false
+		end
+	end
+	if all and not d.Quests.bonus and Config.Quests.BonusChest then
+		d.Quests.bonus = true
+		local floorId = math.max(1, highestCleared(d))
+		if Items.ByFloor[floorId] then
+			d.Chests[tostring(floorId)] = (d.Chests[tostring(floorId)] or 0) + 1
+			msg = msg .. " All done today: a bonus treasure chest!"
+		end
+	end
+	markDirty(player)
+	return true, msg
+end
+
 handlers.SetAuto = function(player, d, on)
 	d.Auto = (on == true)
 	markDirty(player)
@@ -723,6 +827,7 @@ local function onPlayerAdded(player)
 
 	local profile = { data = mergeSaved(saved), canSave = ok }
 	profiles[player] = profile
+	ensureQuests(profile.data)
 	player:SetAttribute("SpireCleared", highestCleared(profile.data)) -- the Spire menu shows it
 
 	local ls = Instance.new("Folder")
@@ -814,7 +919,12 @@ local function buildRemotes()
 			return -- pad still locked
 		end
 		lastHit[player] = now
-		giveTrainingPower(player, zi, nextCombo(player, zi, now))
+		local combo = nextCombo(player, zi, now)
+		giveTrainingPower(player, zi, combo)
+		PlayerService.QuestProgress(player, "train", 1)
+		if combo == 100 then
+			PlayerService.QuestProgress(player, "combo", 1)
+		end
 	end)
 
 	remotes.Action.OnServerInvoke = function(player, name, arg)
@@ -909,6 +1019,19 @@ function PlayerService.Start()
 					if type(zi) == "number" and zi > 0 and profile.data.Power >= Config.Zones[zi].req then
 						giveTrainingPower(player, zi)
 					end
+				end
+			end
+		end
+	end)
+
+	-- New quests at midnight (UTC) for anyone still playing
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			for player, profile in pairs(profiles) do
+				if ensureQuests(profile.data) then
+					markDirty(player)
+					notify(player, "New daily quests on the Quest Board!", "ok")
 				end
 			end
 		end

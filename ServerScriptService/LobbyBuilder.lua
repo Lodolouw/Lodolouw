@@ -522,7 +522,7 @@ end
 
 local TREES = {
 	{ 60, -100, 1.1 }, { 88, -92, 0.9 }, { -52, -30, 1 }, { -100, -30, 1 },
-	{ -104, 20, 1 }, { -40, 30, 0.9 }, { 98, 60, 1 }, { 50, 164, 0.9 },
+	{ -104, 20, 1 }, { 98, 60, 1 }, { 50, 164, 0.9 },
 }
 
 local LAMPS = {
@@ -996,14 +996,14 @@ end
 
 local NEW_TREES = {
 	{ pineTree, 60, -88, 1 }, { roundTree, 76, -104, 0.9 }, { blossomTree, 96, -76, 0.9 },
-	{ pineTree, -60, 24, 1 }, { roundTree, -86, 30, 0.9 }, { blossomTree, -30, -40, 0.9 },
+	{ roundTree, -100, 36, 0.9 }, { blossomTree, -30, -40, 0.9 },
 	{ blossomTree, 28, -40, 0.9 }, { pineTree, 90, 22, 0.9 }, { roundTree, 92, 60, 0.9 },
 	{ pineTree, 96, 150, 0.9 }, { blossomTree, 62, 160, 0.9 }, { pineTree, -30, 164, 0.8 },
 	{ roundTree, -100, 152, 0.9 },
 }
 
 local ROCKS = {
-	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -64, 40, 0.8 },
+	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -94, 46, 0.8 },
 	{ 90, 150, 0.9 }, { -104, 160, 0.9 }, { 20, 160, 0.8 },
 }
 
@@ -1015,7 +1015,7 @@ local BUSHES = {
 
 local FLOWER_PATCHES = {
 	{ -40, 18 }, { 40, 24 }, { -28, -14 }, { 28, -14 }, { -95, 12 },
-	{ 12, 150 }, { 60, 150 }, { 80, 150 }, { 50, 160 }, { -80, 40 },
+	{ 12, 150 }, { 60, 150 }, { 80, 150 }, { 50, 160 }, { -96, 26 },
 }
 
 local function buildDecor(parent)
@@ -5639,6 +5639,150 @@ end
 ----------------------------------------------------------------------
 -- Public
 ----------------------------------------------------------------------
+----------------------------------------------------------------------
+-- Sparring dummies and the Quest Board
+----------------------------------------------------------------------
+-- Straw sparring dummies on a patch of trodden dirt between the fountain
+-- and the training field. They're the same shape as the dummies on the
+-- pads (post, fat body, head, arms, bullseye), but plain straw and wood.
+-- Click one to punch it: CombatService works out how hard you hit (the
+-- same way it does in the Spire) and shows the number, so you can tell
+-- if you're strong enough for the next boss.
+local STRAW = RGB(228, 166, 114) -- (Endesga warm straw)
+local STRAW_DARK = RGB(184, 111, 80)
+local ROPE = RGB(116, 63, 57)
+local SPAR_WOOD = RGB(158, 104, 66)
+
+local function sparDummy(parent, index, pos)
+	local m = Instance.new("Model")
+	m.Name = "SparDummy" .. index
+	m.Parent = parent
+	-- faces north, towards the road the players come along
+	local O = CFrame.new(pos) * CFrame.Angles(0, math.pi, 0)
+	part(m, "Stand", V3(4, 0.6, 4), O * CFrame.new(0, 0.3, 0), RGB(96, 64, 48), Mat.Wood)
+	part(m, "Post", V3(1.2, 7, 1.2), O * CFrame.new(0, 3.5, 0), SPAR_WOOD, Mat.Wood)
+	local torso = part(m, "Torso", V3(4, 4.4, 2.6), O * CFrame.new(0, 5.4, 0), STRAW, Mat.Fabric)
+	part(m, "RopeTop", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 6.9, 0), ROPE, Mat.Fabric, { CanCollide = false })
+	part(m, "RopeLow", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 3.9, 0), ROPE, Mat.Fabric, { CanCollide = false })
+	part(m, "Arms", V3(8.4, 1, 1), O * CFrame.new(0, 6.4, -0.1), SPAR_WOOD, Mat.Wood)
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "Mitt", V3(1.4, 1.4, 1.4), O * CFrame.new(sx * 4.4, 6.4, -0.1), STRAW_DARK, Mat.Fabric)
+	end
+	part(m, "Head", V3(2.6, 2.6, 2.6), O * CFrame.new(0, 9.1, 0), STRAW, Mat.Fabric)
+	-- straw sticking out of the top of its head
+	for k = -1, 1 do
+		part(m, "Tuft", V3(0.4, 0.8, 0.4), O * CFrame.new(k * 0.7, 10.7, k * 0.3), STRAW_DARK, Mat.Fabric, { CanCollide = false })
+	end
+	-- button eyes and a stitched mouth
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "Eye", V3(0.5, 0.5, 0.2), O * CFrame.new(sx * 0.6, 9.4, 1.35), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
+	end
+	part(m, "Stitch", V3(1.2, 0.2, 0.2), O * CFrame.new(0, 8.5, 1.35), ROPE, Mat.SmoothPlastic, { CanCollide = false })
+	-- a painted target on its chest (square rings: it's 8-bit)
+	part(m, "Target", V3(2.2, 2.2, 0.1), O * CFrame.new(0, 5.4, 1.33), RGB(228, 59, 68), Mat.SmoothPlastic, { CanCollide = false })
+	part(m, "TargetMid", V3(1.4, 1.4, 0.1), O * CFrame.new(0, 5.4, 1.38), RGB(255, 255, 255), Mat.SmoothPlastic, { CanCollide = false })
+	part(m, "TargetCore", V3(0.6, 0.6, 0.1), O * CFrame.new(0, 5.4, 1.43), RGB(228, 59, 68), Mat.SmoothPlastic, { CanCollide = false })
+
+	-- it rocks from its feet when hit
+	m.WorldPivot = O
+	m.PrimaryPart = torso
+	m:SetAttribute("HitRadius", 2.4)
+
+	local click = Instance.new("ClickDetector")
+	click.MaxActivationDistance = 18
+	click.Parent = m
+
+	-- who hit it last, and how hard (CombatService fills this in)
+	local anchor = anchorPart(m, "InfoAnchor", O * CFrame.new(0, 13.2, 0))
+	local bb = billboard(anchor, "SparInfo", UDim2.fromScale(12, 3), 60)
+	local box = Instance.new("Frame")
+	box.Name = "Box"
+	box.BackgroundColor3 = RGB(12, 10, 20)
+	box.BackgroundTransparency = 0.15
+	box.Size = UDim2.fromScale(1, 1)
+	box.ZIndex = 0
+	box.Parent = bb
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 3
+	edge.Parent = box
+	billLabel(bb, "Title", "SPARRING DUMMY", RGB(254, 174, 52), UDim2.fromScale(0.05, 0.06), UDim2.fromScale(0.9, 0.42))
+	billLabel(bb, "Line", "Click to punch it!", RGB(255, 255, 255), UDim2.fromScale(0.05, 0.52), UDim2.fromScale(0.9, 0.4))
+	CollectionService:AddTag(m, "SparDummy")
+	return m
+end
+
+local function buildSparring(parent)
+	local f = folder(parent, "Sparring")
+	local spots = Config.Spar and Config.Spar.Dummies or {}
+	if #spots == 0 then
+		return
+	end
+	-- trodden dirt under them, a little wider than the row
+	local x0, x1, z0, z1 = math.huge, -math.huge, math.huge, -math.huge
+	for _, p in ipairs(spots) do
+		x0, x1 = math.min(x0, p.X), math.max(x1, p.X)
+		z0, z1 = math.min(z0, p.Z), math.max(z1, p.Z)
+	end
+	x0, x1, z0, z1 = x0 - 9, x1 + 9, z0 - 7, z1 + 7
+	part(f, "SparDirt", V3(x1 - x0, 0.3, z1 - z0), CFrame.new((x0 + x1) / 2, 0.15, (z0 + z1) / 2), RGB(190, 128, 88), Mat.Ground)
+	-- stepping-stone blocks round the edge, so it doesn't look like a rug
+	for x = x0 + 1, x1 - 1, 3 do
+		for _, z in ipairs({ z0, z1 }) do
+			part(f, "SparEdge", V3(2, 0.35, 1.2), CFrame.new(x, 0.18, z), RGB(160, 104, 72), Mat.Ground, { CanCollide = false })
+		end
+	end
+	for i, p in ipairs(spots) do
+		sparDummy(f, i, p + V3(0, 0.3, 0))
+	end
+	-- a weapon rack at the end of the row: just for looks
+	local rx, rz = x0 + 2.5, (z0 + z1) / 2
+	part(f, "RackPost", V3(0.8, 5, 0.8), CFrame.new(rx, 2.8, rz - 2.5), SPAR_WOOD, Mat.Wood)
+	part(f, "RackPost", V3(0.8, 5, 0.8), CFrame.new(rx, 2.8, rz + 2.5), SPAR_WOOD, Mat.Wood)
+	part(f, "RackBar", V3(0.8, 0.6, 6.2), CFrame.new(rx, 4.6, rz), SPAR_WOOD, Mat.Wood)
+	for k = -1, 1 do
+		part(f, "RackSword", V3(0.3, 4.4, 0.7), CFrame.new(rx + 0.6, 3.2, rz + k * 1.6), RGB(192, 203, 220), Mat.Metal, { CanCollide = false })
+		part(f, "RackHilt", V3(0.5, 0.4, 1.4), CFrame.new(rx + 0.6, 4.9, rz + k * 1.6), RGB(116, 63, 57), Mat.Wood, { CanCollide = false })
+	end
+end
+
+-- The Quest Board: a wooden notice board with a little roof, by the road
+-- between the plaza and the training field. The notes on it are drawn by
+-- each player's own screen (QuestBoard client script), because everyone
+-- has their own quests. A gold "!" hovers over it when you have a reward
+-- waiting.
+local function buildQuestBoard(parent)
+	local f = folder(parent, "QuestBoard")
+	local O = CFrame.new(Config.Stations.Quests) * CFrame.Angles(0, math.rad(Config.StationTurn.Quests or 90), 0)
+	local wood, dark = RGB(158, 104, 66), RGB(96, 64, 48)
+	for _, sx in ipairs({ -1, 1 }) do
+		part(f, "Leg", V3(1, 11, 1), O * CFrame.new(sx * 5.6, 5.5, 0), dark, Mat.Wood)
+	end
+	part(f, "Frame", V3(11.6, 7.2, 1), O * CFrame.new(0, 6.4, 0), dark, Mat.Wood)
+	-- the face the notes are drawn on (its front is local +Z)
+	local face = part(f, "QuestFace", V3(10.6, 6.2, 0.4), O * CFrame.new(0, 6.4, 0.45), RGB(190, 128, 88), Mat.WoodPlanks)
+	CollectionService:AddTag(face, "QuestFace")
+	-- paper notes, in case the notes can't be drawn (they're covered when they are)
+	for k = -1, 1 do
+		part(f, "Note", V3(2.6, 3.2, 0.1), O * CFrame.new(k * 3.4, 6.6, 0.7) * CFrame.Angles(0, 0, math.rad(k * 4)), RGB(234, 212, 170), Mat.SmoothPlastic, { CanCollide = false })
+	end
+	-- a little pitched roof of stepped planks
+	for k = 0, 2 do
+		part(f, "Roof", V3(13.4 - k * 0.2, 0.5, 3.4 - k * 1.1), O * CFrame.new(0, 10.3 + k * 0.5, 0), (k % 2 == 0) and ROOF_RED or RGB(158, 40, 53), Mat.WoodPlanks)
+	end
+	part(f, "Shelf", V3(10.6, 0.4, 1.2), O * CFrame.new(0, 2.8, 0.6), wood, Mat.Wood)
+	titleSign(f, O * CFrame.new(0, 14.2, 0), "QUEST BOARD", nil, RGB(254, 174, 52), 300, 70)
+	-- the "!" (8-bit: a bar and a dot)
+	local mark = Instance.new("Model")
+	mark.Name = "QuestMark"
+	mark.Parent = f
+	-- (hidden until the QuestBoard script says you have something to hand in; it bobs it too)
+	part(mark, "Bar", V3(1, 2.6, 1), O * CFrame.new(0, 19.2, 0), RGB(254, 231, 97), Mat.Neon, { CanCollide = false })
+	part(mark, "Dot", V3(1, 1, 1), O * CFrame.new(0, 17.2, 0), RGB(254, 231, 97), Mat.Neon, { CanCollide = false })
+	mark.WorldPivot = O * CFrame.new(0, 18, 0)
+	CollectionService:AddTag(mark, "QuestMark")
+end
+
 function LobbyBuilder.Build()
 	setupLighting()
 
@@ -5668,6 +5812,8 @@ function LobbyBuilder.Build()
 		{ "Armory (blacksmith)", buildCraftBench },
 		-- (the Prestige Shrine is gone: the plaza is open paving now)
 		{ "Training Yard", buildYard },
+		{ "Sparring dummies", buildSparring },
+		{ "Quest Board", buildQuestBoard },
 		{ "The Spire", buildSpire },
 		{ "Castle gate", buildCastleGate },
 		{ "Castle (keep, south gate, moat, farm)", buildCastle },

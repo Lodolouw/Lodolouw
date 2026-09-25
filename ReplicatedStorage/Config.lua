@@ -25,12 +25,81 @@ Config.Stations = {
 	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle
 	Craft = Vector3.new(72, 0, -40), -- the forge, in the Gear Hall on the east side
 	Prestige = Vector3.new(0, 0, 0),
+	Quests = Vector3.new(-17, 0, 30), -- the Quest Board, by the south road between the plaza and the training field
 }
 -- which way each building turns (degrees round the vertical)
 Config.StationTurn = {
 	Sell = -90, -- faces west, towards the path from the plaza
 	Upgrades = 90, -- faces east, towards the stairs and the pier
+	Quests = 90, -- faces east, onto the road
 }
+
+----------------------------------------------------------------------
+-- Sparring dummies (between the fountain and the training field)
+----------------------------------------------------------------------
+-- Click one to punch it. You hit it exactly as hard as you'd hit the boss
+-- of the next Spire floor you haven't beaten, so the number tells you if
+-- you're ready - and roughly how many punches that boss will take.
+Config.Spar = {
+	Dummies = { Vector3.new(-50, 0, 33), Vector3.new(-62, 0, 33), Vector3.new(-74, 0, 33) },
+	HitInterval = 0.3, -- seconds between punches (clicking faster does nothing)
+	Range = 16, -- how close you have to stand
+}
+
+----------------------------------------------------------------------
+-- Daily quests (the Quest Board)
+----------------------------------------------------------------------
+-- Every day (midnight UTC) everyone gets the same PerDay quests, picked
+-- from the pool below - never two of the same kind on one day. Finish one,
+-- walk to the Quest Board and hand it in for the coins. Hand in all of the
+-- day's quests for a bonus treasure chest from the hardest boss you've beaten.
+--   kind: train = hits on a training pad, combo = reach a 100-hit combo,
+--         spar = punches on a sparring dummy, boss = Spire bosses beaten,
+--         sell = items sold, chest = treasure chests opened
+Config.Quests = {
+	PerDay = 3,
+	BonusChest = true,
+	Pool = {
+		{ id = "Train300", kind = "train", goal = 300, reward = 150, text = "Train on a pad %d times" },
+		{ id = "Train1000", kind = "train", goal = 1000, reward = 400, text = "Train on a pad %d times" },
+		{ id = "Combo", kind = "combo", goal = 1, reward = 250, text = "Hit a 100-punch training combo" },
+		{ id = "Spar50", kind = "spar", goal = 50, reward = 100, text = "Punch a sparring dummy %d times" },
+		{ id = "Spar150", kind = "spar", goal = 150, reward = 250, text = "Punch a sparring dummy %d times" },
+		{ id = "Boss1", kind = "boss", goal = 1, reward = 300, text = "Defeat a Spire boss" },
+		{ id = "Boss3", kind = "boss", goal = 3, reward = 800, text = "Defeat %d Spire bosses" },
+		{ id = "Sell25", kind = "sell", goal = 25, reward = 150, text = "Sell %d items at the shop" },
+		{ id = "Chest2", kind = "chest", goal = 2, reward = 200, text = "Open %d treasure chests" },
+	},
+}
+Config.QuestById = {}
+for _, q in ipairs(Config.Quests.Pool) do
+	Config.QuestById[q.id] = q
+end
+
+-- which day it is for quests (changes at midnight UTC)
+function Config.questDay(t)
+	return math.floor((t or os.time()) / 86400)
+end
+
+-- the quests for a given day: the same for everyone, never two of one kind
+function Config.questsForDay(day)
+	local rng = Random.new(day * 7919 + 17)
+	local pool = table.clone(Config.Quests.Pool)
+	local picked, kinds = {}, {}
+	while #picked < Config.Quests.PerDay and #pool > 0 do
+		local q = table.remove(pool, rng:NextInteger(1, #pool))
+		if not kinds[q.kind] then
+			kinds[q.kind] = true
+			table.insert(picked, q.id)
+		end
+	end
+	return picked
+end
+
+-- the line shown on the board
+function Config.questText(q)
+	return string.format(q.text, q.goal)
+end
 
 ----------------------------------------------------------------------
 -- Training yard (the "treadmill": practice dummies with multipliers)
