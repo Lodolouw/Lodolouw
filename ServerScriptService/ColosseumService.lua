@@ -243,12 +243,24 @@ local function brain(s, e)
 		end
 		local pos = feet(e.model).Position
 		local to = flat(root.Position - pos)
-		if to.Magnitude <= C.SlamRange then
+		-- too close to another dummy? hop apart first (they never stack up)
+		local push = Vector3.zero
+		for other in pairs(s.enemies) do
+			if other ~= e.model and other.Parent then
+				local d = flat(pos - feet(other).Position)
+				if d.Magnitude < 6 then
+					push += (d.Magnitude > 0.1 and d.Unit or Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit) * (6 - d.Magnitude)
+				end
+			end
+		end
+		if push.Magnitude > 0.5 then
+			hop(e, inArena(pos + push.Unit * math.max(4, push.Magnitude)), root.Position)
+		elseif to.Magnitude <= C.SlamRange then
 			slam(s, e)
 		else
 			-- hop towards its own spot round you (each dummy has a different
 			-- one), so they close in from all sides instead of piling up
-			local slot = root.Position + Vector3.new(math.cos(e.slot), 0, math.sin(e.slot)) * 5
+			local slot = root.Position + Vector3.new(math.cos(e.slot), 0, math.sin(e.slot)) * 6.5
 			local go = flat(slot - pos)
 			local dest = pos
 			if go.Magnitude > 0.5 then
