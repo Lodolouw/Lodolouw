@@ -49,12 +49,12 @@ Config.Colosseum = {
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 62, -- the sand floor
 	-- the mini colosseum in the lobby (where the training field was), and its little door
-	-- (it fills the corner between the west road and the south road, and its
-	-- bridge lands on the south road)
-	LobbyModel = Vector3.new(-60, 0, 59), -- its middle
+	-- (it sits beside the south road, and its bridge lands on the little
+	-- paved stub that leaves the road there)
+	LobbyModel = Vector3.new(-60, 0, 90), -- its middle
 	LobbyRadius = 42,
 	GateTurn = 90, -- the gate faces east, onto the south road
-	GatePosition = Vector3.new(-14.6, 0, 59), -- the door (you shrink into it here)
+	GatePosition = Vector3.new(-14.6, 0, 90), -- the door (you shrink into it here)
 	ShrinkTo = 0.3, -- how small you get going through the door (like a pipe)
 	ShrinkSteps = 8, -- in this many 8-bit steps
 	EnterRange = 20,
