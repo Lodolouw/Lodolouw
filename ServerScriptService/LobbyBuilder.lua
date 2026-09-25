@@ -595,7 +595,7 @@ local function buildGround(parent)
 	-- are joined into long pieces. Where paths meet there's no gap in the
 	-- paving, so no curb - every junction opens up by itself.
 	do
-		local NOCURB = { { 7, 88, 20, 104 } } -- (the farm path leaves the south road here: no rim)
+		local NOCURB = { { 7, 88, 20, 104 }, { -13, 54, -8, 64 } } -- (the farm path and the colosseum bridge leave the south road here: no rim)
 		local PLAZA_R = 23.2
 		local X0, X1, Z0, Z1 = -118, 118, -112, SOUTH_WALL - 1
 		-- (paved by a path: the plaza's round edge has its own smooth rim)
@@ -990,26 +990,26 @@ end
 
 local NEW_TREES = {
 	{ pineTree, 60, -88, 1 }, { roundTree, 76, -104, 0.9 }, { blossomTree, 96, -76, 0.9 },
-	{ roundTree, -100, 36, 0.9 }, { blossomTree, -30, -40, 0.9 },
+	{ roundTree, -108, 118, 0.9 }, { blossomTree, -30, -40, 0.9 },
 	{ blossomTree, 28, -40, 0.9 }, { pineTree, 90, 22, 0.9 }, { roundTree, 92, 60, 0.9 },
 	{ pineTree, 96, 150, 0.9 }, { blossomTree, 62, 160, 0.9 }, { pineTree, -30, 164, 0.8 },
 	{ roundTree, -100, 152, 0.9 },
 }
 
 local ROCKS = {
-	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -94, 46, 0.8 },
+	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -110, 116, 0.8 },
 	{ 90, 150, 0.9 }, { -104, 160, 0.9 }, { 20, 160, 0.8 },
 }
 
 local BUSHES = {
-	{ -30, 16, 0.8 }, { 30, 16, 0.8 }, { -20, -30, 0.7 }, { 20, -30, 0.7 },
+	{ 30, 16, 0.8 }, { -20, -30, 0.7 }, { 20, -30, 0.7 },
 	{ 34, -58, 0.9 }, { -108, 0, 1 }, { 96, 36, 0.9 }, { 24, 66, 0.8 },
-	{ -24, 44, 0.8 }, { 76, 160, 0.9 }, { -60, 160, 0.9 },
+	 { 76, 160, 0.9 }, { -60, 160, 0.9 },
 }
 
 local FLOWER_PATCHES = {
-	{ -40, 18 }, { 40, 24 }, { -28, -14 }, { 28, -14 }, { -95, 12 },
-	{ 12, 150 }, { 60, 150 }, { 80, 150 }, { 50, 160 }, { -96, 26 },
+	{ 40, 24 }, { -28, -14 }, { 28, -14 }, { -95, 12 },
+	{ 12, 150 }, { 60, 150 }, { 80, 150 }, { 50, 160 },
 }
 
 local function buildDecor(parent)
