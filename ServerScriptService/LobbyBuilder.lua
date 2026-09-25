@@ -3504,15 +3504,11 @@ local function buildFountain(parent)
 	b("AngelHead", V3(1.2, 1.2, 1.2), 0, 4.6, 0)
 	b("AngelFace", V3(0.8, 0.15, 0.1), 0, 4.55, -0.62, STONE3)
 	b("AngelHalo", V3(1.5, 0.15, 1.5), 0, 5.55, 0, RGB(254, 231, 97))
-	-- arms hinged at the shoulders, reaching forward to hold the jug at
-	-- chest height, tipped so it pours into the basin
+	-- arms raised up to the sky
 	for _, side in ipairs({ -1, 1 }) do
 		local shoulder = base * CFrame.new(side * 1.5 * S, 4 * S, 0)
-		part(m, "AngelArm", V3(1, 2, 1) * S, shoulder * CFrame.Angles(math.rad(-55), 0, 0) * CFrame.new(0, -1 * S, 0), (side < 0) and STONE or STONE2, Mat.Slate, nc)
+		part(m, "AngelArm", V3(1, 2, 1) * S, shoulder * CFrame.Angles(0, 0, side * math.rad(155)) * CFrame.new(0, -1 * S, 0), (side < 0) and STONE or STONE2, Mat.Slate, nc)
 	end
-	local jug = base * CFrame.new(0, 2.9 * S, -1.9 * S) * CFrame.Angles(math.rad(-50), 0, 0)
-	part(m, "Jug", V3(1.5, 1.7, 1.5) * S, jug, STONE2, Mat.Slate, nc)
-	part(m, "JugNeck", V3(0.8, 0.6, 0.8) * S, jug * CFrame.new(0, 1.1 * S, 0), STONE, Mat.Slate, nc)
 	-- feathered wings, spread out behind: stepped rows of flat blocks
 	for _, side in ipairs({ -1, 1 }) do
 		for k = 0, 3 do
@@ -3522,30 +3518,24 @@ local function buildFountain(parent)
 		end
 		part(m, "WingTip", V3(0.8, 1.4, 0.4) * S, base * CFrame.new(side * 4.3 * S, 5.4 * S, 0.8 * S), STONE, Mat.Slate, nc)
 	end
-	-- the water pouring from the jug into the basin
-	local mouth = (jug * CFrame.new(0, 1.4 * S, 0)).Position
-	local land = V3(mouth.X, 1.7, mouth.Z) + (mouth - V3(0, mouth.Y, 0)).Unit * 5
-	for k = 0, 5 do
-		local t0, t1 = k / 6, (k + 1) / 6
-		local function arc(t)
-			local p = mouth:Lerp(land, t)
-			return p + V3(0, math.sin(t * math.pi * 0.5) * 2.5 * (1 - t), 0)
-		end
-		local a, c = arc(t0), arc(t1)
-		part(m, "Pour", V3(0.45, 0.45, (c - a).Magnitude + 0.15), CFrame.lookAt((a + c) / 2, c), (k % 2 == 0) and RIPPLE or WATER_C, Mat.SmoothPlastic, { CanCollide = false, Transparency = 0.15 })
+	-- four little jets bubbling up round the foot of the plinth
+	for i = 0, 3 do
+		local a = i * math.pi / 2 + math.pi / 4
+		local p = V3(math.cos(a) * 3.6, 1.7, math.sin(a) * 3.6)
+		part(m, "Jet", V3(0.5, 1.6, 0.5), CFrame.new(p + V3(0, 0.8, 0)), RIPPLE, Mat.SmoothPlastic, { CanCollide = false, Transparency = 0.2 })
+		local jet = anchorPart(m, "JetSpray", CFrame.new(p + V3(0, 1.6, 0)))
+		jet.Size = V3(0.6, 0.2, 0.6)
+		local e = Instance.new("ParticleEmitter")
+		e.Rate = 10
+		e.Color = ColorSequence.new(RGB(210, 240, 255))
+		e.Size = NumberSequence.new(0.45, 0.2)
+		e.Lifetime = NumberRange.new(0.5, 0.7)
+		e.Speed = NumberRange.new(3, 4)
+		e.SpreadAngle = Vector2.new(15, 15)
+		e.Acceleration = V3(0, -18, 0)
+		e.EmissionDirection = Enum.NormalId.Top
+		e.Parent = jet
 	end
-	local splash = anchorPart(m, "Splash", CFrame.new(land))
-	splash.Size = V3(2, 0.4, 2)
-	local e = Instance.new("ParticleEmitter")
-	e.Rate = 14
-	e.Color = ColorSequence.new(RGB(210, 240, 255))
-	e.Size = NumberSequence.new(0.5, 0.2)
-	e.Lifetime = NumberRange.new(0.5, 0.8)
-	e.Speed = NumberRange.new(3, 5)
-	e.SpreadAngle = Vector2.new(35, 35)
-	e.Acceleration = V3(0, -20, 0)
-	e.EmissionDirection = Enum.NormalId.Top
-	e.Parent = splash
 end
 
 -- The Pet Sanctuary (north-west): a fenced flower garden round a tall
