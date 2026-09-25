@@ -548,12 +548,10 @@ local function buildGround(parent)
 	local function pathSlab(name, x0, z0, x1, z1)
 		part(g, name, V3(x1 - x0, 0.55, z1 - z0), CFrame.new((x0 + x1) / 2, 0.275, (z0 + z1) / 2), PATH_COLOR, Mat.Cobblestone)
 	end
-	local function curbAlongX(xa, xb, z)
-		part(g, "Curb", V3(xb - xa, 0.9, 1), CFrame.new((xa + xb) / 2, 0.45, z), CURB_COLOR, Mat.Brick)
-	end
-	local function curbAlongZ(za, zb, x)
-		part(g, "Curb", V3(1, 0.9, zb - za), CFrame.new(x, 0.45, (za + zb) / 2), CURB_COLOR, Mat.Brick)
-	end
+	-- (no curbs: they cut across the junctions - the paths are paved edge to edge)
+	local function curbAlongX() end
+	local function curbAlongZ() end
+	_ = CURB_COLOR
 
 	-- The floorplan: the fountain plaza in the middle, a wide avenue north
 	-- to the Grand Keep (and through it to the Spire), the road east to the
@@ -595,7 +593,9 @@ local function buildGround(parent)
 		local p = V3(math.cos(a) * R, 0.45, math.sin(a) * R)
 		if math.abs(p.X) > 9.7 and math.abs(p.Z) > 9.7 then
 			local tangent = V3(-math.sin(a), 0, math.cos(a))
+			if false then
 			part(g, "PlazaCurb", V3(1, 0.9, 2 * math.pi * R / N + 0.15), CFrame.lookAt(p, p + tangent), CURB_COLOR, Mat.Brick)
+			end
 		end
 	end
 	cylinder(g, "PlazaMid", 0.7, 38, CFrame.new(0, 0.35, 0), RGB(232, 214, 178), Mat.Plastic)

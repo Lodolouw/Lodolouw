@@ -795,21 +795,23 @@ local function cobble(slab)
 	local plaza = slab.Parent and slab.Parent:FindFirstChild("PlazaOuter")
 	slab.Color = RGB(90, 105, 136)
 	local cell = 2.2
-	local nx, nz = math.floor(size.X / cell), math.floor(size.Z / cell)
+	local nx, nz = math.ceil(size.X / cell) + 1, math.ceil(size.Z / cell)
 	for iz = 0, nz - 1 do
 		local shift = (iz % 2 == 0) and 0 or cell / 2
-		for ix = 0, nx - 1 do
-			local x = -size.X / 2 + (ix + 0.5) * cell + shift
-			local z = -size.Z / 2 + (iz + 0.5) * cell
+		for ix = -1, nx - 1 do
+			-- (cobbles at the sides and ends are cut to fit: paved edge to edge)
+			local xa = math.max(-size.X / 2 + 0.05, -size.X / 2 + ix * cell + shift + 0.2)
+			local xb = math.min(size.X / 2 - 0.05, -size.X / 2 + (ix + 1) * cell + shift - 0.2)
+			local za = math.max(-size.Z / 2 + 0.05, -size.Z / 2 + iz * cell + 0.2)
+			local zb = math.min(size.Z / 2 - 0.05, -size.Z / 2 + (iz + 1) * cell - 0.2)
+			local x, z = (xa + xb) / 2, (za + zb) / 2
 			local at = V3(slab.Position.X + x, top + 0.04, slab.Position.Z + z)
 			-- (the ends of the paths reach in under the plaza: the plaza has
 			-- its own cobbles there)
 			local inPlaza = plaza and V3(at.X - plaza.Position.X, 0, at.Z - plaza.Position.Z).Magnitude < plaza.Size.Y / 2 - 0.2
-			if math.abs(x) < size.X / 2 - 0.9 and not inPlaza then
-				if rng:NextNumber() < 0.06 then
-					block(V3(0.8, 0.12, 0.8), GRASS[rng:NextInteger(1, #GRASS)]).CFrame = CFrame.new(at)
-				else
-					local w, d = cell - 0.35 - rng:NextNumber() * 0.4, cell - 0.35 - rng:NextNumber() * 0.4
+			if xb - xa > 0.5 and zb - za > 0.5 and not inPlaza then
+				do
+					local w, d = (xb - xa) - rng:NextNumber() * 0.3, (zb - za) - rng:NextNumber() * 0.3
 					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
 				end
 			end
