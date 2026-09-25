@@ -3,9 +3,11 @@
 
 	The Colosseum: a wave arena for farming Power (XP) and coins.
 
-	  * Press E at the Colosseum gate in the lobby and you're taken to the
-	    Colosseum (far from the lobby). Press E at its EXIT gate, or die, and
-	    you're back at the gate in the lobby.
+	  * Press E at the little door of the mini colosseum in the lobby and you
+	    shrink down into it, bit by bit, like going down a pipe - and you're
+	    in the Colosseum (far from the lobby), already small enough to fit.
+	    Press E at its EXIT gate and you pop out of the little door tiny and
+	    grow back. Die in there and you're simply back in the lobby.
 	  * Inside, straw dummies drop in wave after wave. They hop after you, and
 	    when one lands close it winds up a slam: a red ring shows on the sand -
 	    get out of it (or roll through it) before it comes down.
@@ -114,6 +116,23 @@ local function shrinkInto(player, toGround)
 	end
 	task.wait(0.15)
 	return char.Parent ~= nil
+end
+
+-- Puts you at `cf` at full size straight away (arriving inside the Colosseum).
+local function appearAt(player, cf)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	pcall(function()
+		player:RequestStreamAroundAsync(cf.Position, 3)
+	end)
+	root.Anchored = true
+	scale(char, 1)
+	standAt(char, groundBelow(cf.Position, char), cf.LookVector)
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.Anchored = false
 end
 
 -- Pops you out at `cf` (tiny), then grows you back to full size, and lets you go.
@@ -432,8 +451,9 @@ local function enter(player)
 		if door and not shrinkInto(player, groundBelow(door.Position, char)) then
 			error("gone")
 		end
-		-- ...and pop out, growing, just inside the Colosseum's gate
-		growOutAt(player, spawnAt.CFrame)
+		-- ...and you're inside, just past the Colosseum's gate. No growing here:
+		-- you're already the size of the little colosseum's world
+		appearAt(player, spawnAt.CFrame)
 	end)
 	going[player] = nil
 	if not ok or not rootOf(player) then
@@ -465,11 +485,10 @@ local function leave(player)
 	if not back then
 		return
 	end
-	-- out the way you came in: shrink where you stand, pop out of the little door growing
+	-- out the way you came in: you pop out of the little door tiny, and grow
 	going[player] = true
 	pcall(function()
-		local root, _, char = rootOf(player)
-		if root and shrinkInto(player, groundBelow(root.Position, char)) then
+		if rootOf(player) then
 			growOutAt(player, back.CFrame)
 		end
 	end)
