@@ -3511,7 +3511,6 @@ local function buildFountain(parent)
 	b("AngelRobe", V3(2.2, 0.4, 1.2), 0, 2.2, 0, STONE2)
 	b("AngelHead", V3(1.2, 1.2, 1.2), 0, 4.6, 0)
 	b("AngelFace", V3(0.8, 0.15, 0.1), 0, 4.55, -0.62, STONE3)
-	b("AngelHalo", V3(1.5, 0.15, 1.5), 0, 5.55, 0, RGB(254, 231, 97))
 	-- arms raised up to the sky
 	for _, side in ipairs({ -1, 1 }) do
 		local shoulder = base * CFrame.new(side * 1.5 * S, 4 * S, 0)
@@ -3526,23 +3525,41 @@ local function buildFountain(parent)
 		end
 		part(m, "WingTip", V3(0.8, 1.4, 0.4) * S, base * CFrame.new(side * 4.3 * S, 5.4 * S, 0.8 * S), STONE, Mat.Slate, nc)
 	end
-	-- four little jets bubbling up round the foot of the plinth
-	for i = 0, 3 do
-		local a = i * math.pi / 2 + math.pi / 4
-		local p = V3(math.cos(a) * 3.6, 1.7, math.sin(a) * 3.6)
-		fx(part(m, "Jet", V3(0.5, 1.6, 0.5), CFrame.new(p + V3(0, 0.8, 0)), RIPPLE, Mat.SmoothPlastic, { CanCollide = false, Transparency = 0.2 }), { BobAmp = 0.35, BobSpeed = 6, Phase = i * 90 })
-		local jet = anchorPart(m, "JetSpray", CFrame.new(p + V3(0, 1.6, 0)))
-		jet.Size = V3(0.6, 0.2, 0.6)
-		local e = Instance.new("ParticleEmitter")
-		e.Rate = 10
-		e.Color = ColorSequence.new(RGB(210, 240, 255))
-		e.Size = NumberSequence.new(0.45, 0.2)
-		e.Lifetime = NumberRange.new(0.5, 0.7)
-		e.Speed = NumberRange.new(3, 4)
-		e.SpreadAngle = Vector2.new(15, 15)
-		e.Acceleration = V3(0, -18, 0)
-		e.EmissionDirection = Enum.NormalId.Top
-		e.Parent = jet
+	-- a stone bowl held up above the angel's head: water bubbles up out of
+	-- it and spills over the rim all round in streams of little 8-bit
+	-- droplets, falling into the basin like a curtain (LobbyFX moves them)
+	local bowlCF = base * CFrame.new(0, 6.2 * S, 0)
+	local bowlY = bowlCF.Position.Y
+	cylinder(m, "Bowl", 0.9 * S, 3.4 * S, bowlCF, STONE, Mat.Slate, nc)
+	cylinder(m, "BowlFoot", 0.5 * S, 1.6 * S, bowlCF * CFrame.new(0, -0.6 * S, 0), STONE2, Mat.Slate, nc)
+	cylinder(m, "BowlWater", 0.2, 2.8 * S, bowlCF * CFrame.new(0, 0.4 * S, 0), WATER_C, Mat.SmoothPlastic, nc)
+	fx(part(m, "Bubble", V3(0.8, 1, 0.8), bowlCF * CFrame.new(0, 0.9 * S, 0), RIPPLE, Mat.SmoothPlastic, nc), { BobAmp = 0.3, BobSpeed = 5 })
+	local spray = anchorPart(m, "Spray", bowlCF * CFrame.new(0, 0.8 * S, 0))
+	spray.Size = V3(1, 0.2, 1)
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 35
+	e.Color = ColorSequence.new(RGB(230, 248, 255))
+	e.Size = NumberSequence.new(0.6, 0.3)
+	e.Lifetime = NumberRange.new(0.9, 1.2)
+	e.Speed = NumberRange.new(5, 7)
+	e.SpreadAngle = Vector2.new(22, 22)
+	e.Acceleration = V3(0, -22, 0)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Parent = spray
+	local fall = bowlY - 1.8
+	for i = 0, 9 do
+		local a = i / 10 * math.pi * 2
+		local rim = V3(math.cos(a), 0, math.sin(a))
+		for k = 0, 2 do
+			local p = V3(0, bowlY + 0.2, 0) + rim * (1.8 * S + 0.1 + k * 0.25)
+			local drop = part(m, "Droplet", V3(0.45, 0.45, 0.45), CFrame.new(p), (k == 1) and WATER_C or RIPPLE, Mat.SmoothPlastic, nc)
+			drop:SetAttribute("WaveMode", "drift")
+			drop:SetAttribute("WaveDir", V3(0, -1, 0))
+			drop:SetAttribute("WaveAmp", fall)
+			drop:SetAttribute("WaveSpeed", 0.55)
+			drop:SetAttribute("Phase", k * 120 + i * 37)
+			CollectionService:AddTag(drop, "Wave")
+		end
 	end
 end
 
