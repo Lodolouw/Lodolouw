@@ -4313,21 +4313,20 @@ local function buildIsland(parent)
 							end
 						end
 						if out then
-							-- two waves per stretch, half a cycle apart: each forms out
-							-- in the shallows and rolls in onto the sand, fading as it breaks
-							for k = 0, 1 do
-								local w = CELL + 0.8
-								local at = V3(x, SEA_Y + 0.4, z) + out * (CELL / 2 + 11)
-								local foam = part(m, "Foam", V3(w, 0.25, 1.6), CFrame.lookAt(at, at - out), ISLE.FOAM, Mat.SmoothPlastic, {
-									CanCollide = false, CanQuery = false, CastShadow = false,
-								})
-								foam:SetAttribute("WaveMode", "drift")
-								foam:SetAttribute("WaveDir", -out)
-								foam:SetAttribute("WaveAmp", 11.5)
-								foam:SetAttribute("WaveSpeed", 0.22)
-								foam:SetAttribute("Phase", k * 180 + math.deg(th) * 2)
-								CollectionService:AddTag(foam, "Wave")
-							end
+							-- one long, calm wave per stretch of coast (like the Coastal
+							-- Waves mod): it rises out in the deep blue, rolls in across
+							-- the shallows and breaks on the sand, fading as it goes
+							local w = CELL + 0.8
+							local at = V3(x, SEA_Y + 0.4, z) + out * (CELL / 2 + 26)
+							local foam = part(m, "Foam", V3(w, 0.25, 1.4), CFrame.lookAt(at, at - out), ISLE.FOAM, Mat.SmoothPlastic, {
+								CanCollide = false, CanQuery = false, CastShadow = false,
+							})
+							foam:SetAttribute("WaveMode", "drift")
+							foam:SetAttribute("WaveDir", -out)
+							foam:SetAttribute("WaveAmp", 26.5)
+							foam:SetAttribute("WaveSpeed", 0.11)
+							foam:SetAttribute("Phase", math.deg(th) * 1.5)
+							CollectionService:AddTag(foam, "Wave")
 						end
 					end
 				end
