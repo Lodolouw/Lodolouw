@@ -688,6 +688,30 @@ local function buildGround(parent)
 				part(g, "PlazaCurb", V3(1, 0.9, 2 * math.pi * RR / NR + 0.12), CFrame.lookAt(p, p + tangent), CURB_COLOR, Mat.Brick)
 			end
 		end
+		-- a square post at every corner where the ring meets a road's curb,
+		-- closing the joint
+		for _, r in ipairs(pathRects) do
+			for _, x in ipairs({ r[1] - 0.5, r[3] + 0.5 }) do
+				if math.abs(x) < RR then
+					for _, sz in ipairs({ -1, 1 }) do
+						local z = sz * math.sqrt(RR * RR - x * x)
+						if z > r[2] - 3 and z < r[4] + 3 then
+							part(g, "CurbPost", V3(1.6, 1.1, 1.6), CFrame.new(x, 0.55, z), CURB_COLOR, Mat.Brick)
+						end
+					end
+				end
+			end
+			for _, z in ipairs({ r[2] - 0.5, r[4] + 0.5 }) do
+				if math.abs(z) < RR then
+					for _, sx in ipairs({ -1, 1 }) do
+						local x = sx * math.sqrt(RR * RR - z * z)
+						if x > r[1] - 3 and x < r[3] + 3 then
+							part(g, "CurbPost", V3(1.6, 1.1, 1.6), CFrame.new(x, 0.55, z), CURB_COLOR, Mat.Brick)
+						end
+					end
+				end
+			end
+		end
 	end
 	cylinder(g, "PlazaMid", 0.7, 38, CFrame.new(0, 0.35, 0), RGB(232, 214, 178), Mat.Plastic)
 	cylinder(g, "PlazaInner", 0.8, 30, CFrame.new(0, 0.4, 0), RGB(214, 190, 148), Mat.Plastic)

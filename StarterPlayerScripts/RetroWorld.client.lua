@@ -684,6 +684,56 @@ table.insert(steppers, function(now)
 	end
 end)
 
+-- THE BREEZE: faint white wind streaks and the odd leaf drifting slowly
+-- past you, the same way the palms sway (only in the lobby, near you)
+local breeze = {}
+local WIND = V3(0.35, 0, 1).Unit
+local function newGust(g, camPos)
+	local a = rng:NextNumber() * math.pi * 2
+	local d = 12 + rng:NextNumber() * 55
+	g.pos = camPos + V3(math.cos(a) * d, -6 + rng:NextNumber() * 14, math.sin(a) * d) - WIND * 20
+	g.life = 0
+	g.span = 3 + rng:NextNumber() * 3
+	g.speed = 5 + rng:NextNumber() * 4
+end
+for i = 1, (D.Breeze or 22) do
+	local leaf = i % 5 == 0
+	table.insert(breeze, {
+		part = leaf and block(V3(0.4, 0.15, 0.4), GRASS[rng:NextInteger(1, #GRASS)]) or block(V3(0.12, 0.12, 2.2 + rng:NextNumber() * 1.5), RGB(255, 255, 255)),
+		leaf = leaf,
+		life = rng:NextNumber() * 5,
+		span = 0,
+	})
+end
+table.insert(steppers, function(now)
+	local cam = Workspace.CurrentCamera
+	local camCF = cam and cam.CFrame
+	if not camCF then
+		return
+	end
+	local camPos = camCF.Position
+	for _, g in ipairs(breeze) do
+		if not inLobby() then
+			g.part.Transparency = 1
+		else
+			if not g.pos or g.life > g.span then
+				newGust(g, camPos)
+			end
+			g.life = g.life + 1 / 12
+			local f = g.life / g.span
+			local p = g.pos + WIND * g.speed * g.life + V3(0, math.sin(g.life * 2) * 0.4, 0)
+			-- (fade in and out: never more than a whisper)
+			local tr = 1 - math.sin(f * math.pi) * (g.leaf and 0.9 or 0.45)
+			g.part.Transparency = math.floor(tr * 4 + 0.5) / 4
+			local cf = CFrame.lookAt(p, p + WIND)
+			if g.leaf then
+				cf = cf * CFrame.Angles(g.life * 3, g.life * 2, 0)
+			end
+			move(g.part, cf)
+		end
+	end
+end)
+
 -- BIRDS: little flocks flapping round over the castle in V-formations
 local flocks = {}
 local function makeBirds(center)
