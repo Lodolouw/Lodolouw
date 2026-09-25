@@ -336,7 +336,7 @@ function ColosseumService.OnKill(s, model)
 	if PlayerService.QuestProgress then
 		PlayerService.QuestProgress(player, "arena", 1)
 	end
-	send(player, "Kill", rewards.killPower, rewards.killCoins)
+	send(player, "Kill", rewards.killPower, rewards.killCoins, feet(model).Position + Vector3.new(0, 11, 0))
 
 	s.questKills = s.questKills + 1
 	if s.questKills >= C.QuestKills then

@@ -371,7 +371,8 @@ task.spawn(function()
 	end
 end)
 
--- The tracker at the top of the screen: the wave, and the quest
+-- The quest tab on the right of the screen (like Blox Fruits): what to do,
+-- how far along you are, and what it pays - plus a small WAVE box at the top.
 local tracker = Instance.new("ScreenGui")
 tracker.Name = "ColosseumHud"
 tracker.ResetOnSpawn = false
@@ -379,24 +380,31 @@ tracker.Enabled = false
 tracker.Parent = player:WaitForChild("PlayerGui")
 
 local box = Instance.new("Frame")
-box.Name = "Box"
+box.Name = "QuestTab"
 box.BackgroundColor3 = RGB(12, 10, 20)
+box.BackgroundTransparency = 0.1
 box.BorderSizePixel = 0
-box.AnchorPoint = Vector2.new(0.5, 0)
-box.Position = UDim2.new(0.5, 0, 0, 12)
-box.Size = UDim2.fromOffset(340, 104)
+box.AnchorPoint = Vector2.new(1, 0.5)
+box.Position = UDim2.new(1, -16, 0.42, 0)
+box.Size = UDim2.fromOffset(270, 172)
 box.Parent = tracker
 local boxEdge = Instance.new("UIStroke")
 boxEdge.Color = RGB(255, 255, 255)
 boxEdge.Thickness = 3
 boxEdge.Parent = box
 
-local waveLabel = label(box, "COLOSSEUM", UDim2.new(1, -20, 0, 26), UDim2.fromOffset(10, 6), GOLD)
-local questLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 36), RGB(255, 255, 255))
+local head = Instance.new("Frame")
+head.BackgroundColor3 = GOLD
+head.BorderSizePixel = 0
+head.Size = UDim2.new(1, 0, 0, 30)
+head.Parent = box
+label(head, "QUEST", UDim2.new(1, -16, 1, -6), UDim2.fromOffset(8, 3), RGB(24, 20, 37), Enum.TextXAlignment.Left)
+local questLabel = label(box, "Defeat 10 Straw Dummies", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 38), RGB(255, 255, 255), Enum.TextXAlignment.Left)
+local countLabel = label(box, "(0/10)", UDim2.new(1, -20, 0, 26), UDim2.fromOffset(10, 62), GOLD, Enum.TextXAlignment.Left)
 local qbar = Instance.new("Frame")
 qbar.BackgroundColor3 = RGB(38, 43, 68)
 qbar.BorderSizePixel = 0
-qbar.Position = UDim2.fromOffset(10, 60)
+qbar.Position = UDim2.fromOffset(10, 92)
 qbar.Size = UDim2.new(1, -20, 0, 12)
 qbar.Parent = box
 local qblocks = {}
@@ -408,7 +416,23 @@ for b = 1, 10 do
 	blk.Parent = qbar
 	qblocks[b] = blk
 end
-local rewardLabel = label(box, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 78), GREY)
+label(box, "Reward:", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 110), GREY, Enum.TextXAlignment.Left)
+local xpLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 128), GREEN, Enum.TextXAlignment.Left)
+local coinLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 148), GOLD, Enum.TextXAlignment.Left)
+
+local waveBox = Instance.new("Frame")
+waveBox.BackgroundColor3 = RGB(12, 10, 20)
+waveBox.BackgroundTransparency = 0.1
+waveBox.BorderSizePixel = 0
+waveBox.AnchorPoint = Vector2.new(0.5, 0)
+waveBox.Position = UDim2.new(0.5, 0, 0, 12)
+waveBox.Size = UDim2.fromOffset(200, 34)
+waveBox.Parent = tracker
+local waveEdge = Instance.new("UIStroke")
+waveEdge.Color = RGB(255, 255, 255)
+waveEdge.Thickness = 3
+waveEdge.Parent = waveBox
+local waveLabel = label(waveBox, "WAVE 1", UDim2.new(1, -16, 1, -8), UDim2.fromOffset(8, 4), RGB(255, 255, 255))
 
 -- a big line across the middle of the screen (WAVE 3 / QUEST COMPLETE!)
 local banner = label(tracker, "", UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.26, 0), GOLD)
@@ -431,28 +455,58 @@ local function showBanner(text, color, seconds)
 	end)
 end
 
--- "+12 XP" popping up under the tracker for each dummy you beat
-local function popReward(text)
-	local l = label(tracker, text, UDim2.fromOffset(300, 22), UDim2.new(0.5, -150, 0, 124), GREEN)
+-- "+12 XP / +9 coins" floating up out of each dummy you beat
+local function popReward(xp, coins, at)
+	if typeof(at) ~= "Vector3" then
+		return
+	end
+	local anchor = Instance.new("Part")
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+	anchor.CFrame = CFrame.new(at)
+	anchor.Parent = workspace
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(220, 64)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.Adornee = anchor
+	bb.Parent = anchor
+	local l1 = label(bb, "+" .. Config.format(xp) .. " XP", UDim2.new(1, 0, 0.5, 0), UDim2.new(), GREEN)
+	local l2 = label(bb, "+" .. Config.format(coins) .. " coins", UDim2.new(1, 0, 0.5, 0), UDim2.fromScale(0, 0.5), GOLD)
+	for _, l in ipairs({ l1, l2 }) do
+		local st = Instance.new("UIStroke")
+		st.Thickness = 2
+		st.Color = RGB(24, 20, 37)
+		st.Parent = l
+	end
 	task.spawn(function()
-		for k = 1, 16 do
-			l.Position = UDim2.new(0.5, -150, 0, 124 + k * 2)
-			l.TextTransparency = k / 16
+		for k = 1, 24 do
+			anchor.CFrame = CFrame.new(at + Vector3.new(0, k * 0.25, 0))
+			if k > 12 then
+				l1.TextTransparency = (k - 12) / 12
+				l2.TextTransparency = (k - 12) / 12
+			end
 			task.wait(1 / 20)
 		end
-		l:Destroy()
+		anchor:Destroy()
 	end)
 end
 
 local function renderTracker(st)
-	waveLabel.Text = "COLOSSEUM  -  WAVE " .. tostring(math.max(1, st.wave or 0))
+	waveLabel.Text = "WAVE " .. tostring(math.max(1, st.wave or 0))
 	local q, goal = st.quest or 0, st.goal or 10
-	questLabel.Text = "QUEST: Defeat dummies  " .. q .. " / " .. goal
+	questLabel.Text = "Defeat " .. goal .. " Straw Dummies"
+	countLabel.Text = "(" .. q .. "/" .. goal .. ")"
 	local filled = math.floor(q / goal * 10 + 1e-6)
 	for b, blk in ipairs(qblocks) do
 		blk.BackgroundColor3 = (b <= filled) and GOLD or RGB(58, 68, 102)
 	end
-	rewardLabel.Text = "Reward: " .. Config.format(st.questPower or 0) .. " XP + " .. Config.format(st.questCoins or 0) .. " coins"
+	xpLabel.Text = Config.format(st.questPower or 0) .. " XP"
+	coinLabel.Text = Config.format(st.questCoins or 0) .. " coins"
 end
 
 local function syncTracker()
@@ -559,7 +613,7 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 	elseif kind == "Wave" then
 		showBanner("WAVE " .. tostring(a), RGB(255, 255, 255), 1.4)
 	elseif kind == "Kill" then
-		popReward("+" .. Config.format(a) .. " XP   +" .. Config.format(b) .. " coins")
+		popReward(a, b, c)
 	elseif kind == "QuestDone" then
 		showBanner("QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins", GREEN, 2.6)
 	end

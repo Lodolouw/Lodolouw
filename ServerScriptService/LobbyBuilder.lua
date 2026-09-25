@@ -5797,9 +5797,17 @@ local Extras = (function()
 		local bunting = { RGB(228, 59, 68), RGB(254, 174, 52), RGB(0, 153, 219), RGB(99, 199, 77) }
 		for k = 1, #tops do
 			local a, b = tops[k], tops[k % #tops + 1]
+			local function sag(u)
+				return a:Lerp(b, u) - V3(0, math.sin(u * math.pi) * 3, 0) -- (the string sags)
+			end
+			-- the rope, in straight pieces from flag to flag
+			for j = 0, 8 do
+				local p0, p1 = sag(j / 9), sag((j + 1) / 9)
+				P("BuntingRope", V3(0.15, 0.15, (p1 - p0).Magnitude + 0.1), CFrame.lookAt((p0 + p1) / 2, p1), RGB(96, 64, 48), Mat.Fabric, { CanCollide = false })
+			end
+			-- and the little flags hanging from it
 			for j = 1, 8 do
-				local u = j / 9
-				local p = a:Lerp(b, u) - V3(0, math.sin(u * math.pi) * 3, 0) -- (the string sags)
+				local p = sag(j / 9) - V3(0, 0.55, 0)
 				P("Bunting", V3(1.1, 1.1, 0.15), CFrame.lookAt(p, p + (b - a)) * CFrame.Angles(0, math.pi / 2, math.rad(45)), bunting[(j % #bunting) + 1], Mat.Fabric, { CanCollide = false })
 			end
 		end
