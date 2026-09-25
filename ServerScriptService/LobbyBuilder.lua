@@ -454,14 +454,35 @@ local function wall(parent, name, a, b)
 	end
 end
 
+-- THE tree of the game: a chunky leafy tree built from blocks (every leafy
+-- tree in the lobby and on the island is this one, at different sizes, so
+-- they all match), and a matching blocky bush
+local VT_TRUNK, VT_LEAF, VT_LEAF2, VT_LEAF3 = RGB(115, 62, 57), RGB(99, 199, 77), RGB(62, 137, 72), RGB(38, 92, 66)
+local function voxelTree(m, x, z, s, y0)
+	y0 = y0 or 0
+	part(m, "Trunk", V3(2.4, 9, 2.4) * s, CFrame.new(x, y0 + 4.5 * s, z), VT_TRUNK, Mat.Wood)
+	part(m, "Root", V3(4, 1, 1.2) * s, CFrame.new(x, y0 + 0.5 * s, z), VT_TRUNK, Mat.Wood)
+	part(m, "Root", V3(1.2, 1, 4) * s, CFrame.new(x, y0 + 0.5 * s, z), VT_TRUNK, Mat.Wood)
+	part(m, "Branch", V3(1.2, 4, 1.2) * s, CFrame.new(x + 1.6 * s, y0 + 8.5 * s, z) * CFrame.Angles(0, 0, math.rad(-35)), VT_TRUNK, Mat.Wood)
+	part(m, "Canopy", V3(12, 6, 12) * s, CFrame.new(x, y0 + 11 * s, z), VT_LEAF2, Mat.Grass)
+	part(m, "CanopyTop", V3(9, 4, 9) * s, CFrame.new(x - 0.5 * s, y0 + 15.5 * s, z + 0.5 * s), VT_LEAF, Mat.Grass)
+	part(m, "CanopyCrown", V3(5, 2, 5) * s, CFrame.new(x + 0.5 * s, y0 + 18.2 * s, z - 0.5 * s), VT_LEAF, Mat.Grass)
+	for _, o in ipairs({ { 5, 9.5, 2 }, { -5, 10, -2 }, { 1.5, 9, -5 }, { -2, 9.5, 5 } }) do
+		part(m, "CanopyLump", V3(6, 4, 6) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), (o[1] > 0) and VT_LEAF2 or VT_LEAF3, Mat.Grass)
+	end
+	for _, o in ipairs({ { 3, 14, 3 }, { -3.5, 13.5, -2 } }) do
+		part(m, "CanopyLight", V3(3, 2, 3) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), VT_LEAF, Mat.Grass)
+	end
+end
+local function voxelBush(m, x, z, s, y0)
+	y0 = y0 or 0
+	part(m, "Bush", V3(3.4, 2.4, 3.4) * s, CFrame.new(x, y0 + 1.2 * s, z), VT_LEAF2, Mat.Grass, { CanCollide = false })
+	part(m, "Bush", V3(2.4, 1.8, 2.4) * s, CFrame.new(x + 1 * s, y0 + 2.6 * s, z - 0.4 * s), VT_LEAF, Mat.Grass, { CanCollide = false })
+	part(m, "Bush", V3(2, 1.6, 2) * s, CFrame.new(x - 1.4 * s, y0 + 1.1 * s, z + 1.2 * s), VT_LEAF3, Mat.Grass, { CanCollide = false })
+end
+
 local function tree(parent, x, z, s)
-	s = s or 1
-	local t = Instance.new("Model")
-	t.Name = "Tree"
-	t.Parent = parent
-	part(t, "Trunk", V3(3 * s, 9 * s, 3 * s), CFrame.new(x, 4.5 * s, z), RGB(120, 82, 50), Mat.Wood)
-	part(t, "LeavesLow", V3(13 * s, 7 * s, 13 * s), CFrame.new(x, 11.5 * s, z), RGB(70, 170, 80))
-	part(t, "LeavesTop", V3(8 * s, 6 * s, 8 * s), CFrame.new(x, 17 * s, z), RGB(96, 204, 100))
+	voxelTree(parent, x, z, (s or 1) * 0.95)
 end
 
 -- A small warm lantern rather than a bright streetlamp - Neon parts glow at
@@ -803,15 +824,7 @@ end
 
 -- A round bush made of 2-3 overlapping green balls
 local function bush(parent, x, z, s)
-	local m = Instance.new("Model")
-	m.Name = "Bush"
-	m.Parent = parent
-	local greens = { RGB(60, 150, 70), RGB(76, 170, 80), RGB(52, 132, 64) }
-	ball(m, "Leaves", 5 * s, CFrame.new(x, 1.8 * s, z), greens[1], Mat.LeafyGrass, { CanCollide = false })
-	ball(m, "Leaves", 4 * s, CFrame.new(x + 2 * s, 1.5 * s, z + 1 * s), greens[2], Mat.LeafyGrass, { CanCollide = false })
-	if rnd() < 0.6 then
-		ball(m, "Leaves", 3.4 * s, CFrame.new(x - 1.8 * s, 1.3 * s, z - 1.2 * s), greens[3], Mat.LeafyGrass, { CanCollide = false })
-	end
+	voxelBush(parent, x, z, s)
 end
 
 -- A patch of little flowers: coloured blooms nestled in a couple of leafy
@@ -825,47 +838,25 @@ local function flowers(parent, x, z, r)
 	r = r or 3
 	for _ = 1, 2 do
 		local a, d = rnd() * math.pi * 2, rnd() * r * 0.5
-		ball(m, "Leaf", 2.4, CFrame.new(x + math.cos(a) * d, 0.5, z + math.sin(a) * d), RGB(70, 160, 70), Mat.Grass, { CanCollide = false })
+		part(m, "Leaf", V3(2, 0.8, 1.6), CFrame.new(x + math.cos(a) * d, 0.4, z + math.sin(a) * d) * CFrame.Angles(0, a, 0), VT_LEAF2, Mat.Grass, { CanCollide = false })
 	end
 	for _ = 1, 6 do
 		local a, d = rnd() * math.pi * 2, rnd() * r
-		ball(m, "Bloom", 0.9, CFrame.new(x + math.cos(a) * d, 0.9, z + math.sin(a) * d), FLOWER_COLORS[1 + math.floor(rnd() * #FLOWER_COLORS)], Mat.SmoothPlastic, { CanCollide = false })
+		part(m, "Bloom", V3(0.7, 0.7, 0.7), CFrame.new(x + math.cos(a) * d, 0.95, z + math.sin(a) * d), FLOWER_COLORS[1 + math.floor(rnd() * #FLOWER_COLORS)], Mat.SmoothPlastic, { CanCollide = false })
 	end
 end
 
 -- Extra tree styles so the lobby isn't all the same tree
 local function pineTree(parent, x, z, s)
-	local m = Instance.new("Model")
-	m.Name = "PineTree"
-	m.Parent = parent
-	part(m, "Trunk", V3(2 * s, 6 * s, 2 * s), CFrame.new(x, 3 * s, z), RGB(100, 70, 45), Mat.Wood)
-	local tiers = { { 12, 5, RGB(46, 120, 72) }, { 9, 4.5, RGB(52, 134, 80) }, { 6, 4, RGB(60, 148, 88) }, { 3, 3, RGB(70, 160, 96) } }
-	local y = 6 * s
-	for i, t in ipairs(tiers) do
-		part(m, "Needles" .. i, V3(t[1] * s, t[2] * s, t[1] * s), CFrame.new(x, y + t[2] * s / 2, z) * CFrame.Angles(0, math.rad(i * 22), 0), t[3], Mat.Grass)
-		y = y + t[2] * s * 0.8
-	end
+	voxelTree(parent, x, z, s * 0.85)
 end
 
 local function roundTree(parent, x, z, s)
-	local m = Instance.new("Model")
-	m.Name = "RoundTree"
-	m.Parent = parent
-	part(m, "Trunk", V3(2.6 * s, 9 * s, 2.6 * s), CFrame.new(x, 4.5 * s, z), RGB(115, 80, 50), Mat.Wood)
-	ball(m, "Crown", 13 * s, CFrame.new(x, 13 * s, z), RGB(84, 172, 72), Mat.Grass)
-	ball(m, "CrownSide", 8 * s, CFrame.new(x + 4 * s, 11 * s, z + 2 * s), RGB(96, 186, 80), Mat.Grass)
-	ball(m, "CrownTop", 7 * s, CFrame.new(x - 2 * s, 18 * s, z - 1 * s), RGB(106, 196, 88), Mat.Grass)
+	voxelTree(parent, x, z, s * 0.9)
 end
 
 local function blossomTree(parent, x, z, s)
-	local m = Instance.new("Model")
-	m.Name = "BlossomTree"
-	m.Parent = parent
-	part(m, "Trunk", V3(2.4 * s, 8 * s, 2.4 * s), CFrame.new(x, 4 * s, z), RGB(96, 64, 50), Mat.Wood)
-	part(m, "Branch", V3(1.2 * s, 5 * s, 1.2 * s), CFrame.new(x + 1.5 * s, 9 * s, z) * CFrame.Angles(0, 0, math.rad(-30)), RGB(96, 64, 50), Mat.Wood)
-	ball(m, "Blossom", 12 * s, CFrame.new(x, 12.5 * s, z), RGB(255, 170, 200), Mat.Grass)
-	ball(m, "BlossomSide", 7 * s, CFrame.new(x + 4.5 * s, 11 * s, z - 1.5 * s), RGB(250, 140, 180), Mat.Grass)
-	ball(m, "BlossomTop", 6 * s, CFrame.new(x - 2 * s, 17 * s, z + 1 * s), RGB(255, 196, 216), Mat.Grass)
+	voxelTree(parent, x, z, s * 0.85)
 end
 
 local NEW_TREES = {
@@ -3552,27 +3543,11 @@ end
 
 -- a big leafy tree made of chunky blocks
 local function farmTree(m, x, z, s, y0)
-	y0 = y0 or 0
-	part(m, "Trunk", V3(2.4, 9, 2.4) * s, CFrame.new(x, y0 + 4.5 * s, z), FARM.TIMBER, Mat.Wood)
-	part(m, "Root", V3(4, 1, 1.2) * s, CFrame.new(x, y0 + 0.5 * s, z), FARM.TIMBER, Mat.Wood)
-	part(m, "Root", V3(1.2, 1, 4) * s, CFrame.new(x, y0 + 0.5 * s, z), FARM.TIMBER, Mat.Wood)
-	part(m, "Branch", V3(1.2, 4, 1.2) * s, CFrame.new(x + 1.6 * s, y0 + 8.5 * s, z) * CFrame.Angles(0, 0, math.rad(-35)), FARM.TIMBER, Mat.Wood)
-	part(m, "Canopy", V3(12, 6, 12) * s, CFrame.new(x, y0 + 11 * s, z), FARM.LEAF2, Mat.Grass)
-	part(m, "CanopyTop", V3(9, 4, 9) * s, CFrame.new(x - 0.5 * s, y0 + 15.5 * s, z + 0.5 * s), FARM.LEAF, Mat.Grass)
-	part(m, "CanopyCrown", V3(5, 2, 5) * s, CFrame.new(x + 0.5 * s, y0 + 18.2 * s, z - 0.5 * s), FARM.LEAF, Mat.Grass)
-	for _, o in ipairs({ { 5, 9.5, 2 }, { -5, 10, -2 }, { 1.5, 9, -5 }, { -2, 9.5, 5 } }) do
-		part(m, "CanopyLump", V3(6, 4, 6) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), (o[1] > 0) and FARM.LEAF2 or FARM.LEAF3, Mat.Grass)
-	end
-	for _, o in ipairs({ { 3, 14, 3 }, { -3.5, 13.5, -2 } }) do
-		part(m, "CanopyLight", V3(3, 2, 3) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), FARM.LEAF, Mat.Grass)
-	end
+	voxelTree(m, x, z, s, y0)
 end
 
 local function blockBush(m, x, z, s, y0)
-	y0 = y0 or 0
-	part(m, "Bush", V3(3.4, 2.4, 3.4) * s, CFrame.new(x, y0 + 1.2 * s, z), FARM.LEAF2, Mat.Grass, { CanCollide = false })
-	part(m, "Bush", V3(2.4, 1.8, 2.4) * s, CFrame.new(x + 1 * s, y0 + 2.6 * s, z - 0.4 * s), FARM.LEAF, Mat.Grass, { CanCollide = false })
-	part(m, "Bush", V3(2, 1.6, 2) * s, CFrame.new(x - 1.4 * s, y0 + 1.1 * s, z + 1.2 * s), FARM.LEAF3, Mat.Grass, { CanCollide = false })
+	voxelBush(m, x, z, s, y0)
 end
 
 -- one crop plant, standing on soil whose top is at height y
@@ -3810,8 +3785,46 @@ local function buildFarm(parent)
 	CollectionService:AddTag(sails, "Rotor")
 
 	-- the dirt path from the road to the cottage, and the yard in front of it
-	part(m, "FarmPath", V3(55.5, 0.3, 5), CFrame.new(36.25, 0.15, 96), FARM.DIRT, Mat.Ground)
-	part(m, "FarmYard", V3(15, 0.3, 26), CFrame.new(71.5, 0.15, 93), FARM.DIRT, Mat.Ground)
+	-- (a worn dirt track in a few shades, with trodden patches, pebbles and
+	-- grass tufts at its ragged edges; where it leaves the cobbled road, loose
+	-- cobbles scatter into the dirt and thin out, so the two blend together)
+	do
+		local SHADES = { FARM.DIRT, FARM.DIRT, RGB(232, 183, 150), RGB(194, 133, 105) }
+		local COBBLE = { RGB(139, 155, 180), RGB(192, 203, 220), RGB(160, 170, 192) }
+		local nc = { CanCollide = false, CanQuery = false }
+		local up, down = 0, 0
+		for x = 8.5, 62.5, 1.5 do
+			up = math.clamp(up + (rnd() - 0.5) * 0.9, -0.6, 1)
+			down = math.clamp(down + (rnd() - 0.5) * 0.9, -0.6, 1)
+			local zN, zS = 93.5 - up, 98.5 + down
+			part(m, "FarmPath", V3(1.55, 0.3, zS - zN), CFrame.new(x + 0.75, 0.15, (zN + zS) / 2), SHADES[1 + math.floor(rnd() * #SHADES)], Mat.Ground, nc)
+			if rnd() < 0.35 then
+				part(m, "PathPatch", V3(1.2 + rnd() * 1.5, 0.3, 1 + rnd() * 1.5), CFrame.new(x + 0.75, 0.19, zN + 1 + rnd() * (zS - zN - 2)), RGB(184, 111, 80), Mat.Ground, nc)
+			end
+			if rnd() < 0.4 then
+				local s2 = 0.3 + rnd() * 0.35
+				part(m, "PathPebble", V3(s2, 0.25, s2), CFrame.new(x + rnd() * 1.5, 0.35, zN + 0.5 + rnd() * (zS - zN - 1)), (rnd() < 0.5) and RGB(115, 62, 57) or RGB(234, 212, 170), Mat.Slate, nc)
+			end
+			for _, ez in ipairs({ zN, zS }) do
+				if rnd() < 0.4 then
+					local h = 0.5 + rnd() * 0.5
+					part(m, "PathTuft", V3(0.35, h, 0.35), CFrame.new(x + rnd() * 1.5, h / 2, ez + (rnd() - 0.5) * 0.8), (rnd() < 0.5) and FARM.LEAF or FARM.LEAF2, Mat.Grass, nc)
+				end
+			end
+			-- loose cobbles near the road, fewer the further in you go
+			local fade = 1 - (x - 8.5) / 11
+			for _ = 1, 3 do
+				if rnd() < fade * 0.8 then
+					local c = 1.2 + rnd() * 0.7
+					part(m, "PathCobble", V3(c, 0.2, c * (0.8 + rnd() * 0.4)), CFrame.new(x + rnd() * 1.5, 0.36, zN + 0.6 + rnd() * (zS - zN - 1.2)) * CFrame.Angles(0, (rnd() - 0.5) * 0.4, 0), COBBLE[1 + math.floor(rnd() * #COBBLE)], Mat.Slate, nc)
+				end
+			end
+		end
+		part(m, "FarmYard", V3(15, 0.3, 26), CFrame.new(71.5, 0.15, 93), FARM.DIRT, Mat.Ground)
+		for _ = 1, 12 do
+			part(m, "PathPatch", V3(1.5 + rnd() * 2.5, 0.3, 1.2 + rnd() * 2), CFrame.new(65 + rnd() * 13, 0.19, 81 + rnd() * 24), (rnd() < 0.5) and RGB(184, 111, 80) or RGB(232, 183, 150), Mat.Ground, nc)
+		end
+	end
 	for _, s in ipairs({ { 30, 93.2 }, { 44, 98.9 }, { 57, 93.1 } }) do
 		part(m, "PathPebble", V3(1, 0.2, 0.7), CFrame.new(s[1], 0.35, s[2]), FARM.STONE, Mat.Slate, { CanCollide = false })
 	end
@@ -4405,6 +4418,11 @@ local function buildIsland(parent)
 				-- solid stone along both sides, closing off the ends of the steps
 				for _, sx in ipairs({ -1, 1 }) do
 					part(m, "StairSide", V3(1.4, top - base - 0.02, TREAD + 0.04), CFrame.new(sx * (HW + 0.65), (top - 0.02 + base) / 2, za + TREAD / 2), STONE, Mat.Slate)
+					-- a few darker stones set into the side wall
+					if top - base > 3 and rnd() < 0.45 then
+						local by = base + 1 + rnd() * (top - base - 2.5)
+						part(m, "SideBrick", V3(0.3, 1 + rnd() * 0.6, 1.6 + rnd() * 1.4), CFrame.new(sx * (HW + 1.45), by, za + TREAD / 2), STONE2, Mat.Slate, nc)
+					end
 				end
 			end
 			local zEnd = zStart + STEPS * TREAD
@@ -4434,12 +4452,23 @@ local function buildIsland(parent)
 		end
 		for _, sx in ipairs({ -1, 1 }) do
 			local x = sx * (HW + 0.6)
+			-- (stone down the sides, like the flights)
+			part(m, "RestSide", V3(1.4, yA - base - 0.02, restLen + 0.04), CFrame.new(sx * (HW + 0.65), (yA - 0.02 + base) / 2, zA + restLen / 2), STONE, Mat.Slate)
+			for k = 0, 1 do
+				part(m, "SideBrick", V3(0.3, 1.2, 2.2), CFrame.new(sx * (HW + 1.45), base + 1.5 + k * 2.6, zA + 2 + k * 3.5), STONE2, Mat.Slate, nc)
+			end
 			part(m, "RestWall", V3(1.2, 2.2, restLen + 1), CFrame.new(x, yA + 1.1, zA + restLen / 2), STONE, Mat.Slate)
 			part(m, "RestWallCap", V3(1.6, 0.4, restLen + 1.2), CFrame.new(x, yA + 2.4, zA + restLen / 2), STONE2, Mat.Slate)
 			flowerBox(x, yA + 2.6, zA + restLen / 2 - 1.5, true)
 			lantern(sx * (HW - 1), yA, zA + restLen / 2 + 2)
 		end
 		local zB = stairFlight(zA + restLen, yA)
+		-- bushes and flowers along the foot of the stairs' sides
+		for _, sx in ipairs({ -1, 1 }) do
+			for z = z1 + 3, zB - 6, 9 do
+				blockBush(m, sx * (HW + 3.2 + rnd() * 1.5), z + rnd() * 3, 0.8 + rnd() * 0.4, base)
+			end
+		end
 		-- at the bottom: lanterns, bushes and flowers either side
 		for _, sx in ipairs({ -1, 1 }) do
 			lantern(sx * (HW + 3), base, zB + 1.5)
@@ -4484,7 +4513,7 @@ local function buildIsland(parent)
 			end
 			return xEnd
 		end
-		local DIRT, DIRT2 = RGB(194, 133, 105), RGB(184, 111, 80)
+		local DIRT, DIRT2 = RGB(184, 111, 80), RGB(194, 133, 105)
 		local nc = { CanCollide = false, CanQuery = false }
 		local left, right = 0, 0 -- how far each edge wanders in or out
 		local y = TERRACE1_TOP + 0.15
@@ -4510,10 +4539,10 @@ local function buildIsland(parent)
 				end
 				if rnd() < 0.45 then
 					local s2 = 0.35 + rnd() * 0.4
-					part(m, "PathPebble", V3(s2, 0.25, s2), CFrame.new(xL + 0.5 + rnd() * (xR - xL - 1), y + 0.2, z + rnd() * 1.5), (rnd() < 0.5) and RGB(139, 155, 180) or RGB(115, 62, 57), Mat.Slate, nc)
+					part(m, "PathPebble", V3(s2, 0.25, s2), CFrame.new(xL + 0.5 + rnd() * (xR - xL - 1), y + 0.2, z + rnd() * 1.5), (rnd() < 0.5) and RGB(232, 183, 150) or RGB(115, 62, 57), Mat.Slate, nc)
 				end
 				if rnd() < 0.05 then
-					part(m, "PathStone", V3(2 + rnd() * 1.5, 0.3, 1.4 + rnd()), CFrame.new(cx + (rnd() - 0.5) * 4, y + 0.1, zc) * CFrame.Angles(0, (rnd() - 0.5) * 0.6, 0), RGB(139, 155, 180), Mat.Slate, nc)
+					part(m, "PathStone", V3(2 + rnd() * 1.5, 0.3, 1.4 + rnd()), CFrame.new(cx + (rnd() - 0.5) * 4, y + 0.1, zc) * CFrame.Angles(0, (rnd() - 0.5) * 0.6, 0), RGB(234, 212, 170), Mat.Slate, nc)
 				end
 				for _, ex in ipairs({ xL, xR }) do
 					if rnd() < 0.35 and levelAtCell(ex, zc) == 3 then
@@ -4527,7 +4556,31 @@ local function buildIsland(parent)
 			z = z + 1.5
 		end
 	end
-	zAt = flight(xEnd, zGrassEnd, TERRACE1_TOP, BEACH_TOP, 0.8, 1)
+	-- where the path drops to the beach: steps edged with wooden logs, the
+	-- treads packed dirt, with the grassy bank carried down either side
+	do
+		local n = 6
+		local rise = (TERRACE1_TOP - BEACH_TOP) / n
+		local TREAD, HALF = 1.6, 6
+		local nc = { CanCollide = false }
+		for i = 1, n - 1 do
+			local top = TERRACE1_TOP - i * rise
+			local za = zGrassEnd + (i - 1) * TREAD
+			part(m, "LogStep", V3(HALF * 2, top - BEACH_TOP + 0.5, TREAD + 0.02), CFrame.new(xEnd, (top + BEACH_TOP - 0.5) / 2, za + TREAD / 2), RGB(184, 111, 80), Mat.Ground)
+			part(m, "LogStepEdge", V3(HALF * 2, 0.6, 0.6), CFrame.new(xEnd, top - 0.1, za + TREAD - 0.3), RGB(115, 62, 57), Mat.Wood, nc)
+			for _, sx in ipairs({ -1, 1 }) do
+				part(m, "LogStepPeg", V3(0.5, 0.9, 0.5), CFrame.new(xEnd + sx * (HALF - 0.6), top + 0.05, za + TREAD + 0.05), RGB(62, 39, 49), Mat.Wood, nc)
+				-- the bank either side, stepping down with the steps
+				local bankTop = top + 1.2
+				part(m, "StepBank", V3(2.4, bankTop - 1 - BEACH_TOP, TREAD + 0.04), CFrame.new(xEnd + sx * (HALF + 1.2), (bankTop - 1 + BEACH_TOP) / 2, za + TREAD / 2), ISLE.DIRT, Mat.Ground)
+				part(m, "StepBankTop", V3(2.6, 1, TREAD + 0.06), CFrame.new(xEnd + sx * (HALF + 1.2), bankTop - 0.5, za + TREAD / 2), ISLE.GRASS, Mat.Grass)
+				if rnd() < 0.6 then
+					part(m, "PathTuft", V3(0.35, 0.8, 0.35), CFrame.new(xEnd + sx * (HALF + 0.6 + rnd()), bankTop + 0.4, za + rnd() * TREAD), ISLE.GRASS2, Mat.Grass, nc)
+				end
+			end
+		end
+		zAt = zGrassEnd + (n - 1) * TREAD
+	end
 	local zBeachEnd = zAt
 	while levelAtCell(xEnd, zBeachEnd + 1) == 2 do
 		zBeachEnd = zBeachEnd + 1
@@ -4579,7 +4632,7 @@ local function buildIsland(parent)
 			local nearShore = L == 2 or levelAtCell(x + 18, z) < 3 or levelAtCell(x - 18, z) < 3 or levelAtCell(x, z + 18) < 3 or levelAtCell(x, z - 18) < 3
 			local y = (L == 2) and BEACH_TOP or TERRACE1_TOP
 			if nearShore and rnd() < 0.85 then
-				palmTree(m, x, y, z, 0.8 + rnd() * 0.35, rnd() * math.pi * 2)
+				palmTree(m, x, y, z, 1.25 + rnd() * 0.4, rnd() * math.pi * 2)
 			elseif rnd() < 0.75 then
 				farmTree(m, x, z, 0.6 + rnd() * 0.4, y)
 			else
