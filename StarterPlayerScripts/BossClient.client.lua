@@ -109,6 +109,39 @@ local fxFolder = Instance.new("Folder")
 fxFolder.Name = "BossFX"
 fxFolder.Parent = Workspace
 
+-- 8-BIT: the bosses are built from crisp blocks, like the rest of the game.
+-- A "round" body piece becomes a plain block that fills its box (it still
+-- squashes and stretches the same), its grainy stone/sand/glass textures
+-- become flat colour, and its colour is snapped to the game's palette. (The
+-- warning discs and rings on the floor stay round, so you can read them.)
+-- Config.Retro.BossPixel = false puts the old smooth look back.
+local PIXEL = not (Config.Retro and Config.Retro.BossPixel == false)
+local FLAT = {
+	[Enum.Material.Glass] = true, [Enum.Material.Sandstone] = true, [Enum.Material.Slate] = true,
+	[Enum.Material.Sand] = true, [Enum.Material.Rock] = true, [Enum.Material.Cobblestone] = true,
+	[Enum.Material.Basalt] = true, [Enum.Material.Ground] = true,
+}
+local BLOCKY = { Drip = true, Maw = true } -- (cylinders that are part of a body, not a warning)
+-- the game's 32 colours (Endesga 32)
+local PALETTE = {
+	RGB(190, 74, 47), RGB(215, 118, 67), RGB(234, 212, 170), RGB(228, 166, 114), RGB(184, 111, 80), RGB(115, 62, 57),
+	RGB(62, 39, 49), RGB(162, 38, 51), RGB(228, 59, 68), RGB(247, 118, 34), RGB(254, 174, 52), RGB(254, 231, 97),
+	RGB(99, 199, 77), RGB(62, 137, 72), RGB(38, 92, 66), RGB(25, 60, 62), RGB(18, 78, 137), RGB(0, 153, 219),
+	RGB(44, 232, 245), RGB(255, 255, 255), RGB(192, 203, 220), RGB(139, 155, 180), RGB(90, 105, 136), RGB(58, 68, 102),
+	RGB(38, 43, 68), RGB(24, 20, 37), RGB(255, 0, 68), RGB(104, 56, 108), RGB(181, 80, 136), RGB(246, 117, 122),
+	RGB(232, 183, 150), RGB(194, 133, 105),
+}
+local function snapColor(c)
+	local best, bestD = c, math.huge
+	for _, p in ipairs(PALETTE) do
+		local d = (p.R - c.R) ^ 2 + (p.G - c.G) ^ 2 + (p.B - c.B) ^ 2
+		if d < bestD then
+			best, bestD = p, d
+		end
+	end
+	return best
+end
+
 local function newPart(name, shape, color, material, transparency, parent)
 	local p = Instance.new("Part")
 	p.Name = name
@@ -119,6 +152,17 @@ local function newPart(name, shape, color, material, transparency, parent)
 	p.CastShadow = false
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
+	if PIXEL and (shape == Enum.PartType.Ball or (shape == Enum.PartType.Cylinder and BLOCKY[name])) then
+		shape = nil -- (a block that fills its box)
+	end
+	if PIXEL then
+		if material and FLAT[material] then
+			material = Enum.Material.SmoothPlastic
+		end
+		if color and material ~= Enum.Material.Neon then
+			color = snapColor(color)
+		end
+	end
 	if shape == Enum.PartType.Ball then
 		-- Roblox always draws a Ball part round, as wide as its smallest side, so
 		-- a stretched one would shrink instead of stretching. A sphere mesh fills
@@ -473,6 +517,9 @@ end
 -- where a point on the front of the (stretched) body sits, so the eyes and
 -- mouth stay on its surface whatever shape it's squashed into
 local function onSurface(halfX, halfY, halfZ, x, y)
+	if PIXEL then
+		return -halfZ - 0.05 -- (the body is a block: its face is flat)
+	end
 	local k = 1 - (x / halfX) ^ 2 - (y / halfY) ^ 2
 	return -halfZ * math.sqrt(math.max(k, 0.02)) - 0.05
 end
@@ -663,9 +710,9 @@ local WORM_SAND = RGB(224, 188, 128) -- the arena's sand, for everything it thro
 local WORM_SAND_DEEP = RGB(122, 92, 58) -- churned-up quicksand
 local WORM_PLATE = RGB(156, 124, 88)
 local WORM_PLATE_DARK = RGB(126, 100, 72)
-local WORM_TEETH = 12 -- round the rim of the maw
+local WORM_TEETH = 8 -- round the rim of the maw
 local WORM_JAWS = 3
-local WORM_EYES = 8
+local WORM_EYES = 6
 
 -- a scale of armour: a wedge, thick at the back and thin at the front, so
 -- they overlap down its back like a fish's
@@ -887,6 +934,9 @@ function Fast.alpha(p, a)
 	end
 end
 function Fast.color(p, c)
+	if PIXEL and p.Material ~= Enum.Material.Neon then
+		c = snapColor(c) -- (8-bit: its colours stay on the palette as they change)
+	end
 	if Fast.colors[p] ~= c then
 		Fast.colors[p] = c
 		p.Color = c
@@ -1193,9 +1243,9 @@ local function applyWormPose(B, P, ground, facing, t, dt)
 	local rising = dt > 0 and (lastSink - sink) / dt or 0
 	B.spillHeat = math.max((B.spillHeat or 0) * math.exp(-dt * 0.8), clamp(rising * 1.5, 0, 1))
 	Fast.move(body.spillAt, headCF)
-	body.spill.Rate = P.spill or ((1 - fade) * out * (4 + 35 * B.spillHeat))
+	body.spill.Rate = (P.spill or ((1 - fade) * out * (4 + 35 * B.spillHeat))) * 0.5
 	Fast.move(body.dustAt, CFrame.new(floorAt + V3(0, 1, 0)))
-	body.dust.Rate = (1 - fade) * (ridge * 18 + (moving and out * 6 or 0) + B.spillHeat * out * 15)
+	body.dust.Rate = (1 - fade) * (ridge * 18 + (moving and out * 6 or 0) + B.spillHeat * out * 15) * 0.5
 	Fast.flush()
 end
 
@@ -1598,6 +1648,12 @@ do
 	-- A new scar (a crater, a trench, fissures, a heave...) - balls of air (or of
 	-- sand, for a heave) that go back to flat floor together
 	function newScar(B, kind, life)
+		-- (tearing up the Terrain sand is the heaviest thing the worm does to your
+		-- screen: it's off unless Config turns it on - Scars.Terrain = true)
+		local SC = B.def and B.def.Scars
+		if not (SC and SC.Terrain) then
+			return nil
+		end
 		local info = (player:GetAttribute("SpireFloor") == B.floor) and Terrain and arenaFloor(B)
 		if not info then
 			return nil
@@ -2014,9 +2070,11 @@ local function stepStorm(B, dt)
 		return
 	end
 	local state = B.model:GetAttribute("State")
-	local want = 0.35
+	-- (a lighter storm than it was: you can see the fight, and your screen
+	-- has far less to draw)
+	local want = 0.2
 	if state == "Waking" or state == "Fighting" or state == "Transition" then
-		want = B.phase2Look and 1 or 0.92
+		want = B.phase2Look and 0.7 or 0.5
 	end
 	B.storm = B.storm or (arena:GetAttribute("Storm") or 0.35)
 	B.storm = B.storm + (want - B.storm) * math.min(1, dt * 0.6)
@@ -4232,7 +4290,7 @@ do
 			end
 		end
 		-- you arrived after the seal caved in: the pit is dug for you now
-		if B.sealDown and here and not B.bowl and Terrain and os.clock() > (B.bowlTry or 0) then
+		if B.sealDown and here and not B.bowl and Terrain and B.def.Scars and B.def.Scars.Terrain and os.clock() > (B.bowlTry or 0) then
 			B.bowlTry = os.clock() + 3
 			B.sealDown = false
 			collapseSeal(B, true, true)
@@ -4810,7 +4868,55 @@ local function onAction(B, name, t0, now)
 	end
 end
 
+-- "HIT IT!": a big flashing 8-bit sign over the worm whenever it's out of
+-- the sand and can be hurt - so you always know when your window is open.
+local function hitSign(B, state)
+	if B.kind ~= "Worm" or not B.body then
+		return
+	end
+	local head = B.body.segments and B.body.segments[#B.body.segments]
+	head = head and head.part
+	if not head then
+		return
+	end
+	local m = B.model
+	local open = state == "Fighting" and not m:GetAttribute("Submerged") and not m:GetAttribute("Invulnerable")
+		and player:GetAttribute("SpireFloor") == B.floor
+	if not B.hitGui then
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "HitIt"
+		bb.Size = UDim2.fromOffset(220, 70)
+		bb.StudsOffsetWorldSpace = V3(0, 18, 0)
+		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
+		bb.MaxDistance = 400
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Size = UDim2.fromScale(1, 1)
+		l.Font = Enum.Font.Arcade
+		l.Text = "HIT IT!"
+		l.TextScaled = true
+		l.TextColor3 = RGB(254, 231, 97)
+		l.Parent = bb
+		local st = Instance.new("UIStroke")
+		st.Thickness = 4
+		st.Color = RGB(24, 20, 37)
+		st.Parent = l
+		B.hitGui, B.hitLabel = bb, l
+		bb.Parent = playerGui
+	end
+	B.hitGui.Adornee = head
+	B.hitGui.Enabled = open == true
+	if open then
+		-- flashes yellow / red in chunky steps, and bounces
+		local k = math.floor(os.clock() * 6) % 2
+		B.hitLabel.TextColor3 = k == 0 and RGB(254, 231, 97) or RGB(255, 0, 68)
+		B.hitGui.StudsOffsetWorldSpace = V3(0, 18 + (k == 0 and 0 or 1.2), 0)
+	end
+end
+
 local function stepBoss(B, now, dt)
+	hitSign(B, B.model:GetAttribute("State") or "Dormant")
 	local m = B.model
 	local id = m:GetAttribute("ActionId") or 0
 	if id ~= B.seenId then

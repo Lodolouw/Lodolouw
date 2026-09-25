@@ -774,8 +774,8 @@ Config.Bosses = {
 		-- way of fighting (BossService): it lives under the sand and hunts by
 		-- sound. None of Gloomgut's attacks are used - its moves are all below.
 		Body = "Worm",
-		Color = Color3.fromRGB(178, 134, 74), -- its sand-crusted hide
-		DeepColor = Color3.fromRGB(94, 64, 36), -- its underside, in shadow
+		Color = Color3.fromRGB(228, 166, 114), -- its sand-crusted hide (8-bit: bands of this...)
+		DeepColor = Color3.fromRGB(115, 62, 57), -- ...and this, its underside in shadow
 		CoreColor = Color3.fromRGB(40, 26, 18), -- the dark of its throat
 		EyeColor = Color3.fromRGB(255, 214, 90), -- small and many, amber
 		HeartColor = Color3.fromRGB(255, 90, 40), -- the molten glow behind its armor
@@ -783,11 +783,11 @@ Config.Bosses = {
 		-- The second boss: a little longer than Gloomgut, and it hits harder,
 		-- but the same "punches at your recommended power" fairness applies.
 		-- (You can only hurt it while it's out of the sand, so every window counts.)
-		HealthPunches = 34,
+		HealthPunches = 30,
 		PartyScale = 0.62,
 		-- after each punch that lands it shrugs off every other punch for this
 		-- many seconds (from anyone) - bigger = fewer hits land, a harder fight
-		IFrames = 0.6,
+		IFrames = 0.35, -- (was 0.6: every opening is worth more punches now)
 		StudioFairFight = true,
 
 		Size = 30, -- a vast creature - half again as wide as Gloomgut
@@ -811,7 +811,7 @@ Config.Bosses = {
 		-- walking on stone is quiet and standing still is silent.
 		Hunt = {
 			SwimSpeed = { 30, 38 }, -- per phase (nobody runs faster than 24 in here)
-			Time = { { 1.4, 2.4 }, { 0.9, 1.7 } }, -- how long it stalks before it strikes, per phase
+			Time = { { 0.9, 1.6 }, { 0.6, 1.2 } }, -- how long it stalks before it strikes, per phase (short: more fighting, less waiting)
 			StrikeRange = 26, -- it strikes sooner once it's this close to its quarry
 			DiveTime = 0.95, -- going back under after it's been out (it arches over and plunges in ahead)
 			NoiseFade = 2.5, -- seconds a noise takes to fade (bigger = it remembers you longer)
@@ -835,12 +835,16 @@ Config.Bosses = {
 		-- away from where it went under, keep off its ridge, jump as the sand
 		-- jumps, or get on stone. Range = how close before you feel each one in
 		-- your view; Shake = how hard (0 = not at all).
-		Rumble = { Every = 1.1, Radius = 18, Damage = 8, Knockback = 26, Range = 40, Shake = 0.45 },
+		-- (Damage = 0 switches it off: the constant chip damage wasn't fun)
+		Rumble = { Every = 1.1, Radius = 18, Damage = 0, Knockback = 26, Range = 40, Shake = 0.45 },
 
 		-- THE SAND IT TEARS UP. Where it bursts out, crashes down or cracks the
 		-- floor, the sand really opens up (craters, trenches, fissures - on your
 		-- screen, and you walk in them). This is how long before it slides back.
-		Scars = { Last = 7 },
+		-- Terrain = false: off. Tearing up the Terrain sand was the laggiest
+		-- thing in the fight, so the craters and trenches aren't dug any more
+		-- (every hit still works exactly the same).
+		Scars = { Last = 7, Terrain = false },
 
 		-- Its attacks. Tell = the warning before it lands (always longer than
 		-- your roll's 0.5s). Exposed = how long it stays out of the sand after,
@@ -850,23 +854,23 @@ Config.Bosses = {
 		Attacks = {
 			-- AMBUSH: its back races after you through the sand, stops, the ground
 			-- heaves up under you... and it bursts out where you stood. Move or roll off it.
-			Ambush = { StalkSpeed = 44, StalkTime = 2.2, Lock = 0.65, Radius = 10, Damage = 30, Knockback = 70, Exposed = 1.6, Phase = 1, Weight = 6, Sand = true },
+			Ambush = { StalkSpeed = 44, StalkTime = 2.2, Lock = 0.65, Radius = 10, Damage = 30, Knockback = 70, Exposed = 2.6, Phase = 1, Weight = 6, Sand = true },
 			-- BREACH: it leaps out of the sand in a great arc, and while it's in the
 			-- air the strip it'll crash down on FOLLOWS YOU. Lock = how far through
 			-- the leap it stops following (the strip flashes): roll then. Its body
 			-- carves a trench where it lands, and it lies there stuck for a moment.
 			-- In phase two it leaps again straight away (Leaps).
 			Breach = { Tell = 1.0, Flight = 1.25, Lock = 0.62, Length = 120, Overshoot = 16, BodyLength = 72, Width = 14, Launch = 12, Height = 38,
-				Damage = 32, Knockback = 60, Stuck = 2.6, Slide = 0.9, Leaps = { 1, 2 }, ChainTell = 0.5, Phase = 1, Weight = 4 },
+				Damage = 32, Knockback = 60, Stuck = 3.4, Slide = 0.9, Leaps = { 1, 2 }, ChainTell = 0.5, Phase = 1, Weight = 4 },
 			-- COIL: it circles you under the sand, then its body bursts up in a
 			-- CLOSED ring round you with its head reared over you, and tightens.
 			-- There's no gap: touching its body throws you back the way you came.
 			-- The only way out is to ROLL through it. At the end the head strikes down.
-			Coil = { Tell = 1.1, Radius = 22, Crush = 9, Close = 1.7, Wall = 10, WallDamage = 18, Damage = 40, Knockback = 55, Exposed = 1.8, Phase = 1, Weight = 4, Sand = true },
+			Coil = { Tell = 1.1, Radius = 22, Crush = 9, Close = 1.7, Wall = 10, WallDamage = 18, Damage = 40, Knockback = 55, Exposed = 2.6, Phase = 1, Weight = 4, Sand = true },
 			-- DEVOUR: a sinkhole spins open under you - the sand really sinks - and
 			-- drags you toward its middle, then its maw bursts up out of it. Roll
 			-- (you can't be dragged in the air) or get on stone.
-			Devour = { Tell = 1.5, Radius = 18, Depth = 6, Pull = { 6, 12 }, Bite = 10, Damage = 36, Knockback = 50, Exposed = 1.6, Phase = 1, Weight = 4, Sand = true },
+			Devour = { Tell = 1.5, Radius = 18, Depth = 6, Pull = { 6, 12 }, Bite = 10, Damage = 36, Knockback = 50, Exposed = 2.6, Phase = 1, Weight = 4, Sand = true },
 			-- TAIL LASH: its tail rips up out of the sand BEHIND you and whips
 			-- round in a wide arc, low over the sand - the tip trailing behind and
 			-- cracking round at the end, like a whip - and in phase two, straight
@@ -874,11 +878,11 @@ Config.Bosses = {
 			TailLash = { Tell = 0.85, Behind = 10, Reach = 26, Sweep = 220, Time = 0.55, Sweeps = { 1, 2 }, Pause = 0.25, Width = 5, Height = 5, Damage = 24, Knockback = 64, Phase = 1, Weight = 4 },
 			-- TREMOR: it thrashes underground, the whole sand floor quakes and
 			-- cracks open, a few times in a row. Be on stone, or in the air when each one hits.
-			Tremor = { Tell = 1.3, Quakes = 3, Gap = 0.95, Damage = 12, Knockback = 22, Phase = 1, Weight = 3 },
+			Tremor = { Tell = 1.3, Quakes = 2, Gap = 0.95, Damage = 12, Knockback = 22, Phase = 1, Weight = 2 },
 			-- UNDERMINE (phase two): you're hiding on stone? It circles under the
 			-- platform, the cracks glow... and it bursts up through it. The stone is
 			-- gone for the rest of the fight. Get off when the cracks light up.
-			Undermine = { Tell = 1.6, Damage = 30, Knockback = 60, Exposed = 1.6, Phase = 2, Weight = 6 },
+			Undermine = { Tell = 1.6, Damage = 30, Knockback = 60, Exposed = 2.4, Phase = 2, Weight = 6 },
 		},
 
 		Reward = { Power = 2.0, FirstClear = 5 },
