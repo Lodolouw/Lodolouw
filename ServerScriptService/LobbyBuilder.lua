@@ -1258,34 +1258,6 @@ local function buildUpgradeShop(parent)
 	-- Faces the plaza (local +Z = towards the middle of the lobby).
 	local m = folder(parent, "UpgradeShop")
 
-	-- 8-bit: every round piece of this house is built as a "pixel circle"
-	-- instead - rows of blocks that step in towards the edge, like a circle
-	-- drawn on graph paper - and balls become stacked blocks.
-	local function cylinder(p, name, height, dia, cf, color, material, extra)
-		local r = dia / 2
-		local step = dia > 14 and 2 or (dia > 5 and 1 or 0.5)
-		for z = -r + step / 2, r, step do
-			local w = math.floor(2 * math.sqrt(math.max(0, r * r - z * z)) / step + 0.5) * step
-			if w > 0 then
-				part(p, name, V3(w, height, step), cf * CFrame.new(0, 0, z), color, material, extra)
-			end
-		end
-	end
-	local function discZ(p, name, thickness, dia, cf, color, material, extra)
-		local r = dia / 2
-		local step = dia > 5 and 1 or 0.5
-		for y = -r + step / 2, r, step do
-			local w = math.floor(2 * math.sqrt(math.max(0, r * r - y * y)) / step + 0.5) * step
-			if w > 0 then
-				part(p, name, V3(w, step, thickness), cf * CFrame.new(0, y, 0), color, material, extra)
-			end
-		end
-	end
-	local function ball(p, name, dia, cf, color, material, extra)
-		part(p, name, V3(dia * 0.9, dia * 0.5, dia * 0.9), cf, color, material, extra)
-		part(p, name, V3(dia * 0.6, dia * 0.9, dia * 0.6), cf, color, material, extra)
-	end
-
 	local O = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(Config.StationTurn.Upgrades or -90), 0)
 	local STEM_Z, STEM_R = -3, 9 -- stem centre (local z) and radius
 	local capRed, capRedDark = RGB(204, 50, 44), RGB(184, 40, 36)
@@ -1305,31 +1277,31 @@ local function buildUpgradeShop(parent)
 	end
 
 	-- Round cobblestone base
-	cylinder(m, "Base", 0.8, 27, O * CFrame.new(0, 0.4, -1), RGB(150, 146, 140), Mat.Cobblestone)
+	cylinder(m, "Base", 0.8, 27, O * CFrame.new(0, 0.4, -1), RGB(150, 146, 140), Mat.SmoothPlastic)
 
 	-- Stem: darker stone bottom band, brick walls, timber beams
-	cylinder(m, "StemBase", 3, STEM_R * 2 + 0.6, O * CFrame.new(0, 2.3, STEM_Z), RGB(112, 108, 104), Mat.Cobblestone)
-	cylinder(m, "Stem", 15, STEM_R * 2, O * CFrame.new(0, 8.3, STEM_Z), RGB(176, 150, 124), Mat.Brick)
-	cylinder(m, "StemBand", 0.8, STEM_R * 2 + 0.5, O * CFrame.new(0, 11, STEM_Z), timber, Mat.Wood)
+	cylinder(m, "StemBase", 3, STEM_R * 2 + 0.6, O * CFrame.new(0, 2.3, STEM_Z), RGB(112, 108, 104), Mat.SmoothPlastic)
+	cylinder(m, "Stem", 15, STEM_R * 2, O * CFrame.new(0, 8.3, STEM_Z), RGB(176, 150, 124), Mat.SmoothPlastic)
+	cylinder(m, "StemBand", 0.8, STEM_R * 2 + 0.5, O * CFrame.new(0, 11, STEM_Z), timber, Mat.SmoothPlastic)
 	for i = 0, 7 do
 		local deg = 22.5 + i * 45
-		part(m, "StemBeam", V3(0.9, 14, 0.5), onStem(deg, 8.3, 0.1), timber, Mat.Wood)
+		part(m, "StemBeam", V3(0.9, 14, 0.5), onStem(deg, 8.3, 0.1), timber, Mat.SmoothPlastic)
 	end
 
 	-- Arched door, a little to the left of the counter
 	local doorCf = onStem(-38, 0, 0.15)
-	discZ(m, "DoorArch", 0.4, 6.4, doorCf * CFrame.new(0, 5.4, 0), RGB(112, 108, 104), Mat.Cobblestone)
-	discZ(m, "DoorTop", 0.5, 5, doorCf * CFrame.new(0, 5.4, -0.1), RGB(120, 76, 44), Mat.WoodPlanks)
-	part(m, "Door", V3(5, 4.6, 0.5), doorCf * CFrame.new(0, 3.1, -0.1), RGB(120, 76, 44), Mat.WoodPlanks)
+	discZ(m, "DoorArch", 0.4, 6.4, doorCf * CFrame.new(0, 5.4, 0), RGB(112, 108, 104), Mat.SmoothPlastic)
+	discZ(m, "DoorTop", 0.5, 5, doorCf * CFrame.new(0, 5.4, -0.1), RGB(120, 76, 44), Mat.SmoothPlastic)
+	part(m, "Door", V3(5, 4.6, 0.5), doorCf * CFrame.new(0, 3.1, -0.1), RGB(120, 76, 44), Mat.SmoothPlastic)
 	ball(m, "DoorKnob", 0.5, doorCf * CFrame.new(1.6, 3.3, -0.45), GOLD, Mat.Metal)
 
 	-- Glowing windows
 	local function window(deg, y, w, h)
 		local cf = onStem(deg, y, 0.2)
-		part(m, "WindowFrame", V3(w + 0.8, h + 0.8, 0.4), cf, timber, Mat.Wood)
+		part(m, "WindowFrame", V3(w + 0.8, h + 0.8, 0.4), cf, timber, Mat.SmoothPlastic)
 		local glass = part(m, "WindowGlow", V3(w, h, 0.45), cf * CFrame.new(0, 0, -0.05), RGB(255, 206, 120), Mat.Neon, { Transparency = 0.15 })
-		part(m, "WindowBarV", V3(0.25, h, 0.5), cf * CFrame.new(0, 0, -0.1), timber, Mat.Wood)
-		part(m, "WindowBarH", V3(w, 0.25, 0.5), cf * CFrame.new(0, 0, -0.1), timber, Mat.Wood)
+		part(m, "WindowBarV", V3(0.25, h, 0.5), cf * CFrame.new(0, 0, -0.1), timber, Mat.SmoothPlastic)
+		part(m, "WindowBarH", V3(w, 0.25, 0.5), cf * CFrame.new(0, 0, -0.1), timber, Mat.SmoothPlastic)
 		local light = Instance.new("PointLight")
 		light.Color = RGB(255, 200, 120)
 		light.Range = 9
@@ -1368,8 +1340,8 @@ local function buildUpgradeShop(parent)
 
 	-- Little mushroom annex on the left side
 	local AX, AZ = -19.5, -1
-	cylinder(m, "AnnexBase", 0.6, 9, O * CFrame.new(AX, 0.3, AZ), RGB(150, 146, 140), Mat.Cobblestone)
-	cylinder(m, "AnnexStem", 6, 7, O * CFrame.new(AX, 3.8, AZ), RGB(176, 150, 124), Mat.Brick)
+	cylinder(m, "AnnexBase", 0.6, 9, O * CFrame.new(AX, 0.3, AZ), RGB(150, 146, 140), Mat.SmoothPlastic)
+	cylinder(m, "AnnexStem", 6, 7, O * CFrame.new(AX, 3.8, AZ), RGB(176, 150, 124), Mat.SmoothPlastic)
 	for i, t in ipairs({ { 11, 1.6, 7.4 }, { 8.4, 1.6, 8.8 }, { 5, 1.4, 10 } }) do
 		cylinder(m, "AnnexCap" .. i, t[2], t[1], O * CFrame.new(AX, t[3], AZ), (i % 2 == 1) and capRed or capRedDark, Mat.SmoothPlastic)
 	end
@@ -1382,13 +1354,40 @@ local function buildUpgradeShop(parent)
 	-- welcome mat (Hud's station spot, local z = 13). The "Open Upgrades"
 	-- prompt hangs on an invisible marker right by him.
 	local top = anchorPart(m, "PromptSpot", O * CFrame.new(0, 3, 9.5))
-	avatarNPC(m, NPC_MODELS.Toad, "Toad", facingCustomer(O, 0, 8.6), Config.Stations.Upgrades.Y + 0.8, function()
-		npc(m, O, 0, 8.6, RGB(90, 160, 90), RGB(200, 50, 44))
-	end)
+	-- an 8-bit frog, built from blocks, sitting on the step facing you
+	do
+		local frog = Instance.new("Model")
+		frog.Name = "Frog"
+		frog.Parent = m
+		local F = O * CFrame.new(0, 0.8, 8.6) -- (local +Z = towards you)
+		local g, dark, belly = RGB(99, 199, 77), RGB(62, 137, 72), RGB(190, 240, 140)
+		local function b(name, size, x, y, z, c)
+			part(frog, name, size, F * CFrame.new(x, y, z), c, Mat.SmoothPlastic)
+		end
+		b("Body", V3(4.4, 2.6, 4), 0, 1.5, 0, g)
+		b("Back", V3(3.6, 1, 3), 0, 3.1, -0.4, g)
+		b("Belly", V3(3, 1.8, 0.4), 0, 1.4, 2.1, belly)
+		b("Mouth", V3(3.2, 0.3, 0.2), 0, 2.2, 2.05, dark)
+		-- big eyes on top: white, with a black pupil looking at you
+		for _, sx in ipairs({ -1, 1 }) do
+			b("Eye", V3(1.4, 1.4, 1.4), sx * 1.3, 3.8, 0.9, RGB(255, 255, 255))
+			b("Pupil", V3(0.6, 0.7, 0.2), sx * 1.3, 3.8, 1.65, RGB(24, 20, 37))
+			b("Lid", V3(1.5, 0.3, 1.5), sx * 1.3, 4.6, 0.9, g)
+			-- folded back legs and little front feet
+			b("Thigh", V3(1.4, 1.8, 3), sx * 2.6, 1.1, -0.4, dark)
+			b("Foot", V3(1.8, 0.4, 1.6), sx * 2.8, 0.2, 1.2, dark)
+			b("Hand", V3(1, 0.4, 1), sx * 1.2, 0.2, 2.4, dark)
+			b("Cheek", V3(0.5, 0.4, 0.2), sx * 1.7, 1.9, 2.05, RGB(246, 117, 122))
+		end
+		-- a little red mushroom hat (it runs a mushroom shop)
+		b("Hat", V3(2.4, 0.8, 2.4), 0, 4.9, -0.2, RGB(228, 59, 68))
+		b("HatTop", V3(1.4, 0.6, 1.4), 0, 5.6, -0.2, RGB(228, 59, 68))
+		b("HatSpot", V3(0.5, 0.2, 0.5), 0.6, 5.4, 0.8, RGB(255, 255, 255))
+	end
 
 	-- Crate and sack by the annex
-	part(m, "Crate", V3(3, 3, 3), O * CFrame.new(-9, 2.3, 7), RGB(160, 112, 70), Mat.WoodPlanks)
-	ball(m, "Sack", 2.8, O * CFrame.new(-11.2, 1.9, 8.6), RGB(196, 170, 120), Mat.Fabric)
+	part(m, "Crate", V3(3, 3, 3), O * CFrame.new(-9, 2.3, 7), RGB(160, 112, 70), Mat.SmoothPlastic)
+	ball(m, "Sack", 2.8, O * CFrame.new(-11.2, 1.9, 8.6), RGB(196, 170, 120), Mat.SmoothPlastic)
 
 	-- Plants round the base, flowers by the door, lanterns at the front
 	for _, deg in ipairs({ 120, 165, 205, 250 }) do
