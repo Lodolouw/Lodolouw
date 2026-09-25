@@ -5712,9 +5712,9 @@ local Extras = (function()
 		local gateDir = G.LookVector * -1 -- (+Z of G, pointing out)
 
 		-- the sandy mound, and the arena floor inside
-		cylinder(f, "Mound", 1, R * 2 + 8, CFrame.new(c.X, 0.5, c.Z), SAND_LIGHT, Mat.Sand)
-		cylinder(f, "ArenaSand", 0.4, R * 2 - 14, CFrame.new(c.X, 1.1, c.Z), RGB(228, 166, 114), Mat.Sand)
-		cylinder(f, "ArenaRing", 0.6, 12, CFrame.new(c.X, 1.2, c.Z), RGB(190, 128, 88), Mat.Sand)
+		cylinder(f, "Mound", 1, R * 2 + 8, CFrame.new(c.X, 0.5, c.Z), SAND_LIGHT, Mat.SmoothPlastic)
+		cylinder(f, "ArenaSand", 0.4, R * 2 - 14, CFrame.new(c.X, 1.1, c.Z), RGB(228, 166, 114), Mat.SmoothPlastic)
+		cylinder(f, "ArenaRing", 0.6, 12, CFrame.new(c.X, 1.2, c.Z), RGB(190, 128, 88), Mat.SmoothPlastic)
 
 		local N = 32
 		local arc = math.pi * 2 / N
@@ -5734,11 +5734,11 @@ local Extras = (function()
 				-- (neighbouring pieces overlap, so every other one is a touch thinner
 				-- and lower: no two faces in the same place, so no flicker)
 				local odd = (i % 2 == 1) and 1 or 0
-				part(f, "SandWall", V3(arc * (R + 1.6) + 0.3, 12 - odd * 0.2, 3.2 - odd * 0.2), at(R, 7 - odd * 0.1), shade, Mat.Sand)
+				part(f, "SandWall", V3(arc * (R + 1.6) + 0.3, 12 - odd * 0.2, 3.2 - odd * 0.2), at(R, 7 - odd * 0.1), shade, Mat.SmoothPlastic)
 				-- where the bucket was patted flat, then battlements
-				part(f, "SandLip", V3(arc * (R + 1.9) + 0.3, 0.8, 3.8 - odd * 0.2), at(R, 12.6 + odd * 0.15), SAND_LIGHT, Mat.Sand)
+				part(f, "SandLip", V3(arc * (R + 1.9) + 0.3, 0.8, 3.8 - odd * 0.2), at(R, 13.05 + odd * 0.15), SAND_LIGHT, Mat.SmoothPlastic)
 				if i % 2 == 0 then
-					part(f, "SandMerlon", V3(arc * R * 0.55, 2, 3.2), at(R, 14), shade, Mat.Sand)
+					part(f, "SandMerlon", V3(arc * R * 0.55, 2, 3.2), at(R, 14.45), shade, Mat.SmoothPlastic)
 				end
 				-- two storeys of arches round the outside (standing proud of the wall)
 				part(f, "Arch", V3(2, 3, 0.4), at(R + 1.75, 3.9), SAND_DARK, Mat.Sand, { CanCollide = false })
@@ -5748,14 +5748,14 @@ local Extras = (function()
 			if dir:Dot(gateDir) < math.cos(math.rad(4)) then
 				local odd = (i % 2 == 1) and 1 or 0
 				part(f, "Moat", V3(arc * (R + 7.5) + 0.3, 0.3, 3 - odd * 0.1), at(R + 6, 0.2 + odd * 0.04), RGB(0, 153, 219), Mat.SmoothPlastic, { CanCollide = false })
-				part(f, "MoatBank", V3(arc * (R + 8.2) + 0.3, 0.6, 0.8 - odd * 0.1), at(R + 7.8, 0.3 + odd * 0.06), SAND_LIGHT, Mat.Sand)
+				part(f, "MoatBank", V3(arc * (R + 8.2) + 0.3, 0.6, 0.8 - odd * 0.1), at(R + 7.8, 0.3 + odd * 0.06), SAND_LIGHT, Mat.SmoothPlastic)
 			end
 			-- the stands inside, with little spectators cheering
 			for k = 1, 3 do
 				local r = R - 1.6 - k * 2.4
 				local h = 1 + (4 - k) * 2.2
 				local odd = (i % 2 == 1) and 0.08 or 0
-				part(f, "MiniStand", V3(arc * (r + 1.2) + 0.2, h - odd, 2.4 - odd), at(r, h / 2 + 1 - odd / 2), (k % 2 == 0) and SAND_DARK or RGB(200, 140, 96), Mat.Sand)
+				part(f, "MiniStand", V3(arc * (r + 1.2) + 0.2, h - odd, 2.4 - odd), at(r, h / 2 + 1 - odd / 2), (k % 2 == 0) and SAND_DARK or RGB(200, 140, 96), Mat.SmoothPlastic)
 				if rng:NextNumber() < 0.65 then
 					local col = ({ RGB(228, 59, 68), RGB(254, 174, 52), RGB(99, 199, 77), RGB(0, 153, 219), RGB(255, 255, 255), RGB(181, 80, 136) })[rng:NextInteger(1, 6)]
 					part(f, "MiniFan", V3(0.9, 1.2, 0.7), at(r, h + 1.6), col, Mat.SmoothPlastic, { CanCollide = false })
@@ -5769,11 +5769,11 @@ local Extras = (function()
 		for k, a in ipairs(towerAngles) do
 			local p = c + V3(math.sin(a), 0, math.cos(a)) * R
 			local h = 17 + (k % 3) * 2.5
-			part(f, "Bucket", V3(8, h, 8), CFrame.new(p.X, h / 2 + 1, p.Z), SAND_STONE, Mat.Sand)
-			part(f, "BucketBand", V3(8.3, 1, 8.3), CFrame.new(p.X, h * 0.45, p.Z), SAND_DARK, Mat.Sand)
-			part(f, "BucketLip", V3(9, 1, 9), CFrame.new(p.X, h + 1.5, p.Z), SAND_LIGHT, Mat.Sand)
+			part(f, "Bucket", V3(8, h, 8), CFrame.new(p.X, h / 2 + 1, p.Z), SAND_STONE, Mat.SmoothPlastic)
+			part(f, "BucketBand", V3(8.3, 1, 8.3), CFrame.new(p.X, h * 0.45, p.Z), SAND_DARK, Mat.SmoothPlastic)
+			part(f, "BucketLip", V3(9, 1, 9), CFrame.new(p.X, h + 1.5, p.Z), SAND_LIGHT, Mat.SmoothPlastic)
 			for _, d in ipairs({ { -3.4, -3.4 }, { 3.4, -3.4 }, { -3.4, 3.4 }, { 3.4, 3.4 } }) do
-				part(f, "BucketMerlon", V3(2, 2, 2), CFrame.new(p.X + d[1], h + 3, p.Z + d[2]), SAND_STONE, Mat.Sand)
+				part(f, "BucketMerlon", V3(2, 2, 2), CFrame.new(p.X + d[1], h + 3, p.Z + d[2]), SAND_STONE, Mat.SmoothPlastic)
 			end
 			part(f, "Window", V3(8.2, 2.4, 1.4), CFrame.new(p.X, h * 0.7, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
 			part(f, "Window", V3(1.4, 2.4, 8.2), CFrame.new(p.X, h * 0.7, p.Z), SAND_DARK, Mat.Sand, { CanCollide = false })
@@ -5793,17 +5793,17 @@ local Extras = (function()
 		end
 
 		-- the gatehouse: a square block in the ring, with a door far too small for you
-		part(f, "Gatehouse", V3(14, 16, 6), G * CFrame.new(0, 9, 0), SAND_STONE, Mat.Sand)
-		part(f, "GateLip", V3(15, 1, 7), G * CFrame.new(0, 17.5, 0), SAND_LIGHT, Mat.Sand)
+		part(f, "Gatehouse", V3(14, 16, 6), G * CFrame.new(0, 9, 0), SAND_STONE, Mat.SmoothPlastic)
+		part(f, "GateLip", V3(15, 1, 7), G * CFrame.new(0, 17.5, 0), SAND_LIGHT, Mat.SmoothPlastic)
 		for x = -6, 6, 3 do
-			part(f, "GateMerlon", V3(1.8, 2, 1.8), G * CFrame.new(x, 19, 2.2), SAND_STONE, Mat.Sand)
+			part(f, "GateMerlon", V3(1.8, 2, 1.8), G * CFrame.new(x, 19, 2.2), SAND_STONE, Mat.SmoothPlastic)
 		end
 		-- the little door (3 wide, 4 high) and a stepped arch round it
 		local door = part(f, "Doorway", V3(3, 4, 0.4), G * CFrame.new(0, 3, 3.05), RGB(24, 20, 37), Mat.SmoothPlastic)
-		part(f, "DoorArch", V3(4.4, 0.8, 0.5), G * CFrame.new(0, 5.4, 3.1), SAND_LIGHT, Mat.Sand)
-		part(f, "DoorArchTop", V3(2.6, 0.8, 0.5), G * CFrame.new(0, 6.2, 3.1), SAND_LIGHT, Mat.Sand)
+		part(f, "DoorArch", V3(4.4, 0.8, 0.5), G * CFrame.new(0, 5.4, 3.1), SAND_LIGHT, Mat.SmoothPlastic)
+		part(f, "DoorArchTop", V3(2.6, 0.8, 0.5), G * CFrame.new(0, 6.2, 3.1), SAND_LIGHT, Mat.SmoothPlastic)
 		for _, sx in ipairs({ -1, 1 }) do
-			part(f, "DoorPost", V3(0.7, 4.4, 0.5), G * CFrame.new(sx * 1.85, 3.2, 3.1), SAND_LIGHT, Mat.Sand)
+			part(f, "DoorPost", V3(0.7, 4.4, 0.5), G * CFrame.new(sx * 1.85, 3.2, 3.1), SAND_LIGHT, Mat.SmoothPlastic)
 			-- banners and torches either side
 			part(f, "Banner", V3(2.6, 7, 0.3), G * CFrame.new(sx * 4.6, 10, 3.15), BANNER_RED, Mat.Fabric, { CanCollide = false })
 			part(f, "BannerTrim", V3(2.6, 0.5, 0.35), G * CFrame.new(sx * 4.6, 6.7, 3.15), GOLD, Mat.Fabric, { CanCollide = false })
@@ -5823,7 +5823,7 @@ local Extras = (function()
 		part(f, "ShieldBoss", V3(0.8, 0.8, 0.5), G * CFrame.new(0, 11.5, 3.55), GOLD, Mat.Metal, { CanCollide = false })
 		titleSign(f, G * CFrame.new(0, 24, 3), "COLOSSEUM", nil, RGB(254, 174, 52), 300, 110)
 		-- a sand path and a plank bridge over the moat, up to the door
-		part(f, "GatePath", V3(5, 0.4, 14), G * CFrame.new(0, 0.2, 10), RGB(190, 128, 88), Mat.Ground)
+		part(f, "GatePath", V3(5, 0.4, 14), G * CFrame.new(0, 0.2, 10), RGB(190, 128, 88), Mat.SmoothPlastic)
 		for z = 5.5, 9.5, 1 do
 			part(f, "Plank", V3(6, 0.4, 0.8), G * CFrame.new(0, 0.55, z), (z % 2 == 0.5) and SAND_DARK or RGB(158, 104, 66), Mat.WoodPlanks)
 		end
@@ -5891,10 +5891,10 @@ local Extras = (function()
 			local gateSide = dir.Z < -0.99
 			if not gateSide then
 				local odd = (i % 2 == 1) and 1 or 0 -- (every other piece a touch smaller: no flicker where they overlap)
-				part(f, "Wall", V3(arc * (wr + 2) + 0.3, 12 - odd * 0.2, 4 - odd * 0.2), at(wr, 6 - odd * 0.1), (i % 2 == 0) and SAND_STONE or RGB(222, 158, 106), Mat.Sandstone)
-				part(f, "WallCap", V3(arc * (wr + 2.3) + 0.3, 1, 4.6 - odd * 0.2), at(wr, 12.5 + odd * 0.15), SAND_LIGHT, Mat.Sandstone)
+				part(f, "Wall", V3(arc * (wr + 2) + 0.3, 12 - odd * 0.2, 4 - odd * 0.2), at(wr, 6 - odd * 0.1), (i % 2 == 0) and SAND_STONE or RGB(222, 158, 106), Mat.SmoothPlastic)
+				part(f, "WallCap", V3(arc * (wr + 2.3) + 0.3, 1, 4.6 - odd * 0.2), at(wr, 12.5 + odd * 0.15), SAND_LIGHT, Mat.SmoothPlastic)
 				if i % 4 == 0 then
-					part(f, "Pillar", V3(2.2, 12, 1.4), at(wr - 2.6, 6), SAND_LIGHT, Mat.Sandstone)
+					part(f, "Pillar", V3(2.2, 12, 1.4), at(wr - 2.6, 6), SAND_LIGHT, Mat.SmoothPlastic)
 				end
 				if i % 8 == 2 then
 					part(f, "Banner", V3(3.4, 7, 0.3), at(wr - 2.15, 8), BANNER_RED, Mat.Fabric, { CanCollide = false })
@@ -5906,7 +5906,7 @@ local Extras = (function()
 				local r = wr + k * 3.2 - 0.3
 				local h = 12 + k * 2.4
 				local odd = (i % 2 == 1) and 0.1 or 0
-				part(f, "Stand", V3(arc * (r + 1.7) + 0.2, h - odd, 3.3 - odd), at(r, h / 2 - odd / 2), (k % 2 == 0) and SAND_DARK or RGB(160, 96, 70), Mat.Sandstone)
+				part(f, "Stand", V3(arc * (r + 1.7) + 0.2, h - odd, 3.3 - odd), at(r, h / 2 - odd / 2), (k % 2 == 0) and SAND_DARK or RGB(160, 96, 70), Mat.SmoothPlastic)
 				if rng:NextNumber() < 0.7 then
 					local off = (rng:NextNumber() - 0.5) * arc * r * 0.6
 					local cf = at(r, h) * CFrame.new(off, 0, 0)
@@ -5915,13 +5915,13 @@ local Extras = (function()
 				end
 			end
 			-- the back wall, too tall to climb out over
-			part(f, "BackWall", V3(arc * (wr + 23.5) + 0.3, 34 - (i % 2) * 0.2, 3 - (i % 2) * 0.2), at(wr + 22, 17 - (i % 2) * 0.1), SAND_DARK, Mat.Sandstone)
+			part(f, "BackWall", V3(arc * (wr + 23.5) + 0.3, 34 - (i % 2) * 0.2, 3 - (i % 2) * 0.2), at(wr + 22, 17 - (i % 2) * 0.1), SAND_DARK, Mat.SmoothPlastic)
 		end
 		-- the way out: a gate in the north wall
 		local exitCF = CFrame.lookAt(c + V3(0, 0, -(wr + 1)), c)
-		part(f, "ExitFrame", V3(16, 3, 5), exitCF * CFrame.new(0, 13.5, 0), SAND_LIGHT, Mat.Sandstone)
+		part(f, "ExitFrame", V3(16, 3, 5), exitCF * CFrame.new(0, 13.5, 0), SAND_LIGHT, Mat.SmoothPlastic)
 		for _, sx in ipairs({ -1, 1 }) do
-			part(f, "ExitPost", V3(3, 12, 5), exitCF * CFrame.new(sx * 6.5, 6, 0), SAND_LIGHT, Mat.Sandstone)
+			part(f, "ExitPost", V3(3, 12, 5), exitCF * CFrame.new(sx * 6.5, 6, 0), SAND_LIGHT, Mat.SmoothPlastic)
 		end
 		local door = part(f, "ExitDoor", V3(10, 12, 1), exitCF * CFrame.new(0, 6, 2), RGB(24, 20, 37), Mat.SmoothPlastic)
 		local pp = Instance.new("ProximityPrompt")

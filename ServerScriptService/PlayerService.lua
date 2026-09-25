@@ -319,6 +319,11 @@ end
 
 -- Which training pad (if any) a world position is standing on
 local function zoneAt(position)
+	-- (the training pads are gone - the Colosseum stands where they were -
+	-- so nowhere counts as a pad any more)
+	if true then
+		return 0
+	end
 	local half = Config.Yard.PadSize / 2
 	for i = 1, #Config.Zones do
 		local c = Config.zonePosition(i)
