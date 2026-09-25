@@ -3066,7 +3066,7 @@ end
 -- The castle sits on top of a mountain: rocky cliffs drop away beneath the
 -- walls (and beneath the Spire's crag across the chasm), getting wider as
 -- they go down, until they vanish into layers of mist.
-local SEA_Y = -48 -- the surface of the sea round the castle's island
+local SEA_Y = -20 -- the surface of the sea round the castle's island
 local ISLAND_FLOOR = SEA_Y - 20 -- the sea floor: rock is only built down to here
 local ROCK_TOP = { RGB(112, 104, 100), RGB(98, 94, 96), RGB(124, 116, 110) }
 local ROCK_DEEP = { RGB(96, 102, 116), RGB(86, 92, 106), RGB(106, 112, 126) }
@@ -3966,90 +3966,166 @@ end
 ----------------------------------------------------------------------
 -- The island and the sea
 ----------------------------------------------------------------------
--- The castle stands on top of an island in the middle of the sea (like the
--- reference picture): under its walls the rock steps down in green
--- hexagon terraces - with trees, bushes and a few little cottages - to sandy
--- beaches, then light shallows and the open sea, twinkling in the sun,
--- with sailboats bobbing on it and small islets further out (one with a
--- lighthouse). From the south gate, stone stairs lead down the terraces
--- to the beach, where the mushroom house and a wooden pier stand. The Spire stands on its own rocky islet,
--- reached by the bridge. Anyone who falls into the sea is washed back to
--- the spawn.
+-- The castle stands in the middle of an island in the sea. The island's
+-- shape is "organised chaos": an oval pushed out into peninsulas and
+-- pulled in into bays by a few overlapping waves, laid out in chunky
+-- 6-stud steps like pixel art. Grass all round the castle's rock, a ring
+-- of sandy beach (wide in the cove south of the castle, where the mushroom
+-- house stands by a wooden pier), rocky stretches of coast, light
+-- shallows you can wade in, and the open sea twinkling beyond - with
+-- sailboats, little islets (one with a lighthouse) and a village of
+-- cottages among the trees. The Spire stands on its own islet, reached by
+-- the bridge. Anyone who falls into the deep sea is washed back to spawn.
 local ISLE = {
-	GRASS = RGB(99, 199, 77), GRASS2 = RGB(62, 137, 72), ROCK = RGB(139, 155, 180), ROCK2 = RGB(90, 105, 136),
-	SAND = RGB(234, 212, 170), SAND2 = RGB(232, 183, 150), SEA = RGB(0, 153, 219), SHALLOW = RGB(44, 232, 245),
-	FOAM = RGB(255, 255, 255),
+	GRASS = RGB(99, 199, 77), GRASS2 = RGB(62, 137, 72), DIRT = RGB(184, 111, 80), ROCK = RGB(139, 155, 180),
+	ROCK2 = RGB(90, 105, 136), ROCK3 = RGB(58, 68, 102), SAND = RGB(234, 212, 170), SAND2 = RGB(228, 166, 114),
+	SEA = RGB(0, 153, 219), SHALLOW = RGB(44, 232, 245), FOAM = RGB(255, 255, 255),
 }
+local ISLE_CX, ISLE_CZ = 0, 50 -- the middle of the island's oval
+local CELL = 6 -- the size of one "pixel" of the island
+local GRID_X0, GRID_X1, GRID_Z0, GRID_Z1 = -420, 420, -420, 520
+local BEACH_TOP = SEA_Y + 1.5
 local STAIR_HALF = 7 -- half the width of the stairs down to the beach
--- The island is a hexagon (flat sides north and south), centred a little
--- south of the plaza, with the castle inside it and room for the beach.
--- Each terrace is a hexagon a bit bigger and lower than the one above.
-local HEX_CZ = 110
-local SQRT3 = math.sqrt(3)
-local TERRACES = {
-	{ name = "Terrace", R = 280, top = TERRACE1_TOP, cap = ISLE.GRASS, body = ISLE.ROCK, capT = 1.4 },
-	{ name = "LowTerrace", R = 294, top = -24, cap = ISLE.GRASS2, body = ISLE.ROCK2, capT = 1.4 },
-	{ name = "LowestTerrace", R = 308, top = -34, cap = ISLE.GRASS, body = ISLE.ROCK, capT = 1.4 },
-	{ name = "Beach", R = 360, top = SEA_Y + 1.5, cap = ISLE.SAND, body = ISLE.SAND2, capT = 1 },
-}
-local SHALLOWS_R = 372
+local SPIRE_ISLE_Z = -316
 
--- is (x, z) inside the island's hexagon of radius R?
-local function inHex(x, z, R)
-	local dx, dz = math.abs(x), math.abs(z - HEX_CZ)
-	return dz <= SQRT3 / 2 * R and SQRT3 / 2 * dx + dz / 2 <= SQRT3 / 2 * R
+-- how far the castle's rectangle is from (x, z) (0 inside it)
+local function castleRectDist(x, z)
+	local dx = math.max(math.abs(x) - 128, 0)
+	local dz = math.max(-128 - z, z - 199, 0)
+	return math.sqrt(dx * dx + dz * dz)
 end
--- is (x, z) on the castle's own rock, with a margin?
-local function onCastleRock(x, z, margin)
-	return math.abs(x) < 128 + margin and z > -128 - margin and z < MOAT_Z1 + margin
-end
--- is (x, z) on (or right beside) the stairs and pier down to the beach?
-local function nearFalls(x, z)
-	return z > MOAT_Z1 - 2 and math.abs(x) < STAIR_HALF + 7
-end
--- a regular hexagon from y0 to y1: three boxes turned 60 degrees apart
-local function hexSlab(m, name, R, y0, y1, color, mat, extra)
-	for k = 0, 2 do
-		part(m, name, V3(R, y1 - y0, R * SQRT3), CFrame.new(0, (y0 + y1) / 2, HEX_CZ) * CFrame.Angles(0, k * math.pi / 3, 0), color, mat, extra)
-	end
-end
--- the six edges of a hexagon: start corner, end corner, outward direction
-local function hexEdges(R)
-	local edges = {}
-	for k = 0, 5 do
-		local a0, a1, an = math.rad(k * 60), math.rad(k * 60 + 60), math.rad(k * 60 + 30)
-		table.insert(edges, {
-			V3(math.cos(a0) * R, 0, HEX_CZ + math.sin(a0) * R),
-			V3(math.cos(a1) * R, 0, HEX_CZ + math.sin(a1) * R),
-			V3(math.cos(an), 0, math.sin(an)),
-		})
-	end
-	return edges
-end
-
-local function buildTerrace(m, t)
-	local shadow = { CastShadow = false }
-	hexSlab(m, t.name, t.R, ISLAND_FLOOR, t.top - t.capT, t.body, Mat.Slate, shadow)
-	hexSlab(m, t.name .. "Top", t.R + 0.6, t.top - t.capT, t.top, t.cap, Mat.Grass, shadow)
-	-- a few chunky lumps along each edge, so it isn't too perfect
-	for _, e in ipairs(hexEdges(t.R)) do
-		local a, b, n = e[1], e[2], e[3]
-		local len, dir = (b - a).Magnitude, (b - a).Unit
-		local s = 14 + rnd() * 10
-		while s < len - 14 do
-			local w = 8 + rnd() * 12
-			local c = a + dir * s
-			if not nearFalls(c.X, c.Z) then
-				local d = 1.5 + rnd() * 3
-				local top = t.top - ((rnd() < 0.3) and 1.2 or 0)
-				local cf = CFrame.lookAt(c + n * (d / 2 - 0.5), c + n * (d / 2 - 0.5) + dir)
-				local bodyH = top - t.capT - ISLAND_FLOOR
-				part(m, t.name .. "Lump", V3(d, bodyH, w), cf + V3(0, ISLAND_FLOOR + bodyH / 2, 0), t.body, Mat.Slate, shadow)
-				part(m, t.name .. "LumpTop", V3(d + 0.6, t.capT, w + 0.6), cf + V3(0, top - t.capT / 2, 0), t.cap, Mat.Grass, shadow)
-			end
-			s = s + w + 8 + rnd() * 20
+-- how far out from the middle, in direction th, to be m studs clear of the castle
+local function castleNeed(th, m)
+	local lo, hi = 0, 700
+	for _ = 1, 26 do
+		local mid = (lo + hi) / 2
+		if castleRectDist(ISLE_CX + math.cos(th) * mid, ISLE_CZ + math.sin(th) * mid) < m then
+			lo = mid
+		else
+			hi = mid
 		end
 	end
+	return hi
+end
+local function angleDiff(a, b)
+	return math.atan2(math.sin(a - b), math.cos(a - b))
+end
+-- the oval: wider to the south, where there's more room
+local function isleBase(th)
+	local dx, dz = math.cos(th), math.sin(th)
+	local b = (dz < 0) and 205 or 310
+	return 1 / math.sqrt((dx / 262) ^ 2 + (dz / b) ^ 2)
+end
+-- peninsulas (+) and bays (-): direction (0 = east, pi/2 = south), width, size
+local ISLE_FEATURES = {
+	{ 0.15, 0.22, 70 }, { 0.95, 0.16, -60 }, { 1.55, 0.3, 30 }, { 2.25, 0.2, 75 }, { 2.85, 0.14, -55 },
+	{ -2.55, 0.2, 45 }, { -2.05, 0.16, -30 }, { -0.75, 0.18, -40 }, { -0.35, 0.12, 30 }, { 3.3, 0.1, 25 },
+}
+local function isleBumps(th)
+	local t = 0
+	for _, f in ipairs(ISLE_FEATURES) do
+		t = t + f[3] * math.exp(-(angleDiff(th, f[1]) / f[2]) ^ 2)
+	end
+	return t
+end
+local function isleWobble(th)
+	return 1 + 0.07 * math.sin(2 * th + 1.3) + 0.06 * math.sin(3 * th + 0.4) + 0.045 * math.sin(5 * th + 2.1) + 0.03 * math.sin(9 * th + 0.7)
+end
+-- the sandy cove west of the pier: the grass steps back there, the beach doesn't
+local function isleCove(th)
+	return -58 * math.exp(-(angleDiff(th, 1.78) / 0.2) ^ 2)
+end
+-- the edge of the grass, the beach and the shallows in every direction,
+-- worked out once into tables (one entry per quarter of a degree)
+local BINS = 1440
+local EDGE_GRASS, EDGE_BEACH, EDGE_SHALLOW = {}, {}, {}
+for i = 0, BINS - 1 do
+	local th = -math.pi + (i + 0.5) / BINS * 2 * math.pi
+	local grass0 = math.max(castleNeed(th, 24 + 6 * math.sin(5 * th + 1)), isleBase(th) * isleWobble(th) + isleBumps(th))
+	EDGE_GRASS[i] = math.max(castleNeed(th, 20), grass0 + isleCove(th))
+	local south = math.exp(-((th - 1.45) / 0.3) ^ 2)
+	EDGE_BEACH[i] = grass0 + 16 + 16 * (0.5 + 0.5 * math.sin(4 * th + 0.9)) + 7 * math.sin(7 * th + 2.5) + 30 * south
+	EDGE_SHALLOW[i] = EDGE_BEACH[i] + 16 + 12 * (0.5 + 0.5 * math.sin(3 * th + 1.7))
+end
+local function edgeBin(th)
+	return math.clamp(math.floor((th + math.pi) / (2 * math.pi) * BINS), 0, BINS - 1)
+end
+local function spireBeachR(t)
+	return 100 + 7 * math.sin(3 * t + 0.5) + 4 * math.sin(5 * t + 2)
+end
+
+-- what's at (x, z): 3 = grass, 2 = beach, 1 = shallows, 0 = open sea
+local function isleLevel(x, z)
+	local th = math.atan2(z - ISLE_CZ, x - ISLE_CX)
+	local r = math.sqrt((x - ISLE_CX) ^ 2 + (z - ISLE_CZ) ^ 2)
+	local i = edgeBin(th)
+	local L = 0
+	if r < EDGE_GRASS[i] then
+		L = 3
+	elseif r < EDGE_BEACH[i] and z > -186 + 4 * math.sin(x * 0.045 + 1) then
+		L = 2 -- (the north shore stops short of the Spire's islet, along a wavy line)
+	elseif r < EDGE_SHALLOW[i] and z > -199 + 3 * math.sin(x * 0.06 + 2) then
+		L = 1
+	end
+	-- the Spire's islet
+	local ts = math.atan2(z - SPIRE_ISLE_Z, x)
+	local rs = math.sqrt(x * x + (z - SPIRE_ISLE_Z) ^ 2)
+	local sb = spireBeachR(ts)
+	if rs < sb then
+		L = math.max(L, 2)
+	elseif rs < sb + 12 + 5 * math.sin(4 * ts + 1) then
+		L = math.max(L, 1)
+	end
+	return L
+end
+
+-- is (x, z) on (or right beside) the stairs and pier down to the beach?
+local function nearStairs(x, z)
+	return z > MOAT_Z1 - 2 and math.abs(x) < STAIR_HALF + 22
+end
+-- the mushroom house's patch of the cove (it's 40 x 42, facing east)
+local function nearMushroomHouse(x, z)
+	local st = Config.Stations.Upgrades
+	return math.abs(x - st.X) < 26 and z > st.Z - 22 and z < st.Z + 30
+end
+-- the village cottages: x, z, which way they face
+local ISLE_HOUSES = {
+	{ 284, 106, 90, RGB(190, 74, 47) }, { 196, 158, 90, RGB(162, 38, 51) }, { -224, 226, -90, RGB(18, 78, 137) },
+	{ -204, 282, 0, RGB(190, 74, 47) }, { 152, 10, 90, RGB(190, 74, 47) }, { 160, 82, 90, RGB(18, 78, 137) },
+	{ -164, -2, -90, RGB(162, 38, 51) }, { 48, 318, 0, RGB(162, 38, 51) },
+}
+local function nearHouse(x, z, d)
+	for _, h in ipairs(ISLE_HOUSES) do
+		if math.abs(x - h[1]) < d and math.abs(z - h[2]) < d then
+			return true
+		end
+	end
+	return false
+end
+
+-- a palm tree: a leaning trunk of little blocks, coconuts, and drooping
+-- fronds made of flat blocks
+local function palmTree(m, x, y, z, s, lean)
+	local dir = V3(math.cos(lean), 0, math.sin(lean))
+	local at = V3(x, y, z)
+	local offs = { 0, 0.12, 0.3, 0.55, 0.85, 1.2, 1.6 }
+	for i = 1, 7 do
+		local p = at + dir * offs[i] * s * 1.6 + V3(0, (i - 0.5) * 1.5 * s, 0)
+		part(m, "PalmTrunk", V3(1.2, 1.55, 1.2) * s, CFrame.new(p) * CFrame.Angles(0, lean, 0), (i % 2 == 0) and RGB(194, 133, 105) or RGB(184, 111, 80), Mat.Wood)
+	end
+	local top = at + dir * offs[7] * s * 1.6 + V3(0, 7 * 1.5 * s + 0.2 * s, 0)
+	for i = 0, 2 do
+		local a = i * 2.1
+		part(m, "Coconut", V3(0.8, 0.8, 0.8) * s, CFrame.new(top + V3(math.cos(a) * 0.7 * s, -0.7 * s, math.sin(a) * 0.7 * s)), RGB(115, 62, 57), Mat.Wood, { CanCollide = false })
+	end
+	for i = 0, 5 do
+		local a = i * math.pi / 3 + lean * 0.5
+		local base = CFrame.new(top) * CFrame.Angles(0, a, 0)
+		local green = (i % 2 == 0) and ISLE.GRASS or ISLE.GRASS2
+		part(m, "Frond", V3(1.5, 0.3, 4.2) * s, base * CFrame.new(0, 0.3 * s, -2 * s) * CFrame.Angles(0.22, 0, 0), green, Mat.Grass, { CanCollide = false })
+		part(m, "FrondTip", V3(1.2, 0.3, 3.4) * s, base * CFrame.new(0, -0.75 * s, -5.3 * s) * CFrame.Angles(-0.5, 0, 0), green, Mat.Grass, { CanCollide = false })
+	end
+	part(m, "PalmCrown", V3(1.6, 0.8, 1.6) * s, CFrame.new(top), ISLE.GRASS2, Mat.Grass, { CanCollide = false })
 end
 
 -- a little cottage on the hillside: cream walls, dark beams, a stepped red
@@ -4123,39 +4199,131 @@ end
 
 local function buildIsland(parent)
 	local m = folder(parent, "IslandAndSea")
+	local shadow = { CastShadow = false }
 
 	-- the castle's rock: under the walls and the moat
-	for _, r in ipairs({ { -128, 128, -128, MOAT_Z1 + 3 } }) do
-		part(m, "IslandRock", V3(r[2] - r[1], -6 - ISLAND_FLOOR, r[4] - r[3]), CFrame.new((r[1] + r[2]) / 2, (ISLAND_FLOOR - 6) / 2, (r[3] + r[4]) / 2), ISLE.ROCK2, Mat.Slate, { CastShadow = false })
-	end
-	-- rock closing off both ends of the moat
+	part(m, "IslandRock", V3(256, -6 - ISLAND_FLOOR, 327), CFrame.new(0, (ISLAND_FLOOR - 6) / 2, (-128 + MOAT_Z1 + 3) / 2), ISLE.ROCK2, Mat.Slate, shadow)
 	for _, sx in ipairs({ -1, 1 }) do
 		part(m, "MoatEnd", V3(10, 7, MOAT_Z1 - MOAT_Z0 + 4), CFrame.new(sx * 123, -3.5, (MOAT_Z0 + MOAT_Z1) / 2), ISLE.ROCK2, Mat.Slate)
 	end
 	wallFootRocks(m)
 
-	-- the terraces down to the beach
-	for _, t in ipairs(TERRACES) do
-		buildTerrace(m, t)
+	-- the island, one pixel (CELL studs) at a time: work out what every
+	-- cell is, then join neighbouring cells of the same kind into as few
+	-- big blocks as possible
+	local NX = math.floor((GRID_X1 - GRID_X0) / CELL)
+	local NZ = math.floor((GRID_Z1 - GRID_Z0) / CELL)
+	local grid = {}
+	local function cellPos(i, j)
+		return GRID_X0 + (i - 0.5) * CELL, GRID_Z0 + (j - 0.5) * CELL
 	end
-	-- the shallows: a light band of water all round the beach
-	hexSlab(m, "Shallows", SHALLOWS_R, SEA_Y + 0.15, SEA_Y + 0.3, ISLE.SHALLOW, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
-	-- white foam lapping at the beach, twinkling in and out
-	local beach = TERRACES[#TERRACES]
-	for _, e in ipairs(hexEdges(beach.R + 3)) do
-		local a, b = e[1], e[2]
-		local len, dir = (b - a).Magnitude, (b - a).Unit
-		local s = 3
-		while s < len - 3 do
-			local c = a + dir * s + e[3] * (rnd() * 3)
-			local w = 2 + rnd() * 4
-			local foam = part(m, "Foam", V3(0.6, 0.1, w), CFrame.lookAt(c, c + dir) + V3(0, SEA_Y + 0.4, 0), ISLE.FOAM, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
-			foam:SetAttribute("PulseSpeed", 0.5 + rnd() * 0.4)
-			foam:SetAttribute("PulseMin", 0)
-			foam:SetAttribute("PulseMax", 0.9)
-			foam:SetAttribute("Phase", rnd() * 360)
-			CollectionService:AddTag(foam, "Pulse")
-			s = s + 7 + rnd() * 5
+	for j = 1, NZ do
+		local row = {}
+		for i = 1, NX do
+			local x, z = cellPos(i, j)
+			local L = isleLevel(x, z)
+			-- (no need for grass under the castle's rock, or sand under the Spire's)
+			if L == 3 and math.abs(x) < 125 and z > -125 and z < MOAT_Z1 then
+				L = -1
+			elseif L == 2 and (x * x + (z - SPIRE_ISLE_Z) ^ 2) < 86 * 86 then
+				L = -1
+			end
+			row[i] = L
+		end
+		grid[j] = row
+	end
+	local LAYERS = {
+		[3] = { name = "Grass", top = TERRACE1_TOP, capT = 1.4, body = ISLE.DIRT, cap = ISLE.GRASS },
+		[2] = { name = "Beach", top = BEACH_TOP, capT = 1, body = ISLE.SAND2, cap = ISLE.SAND },
+		[1] = { name = "ShallowBed", top = SEA_Y - 3, capT = 0.6, body = ISLE.SAND2, cap = ISLE.SAND2 },
+	}
+	for L, lay in pairs(LAYERS) do
+		local open = {}
+		local function close(key, info, jEnd)
+			local x0 = GRID_X0 + (info.i0 - 1) * CELL
+			local x1 = GRID_X0 + info.i1 * CELL
+			local z0 = GRID_Z0 + (info.j0 - 1) * CELL
+			local z1 = GRID_Z0 + jEnd * CELL
+			local cx, cz, w, d = (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0
+			local bodyH = lay.top - lay.capT - ISLAND_FLOOR
+			part(m, lay.name, V3(w, bodyH, d), CFrame.new(cx, ISLAND_FLOOR + bodyH / 2, cz), lay.body, Mat.Slate, shadow)
+			part(m, lay.name .. "Top", V3(w, lay.capT, d), CFrame.new(cx, lay.top - lay.capT / 2, cz), lay.cap, Mat.Grass, shadow)
+			if L == 1 then
+				part(m, "Shallows", V3(w, 0.15, d), CFrame.new(cx, SEA_Y + 0.2, cz), ISLE.SHALLOW, Mat.SmoothPlastic, {
+					Transparency = 0.15, CanCollide = false, CanQuery = false, CastShadow = false,
+				})
+			end
+			_ = key
+		end
+		for j = 1, NZ + 1 do
+			local runs = {}
+			local row = grid[j]
+			if row then
+				local i = 1
+				while i <= NX do
+					if row[i] == L then
+						local k = i
+						while k + 1 <= NX and row[k + 1] == L do
+							k = k + 1
+						end
+						runs[i .. ":" .. k] = { i0 = i, i1 = k }
+						i = k + 1
+					else
+						i = i + 1
+					end
+				end
+			end
+			local nextOpen = {}
+			for key, run in pairs(runs) do
+				local was = open[key]
+				nextOpen[key] = { i0 = run.i0, i1 = run.i1, j0 = was and was.j0 or j }
+			end
+			for key, info in pairs(open) do
+				if not runs[key] then
+					close(key, info, j - 1)
+				end
+			end
+			open = nextOpen
+		end
+	end
+	local function levelAtCell(x, z)
+		local i = math.floor((x - GRID_X0) / CELL) + 1
+		local j = math.floor((z - GRID_Z0) / CELL) + 1
+		local row = grid[j]
+		local L = row and row[i]
+		if L == -1 then
+			return isleLevel(x, z)
+		end
+		return L or 0
+	end
+
+	-- rocky stretches of coast, and white foam lapping at the beach
+	for j = 2, NZ - 1 do
+		for i = 2, NX - 1 do
+			if grid[j][i] == 2 then
+				local x, z = cellPos(i, j)
+				local wet = grid[j][i - 1] == 1 or grid[j][i + 1] == 1 or grid[j - 1][i] == 1 or grid[j + 1][i] == 1
+					or grid[j][i - 1] == 0 or grid[j][i + 1] == 0 or grid[j - 1][i] == 0 or grid[j + 1][i] == 0
+				if wet and not nearStairs(x, z) and not nearMushroomHouse(x, z) then
+					local th = math.atan2(z - ISLE_CZ, x - ISLE_CX)
+					local rocky = math.sin(3 * th + 0.3) > 0.55 or math.sin(5 * th + 2) > 0.85
+					if rocky and rnd() < 0.8 then
+						for _ = 1, 1 + math.floor(rnd() * 2) do
+							local s = 2.5 + rnd() * 3.5
+							local p = V3(x + (rnd() - 0.5) * CELL, BEACH_TOP - 1 + s * 0.35, z + (rnd() - 0.5) * CELL)
+							part(m, "CoastRock", V3(s * 1.3, s, s * 1.1), CFrame.new(p) * CFrame.Angles(math.rad((rnd() - 0.5) * 20), rnd() * 3, math.rad((rnd() - 0.5) * 20)), (rnd() < 0.5) and ISLE.ROCK2 or ISLE.ROCK3, Mat.Slate)
+						end
+					elseif rnd() < 0.55 then
+						local w = 2 + rnd() * 3
+						local foam = part(m, "Foam", V3(w, 0.1, 0.6), CFrame.new(x + (rnd() - 0.5) * CELL, SEA_Y + 0.35, z + (rnd() - 0.5) * CELL) * CFrame.Angles(0, rnd() * 3, 0), ISLE.FOAM, Mat.SmoothPlastic, { CanCollide = false, CanQuery = false, CastShadow = false })
+						foam:SetAttribute("PulseSpeed", 0.5 + rnd() * 0.4)
+						foam:SetAttribute("PulseMin", 0)
+						foam:SetAttribute("PulseMax", 0.9)
+						foam:SetAttribute("Phase", rnd() * 360)
+						CollectionService:AddTag(foam, "Pulse")
+					end
+				end
+			end
 		end
 	end
 
@@ -4166,12 +4334,11 @@ local function buildIsland(parent)
 		})
 	end
 	-- sparkles on the water, twinkling in and out
-	for _ = 1, 120 do
+	for _ = 1, 130 do
 		local a = rnd() * math.pi * 2
-		local d = 200 + rnd() * 600
-		local x, z = math.cos(a) * d, HEX_CZ + math.sin(a) * d
-		local nearSpire = (x * x + (z - SPIRE_Z) ^ 2) < 118 * 118
-		if not inHex(x, z, SHALLOWS_R + 10) and not nearSpire then
+		local d = 150 + rnd() * 650
+		local x, z = math.cos(a) * d, ISLE_CZ + math.sin(a) * d
+		if isleLevel(x, z) == 0 then
 			local w = 1.5 + rnd() * 3.5
 			local sp = part(m, "Sparkle", V3(w, 0.1, 0.5), CFrame.new(x, SEA_Y + 0.08, z), ISLE.FOAM, Mat.SmoothPlastic, { CanCollide = false, CanQuery = false, CastShadow = false })
 			sp:SetAttribute("PulseSpeed", 0.35 + rnd() * 0.5)
@@ -4182,21 +4349,16 @@ local function buildIsland(parent)
 		end
 	end
 
-	-- the Spire's islet: its crag goes down into the sea, ringed with sand
+	-- the Spire's islet: its crag goes down into the sea, with rocks round it
 	roundMountain(m, 0, SPIRE_Z, SPIRE_ROCK_R + 2, -26, 4)
-	for k = 0, 2 do
-		local turn = CFrame.Angles(0, k * math.pi / 6, 0)
-		part(m, "SpireBeach", V3(188, SEA_Y + 1.5 - ISLAND_FLOOR, 200), CFrame.new(0, (SEA_Y + 1.5 + ISLAND_FLOOR) / 2, SPIRE_Z) * turn, ISLE.SAND, Mat.Sand, { CastShadow = false })
-		part(m, "SpireShallows", V3(208, 0.15, 208), CFrame.new(0, SEA_Y + 0.25, SPIRE_Z) * turn, ISLE.SHALLOW, Mat.SmoothPlastic, { CanCollide = false, CastShadow = false })
-	end
-	for i = 0, 13 do
-		local a = i / 14 * math.pi * 2 + rnd() * 0.2
-		local s = 4 + rnd() * 5
-		part(m, "SpireBoulder", V3(s * 1.4, s, s * 1.1), CFrame.new(math.sin(a) * (88 + rnd() * 4), SEA_Y + 1 + s * 0.3, SPIRE_Z + math.cos(a) * (88 + rnd() * 4)) * CFrame.Angles(0, rnd() * 3, math.rad((rnd() - 0.5) * 16)), ISLE.ROCK2, Mat.Slate)
+	for i = 0, 15 do
+		local a = i / 16 * math.pi * 2 + rnd() * 0.2
+		local s = 3.5 + rnd() * 4.5
+		part(m, "SpireBoulder", V3(s * 1.4, s, s * 1.1), CFrame.new(math.sin(a) * (90 + rnd() * 5), BEACH_TOP - 0.5 + s * 0.3, SPIRE_Z + math.cos(a) * (90 + rnd() * 5)) * CFrame.Angles(0, rnd() * 3, math.rad((rnd() - 0.5) * 16)), (rnd() < 0.5) and ISLE.ROCK2 or ISLE.ROCK3, Mat.Slate)
 	end
 
-	-- stone stairs from the drawbridge down the terraces to the beach, one
-	-- flight per terrace, with a low wall either side and a path between
+	-- stone stairs from the drawbridge down to the grass, a sandy path to the
+	-- beach with a few steps down, and a wooden pier out over the water
 	local STEP_C, STEP_C2, WALL_C = RGB(192, 203, 220), RGB(139, 155, 180), RGB(90, 105, 136)
 	local function flight(zStart, yTop, yBottom, maxRise, tread)
 		local n = math.ceil((yTop - yBottom) / maxRise)
@@ -4204,43 +4366,47 @@ local function buildIsland(parent)
 		for i = 1, n - 1 do
 			local top = yTop - i * rise
 			local z = zStart + (i - 0.5) * tread
-			part(m, "BeachStair", V3(STAIR_HALF * 2, top - yBottom, tread + 0.02), CFrame.new(0, (top + yBottom) / 2, z), (i % 2 == 0) and STEP_C or STEP_C2, Mat.Slate)
+			part(m, "BeachStair", V3(STAIR_HALF * 2, top - yBottom + 1, tread + 0.02), CFrame.new(0, (top + yBottom - 1) / 2, z), (i % 2 == 0) and STEP_C or STEP_C2, Mat.Slate)
 		end
 		local zEnd = zStart + (n - 1) * tread
-		-- the side walls, sloping down with the steps
 		for _, sx in ipairs({ -1, 1 }) do
 			local x = sx * (STAIR_HALF + 0.6)
 			local a, b = V3(x, yTop + 0.8, zStart), V3(x, yBottom + 0.8 + rise, zEnd)
 			part(m, "StairWall", V3(1.2, 2.4, (b - a).Magnitude + 1.2), CFrame.lookAt((a + b) / 2, b), WALL_C, Mat.Slate)
-			part(m, "StairWallFoot", V3(1.2, math.max(0.1, yTop - yBottom), 1.2), CFrame.new(x, (yTop + yBottom) / 2, zStart), WALL_C, Mat.Slate)
 		end
 		return zEnd
 	end
-	local function walk(z0, z1, y)
-		if z1 - z0 > 0.5 then
-			part(m, "BeachPath", V3(STAIR_HALF * 2 - 2, 0.3, z1 - z0), CFrame.new(0, y + 0.15, (z0 + z1) / 2), ISLE.SAND2, Mat.Ground, { CanCollide = false })
+	local zAt = flight(MOAT_Z1 + 3, 0, TERRACE1_TOP, 0.5, 1)
+	local zGrassEnd = zAt
+	while levelAtCell(0, zGrassEnd + 1) == 3 do
+		zGrassEnd = zGrassEnd + 1
+	end
+	-- the path across the grass winds in a gentle S-curve, laid in little
+	-- pixel steps, and comes back to meet the stairs at both ends
+	do
+		local z0, z1 = zAt, zGrassEnd
+		local len = z1 - z0
+		local z = z0
+		while z < z1 do
+			local t = (z - z0) / len
+			local sway = math.floor(16 * math.sin(t * 2 * math.pi) * math.sin(t * math.pi) ^ 0.5 + 0.5)
+			local w = STAIR_HALF * 2 - 2 + ((math.floor(z / 6) % 3 == 0) and 1 or 0)
+			part(m, "BeachPath", V3(w, 0.3, 2.6), CFrame.new(sway, TERRACE1_TOP + 0.15, z + 1.2), ISLE.SAND2, Mat.Ground, { CanCollide = false })
+			z = z + 2
 		end
 	end
-	local zAt, yAt = MOAT_Z1 + 3, 0
-	zAt = flight(zAt, 0, TERRACES[1].top, 0.5, 1)
-	for i, t in ipairs(TERRACES) do
-		local edge = HEX_CZ + SQRT3 / 2 * t.R
-		if i < #TERRACES then
-			walk(zAt, edge, t.top)
-			zAt = flight(edge, t.top, TERRACES[i + 1].top, 0.8, 1)
-		end
-		yAt = t.top
+	zAt = flight(zGrassEnd, TERRACE1_TOP, BEACH_TOP, 0.8, 1)
+	local zBeachEnd = zAt
+	while levelAtCell(0, zBeachEnd + 1) == 2 do
+		zBeachEnd = zBeachEnd + 1
 	end
-	-- a lantern post either side of the foot of the last flight
 	for _, sx in ipairs({ -1, 1 }) do
 		local x = sx * (STAIR_HALF + 2.5)
-		part(m, "PierLampPost", V3(0.8, 6, 0.8), CFrame.new(x, yAt + 3, zAt + 1), RGB(115, 62, 57), Mat.Wood)
-		part(m, "PierLamp", V3(1.2, 1.2, 1.2), CFrame.new(x, yAt + 6.4, zAt + 1), RGB(254, 231, 97), Mat.Neon)
-		part(m, "PierLampCap", V3(1.6, 0.4, 1.6), CFrame.new(x, yAt + 7.2, zAt + 1), RGB(62, 39, 49), Mat.Metal)
+		part(m, "PierLampPost", V3(0.8, 6, 0.8), CFrame.new(x, BEACH_TOP + 3, zAt + 1), RGB(115, 62, 57), Mat.Wood)
+		part(m, "PierLamp", V3(1.2, 1.2, 1.2), CFrame.new(x, BEACH_TOP + 6.4, zAt + 1), RGB(254, 231, 97), Mat.Neon)
+		part(m, "PierLampCap", V3(1.6, 0.4, 1.6), CFrame.new(x, BEACH_TOP + 7.2, zAt + 1), RGB(62, 39, 49), Mat.Metal)
 	end
-	-- the wooden pier, straight on out over the sand and the shallows
-	local beachEdge = HEX_CZ + SQRT3 / 2 * TERRACES[#TERRACES].R
-	local p0, p1 = zAt + 4, beachEdge + 34
+	local p0, p1 = zBeachEnd - 10, zBeachEnd + 36
 	local deckY = SEA_Y + 2.2
 	part(m, "Pier", V3(8, 0.6, p1 - p0), CFrame.new(0, deckY, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
 	for z = p0 + 2, p1, 4 do
@@ -4248,7 +4414,7 @@ local function buildIsland(parent)
 	end
 	for z = p0 + 1, p1 - 1, 8 do
 		for _, sx in ipairs({ -1, 1 }) do
-			part(m, "PierPost", V3(0.9, 6, 0.9), CFrame.new(sx * 3.8, deckY - 2.2, z), RGB(115, 62, 57), Mat.Wood)
+			part(m, "PierPost", V3(0.9, 7, 0.9), CFrame.new(sx * 3.8, deckY - 2.6, z), RGB(115, 62, 57), Mat.Wood)
 			part(m, "PierRail", V3(0.3, 1.8, 0.3), CFrame.new(sx * 3.8, deckY + 1.1, z), RGB(115, 62, 57), Mat.Wood)
 		end
 	end
@@ -4258,70 +4424,45 @@ local function buildIsland(parent)
 	part(m, "PierCrate", V3(2, 2, 2), CFrame.new(2.2, deckY + 1.3, p1 - 3) * CFrame.Angles(0, 0.3, 0), RGB(228, 166, 114), Mat.WoodPlanks)
 	part(m, "PierBarrel", V3(1.8, 2.2, 1.8), CFrame.new(-2.3, deckY + 1.4, p1 - 5), RGB(184, 111, 80), Mat.WoodPlanks)
 
-	-- a little village of cottages on the wide east and west slopes
-	local T1 = TERRACES[1].top
-	local HOUSES = {
-		{ -182, 60, -90, RGB(190, 74, 47) }, { -208, 128, -90, RGB(162, 38, 51) }, { -170, 196, -90, RGB(18, 78, 137) },
-		{ 186, 40, 90, RGB(162, 38, 51) }, { 210, 118, 90, RGB(190, 74, 47) }, { 174, 196, 90, RGB(190, 74, 47) },
-	}
-	for _, h in ipairs(HOUSES) do
-		isleHouse(m, CFrame.new(h[1], T1, h[2]) * CFrame.Angles(0, math.rad(h[3]), 0), h[4])
+	-- the village: cottages among the trees
+	for _, h in ipairs(ISLE_HOUSES) do
+		isleHouse(m, CFrame.new(h[1], TERRACE1_TOP, h[2]) * CFrame.Angles(0, math.rad(h[3]), 0), h[4])
 	end
-	-- trees and bushes on the terraces
-	local function scatter(i, count)
-		local t = TERRACES[i]
-		local inner = TERRACES[i - 1]
-		local placed, tries = 0, 0
-		while placed < count and tries < count * 20 do
-			tries = tries + 1
-			local x = (rnd() * 2 - 1) * t.R
-			local z = HEX_CZ + (rnd() * 2 - 1) * t.R
-			local ok = inHex(x, z, t.R - 5) and not nearFalls(x, z)
-			if ok and inner then
-				ok = not inHex(x, z, inner.R + 5)
-			elseif ok then
-				ok = not onCastleRock(x, z, 8)
-			end
-			if ok then
-				for _, h in ipairs(HOUSES) do
-					if math.abs(x - h[1]) < 12 and math.abs(z - h[2]) < 12 then
-						ok = false
-					end
-				end
-				if math.abs(x) < 24 and z < -110 then
-					ok = false -- (the bridge's piers stand here)
-				end
-			end
-			if ok then
-				placed = placed + 1
-				if rnd() < 0.72 then
-					farmTree(m, x, z, 0.6 + rnd() * 0.4, t.top)
-				else
-					blockBush(m, x, z, 0.9 + rnd() * 0.6, t.top)
-				end
-			end
+	-- trees: palms on the beach and along the shore, leafy trees further in
+	local planted, tries = 0, 0
+	while planted < 150 and tries < 4000 do
+		tries = tries + 1
+		local x = GRID_X0 + rnd() * (GRID_X1 - GRID_X0)
+		local z = -200 + rnd() * 660
+		local L = levelAtCell(x, z)
+		local ok = (L == 2 or L == 3) and castleRectDist(x, z) > 12 and not nearStairs(x, z) and not nearMushroomHouse(x, z)
+			and not nearHouse(x, z, 13) and not (math.abs(x) < 24 and z < -110)
+		if ok and L == 2 then
+			-- (not right at the water's edge)
+			ok = levelAtCell(x + 6, z) >= 2 and levelAtCell(x - 6, z) >= 2 and levelAtCell(x, z + 6) >= 2 and levelAtCell(x, z - 6) >= 2
+				and (x * x + (z - SPIRE_ISLE_Z) ^ 2) > 95 * 95
 		end
-	end
-	scatter(1, 70)
-	scatter(2, 26)
-	scatter(3, 26)
-	-- a few boulders on the beach
-	for _ = 1, 26 do
-		local x = (rnd() * 2 - 1) * beach.R
-		local z = HEX_CZ + (rnd() * 2 - 1) * beach.R
-		if inHex(x, z, beach.R - 2) and not inHex(x, z, TERRACES[#TERRACES - 1].R + 2) and not nearFalls(x, z) then
-			local s = 2 + rnd() * 3
-			part(m, "BeachRock", V3(s * 1.3, s, s), CFrame.new(x, beach.top + s * 0.3, z) * CFrame.Angles(0, rnd() * 3, math.rad((rnd() - 0.5) * 14)), ISLE.ROCK, Mat.Slate)
+		if ok then
+			planted = planted + 1
+			local nearShore = L == 2 or levelAtCell(x + 18, z) < 3 or levelAtCell(x - 18, z) < 3 or levelAtCell(x, z + 18) < 3 or levelAtCell(x, z - 18) < 3
+			local y = (L == 2) and BEACH_TOP or TERRACE1_TOP
+			if nearShore and rnd() < 0.85 then
+				palmTree(m, x, y, z, 0.8 + rnd() * 0.35, rnd() * math.pi * 2)
+			elseif rnd() < 0.75 then
+				farmTree(m, x, z, 0.6 + rnd() * 0.4, y)
+			else
+				blockBush(m, x, z, 0.9 + rnd() * 0.6, y)
+			end
 		end
 	end
 
 	-- islets out at sea, one with a lighthouse, and boats sailing between
-	islet(m, -470, -140, 26, -34, 2)
-	islet(m, 520, 190, 34, -32, 2)
-	islet(m, -360, 560, 20, -38, 1)
-	islet(m, 380, -480, 24, -36, 1)
+	islet(m, -470, -140, 26, SEA_Y + 12, 2)
+	islet(m, 520, 190, 34, SEA_Y + 14, 2)
+	islet(m, -360, 560, 20, SEA_Y + 9, 1)
+	islet(m, 380, -480, 24, SEA_Y + 10, 1)
 	do
-		local lx, lz, base = 520, 190, -32
+		local lx, lz, base = 520, 190, SEA_Y + 14
 		for k = 0, 5 do
 			cylinder(m, "Lighthouse", 5, 9 - k * 0.5, CFrame.new(lx + 12, base + 2.5 + k * 5, lz - 8), (k % 2 == 0) and ISLE.FOAM or RGB(228, 59, 68), Mat.Plastic)
 		end
@@ -4333,12 +4474,12 @@ local function buildIsland(parent)
 		CollectionService:AddTag(lamp, "Pulse")
 		coneRoof(m, V3(lx + 12, base + 34.2, lz - 8), 3.6, 5, RGB(190, 74, 47), 5)
 	end
-	sailboat(m, -410, 30, 0.6, RGB(228, 59, 68), 0)
+	sailboat(m, -430, 30, 0.6, RGB(228, 59, 68), 0)
 	sailboat(m, 380, -150, -0.9, RGB(18, 78, 137), 120)
-	sailboat(m, 150, 520, 2.2, RGB(254, 174, 52), 240)
-	sailboat(m, -200, -330, 1.3, RGB(62, 137, 72), 60)
+	sailboat(m, 150, 540, 2.2, RGB(254, 174, 52), 240)
+	sailboat(m, -220, -330, 1.3, RGB(62, 137, 72), 60)
 
-	-- falling in the sea washes you back to the spawn
+	-- falling in the deep sea washes you back to the spawn
 	local spawnAt = CFrame.new(0, 4, 34)
 	local function washBack(hit)
 		local char = hit and hit.Parent
@@ -4354,7 +4495,7 @@ local function buildIsland(parent)
 		end
 	end
 	for _, t in ipairs({ { -750, -835 }, { 750, -835 }, { -750, 615 }, { 750, 615 } }) do
-		local splash = part(m, "SeaReturn", V3(1500, 2, 1450), CFrame.new(t[1], SEA_Y - 4, t[2]), RGB(255, 255, 255), Mat.SmoothPlastic, {
+		local splash = part(m, "SeaReturn", V3(1500, 2, 1450), CFrame.new(t[1], SEA_Y - 6, t[2]), RGB(255, 255, 255), Mat.SmoothPlastic, {
 			Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false,
 		})
 		splash.Touched:Connect(washBack)

@@ -22,7 +22,7 @@ Config.TalismanSlots = 3
 -- Where the shops stand. Used by the lobby builder AND by server range checks.
 Config.Stations = {
 	Sell = Vector3.new(52, 0, 45), -- south-east of the fountain plaza
-	Upgrades = Vector3.new(-70, -46.5, 396), -- the mushroom house, down on the beach south of the castle
+	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle
 	Craft = Vector3.new(72, 0, -40), -- the forge, in the Gear Hall on the east side
 	Prestige = Vector3.new(0, 0, 0),
 }
