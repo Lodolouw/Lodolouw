@@ -671,6 +671,26 @@ local function buildGround(parent)
 			end
 			open = nextOpen
 		end
+		-- a square post on every corner of the rim, and wherever it ends at a
+		-- junction, so the joints look finished
+		for j = 1, NZ do
+			for i = 1, NX do
+				if isCurb(i, j) then
+					local h = (i > 1 and isCurb(i - 1, j)) or (i < NX and isCurb(i + 1, j))
+					local v = (j > 1 and isCurb(i, j - 1)) or (j < NZ and isCurb(i, j + 1))
+					local count = 0
+					for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+						local ii, jj = i + d[1], j + d[2]
+						if ii >= 1 and ii <= NX and jj >= 1 and jj <= NZ and isCurb(ii, jj) then
+							count = count + 1
+						end
+					end
+					if (h and v) or count <= 1 then
+						part(g, "CurbPost", V3(1.6, 1.1, 1.6), CFrame.new(X0 + i - 0.5, 0.55, Z0 + j - 0.5), CURB_COLOR, Mat.Brick)
+					end
+				end
+			end
+		end
 		-- the plaza's rim: a smooth ring hugging its round edge, open where the
 		-- roads come in
 		local RR, NR = PLAZA_R - 0.7, 72 -- (right on the plaza's edge, flush with its cobbles)
