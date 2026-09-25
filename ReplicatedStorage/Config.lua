@@ -47,7 +47,7 @@ Config.StationTurn = {
 -- it starts straight over again.
 Config.Colosseum = {
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
-	Radius = 76, -- where dummies can go (the stands start just past this)
+	Radius = 82, -- how far out dummies can go: right up to the foot of the stands, so nowhere is safe
 	-- the mini colosseum in the lobby (where the training field was), and its little door
 	-- (it sits beside the south road, and its bridge lands on the little
 	-- paved stub that leaves the road there)

@@ -124,8 +124,8 @@ end
 
 local function inArena(pos)
 	local d = flat(pos - C.Center)
-	if d.Magnitude > C.Radius - 5 then
-		d = d.Unit * (C.Radius - 5)
+	if d.Magnitude > C.Radius then
+		d = d.Unit * C.Radius
 	end
 	return Vector3.new(C.Center.X + d.X, C.Center.Y, C.Center.Z + d.Z)
 end
@@ -291,7 +291,7 @@ local function spawnWave(s)
 		local spot
 		for _ = 1, 12 do
 			local a = rng:NextNumber() * math.pi * 2
-			local r = rng:NextNumber(12, C.Radius - 8)
+			local r = rng:NextNumber(12, C.Radius - 12)
 			spot = C.Center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 			if (flat(spot - root.Position)).Magnitude > 22 then
 				break
