@@ -4381,18 +4381,52 @@ local function buildIsland(parent)
 	while levelAtCell(0, zGrassEnd + 1) == 3 do
 		zGrassEnd = zGrassEnd + 1
 	end
-	-- the path across the grass winds in a gentle S-curve, laid in little
-	-- pixel steps, and comes back to meet the stairs at both ends
+	-- the path across the grass: a worn dirt track that wanders the way a
+	-- real one does - a lazy bend or two that aren't quite regular, edges
+	-- that come and go, pebbles and the odd flat stone in it, and grass
+	-- tufts creeping in from the sides. Laid in rows 1.5 studs deep.
 	do
 		local z0, z1 = zAt, zGrassEnd
 		local len = z1 - z0
+		local DIRT, DIRT2 = RGB(194, 133, 105), RGB(184, 111, 80)
+		local nc = { CanCollide = false, CanQuery = false }
+		local left, right = 0, 0 -- how far each edge wanders in or out
+		local y = TERRACE1_TOP + 0.15
 		local z = z0
 		while z < z1 do
 			local t = (z - z0) / len
-			local sway = math.floor(16 * math.sin(t * 2 * math.pi) * math.sin(t * math.pi) ^ 0.5 + 0.5)
-			local w = STAIR_HALF * 2 - 2 + ((math.floor(z / 6) % 3 == 0) and 1 or 0)
-			part(m, "BeachPath", V3(w, 0.3, 2.6), CFrame.new(sway, TERRACE1_TOP + 0.15, z + 1.2), ISLE.SAND2, Mat.Ground, { CanCollide = false })
-			z = z + 2
+			-- the middle line: a few uneven waves, fading out at both ends
+			local ends = math.sin(t * math.pi) ^ 0.7
+			local cx = (13 * math.sin(t * 5.3 + 0.4) + 6 * math.sin(t * 11.7 + 2.1) + 2.5 * math.sin(t * 23 + 1)) * ends
+			-- each edge drifts on its own, a little at a time
+			left = math.clamp(left + (rnd() - 0.5) * 1.4, -1.8, 2.2)
+			right = math.clamp(right + (rnd() - 0.5) * 1.4, -1.8, 2.2)
+			local xL = cx - 5.5 - left
+			local xR = cx + 5.5 + right
+			part(m, "BeachPath", V3(xR - xL, 0.3, 1.55), CFrame.new((xL + xR) / 2, y, z + 0.75), DIRT, Mat.Ground, nc)
+			-- darker, trodden patches here and there
+			if rnd() < 0.3 then
+				local pw = 1.5 + rnd() * 2.5
+				part(m, "PathPatch", V3(pw, 0.3, 1.2 + rnd() * 1.2), CFrame.new(xL + pw / 2 + 0.5 + rnd() * math.max(0, xR - xL - pw - 1), y + 0.04, z + 0.75), DIRT2, Mat.Ground, nc)
+			end
+			-- pebbles, and now and then a flat stone
+			if rnd() < 0.45 then
+				local s2 = 0.35 + rnd() * 0.4
+				part(m, "PathPebble", V3(s2, 0.25, s2), CFrame.new(xL + 1 + rnd() * (xR - xL - 2), y + 0.2, z + rnd() * 1.5), (rnd() < 0.5) and RGB(139, 155, 180) or RGB(115, 62, 57), Mat.Slate, nc)
+			end
+			if rnd() < 0.06 then
+				part(m, "PathStone", V3(2 + rnd() * 1.5, 0.3, 1.4 + rnd()), CFrame.new(cx + (rnd() - 0.5) * 4, y + 0.1, z + 0.7) * CFrame.Angles(0, (rnd() - 0.5) * 0.6, 0), RGB(139, 155, 180), Mat.Slate, nc)
+			end
+			-- grass tufts at the edges
+			for _, ex in ipairs({ xL, xR }) do
+				if rnd() < 0.35 then
+					for k = 0, 1 + math.floor(rnd() * 2) do
+						local h = 0.5 + rnd() * 0.6
+						part(m, "PathTuft", V3(0.35, h, 0.35), CFrame.new(ex + (rnd() - 0.5) * 1.2, TERRACE1_TOP + h / 2, z + rnd() * 1.5), (k % 2 == 0) and ISLE.GRASS or ISLE.GRASS2, Mat.Grass, nc)
+					end
+				end
+			end
+			z = z + 1.5
 		end
 	end
 	zAt = flight(zGrassEnd, TERRACE1_TOP, BEACH_TOP, 0.8, 1)
@@ -5160,6 +5194,20 @@ function LobbyBuilder.Build()
 		if not ok then
 			failed = failed + 1
 			warn("[LobbyBuilder] '" .. piece[1] .. "' failed to build: " .. tostring(err))
+		end
+	end
+
+	-- Leaves aren't solid: you can't stand on a tree's canopy, and (more
+	-- importantly) the camera doesn't treat it as a wall. Solid leaves over
+	-- your head made the camera zoom right into your head, which hides it.
+	local LEAVES = {
+		LeavesLow = true, LeavesTop = true, Crown = true, CrownSide = true, CrownTop = true,
+		Blossom = true, BlossomSide = true, BlossomTop = true, Canopy = true, CanopyTop = true,
+		CanopyCrown = true, CanopyLump = true, CanopyLight = true,
+	}
+	for _, d in ipairs(lobby:GetDescendants()) do
+		if d:IsA("BasePart") and (LEAVES[d.Name] or string.match(d.Name, "^Needles%d+$")) then
+			d.CanCollide = false
 		end
 	end
 	if failed == 0 then
