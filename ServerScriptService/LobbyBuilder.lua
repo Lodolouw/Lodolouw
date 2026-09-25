@@ -4302,10 +4302,8 @@ local function buildIsland(parent)
 							part(m, "CoastRock", V3(s * 1.3, s, s * 1.1), CFrame.new(p) * CFrame.Angles(math.rad((rnd() - 0.5) * 20), rnd() * 3, math.rad((rnd() - 0.5) * 20)), (rnd() < 0.5) and ISLE.ROCK2 or ISLE.ROCK3, Mat.Slate)
 						end
 					else
-						-- the shoreline: two lines of white foam on the water's
-						-- edge that lap in and out (LobbyFX moves them, in little
-						-- 8-bit steps), each a moment after its neighbour so the
-						-- waves roll along the coast
+						-- the shoreline: waves rolling in (LobbyFX moves them, in
+						-- little 8-bit steps)
 						local out
 						for _, n in ipairs({ { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }) do
 							local L = grid[j + n[2]][i + n[1]]
@@ -4315,17 +4313,19 @@ local function buildIsland(parent)
 							end
 						end
 						if out then
+							-- two waves per stretch, half a cycle apart: each forms out
+							-- in the shallows and rolls in onto the sand, fading as it breaks
 							for k = 0, 1 do
-								local w = CELL - rnd() * 1.2
-								local at = V3(x, SEA_Y + 0.4 - k * 0.05, z) + out * (CELL / 2 + 0.3 + k * 2.2)
-								local foam = part(m, "Foam", V3(w + 0.6, 0.25, 2.2 - k * 0.8), CFrame.lookAt(at, at + out), ISLE.FOAM, Mat.SmoothPlastic, {
-									CanCollide = false, CanQuery = false, CastShadow = false, Transparency = k * 0.15,
+								local w = CELL + 0.8
+								local at = V3(x, SEA_Y + 0.4, z) + out * (CELL / 2 + 11)
+								local foam = part(m, "Foam", V3(w, 0.25, 1.6), CFrame.lookAt(at, at - out), ISLE.FOAM, Mat.SmoothPlastic, {
+									CanCollide = false, CanQuery = false, CastShadow = false,
 								})
-								foam:SetAttribute("WaveMode", "lap")
-								foam:SetAttribute("WaveDir", out)
-								foam:SetAttribute("WaveAmp", 3 + k * 1.5)
-								foam:SetAttribute("WaveSpeed", 1.1)
-								foam:SetAttribute("Phase", math.deg(th) * 5 + k * 140)
+								foam:SetAttribute("WaveMode", "drift")
+								foam:SetAttribute("WaveDir", -out)
+								foam:SetAttribute("WaveAmp", 11.5)
+								foam:SetAttribute("WaveSpeed", 0.22)
+								foam:SetAttribute("Phase", k * 180 + math.deg(th) * 2)
 								CollectionService:AddTag(foam, "Wave")
 							end
 						end
