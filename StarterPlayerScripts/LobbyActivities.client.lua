@@ -70,6 +70,38 @@ local function say(text, color)
 end
 
 local notesRef -- (the cards, once built)
+local ripping = {} -- [card] = true while it's being torn off
+
+-- Rips a card off the board like a bandage: a quick tug, then it tears free
+-- and tumbles away off the screen. A scrap stays under the pin.
+local function rip(index)
+	local n = notesRef and notesRef[index]
+	if not n then
+		return
+	end
+	ripping[index] = true
+	local f = n.frame
+	local dir = (index <= 2) and -1 or 1
+	-- the tug
+	for k = 1, 3 do
+		f.Rotation = n.rot + dir * k * 3
+		f.Position = n.home + UDim2.fromScale(0, 0.01 * k)
+		task.wait(1 / 30)
+	end
+	n.scrap.Visible = true
+	-- torn free: off it goes, spinning, faster and faster
+	for k = 1, 16 do
+		local t = k / 16
+		f.Rotation = n.rot + dir * (9 + 70 * t)
+		f.Position = n.home + UDim2.fromScale(dir * 0.35 * t, 0.03 + 1.3 * t * t)
+		task.wait(1 / 40)
+	end
+	f.Visible = false
+	f.Position = n.home
+	f.Rotation = n.rot
+	ripping[index] = nil
+	n.scrap.Visible = true
+end
 local bgRef -- (the cork panel, shaken by the stamp)
 
 -- The stamp: a big red COMPLETED slams down onto the card from above the
@@ -115,6 +147,13 @@ local function act(index)
 	say(tostring(msg or ""), ok2 and GREEN or RED)
 	if ok2 and pick then
 		task.spawn(stamp, index)
+	elseif ok2 then
+		-- picked: the other two get ripped off the board
+		for j = 1, #notesRef do
+			if j ~= index then
+				task.delay((j < index and 0 or 0.12), rip, j)
+			end
+		end
 	end
 end
 
@@ -234,6 +273,25 @@ local function buildMenu()
 		local sc = Instance.new("UIScale")
 		sc.Parent = st
 		n.stamp = st
+		n.home = note.Position
+		n.rot = note.Rotation
+		-- a torn scrap of paper left under the pin when the card is ripped off
+		local scrap = Instance.new("Frame")
+		scrap.Name = "Scrap" .. i
+		scrap.BackgroundColor3 = PAPER
+		scrap.BorderSizePixel = 0
+		scrap.Size = UDim2.fromScale(0.1, 0.06)
+		scrap.Position = note.Position + UDim2.fromScale(0.095, 0)
+		scrap.Rotation = (i - 2) * 6 + 8
+		scrap.Visible = false
+		scrap.Parent = bg
+		local sp = Instance.new("Frame")
+		sp.BackgroundColor3 = RED
+		sp.BorderSizePixel = 0
+		sp.Size = UDim2.fromScale(0.3, 0.5)
+		sp.Position = UDim2.fromScale(0.35, 0.1)
+		sp.Parent = scrap
+		n.scrap = scrap
 		notes[i] = n
 	end
 end
@@ -265,9 +323,13 @@ local function render()
 	for i, n in ipairs(notes) do
 		local q = list[i]
 		local def = q and Config.QuestById[q.id]
-		n.frame.Visible = def ~= nil
+		local mine = pick == i
+		-- (once you've picked, the others are torn off: just a scrap left)
+		n.frame.Visible = def ~= nil and (not pick or mine or ripping[i] == true)
+		if not ripping[i] then
+			n.scrap.Visible = def ~= nil and pick ~= nil and not mine
+		end
 		if def then
-			local mine = pick == i
 			local done = q.n >= def.goal
 			n.text.Text = Config.questText(def)
 			local filled = mine and math.floor(q.n / def.goal * 10 + 1e-6) or 0
@@ -276,9 +338,6 @@ local function render()
 			end
 			n.count.Text = mine and (Config.format(q.n) .. " / " .. Config.format(def.goal)) or ""
 			n.reward.Text = Config.format(def.reward) .. " coins"
-			-- (the ones you didn't pick fade back)
-			n.frame.BackgroundTransparency = (pick and not mine) and 0.55 or 0
-			n.text.TextTransparency = (pick and not mine) and 0.5 or 0
 			n.frame.BackgroundColor3 = (mine and q.claimed) and PAPER_DONE or PAPER
 			n.stamp.Visible = mine and q.claimed or false
 			if not pick then
