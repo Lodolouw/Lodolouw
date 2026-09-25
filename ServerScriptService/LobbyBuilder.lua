@@ -4408,7 +4408,12 @@ local function buildIsland(parent)
 				if inward:Dot(center - mid) < 0 then
 					inward = -inward
 				end
-				if not (skipAt and skipAt(mid)) and rnd() > 0.12 then
+				-- (uneven: broken into sets with gaps, each stretch arriving at its own
+				-- moment and from its own distance, like real surf)
+				local broken = math.sin(th * 23 + ring * 2.1) > 0.55 or math.sin(th * 9 + ring) > 0.8
+				local myGap = gap * (0.8 + 0.25 * math.sin(th * 5 + ring * 1.7) + 0.1 * math.sin(th * 17))
+				local myPhase = ring * 180 + 55 * math.sin(th * 7 + ring) + 35 * math.sin(th * 13 + 2)
+				if not (skipAt and skipAt(mid)) and not broken and rnd() > 0.2 then
 					-- chunky square blocks of foam, snapped to a pixel grid, a bit
 					-- ragged, with little bubbles trailing behind
 					local function blob(p, size, tr)
@@ -4418,15 +4423,15 @@ local function buildIsland(parent)
 						})
 						foam:SetAttribute("WaveMode", "drift")
 						foam:SetAttribute("WaveDir", inward)
-						foam:SetAttribute("WaveAmp", gap)
+						foam:SetAttribute("WaveAmp", myGap)
 						foam:SetAttribute("WaveSpeed", 0.1)
-						foam:SetAttribute("Phase", ring * 180)
+						foam:SetAttribute("Phase", myPhase)
 						CollectionService:AddTag(foam, "Wave")
 					end
-					local start = mid - inward * gap
-					blob(start + inward * ((rnd() - 0.5) * 0.8), 1.6 + math.floor(rnd() * 3) * 0.4, 0)
-					if rnd() < 0.35 then
-						blob(start - inward * (1.8 + rnd() * 1.5) + tangent * ((rnd() - 0.5) * 2), 0.6 + rnd() * 0.5, 0.2)
+					local start = mid - inward * myGap
+					blob(start + inward * ((rnd() - 0.5) * 1.6), 1.2 + math.floor(rnd() * 4) * 0.4, 0)
+					for _ = 1, math.floor(rnd() * 3) do
+						blob(start - inward * (1 + rnd() * 3) + tangent * ((rnd() - 0.5) * 3), 0.5 + rnd() * 0.6, 0.15 + rnd() * 0.3)
 					end
 					n = n + 1
 				end
