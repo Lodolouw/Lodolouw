@@ -24,8 +24,9 @@
 	    hide them (LobbyActivities). Other players are just there with you.
 	  * Dummies are always your level, so each takes about the same few
 	    punches whatever your level - and the rewards grow as you do.
-	  * A quest runs the whole time you're in there: defeat 10 dummies for a
-	    big lump of Power and coins, then it starts straight over again.
+	  * A quest runs the whole time you're in there: BEAT 5 WAVES (a whole
+	    run, the King's wave last) for a big lump of Power and coins. It's
+	    paid when the run is cleared, and starts over with the next run.
 	  * THE BOSS WAVE: every 5th wave the GIANT STRAW KING crashes down on
 	    his own, with a boss bar across your screen (LobbyActivities) and
 	    an introduction (BossIntro). His moves, each shown before it lands:
@@ -46,6 +47,14 @@
 	  * KILL STREAKS: dummies beaten in a row without getting hurt. Every 5
 	    adds 10% to what each kill pays (up to +50%). It carries on from run
 	    to run, and ends the moment you're hurt (or when you leave).
+	  * DIFFICULTY: Normal, Hard or Nightmare, picked at the DIFFICULTY board
+	    by the exit gate or on the CLEARED screen (it's saved: PlayerService).
+	    Harder ones mean tougher dummies that hit harder, more of them, a bit
+	    faster - and everything the run pays is multiplied (Hard x2,
+	    Nightmare x3.5). On Nightmare the King is angry from the start. Hard
+	    opens once you've cleared a Normal run, Nightmare once you've cleared
+	    a Hard one. A new pick is used from the next run (straight away if
+	    you're still on wave 1: the run starts over on it).
 
 	All the numbers are in Config.Colosseum (the King's in Config.Colosseum.King).
 ]]
@@ -147,6 +156,23 @@ local function runLength()
 	return (K and K.EndsRun ~= false and K.Every) or nil
 end
 
+-- The difficulty the player picked (Config.Colosseum.Difficulties): the
+-- next run uses it. (Normal if it isn't open to them.)
+local function pickedDifficulty(player)
+	local d = PlayerService.GetData(player)
+	local col = d and d.Colosseum
+	local id = col and col.pick
+	if not Config.colosseumUnlocked(col, id) then
+		id = nil
+	end
+	return Config.colosseumDifficulty(id)
+end
+
+-- how much of the player's max health a hit takes on this run's difficulty
+local function dmg(s, share)
+	return share * ((s.diff and s.diff.damage) or 1)
+end
+
 -- what a kill streak of `n` adds to each kill's pay (0.1 = +10%)
 local function streakBonus(n)
 	local ST = C.Streak
@@ -161,6 +187,8 @@ local function pushState(player, s)
 	local rewards = Config.colosseumRewards(playerLevel(player))
 	local d = PlayerService.GetData(player)
 	local col = d and d.Colosseum
+	local diff = s.diff or pickedDifficulty(player)
+	local pay = diff.reward or 1
 	send(player, "State", {
 		wave = s.wave,
 		of = runLength(), -- (waves in a run: "WAVE 3/5")
@@ -171,10 +199,12 @@ local function pushState(player, s)
 		best = col and col.best,
 		clears = col and col.clears,
 		left = s.alive,
-		quest = s.questKills,
-		goal = C.QuestKills,
-		questPower = rewards.questPower,
-		questCoins = rewards.questCoins,
+		diff = diff.id, -- (this run's difficulty)
+		pick = pickedDifficulty(player).id, -- (the next run's, if it's been changed)
+		quest = s.questWaves,
+		goal = C.QuestWaves or 5,
+		questPower = math.max(1, math.floor(rewards.questPower * pay)),
+		questCoins = math.max(1, math.floor(rewards.questCoins * pay)),
 	})
 end
 
@@ -316,7 +346,7 @@ local function hurtNear(s, at, radius, share, push)
 	if root and sessions[s.player] == s and (flat(root.Position - at)).Magnitude <= radius then
 		local away = flat(root.Position - at)
 		away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
-		CombatService.DamagePlayer(s.player, hum.MaxHealth * share, at, safePush(s.player, away * (push or 40) + Vector3.new(0, 26, 0)))
+		CombatService.DamagePlayer(s.player, hum.MaxHealth * dmg(s, share), at, safePush(s.player, away * (push or 40) + Vector3.new(0, 26, 0)))
 		return true
 	end
 	return false
@@ -398,10 +428,11 @@ local function charge(s, e, target)
 		return
 	end
 	dir = dir.Unit
-	-- (as far as it can go down that line without leaving the sand)
+	-- (as far as it can go down that line without leaving the sand - stopping
+	-- a little short of the edge, as it leans into the charge)
 	local rel = flat(start - C.Center)
 	local along = rel:Dot(dir)
-	local room = along * along - (rel.Magnitude ^ 2 - C.Radius ^ 2)
+	local room = along * along - (rel.Magnitude ^ 2 - (C.Radius - 1.5) ^ 2)
 	local len = math.min(CH.Length, -along + math.sqrt(math.max(0, room)))
 	if len < 6 then
 		return
@@ -421,7 +452,11 @@ local function charge(s, e, target)
 		end
 		local k = (os.clock() - t0) / CH.Tell
 		strip.Transparency = 0.55 - 0.3 * k
-		place(model, face * CFrame.new((rng:NextNumber() - 0.5) * 0.5, 0, 0.8 * k) * CFrame.Angles(-0.25 * k, 0, 0))
+		local back = face * CFrame.new((rng:NextNumber() - 0.5) * 0.5, 0, 0.8 * k)
+		if flat(back.Position - C.Center).Magnitude > C.Radius then
+			back = face -- (at the edge of the sand: no rearing back off it)
+		end
+		place(model, back * CFrame.Angles(-0.25 * k, 0, 0))
 		task.wait(1 / 20)
 	end
 	-- the charge
@@ -442,7 +477,7 @@ local function charge(s, e, target)
 				local side = (rel - dir * along).Magnitude
 				if side <= CH.Width / 2 + 1.5 and along >= len * k - 3 and along <= len * k + 2 then
 					hit = true
-					CombatService.DamagePlayer(s.player, hum.MaxHealth * CH.Damage, p, safePush(s.player, dir * 60 + Vector3.new(0, 30, 0)))
+					CombatService.DamagePlayer(s.player, hum.MaxHealth * dmg(s, CH.Damage), p, safePush(s.player, dir * 60 + Vector3.new(0, 30, 0)))
 				end
 			end
 		end
@@ -629,14 +664,14 @@ local function shockwave(s, e, at, from, W, harmless, spareUntil)
 					-- (rolling through it: "Dodged!", once)
 					if now - lastDodge > 0.6 then
 						lastDodge = now
-						CombatService.DamagePlayer(s.player, hum.MaxHealth * W.WaveDamage, at)
+						CombatService.DamagePlayer(s.player, hum.MaxHealth * dmg(s, W.WaveDamage), at)
 					end
 				else
 					lastHit = now
 					-- (it tumbles you back over itself, so it doesn't carry you along)
 					local toward = flat(at - root.Position)
 					toward = toward.Magnitude > 0.1 and toward.Unit or Vector3.new(0, 0, 1)
-					CombatService.DamagePlayer(s.player, hum.MaxHealth * W.WaveDamage, at, safePush(s.player, toward * 18 + Vector3.new(0, 34, 0)))
+					CombatService.DamagePlayer(s.player, hum.MaxHealth * dmg(s, W.WaveDamage), at, safePush(s.player, toward * 18 + Vector3.new(0, 34, 0)))
 				end
 			end
 		end
@@ -804,7 +839,7 @@ local function whirlwind(s, e)
 			lastHit = t
 			local away = flat(root.Position - pos)
 			away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
-			CombatService.DamagePlayer(s.player, hum.MaxHealth * W.Damage, pos, safePush(s.player, away * 50 + Vector3.new(0, 24, 0)))
+			CombatService.DamagePlayer(s.player, hum.MaxHealth * dmg(s, W.Damage), pos, safePush(s.player, away * 50 + Vector3.new(0, 24, 0)))
 		end
 		task.wait(1 / 30)
 	end
@@ -953,6 +988,11 @@ local function kingBrain(s, e)
 	place(model, face)
 	model:SetAttribute("Invulnerable", nil)
 	model:SetAttribute("State", "Fighting")
+	-- (on a difficulty where he's angry from the start - Nightmare - he flies
+	-- into his rage straight away)
+	if s.diff and s.diff.angry and not e.rage then
+		getAngry(s, e)
+	end
 
 	-- 2) THE FIGHT
 	local function cooldown(range)
@@ -1192,7 +1232,8 @@ spawnDummy = function(s, kind, spot, level, opts)
 		kind, T = "Straw", TYPE_BY_ID.Straw or T -- (an old LobbyBuilder: plain straw dummies only)
 	end
 	local rec = math.max(1, Config.powerForLevel(level))
-	local hp = math.max(1, math.floor(rec * C.HitsToKill * (opts.health or T.health or 1)))
+	local D = s.diff or Config.colosseumDifficulty()
+	local hp = math.max(1, math.floor(rec * C.HitsToKill * (opts.health or T.health or 1) * (D.health or 1)))
 	local name = opts.name or T.name or "Straw Dummy"
 	local scale = template:GetAttribute("Scale") or T.scale or 1
 	local model = template:Clone()
@@ -1235,7 +1276,9 @@ spawnDummy = function(s, kind, spot, level, opts)
 	local e = {
 		model = model, fx = fx, alive = true, kind = kind, scale = scale, reward = opts.reward or T.reward or 1,
 		land = land, -- (where it'll land when it drops in)
-		slow = K.slow, reach = K.reach, puff = K.puff,
+		-- (a harder difficulty's dummies wait and hop for less time; the King
+		-- keeps his own pace)
+		slow = (K.slow or 1) * (kind == "King" and 1 or (D.pace or 1)), reach = K.reach, puff = K.puff,
 		slot = opts.slot or rng:NextNumber() * math.pi * 2,
 		minion = opts.minion,
 	}
@@ -1334,6 +1377,9 @@ local function spawnWave(s)
 	if s.wave == 1 then
 		s.runStart = os.clock() -- (a run's clock starts as its first wave comes in)
 	end
+	if s.wave == 1 or not runLength() then
+		s.diff = pickedDifficulty(s.player) -- (a run keeps the difficulty it started on)
+	end
 	local level = math.max(2, playerLevel(s.player))
 	-- every few waves, THE BOSS WAVE
 	local K = C.King
@@ -1351,7 +1397,7 @@ local function spawnWave(s)
 			warn("[ColosseumService] No ColosseumDummy_King in ServerStorage - is LobbyBuilder up to date? (normal waves until it is)")
 		end
 	end
-	local count = math.min(C.WaveSize[1] + s.wave - 1, C.WaveSize[2])
+	local count = math.min(C.WaveSize[1] + s.wave - 1, C.WaveSize[2]) + ((s.diff and s.diff.extra) or 0)
 	local kinds = pickKinds(level, count)
 	for i = 1, count do
 		-- somewhere on the sand, not right on top of you
@@ -1376,8 +1422,8 @@ local function spawnWave(s)
 	pushState(s.player, s)
 end
 
--- A dummy was beaten: pay out, count it for the quest, and bring on the
--- next wave once the sand is clear.
+-- A dummy was beaten: pay out, and once the sand is clear count the wave for
+-- the quest and bring on the next one.
 local function crumble(model, e)
 	if e and e.king and CombatService.SetTargetShape then
 		CombatService.SetTargetShape(model, nil) -- (forget his hit shape)
@@ -1398,10 +1444,10 @@ function ColosseumService.OnKill(s, model, e)
 	end
 
 	local rewards = Config.colosseumRewards(playerLevel(player))
-	-- (tougher kinds pay more: a Knight is worth 2.2 straw dummies; and a
-	-- kill streak adds its bonus on top)
+	-- (tougher kinds pay more: a Knight is worth 2.2 straw dummies; a kill
+	-- streak adds its bonus on top; and a harder difficulty multiplies it all)
 	s.streak = (s.streak or 0) + 1
-	local mult = ((e and e.reward) or 1) * (1 + streakBonus(s.streak))
+	local mult = ((e and e.reward) or 1) * (1 + streakBonus(s.streak)) * ((s.diff and s.diff.reward) or 1)
 	local killPower = math.max(1, math.floor(rewards.killPower * mult))
 	local killCoins = math.max(1, math.floor(rewards.killCoins * mult))
 	PlayerService.AddPower(player, killPower)
@@ -1409,7 +1455,15 @@ function ColosseumService.OnKill(s, model, e)
 	if PlayerService.QuestProgress then
 		PlayerService.QuestProgress(player, "arena", 1)
 	end
-	send(player, "Kill", killPower, killCoins, feet(model).Position + Vector3.new(0, 11 * ((e and e.scale) or 1), 0))
+	-- (your screen shows what it paid, and the coins and XP fly into you:
+	-- `worth` says how many - a Knight's shower is bigger than a minion's,
+	-- and a Nightmare one bigger than a Normal one)
+	local body = feet(model).Position + Vector3.new(0, 4 * ((e and e.scale) or 1), 0)
+	send(player, "Kill", killPower, killCoins, feet(model).Position + Vector3.new(0, 11 * ((e and e.scale) or 1), 0), {
+		from = body,
+		worth = ((e and e.reward) or 1) * ((s.diff and s.diff.reward) or 1),
+		king = (e and e.king) == true,
+	})
 	if C.Streak and s.streak % C.Streak.Every == 0 then
 		send(player, "Streak", s.streak, streakBonus(s.streak)) -- ("x10 STREAK! +20%")
 	end
@@ -1429,21 +1483,28 @@ function ColosseumService.OnKill(s, model, e)
 		send(player, "KingFx", "Death", feet(model).Position, 1)
 	end
 
-	s.questKills = s.questKills + 1
-	if s.questKills >= C.QuestKills then
-		s.questKills = 0
-		PlayerService.AddPower(player, rewards.questPower)
-		PlayerService.AddCoins(player, rewards.questCoins)
-		send(player, "QuestDone", rewards.questPower, rewards.questCoins)
+	-- the sand is clear: the wave counts for the quest (BEAT 5 WAVES)
+	local waveDone = s.alive <= 0 and sessions[player] == s
+	local runDone = waveDone and e and e.king and runLength() ~= nil
+	if waveDone then
+		s.questWaves = (s.questWaves or 0) + 1
+		-- (a run's quest is paid on the CLEARED screen - FinishRun. Without
+		-- runs, or if the quest is shorter than a run, it's paid right here
+		-- and starts over.)
+		if s.questWaves >= (C.QuestWaves or 5) and not runDone then
+			s.questWaves = 0
+			local qp, qc = ColosseumService.PayQuest(s)
+			send(player, "QuestDone", qp, qc)
+		end
 	end
 	pushState(player, s)
 
 	-- the King fell on the last wave: the run is CLEARED
-	if s.alive <= 0 and sessions[player] == s and e and e.king and runLength() then
+	if runDone then
 		ColosseumService.FinishRun(s)
 		return
 	end
-	if s.alive <= 0 and sessions[player] == s then
+	if waveDone then
 		send(player, "WaveClear", s.wave) -- (the crowd throws confetti)
 		-- (after the King, a longer pause to enjoy it)
 		task.delay((e and e.king and C.King.WaveBreak) or C.WaveBreak, function()
@@ -1461,20 +1522,41 @@ end
 function ColosseumService.FinishRun(s)
 	local player = s.player
 	s.cleared = true
+	local diff = s.diff or Config.colosseumDifficulty()
+	local pay = diff.reward or 1
 	local seconds = math.floor(math.max(0, os.clock() - (s.runStart or os.clock())) * 10 + 0.5) / 10
-	local info = { time = seconds }
-	local rec = PlayerService.RecordColosseumClear and PlayerService.RecordColosseumClear(player, seconds)
+	local info = { time = seconds, diff = diff.id }
+	-- the quest (BEAT 5 WAVES) is done: paid now, shown on the CLEARED screen
+	if (s.questWaves or 0) >= (C.QuestWaves or 5) then
+		s.questWaves = C.QuestWaves or 5 -- (shows as done until the next run)
+		info.questPower, info.questCoins = ColosseumService.PayQuest(s)
+	end
+	local rec = PlayerService.RecordColosseumClear and PlayerService.RecordColosseumClear(player, seconds, diff.id)
 	if rec then
-		info.best, info.newBest, info.clears = rec.best, rec.newBest, rec.clears
+		info.best, info.newBest, info.clears, info.wins = rec.best, rec.newBest, rec.clears, rec.wins
+		info.unlocked = rec.unlocked -- (a harder difficulty this clear opened)
 		if rec.firstToday then
 			local rewards = Config.colosseumRewards(playerLevel(player))
-			PlayerService.AddPower(player, rewards.clearPower)
-			PlayerService.AddCoins(player, rewards.clearCoins)
-			info.bonusPower, info.bonusCoins = rewards.clearPower, rewards.clearCoins
+			local bp = math.max(1, math.floor(rewards.clearPower * pay))
+			local bc = math.max(1, math.floor(rewards.clearCoins * pay))
+			PlayerService.AddPower(player, bp)
+			PlayerService.AddCoins(player, bc)
+			info.bonusPower, info.bonusCoins = bp, bc
 		end
 	end
 	send(player, "RunClear", info)
 	pushState(player, s)
+end
+
+-- Pays the quest (BEAT 5 WAVES) at this run's difficulty. Gives back what it paid.
+function ColosseumService.PayQuest(s)
+	local rewards = Config.colosseumRewards(playerLevel(s.player))
+	local pay = (s.diff and s.diff.reward) or 1
+	local qp = math.max(1, math.floor(rewards.questPower * pay))
+	local qc = math.max(1, math.floor(rewards.questCoins * pay))
+	PlayerService.AddPower(s.player, qp)
+	PlayerService.AddCoins(s.player, qc)
+	return qp, qc
 end
 
 -- RUN AGAIN: healed, flasks refilled, and wave 1 comes in a moment later
@@ -1486,6 +1568,8 @@ local function runAgain(player)
 	end
 	s.cleared = false
 	s.wave = 0
+	s.questWaves = 0
+	s.diff = pickedDifficulty(player) -- (the difficulty picked on the CLEARED screen)
 	local _, hum = rootOf(player)
 	if hum then
 		hum.Health = hum.MaxHealth
@@ -1493,7 +1577,7 @@ local function runAgain(player)
 	if CombatService.RefillFlasks then
 		CombatService.RefillFlasks(player)
 	end
-	send(player, "RunStart")
+	send(player, "RunStart", s.diff.id)
 	pushState(player, s)
 	task.delay(2, function()
 		if sessions[player] == s and not s.cleared and s.wave == 0 then
@@ -1501,6 +1585,30 @@ local function runAgain(player)
 		end
 	end)
 	return true, "Here they come!"
+end
+
+-- A new difficulty picked while you're still on wave 1: the run starts over
+-- on it straight away. The wave's dummies crumble (paying nothing) and wave 1
+-- comes in again a moment later. (No healing: it isn't a way out of a fight.)
+local function restartRun(s)
+	local player = s.player
+	for model, e in pairs(s.enemies) do
+		e.alive = false
+		crumble(model, e)
+	end
+	s.enemies = {}
+	s.alive = 0
+	s.wave = 0
+	s.questWaves = 0
+	s.bossWave = false
+	s.diff = pickedDifficulty(player)
+	send(player, "RunStart", s.diff.id)
+	pushState(player, s)
+	task.delay(2, function()
+		if sessions[player] == s and not s.cleared and s.wave == 0 then
+			spawnWave(s)
+		end
+	end)
 end
 
 ----------------------------------------------------------------------
@@ -1569,7 +1677,7 @@ local function enter(player)
 			ensureAt(player, spawnAt.CFrame, C.Radius + 20)
 		end
 	end)
-	local s = { player = player, wave = 0, alive = 0, questKills = 0, enemies = {}, streak = 0 }
+	local s = { player = player, wave = 0, alive = 0, questWaves = 0, enemies = {}, streak = 0, diff = pickedDifficulty(player) }
 	sessions[player] = s
 	-- getting hurt (by anything) ends your kill streak
 	local _, hum = rootOf(player)
@@ -1642,6 +1750,39 @@ local function leave(player)
 	end)
 end
 
+-- Choosing the difficulty (at the board by the exit gate, or on the CLEARED
+-- screen). It's saved, and used from the next run - or straight away if the
+-- first wave isn't in yet, or you're still on wave 1 (the run starts over).
+local function chooseDifficulty(player, id)
+	local ok, why = PlayerService.SetColosseumPick(player, id)
+	if not ok then
+		return false, why or "Not ready yet."
+	end
+	local def = Config.colosseumDifficulty(id)
+	local s = sessions[player]
+	if not s or going[player] or s.cleared then
+		if s then
+			pushState(player, s)
+		end
+		return true, def.name .. " it is!"
+	end
+	if s.wave == 0 then
+		s.diff = def -- (the first wave isn't in yet: it'll be on this)
+		pushState(player, s)
+		return true, def.name .. " it is!"
+	end
+	if s.diff and s.diff.id == def.id then
+		pushState(player, s)
+		return true, "You're already on " .. def.name .. "."
+	end
+	if s.wave == 1 and not s.bossWave then
+		restartRun(s)
+		return true, "Starting over on " .. def.name .. "!"
+	end
+	pushState(player, s)
+	return true, def.name .. " starts on your next run!"
+end
+
 ----------------------------------------------------------------------
 -- Start
 ----------------------------------------------------------------------
@@ -1654,9 +1795,10 @@ function ColosseumService.Start(combatService, playerService)
 		old:Destroy()
 	end
 	remote = Instance.new("RemoteEvent")
-	-- server -> client: "PipeIn", "PipeOut", "Arrived", "Left", "State", "Wave", "Kill", "QuestDone",
+	-- server -> client: "PipeIn", "PipeOut", "Arrived", "Left", "State", "Wave", "Kill" (what it
+	-- paid, and where its coins and XP fly from), "QuestDone" (without runs), "Sfx",
 	-- for the boss wave "BossWave", "KingFx" (a sound and a shake), "KingRage", "KingDown",
-	-- and for runs and streaks "RunClear", "RunStart", "Streak", "StreakLost"
+	-- and for runs and streaks "RunClear", "RunStart" (and its difficulty), "Streak", "StreakLost"
 	remote.Name = "ColosseumEvent"
 	remote.Parent = ReplicatedStorage
 
@@ -1698,6 +1840,12 @@ function ColosseumService.Start(combatService, playerService)
 			task.spawn(leave, player)
 			return true, "See you soon!"
 		end)
+		-- and the difficulty buttons (the board by the exit gate, the CLEARED screen)
+		if PlayerService.SetColosseumPick then
+			PlayerService.AddAction("ColosseumDifficulty", function(player, _, id)
+				return chooseDifficulty(player, id)
+			end)
+		end
 	end
 
 	local function watch(player)

@@ -17,7 +17,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
 
 **The core loop:**
 
-1. **Farm.** In the **Colosseum** you fight waves of dummies at your level to gain **Power (XP)** and **coins**, and complete looping quests ("Defeat 10 Dummies") and daily quests. This is where players spend most of their time, so it has to be *fun*: varied enemies, telegraphed moves to dodge, and rewards that feel good.
+1. **Farm.** In the **Colosseum** you fight 5-wave runs of dummies at your level (on Normal, Hard or Nightmare) to gain **Power (XP)** and **coins**, and complete the Colosseum's quest ("Beat 5 Waves") and daily quests. This is where players spend most of their time, so it has to be *fun*: varied enemies, telegraphed moves to dodge, and rewards that feel good.
 2. **Grow.**
    - Levels come from Power. Total Power for a level = 17.9 × (level − 1)³, up to level 256.
    - Every level gives **stat points** to spend: Strength (damage), Vitality (health), Defense, and Training (+Power gain).
@@ -149,7 +149,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 **StarterPlayerScripts/** (LocalScripts)
 - `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying.
   It has about **192 top-level locals** — same rule: use `do ... end` blocks.
-- `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave banners, confetti), the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
+- `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the DIFFICULTY board's menu and plaques, the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: boss visuals (8-bit PIXEL mode).
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`, `RollDebug`.
 
@@ -208,7 +208,7 @@ A wave arena for farming XP and coins.
 - If you die in there, you respawn in the lobby.
 
 ### Quest
-- **"Defeat 10 Dummies"** loops forever, shown in a quest tab on the right, like Blox Fruits.
+- **"Beat 5 Waves"** (`Config.Colosseum.QuestWaves`), shown in a quest tab on the right like Blox Fruits, with one chunky block per wave ("(2/5)", then "(5/5) DONE!"). It's a whole run: it's paid when the King falls, on the CLEARED screen ("QUEST COMPLETE! +XP +coins", with the "Quest Complete" sound), at the run's difficulty: `QuestPower` 0.5 of the level gap and `QuestCoins` 150 + 30/level, x the difficulty's reward. It starts over with the next run (RUN AGAIN, or coming back in). (Without runs, `EndsRun = false`, it pays with a "QuestDone" banner every 5 waves instead.) The old "Defeat 10 Dummies" is gone.
 - Daily quests also exist: pick 1 of 3 at the quest board, with a stamp animation on completion.
 
 ### Waves
@@ -244,19 +244,34 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - **His moves** (`kingBrain` in ColosseumService, each with a red warning): big hops; a royal slam (red ring, `SlamRange`); the **ground pound** (red ring where you stand, he leaps and lands in it, then after `WaveDelay` a **shockwave** of red/gold blocks rolls out at `WaveSpeed`: it's a real wall: touch it with your feet on the sand from either side and it hurts, again after `ReHit` 1s; being higher than 60% of its height above your standing height clears it, and rolling works too; someone squashed by the landing is spared for 1s); the **whirlwind** (red disc, then he spins TOWARDS you like Clash Royale's Valkyrie at `Chase` 11 / `RageChase` 14 studs/s for 2.4s, hitting again every `ReHit` 0.9s you stay in it); **summon** (3 "Straw Minion" straw dummies, max 4, at 75%/40% health and on a cooldown). Preview: `Docs/straw_king_moves.png`.
 - **Rage** at 50%: Phase 2, red glowing eyes, faster, 2 shockwaves per pound, a faster whirlwind.
 - **Oozark's slime wave** (BossService `stepWaves`) follows the same wall rule now: it can hit you again if you touch it again after 1s.
-- **Reward:** 15× a straw dummy's Power and coins; counts as 1 quest kill. His minions crumble when he dies (no reward). A longer break (`WaveBreak` 4.5s) follows.
+- **Reward:** 15× a straw dummy's Power and coins (x the difficulty's reward). His minions crumble when he dies (no reward). A longer break (`WaveBreak` 4.5s) follows (only without runs).
 - **Code:** `spawnDummy(s, kind, spot, level, opts)` now makes EVERY dummy (waves, the King, minions). The King has attributes Kind="King", NoBar, Boss (never out of sight for lock-on), State, Phase, Move. His hit shape (`CombatService.SetTargetShape`) makes him punchable from the sand up to his head; it's cleared when he dies or the session ends.
 - **Screen:** LobbyActivities has the King's boss bar (`ColosseumBossBar`, 8-bit, RetroSkip), the BOSS WAVE / THE KING IS FURIOUS! / THE STRAW KING FALLS! banners, camera shakes through CombatClient's `CombatCameraKick` BindableEvent, his sounds and music (the "Music" SoundGroup is faded down while his plays, in its own "KingMusic" group). BossIntro has his portrait and lines. Preview: `Docs/straw_king_screen.png`.
 - **Sounds (by name in SoundService, first one found is used):** Horn "Boss Wave Horn"; Land "Straw King Land" or "Boss Slam"; Roar "Straw King Roar" or "Boss Wake"; Spin "Straw King Spin" or "Boss Wave"; Summon "Straw King Summon" or "Boss Wail"; Death "Straw King Death" or "Boss Death"; Victory "Victory Is Ours (a) Sting"; Music "Straw King Song" or "Slime boss song".
 - In the headless tests a fight takes about 50-65 seconds for a player at his level with no gear.
 
 ### Runs (a mini dungeon) and kill streaks ✅
-- **Runs:** a run is 5 waves (`Config.Colosseum.King.Every`, `EndsRun = true`); wave 5 is the King. When he falls the run is **CLEARED**: the server times it (from wave 1 arriving), `PlayerService.RecordColosseumClear` saves `data.Colosseum = { clears, best, bonusDay }` (best = fastest clear in seconds), and the **first clear of each day** pays `ClearBonus` (0.5 of the level gap in Power, 150 + 15/level coins; `Config.colosseumRewards().clearPower/clearCoins`). Then nothing happens until the player chooses on the COLOSSEUM CLEARED screen (LobbyActivities `ClearScreen`, preview `Docs/colosseum_cleared.png`): **RUN AGAIN** (healed, flasks refilled via `CombatService.RefillFlasks`, wave 1 two seconds later) or **LEAVE** (the normal pipe-out, allowed from anywhere only while the run is cleared). The buttons go through PlayerService's `Action` RemoteFunction: ColosseumService registers "ColosseumAgain" and "ColosseumLeave" with `PlayerService.AddAction`. Dying mid-run still sends you to the lobby.
+- **Runs:** a run is 5 waves (`Config.Colosseum.King.Every`, `EndsRun = true`); wave 5 is the King. When he falls the run is **CLEARED**: the server times it (from wave 1 arriving), `PlayerService.RecordColosseumClear(player, seconds, diffId)` saves `data.Colosseum = { clears, best, bonusDay, pick, wins, bests }` (clears/best over every difficulty; `wins`/`bests` per difficulty, e.g. `wins.Hard = 3`; old saves had every clear counted as Normal when loaded), and the **first clear of each day** pays `ClearBonus` (0.5 of the level gap in Power, 150 + 15/level coins; `Config.colosseumRewards().clearPower/clearCoins`), x the difficulty's reward. Then nothing happens until the player chooses on the COLOSSEUM CLEARED screen (LobbyActivities `ClearScreen`, preview `Docs/colosseum_cleared.png`): **RUN AGAIN** (healed, flasks refilled via `CombatService.RefillFlasks`, wave 1 two seconds later) or **LEAVE** (the normal pipe-out, allowed from anywhere only while the run is cleared). The buttons go through PlayerService's `Action` RemoteFunction: ColosseumService registers "ColosseumAgain" and "ColosseumLeave" with `PlayerService.AddAction`. Dying mid-run still sends you to the lobby.
 - **Kill streaks** (`Config.Colosseum.Streak`): kills in a row without losing health (ColosseumService watches the Humanoid's HealthChanged). Every 5 kills adds +10% to each kill's pay, up to +50%. It carries on between runs and ends when you're hurt or leave. The screen shows "x12 STREAK +20%" beside the wave box ("WAVE 3/5"), a banner every 5, and "STREAK LOST" if a streak of 5+ breaks.
 - "Best wave" was dropped (runs always end at 5): the best clear time replaces it.
 - **Spawning:** a new dummy (and the King) is parked out of sight 200 studs up (`PARKED`) until its turn to drop in, and lands at `e.land`. It must never stand on the sand first and then vanish (that was a bug).
 - **The pipe sound:** LobbyActivities plays `Config.Colosseum.PipeSound` ("Pipe" / "Mario Pipe" / "Warp Pipe") going in and popping out.
-- **Colosseum sounds** (`Config.Colosseum.Sounds`, names + volumes): the server sends `"Sfx", key, position` for dummy moments (Land, Slam, Poof, Charge, Throw, HayLand, Clang, Blink); the client adds WaveHorn, Cheer, Reward and Quest. While inside, `Config.Colosseum.Music` ("Colosseum Song") plays and the looping crowd (`CrowdSound`) murmurs; the King's song takes over in his fight; the lobby's "Music" SoundGroup is ducked under both. All are warmed up and listed in the Output sound report. ("coin2" and "dummy punch" in SoundService are deliberately unused.)
+- **Colosseum sounds** (`Config.Colosseum.Sounds`, names + volumes): the server sends `"Sfx", key, position` for dummy moments (Land, Slam, Poof, Charge, Throw, HayLand, Clang, Blink); the client adds WaveHorn, Cheer, Reward, Collect (the coins landing: "Coin Collect", borrowing "Reward Pop" until that's added) and Quest. While inside, `Config.Colosseum.Music` ("Colosseum Song") plays and the looping crowd (`CrowdSound`) murmurs; the King's song takes over in his fight; the lobby's "Music" SoundGroup is ducked under both. All are warmed up and listed in the Output sound report. ("coin2" and "dummy punch" in SoundService are deliberately unused.)
+
+### Difficulty: Normal / Hard / Nightmare ✅
+- **The numbers** are in `Config.Colosseum.Difficulties` (id, name, health, damage, extra dummies per wave, pace, reward, angry, color):
+  - **Normal** (green): everything x1.
+  - **Hard** (orange): dummies and the King x1.4 health, hits x1.5 damage, +1 dummy per wave, dummies 15% faster (`pace` 0.85 shortens their rests and hops, NOT their red warnings), pays x2.
+  - **Nightmare** (red): x2 health, x2 damage, +2 dummies per wave, 30% faster, **the King is angry from the start**, pays x3.5.
+  - "Pays" multiplies everything the run pays: each kill, the quest and the first clear of the day.
+- **Unlocks:** Normal is always open; each one opens after clearing a run on the one before (`Config.colosseumUnlocked(data.Colosseum, id)`, used on both server and client). The CLEARED screen says "NIGHTMARE UNLOCKED!" when a clear opens one.
+- **Picking:** at the **DIFFICULTY board** beside the arena's exit gate (LobbyBuilder `buildDifficultyBoard`: a wooden board with a red roof, torches and a plaque per difficulty with its name, 1-3 pips and "x2 COINS & XP"; its ProximityPrompt is tagged `ColosseumDifficultyBoard`, its plaques `DifficultyPlaque` with a `Difficulty` attribute), or with the difficulty buttons on the CLEARED screen. Both call the Action "ColosseumDifficulty" (`PlayerService.SetColosseumPick` validates and saves `data.Colosseum.pick`). The pick is used from the next run; if the first wave isn't in yet it's used straight away, and if you're still on **wave 1** the run starts over on it (wave 1's dummies crumble paying nothing, no healing); from wave 2 on it waits for the next run. Previews: `Docs/difficulty_board.png`, `Docs/difficulty_menu.png`, `Docs/colosseum_cleared_hard.png`.
+- **Screen:** the menu (`ColosseumDifficulty`) has a card per difficulty: what it does, what it pays, your clears and best time on it, and PICK / PICKED / LOCKED ("Clear a HARD run first"). On your own screen the board's plaques say PICKED / LOCKED. The wave box shows the run's difficulty after the wave ("WAVE 3/5  HARD", RichText, in its colour, with a border in its colour), and a new run's banner says "HARD RUN BEGINS!".
+- **Server:** the session's `s.diff` is set when wave 1 comes in (a run keeps it). `spawnDummy` multiplies health, `dmg(s, share)` wraps every hit on the player, `spawnWave` adds `extra`, `e.slow` includes `pace` (not for the King), `OnKill`/`FinishRun`/`PayQuest` multiply the pay, and `kingBrain` calls `getAngry` right after his entrance when `angry`.
+
+### Reward feel ✅ (no chests: they're being reworked later)
+- Every kill sends `"Kill", power, coins, textPos, { from, worth, king }`. Besides the "+XP / +coins" pop-up, LobbyActivities' `Loot` bursts gold coins (flat spinning squares) and green neon XP gems out of the dummy: they pop out, bounce once on the sand, then zip into you (30 steps a second, 8-bit). How many depends on `worth` (the kind's reward x the difficulty's; the King's is a big shower of 40+). Each one that lands ticks (the Collect sound, rising in pitch through a chain, at most ~16 a second) and bumps the HUD's coin counter (Hud's "Coin" frame) or level bar ("GoalBar") with a `CollectPop` UIScale. At most 120 fly at once; leaving the Colosseum clears them. Client-only: the server paid the moment the dummy fell. Preview: `Docs/reward_shower.png`.
+- `Config.Audio.Music` is now 0.7 (the music was turned down on request).
 
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
@@ -315,28 +330,19 @@ I asked for a full client-exploit audit: remote abuse, economy duplication, tele
 
 The Colosseum polish plan was:
 1. enemy types ✅
-2. difficulty board
+2. difficulty board ✅
 3. boss wave ✅ (the Giant Straw King, see above)
-4. streaks
-5. juice
-6. reward feel
+4. streaks ✅
+5. juice (skipped for now: I felt the Colosseum is polished enough)
+6. reward feel ✅ (without chest drops: chests are being reworked later)
 
 The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
 1. ~~**Boss wave every 5 waves: the Giant Straw King.**~~ ✅ Done (see "The boss wave" above).
 2. ~~**Kill streaks and best wave:**~~ ✅ Done, as 5-wave runs with a best clear time, runs cleared, a daily first-clear bonus, and kill streaks (see "Runs" above).
-3. **Difficulty board** at the entrance, pick one:
-   - **Normal**
-   - **Hard:** 1.5× dummy health and damage, better rewards
-   - **Nightmare:** 2.5×, much better rewards
-4. **Juice:**
-   - The crowd cheers when you kill.
-   - The crowd throws hearts (heal pickups) and coin bags onto the sand.
-   - A horn sounds at the start of each wave.
-   - Add sound hooks by name and tell me the names.
-5. **Reward feel:**
-   - Coins/XP visibly fly from the dummy to you.
-   - A chance of a chest drop (use the existing Items / boss chest system).
+3. ~~**Difficulty board**~~ ✅ Done: Normal / Hard / Nightmare, by the exit gate and on the CLEARED screen (see "Difficulty" above). The quest became "Beat 5 Waves" at the same time.
+4. **Juice** (skipped for now, maybe later): the crowd cheering kills, throwing hearts (heal pickups) and coin bags onto the sand. (The wave horn already exists.)
+5. ~~**Reward feel**~~ ✅ Done: coins and XP fly from the dummy to you (see "Reward feel" above). **No chest drops**: chests are being reworked later.
 
 **Later (bosses last):** more bosses (my goal is 20+), and possibly splitting the big BossService / BossClient into one module per boss.
 
@@ -346,4 +352,4 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 - Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before. They're now in `Tools/HeadlessTests/` (`./run_all.sh`); add new tests there.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`, then continue with step 3 of "What to do next" (the difficulty board: Normal / Hard / Nightmare, picked before each run).
+Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`. The Colosseum polish plan is done; ask me what's next (for example: the chest rework, pets, a settings menu, or more bosses; the tutorial comes last).

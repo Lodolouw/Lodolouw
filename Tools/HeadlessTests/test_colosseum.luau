@@ -3,7 +3,11 @@
 -- goes in, beats waves 1-4, fights the Giant Straw King on wave 5 (dodging
 -- some attacks, eating others), and we check nothing breaks.
 --   luau test_colosseum.luau -a <scenario> <seed>
--- scenarios: full (default), leave (walk out mid-King), die (die mid-King), oldbuilder (no King template)
+-- scenarios: full (default), leave (walk out mid-King), die (die mid-King),
+-- oldbuilder (no King template), cursed, clearleave, kite, kitejump,
+-- hard / nightmare (a whole run on that difficulty), restart (a new pick on
+-- wave 1 starts the run over; on wave 2 it waits for the next run),
+-- locked (picks that aren't allowed)
 local M = require("./rbxmock")
 local S = require("./sources")
 local args = { ... }
@@ -125,6 +129,7 @@ local stats = {
 local function bump(t, k, n)
 	t[k] = (t[k] or 0) + (n or 1)
 end
+local lastState = nil
 
 -- CombatService, pretend
 local iframeUntil = 0
@@ -148,7 +153,7 @@ function Combat.DamagePlayer(p, amount, from, knock)
 	hum:TakeDamage(amount)
 	stats.hurtCount += 1
 	bump(stats.damage, lastDamageFrom, amount)
-	local share = amount / hum.MaxHealth
+	local share = amount / hum.MaxHealth / (Config.colosseumDifficulty(lastState and lastState.diff).damage or 1)
 	local kinds = { [K.Pound.WaveDamage] = "wave", [K.Pound.Damage] = "poundLanding", [K.SlamDamage] = "kingSlam", [K.Spin.Damage] = "whirlwind", [C.SlamDamage] = "dummySlam", [C.Charge.Damage] = "charge", [C.Throw.Damage] = "bale" }
 	local name = "other"
 	for k2, v in pairs(kinds) do
@@ -180,6 +185,17 @@ end
 
 -- PlayerService, pretend
 local Players2 = {}
+-- (the real PlayerService's run records, pretend: what the difficulty
+-- scenarios have already cleared, and what they've picked)
+local colData = { clears = 0, best = nil, bonusDay = 0, pick = "Normal", wins = {}, bests = {} }
+if SCENARIO == "hard" or SCENARIO == "restart" then
+	colData.wins.Normal = 1
+	colData.pick = (SCENARIO == "hard") and "Hard" or "Normal"
+elseif SCENARIO == "nightmare" then
+	colData.wins.Normal, colData.wins.Hard = 1, 1
+	colData.pick = "Nightmare"
+end
+local RUN_DIFF = Config.colosseumDifficulty(colData.pick)
 function Players2.GetData()
 	return { Power = Config.powerForLevel(LEVEL), Colosseum = colData }
 end
@@ -192,30 +208,74 @@ function Players2.AddCoins(_, n)
 	stats.coins += n
 end
 function Players2.QuestProgress() end
--- (the real PlayerService's run records and actions, pretend)
-local colData = { clears = 0, best = nil, bonusDay = 0 }
 local actions = {}
 function Players2.AddAction(name, fn)
 	actions[name] = fn
 end
-function Players2.RecordColosseumClear(_, seconds)
+function Players2.RecordColosseumClear(_, seconds, diffId)
 	assert(type(seconds) == "number" and seconds > 0 and seconds == seconds, "bad clear time " .. tostring(seconds))
+	assert(type(diffId) == "string" and Config.colosseumDifficulty(diffId).id == diffId, "a clear needs its difficulty, got " .. tostring(diffId))
+	local locked = {}
+	for _, def in ipairs(C.Difficulties) do
+		locked[def.id] = not Config.colosseumUnlocked(colData, def.id)
+	end
 	colData.clears += 1
-	local newBest = colData.best == nil or seconds < colData.best
+	colData.wins[diffId] = (colData.wins[diffId] or 0) + 1
+	local newBest = colData.bests[diffId] == nil or seconds < colData.bests[diffId]
 	if newBest then
-		colData.best = seconds
+		colData.bests[diffId] = seconds
+	end
+	local unlocked = nil
+	for _, def in ipairs(C.Difficulties) do
+		if locked[def.id] and Config.colosseumUnlocked(colData, def.id) then
+			unlocked = def.id
+		end
 	end
 	local first = colData.clears == 1
-	return { clears = colData.clears, best = colData.best, newBest = newBest, firstToday = first }
+	return { clears = colData.clears, wins = colData.wins[diffId], best = colData.bests[diffId], newBest = newBest, firstToday = first, unlocked = unlocked }
+end
+function Players2.SetColosseumPick(_, id)
+	local def = type(id) == "string" and Config.colosseumDifficulty(id)
+	if not def or def.id ~= id then
+		return false, "There's no such difficulty."
+	end
+	if not Config.colosseumUnlocked(colData, id) then
+		return false, "Locked!"
+	end
+	colData.pick = id
+	return true
 end
 
 -- what the server tells the player's screen
-local lastState = nil
-M.onFireClient = function(remote, p, kind, a, b, c)
+M.onFireClient = function(remote, p, kind, a, b, c, d)
 	if remote.Name ~= "ColosseumEvent" then
 		return
 	end
 	bump(stats.events, kind)
+	if kind == "Kill" then
+		-- where its coins and XP fly from, how many, and whether it was the King
+		assert(type(d) == "table" and M.typeof(d.from) == "Vector3" and not M.isNaNv(d.from), "a kill needs where its rewards fly from")
+		assert(type(d.worth) == "number" and d.worth > 0 and d.worth == d.worth, "a kill needs its worth")
+		stats.kills = (stats.kills or 0) + 1
+		if d.king then
+			stats.kingWorth = d.worth
+		end
+	elseif kind == "State" then
+		-- the quest: BEAT 5 WAVES
+		assert(a.goal == C.QuestWaves, "the quest is to beat " .. C.QuestWaves .. " waves")
+		assert(type(a.quest) == "number" and a.quest >= 0 and a.quest <= a.goal, "quest progress " .. tostring(a.quest))
+		assert(Config.colosseumDifficulty(a.diff).id == a.diff, "the state needs its difficulty")
+		stats.maxQuest = math.max(stats.maxQuest or 0, a.quest)
+		if lastState and lastState.quest ~= a.quest then
+			stats.questSteps = stats.questSteps or {}
+			table.insert(stats.questSteps, a.quest)
+		end
+	elseif kind == "RunStart" then
+		stats.runStarts = stats.runStarts or {}
+		table.insert(stats.runStarts, a)
+	elseif kind == "QuestDone" then
+		stats.questDone = (stats.questDone or 0) + 1
+	end
 	if kind == "PipeIn" then
 		-- (the player's screen moves them inside)
 		M.task.delay(0.5, function()
@@ -226,7 +286,19 @@ M.onFireClient = function(remote, p, kind, a, b, c)
 			root.CFrame = CFrame.new(b + Vector3.new(0, 3, 0))
 		end)
 	elseif kind == "Wave" or kind == "BossWave" then
+		if kind == "Wave" then
+			-- (how many dummies it brought: a harder difficulty brings more)
+			local n = 0
+			for _, m in ipairs(workspace:FindFirstChild("ColosseumEnemies"):GetChildren()) do
+				if m:IsA("Model") and CollectionService:HasTag(m, "CombatTarget") then
+					n += 1
+				end
+			end
+			stats.waveSizes = stats.waveSizes or {}
+			stats.waveSizes[a] = n
+		end
 		stats.maxWave = math.max(stats.maxWave, a)
+		stats.firstWaveAt = stats.firstWaveAt or M.now()
 		stats.waveEvents = (stats.waveEvents or 0) + 1
 		if stats.runClears and a == 1 then
 			stats.secondRun = true
@@ -290,6 +362,7 @@ M.onAttribute = function(inst, name, value)
 			end
 		elseif name == "Phase" and value == 2 then
 			stats.rage = (stats.rage or 0) + 1
+			stats.rageAt = stats.rageAt or M.now()
 		end
 	end
 end
@@ -307,6 +380,26 @@ enemyFolder.ChildAdded:Connect(function(m)
 		if fy < 100 then
 			stats.positionsBad += 1
 			print(string.format("!! %s arrived on the sand (feet at %.1f) instead of hidden in the sky", m.Name, fy))
+		end
+	end
+	-- its health: a straw dummy's (at its level) x its kind's x the difficulty's
+	if m:IsA("Model") and (SCENARIO == "full" or SCENARIO == "hard" or SCENARIO == "nightmare") then
+		local kind, mult = m:GetAttribute("Kind"), nil
+		if kind == "King" then
+			mult = K.health
+		elseif m.Name == "Straw Minion" then
+			mult = K.Summon.health
+		else
+			for _, t2 in ipairs(C.Types) do
+				if t2.id == kind then
+					mult = t2.health
+				end
+			end
+		end
+		local want = math.max(1, math.floor(math.max(1, Config.powerForLevel(m:GetAttribute("Level"))) * C.HitsToKill * mult * RUN_DIFF.health))
+		if m:GetAttribute("MaxHealth") ~= want then
+			stats.badHealth = (stats.badHealth or 0) + 1
+			print(string.format("!! %s has %s health, should have %d on %s", m.Name, tostring(m:GetAttribute("MaxHealth")), want, RUN_DIFF.id))
 		end
 	end
 	if m:GetAttribute("Kind") == "King" then
@@ -387,8 +480,9 @@ local function playerBrain()
 		if hum.Health <= 0 or not player:GetAttribute("Colosseum") then
 			continue
 		end
-		-- heal with a "flask" when low (the full fight should get to the end)
-		if not stats.died and hum.Health < 35 then
+		-- heal with a "flask" when low (the full fight should get to the end;
+		-- on a harder difficulty the hits are bigger, so it drinks sooner)
+		if not stats.died and hum.Health < 35 * (RUN_DIFF.damage or 1) then
 			hum.Health = hum.MaxHealth
 			stats.flasks = (stats.flasks or 0) + 1
 		end
@@ -595,7 +689,8 @@ local function hasPart(pname, maxT)
 end
 local kingSeenAt = nil
 local t = 0
-local endAt = (SCENARIO == "cursed") and 900 or (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420 or 300
+local endAt = (SCENARIO == "cursed" or SCENARIO == "hard" or SCENARIO == "nightmare") and 900
+	or (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420 or 300
 while t < endAt do
 	t += 0.1
 	M.run(t)
@@ -651,6 +746,40 @@ while t < endAt do
 	if (SCENARIO == "kite" or SCENARIO == "kitejump") and kingSeenAt and t > kingSeenAt + 70 then
 		break
 	end
+	-- choosing the difficulty in the middle of a run
+	if SCENARIO == "restart" or SCENARIO == "locked" then
+		stats.picks = stats.picks or {}
+		if stats.maxWave >= 1 and not stats.picks.first and M.now() > (stats.firstWaveAt or math.huge) + 1.5 then
+			stats.picks.first = true
+			if SCENARIO == "restart" then
+				local ok, msg = actions.ColosseumDifficulty(player, nil, "Hard")
+				stats.picks.restartMsg = msg
+				assert(ok and string.find(msg, "over"), "a new pick on wave 1 should start the run over: " .. tostring(msg))
+				stats.picks.restartAt = M.now()
+			else
+				for _, bad in ipairs({ "Nightmare", "Hard", "Bogus", 123, false }) do
+					local ok, msg = actions.ColosseumDifficulty(player, nil, bad)
+					assert(not ok, "picking " .. tostring(bad) .. " should be refused")
+					assert(type(msg) == "string" and msg ~= "", "a refused pick says why")
+				end
+				assert(colData.pick == "Normal", "a refused pick changes nothing")
+				local ok, msg = actions.ColosseumDifficulty(player, nil, "Normal")
+				assert(ok and string.find(msg, "already"), "picking the one you're on: " .. tostring(msg))
+				stats.picks.lockedDone = true
+			end
+		end
+		if SCENARIO == "restart" and stats.picks.restartAt and stats.maxWave >= 2 and not stats.picks.second then
+			stats.picks.second = true
+			assert(lastState.diff == "Hard", "after starting over, the run is on Hard (state says " .. tostring(lastState.diff) .. ")")
+			local ok, msg = actions.ColosseumDifficulty(player, nil, "Normal")
+			assert(ok and string.find(msg, "next run"), "a new pick on wave 2 waits for the next run: " .. tostring(msg))
+			assert(lastState.diff == "Hard" and lastState.pick == "Normal", "the run stays Hard, the next one will be Normal")
+			stats.picks.waitDone = true
+		end
+		if stats.picks.lockedDone or stats.picks.waitDone then
+			break
+		end
+	end
 	if stats.clearAt and not stats.pressed and M.now() > stats.clearAt + 6 then
 		stats.pressed = true
 		assert((stats.waveEvents or 0) == stats.wavesAtClear, "no new wave should start until you choose")
@@ -667,7 +796,7 @@ while t < endAt do
 			assert(hum.Health == hum.MaxHealth, "RUN AGAIN heals you")
 		end
 	end
-	if SCENARIO == "full" and stats.secondRun and stats.waveEvents >= stats.wavesAtClear + 2 then
+	if (SCENARIO == "full" or SCENARIO == "hard" or SCENARIO == "nightmare") and stats.secondRun and stats.waveEvents >= stats.wavesAtClear + 2 then
 		break
 	end
 	if SCENARIO == "clearleave" and stats.pressed and M.now() > stats.clearAt + 12 then
@@ -730,10 +859,59 @@ if lastState then
 end
 local problems = #M.errors + (M.nanWrites or 0) + stats.positionsBad
 print(string.format("ERRORS %d  NaN writes %d  bad positions %d  warnings %d", #M.errors, M.nanWrites or 0, stats.positionsBad, M.warnings or 0))
-if SCENARIO == "full" then
+if stats.waveSizes then
+	local parts = {}
+	for w = 1, 12 do
+		if stats.waveSizes[w] then
+			table.insert(parts, w .. ":" .. stats.waveSizes[w])
+		end
+	end
+	print("dummies per wave: " .. table.concat(parts, "  "))
+end
+if stats.questSteps then
+	print("quest progress: " .. table.concat(stats.questSteps, ","))
+end
+if stats.lastClear then
+	print(string.format("cleared on %s: quest %s XP / %s coins, unlocked %s", tostring(stats.lastClear.diff), tostring(stats.lastClear.questPower), tostring(stats.lastClear.questCoins), tostring(stats.lastClear.unlocked)))
+end
+if SCENARIO == "full" or SCENARIO == "hard" or SCENARIO == "nightmare" then
+	local D = RUN_DIFF
 	assert(stats.kingKills == 1, "the King was never beaten")
 	assert(stats.bossWaves[1] == 5, "the boss wave should be wave 5")
 	assert(stats.rage == 1, "the King should get angry once")
+	if D.angry then
+		assert(stats.rageAt and stats.fightStart and stats.rageAt - stats.fightStart < 0.5, "on " .. D.id .. " the King is angry from the start")
+	else
+		assert(stats.rageAt - stats.fightStart > 3, "on " .. D.id .. " the King only gets angry at half health")
+	end
+	-- the difficulty: its dummies' health, how many come, what they pay
+	assert((stats.badHealth or 0) == 0, "every dummy's health should include the difficulty")
+	for w = 1, 4 do
+		local want = math.min(C.WaveSize[1] + w - 1, C.WaveSize[2]) + (D.extra or 0)
+		assert(stats.waveSizes[w] == want, string.format("wave %d on %s should bring %d dummies, brought %s", w, D.id, want, tostring(stats.waveSizes[w])))
+	end
+	assert(math.abs(stats.kingWorth - K.reward * D.reward) < 1e-6, "the King's shower is worth his reward x the difficulty's")
+	-- the quest: BEAT 5 WAVES, one step per wave, paid on the CLEARED screen
+	assert(stats.questSteps[1] == 1 and stats.questSteps[5] == 5, "the quest goes up one per wave")
+	assert(stats.questSteps[6] == 0, "a new run starts the quest over")
+	assert(not stats.questDone, "a run's quest is paid on the CLEARED screen, not with its own banner")
+	local qp = math.max(1, math.floor(rewards.questPower * D.reward))
+	local qc = math.max(1, math.floor(rewards.questCoins * D.reward))
+	assert(stats.lastClear.questPower == qp and stats.lastClear.questCoins == qc,
+		string.format("the quest should pay %d XP / %d coins on %s, paid %s / %s", qp, qc, D.id, tostring(stats.lastClear.questPower), tostring(stats.lastClear.questCoins)))
+	assert(stats.lastClear.diff == D.id, "the CLEARED screen says the difficulty")
+	assert(colData.wins[D.id] >= 1, "the clear is counted on its difficulty")
+	local nextOne = nil
+	for i, def in ipairs(C.Difficulties) do
+		if def.id == D.id then
+			nextOne = C.Difficulties[i + 1]
+		end
+	end
+	if nextOne then
+		assert(stats.lastClear.unlocked == nextOne.id, "clearing " .. D.id .. " for the first time opens " .. nextOne.id)
+	else
+		assert(stats.lastClear.unlocked == nil, "nothing comes after " .. D.id)
+	end
 	assert((stats.moves.Summon or 0) >= 1, "the King should summon")
 	assert((stats.moves.Pound or 0) >= 1, "the King should pound")
 	assert((stats.moves.Spin or 0) >= 1, "the King should spin")
@@ -742,10 +920,18 @@ if SCENARIO == "full" then
 	-- (the pretend player gets hit a lot, so a x5 streak isn't certain - but
 	-- streaks must be counted, and broken by hits)
 	assert((stats.streaks or 0) >= 1 or (stats.streakLost or 0) >= 1, "kill streaks should be counted")
-	local base = math.floor(rewards.killPower * K.reward)
+	local base = math.floor(rewards.killPower * K.reward * D.reward)
 	assert(stats.kingReward[1] >= base and stats.kingReward[1] <= math.floor(base * (1 + C.Streak.Max)) + 1,
 		"king reward " .. stats.kingReward[1] .. " should be " .. base .. " plus at most the streak bonus")
-	assert(stats.lastClear.bonusPower, "the first clear of the day pays a bonus")
+	assert(stats.lastClear.bonusPower == math.max(1, math.floor(rewards.clearPower * D.reward)), "the first clear of the day pays a bonus (x the difficulty)")
+end
+if SCENARIO == "restart" then
+	assert(stats.picks and stats.picks.waitDone, "the restart checks should have run")
+	assert(stats.runStarts and stats.runStarts[1] == "Hard", "starting over sends RunStart with the new difficulty")
+	assert(colData.pick == "Normal", "the last pick is saved")
+end
+if SCENARIO == "locked" then
+	assert(stats.picks and stats.picks.lockedDone, "the locked checks should have run")
 end
 if SCENARIO == "cursed" then
 	print(string.format("blinks: on %s, off %s", tostring(stats.blinkOn), tostring(stats.blinkOff)))

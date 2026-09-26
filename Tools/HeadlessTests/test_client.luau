@@ -1,6 +1,8 @@
 --!nocheck
--- Headless test of the King's screen side: LobbyActivities (boss bar, banners,
--- shakes, sounds, music) and BossIntro (VS splash, talking), fed a fake King.
+-- Headless test of the Colosseum's screen side: LobbyActivities (boss bar,
+-- banners, shakes, sounds, music, the quest tab, the coins and XP flying into
+-- you, the CLEARED screen, the DIFFICULTY board's menu and plaques) and
+-- BossIntro (VS splash, talking), fed a fake King and fake server messages.
 local M = require("./rbxmock")
 local S = require("./sources")
 local Vector3, CFrame, Instance, Enum = M.Vector3, M.CFrame, M.Instance, M.Enum
@@ -80,9 +82,10 @@ end
 for _, n in ipairs({ "Boss Slam", "Boss Wake", "Boss Wail", "Boss Wave", "Boss Death", "Slime boss song", "Victory Is Ours (a) Sting", "UI Blip", "mario pipe" }) do
 	addSound(n)
 end
+local MUSIC = (Config.Audio and Config.Audio.Music) or 1 -- (the lobby music's normal volume)
 local lobbyGroup = Instance.new("SoundGroup")
 lobbyGroup.Name = "Music"
-lobbyGroup.Volume = 1
+lobbyGroup.Volume = MUSIC
 lobbyGroup.Parent = SoundService
 SoundService.ChildAdded:Connect(function(c)
 	if c:IsA("Sound") then
@@ -220,7 +223,7 @@ assert(not bar.Enabled, "the bar should go after he's beaten")
 king:Destroy()
 step(3)
 assert(not SoundService:FindFirstChild("KingMusicPlaying"), "his music should fade out and stop")
-assert(math.abs(lobbyGroup.Volume - 1) < 1e-6, "the lobby music should come back: " .. lobbyGroup.Volume)
+assert(math.abs(lobbyGroup.Volume - MUSIC) < 1e-6, "the lobby music should come back: " .. lobbyGroup.Volume)
 
 -- the next King (a second meeting): no VS splash, but the bar and his talk
 fire("State", { wave = 10, boss = true, left = 1, quest = 3, goal = 10, questPower = 100, questCoins = 50 })
@@ -245,7 +248,7 @@ king2:Destroy()
 player:SetAttribute("Colosseum", nil)
 step(4)
 assert(not bar.Enabled, "the bar should go when you leave")
-assert(math.abs(lobbyGroup.Volume - 1) < 1e-6, "the lobby music should be back")
+assert(math.abs(lobbyGroup.Volume - MUSIC) < 1e-6, "the lobby music should be back")
 
 -- WARMING UP: the Colosseum's sounds were preloaded after joining
 local warmed = {}
@@ -369,7 +372,252 @@ end
 player:SetAttribute("Colosseum", nil)
 step(4)
 assert(not SoundService:FindFirstChild("ColosseumMusicPlaying") and not SoundService:FindFirstChild("ColosseumCrowdPlaying"), "music and crowd stop when you leave")
-assert(math.abs(lobbyGroup.Volume - 1) < 1e-6, "the lobby music comes back")
+assert(math.abs(lobbyGroup.Volume - MUSIC) < 1e-6, "the lobby music comes back")
+
+-- THE QUEST: BEAT 5 WAVES, one chunky block per wave
+player:SetAttribute("Colosseum", true)
+fire("State", { wave = 3, of = 5, left = 4, quest = 2, goal = 5, diff = "Normal", pick = "Normal", questPower = 500, questCoins = 300 })
+step(0.1)
+local tab = find(hud, "QuestTab")
+local tabTexts = {}
+for _, d in ipairs(tab:GetDescendants()) do
+	if d.ClassName == "TextLabel" then
+		tabTexts[#tabTexts + 1] = d.Text
+	end
+end
+local tabAll = table.concat(tabTexts, " | ")
+print("quest tab: " .. tabAll)
+assert(string.find(tabAll, "Beat 5 Waves", 1, true) and string.find(tabAll, "(2/5)", 1, true), "the quest tab says Beat 5 Waves (2/5)")
+local blocks = 0
+for _, d in ipairs(tab:GetDescendants()) do
+	if d.ClassName == "Frame" and d.Parent and d.Parent.Parent == tab and d.Size.X.Scale > 0.19 and d.Size.X.Scale < 0.21 then
+		blocks += 1
+	end
+end
+assert(blocks == 5, "five blocks, one per wave: " .. blocks)
+fire("State", { wave = 5, of = 5, cleared = true, left = 0, quest = 5, goal = 5, diff = "Normal", questPower = 500, questCoins = 300 })
+step(0.1)
+local doneText = nil
+for _, d in ipairs(tab:GetDescendants()) do
+	if d.ClassName == "TextLabel" and string.find(d.Text, "DONE", 1, true) then
+		doneText = d.Text
+	end
+end
+assert(doneText == "(5/5)  DONE!", "a cleared run's quest shows DONE: " .. tostring(doneText))
+
+-- THE WAVE BOX on a harder difficulty: its name after the wave, in its colour
+fire("State", { wave = 3, of = 5, left = 4, quest = 2, goal = 5, diff = "Hard", pick = "Hard", questPower = 1000, questCoins = 600 })
+step(0.1)
+local waveHard = nil
+for _, d in ipairs(hud:GetDescendants()) do
+	if d.ClassName == "TextLabel" and type(d.Text) == "string" and string.find(d.Text, "^WAVE") then
+		waveHard = d
+	end
+end
+local hardDef = Config.colosseumDifficulty("Hard")
+assert(waveHard and waveHard.RichText and string.find(waveHard.Text, "WAVE 3/5  <font color=\"#", 1, true) and string.find(waveHard.Text, "HARD</font>", 1, true),
+	"the wave box shows HARD: " .. tostring(waveHard and waveHard.Text))
+assert(waveHard.Parent.Size.X.Offset == 260, "the wave box widens for its name")
+fire("RunStart", "Hard")
+step(0.1)
+local runBanner = nil
+for _, d in ipairs(hud:GetDescendants()) do
+	if d.ClassName == "TextLabel" and d.Text == "HARD RUN BEGINS!" then
+		runBanner = d
+	end
+end
+assert(runBanner and runBanner.TextColor3 == hardDef.color, "a Hard run starts with its banner, in its colour")
+
+-- THE COINS AND XP flying into you (and bumping the HUD's coin and level bar)
+local fakeHud = Instance.new("ScreenGui")
+fakeHud.Name = "BossGrowHud"
+fakeHud.Parent = playerGui
+local hudRoot = Instance.new("Frame")
+hudRoot.Name = "Root"
+hudRoot.Parent = fakeHud
+local stats = Instance.new("Frame")
+stats.Name = "Stats"
+stats.Parent = hudRoot
+local row = Instance.new("Frame")
+row.Parent = stats
+local coinIcon = Instance.new("Frame")
+coinIcon.Name = "Coin"
+coinIcon.Parent = row
+local goalBar = Instance.new("Frame")
+goalBar.Name = "GoalBar"
+goalBar.Parent = hudRoot
+root.CFrame = CFrame.new(-2600, 3, -40)
+M.raycast = function(origin, dir)
+	if origin.Y >= 0 and origin.Y + dir.Y <= 0 then
+		return { Position = Vector3.new(origin.X, 0, origin.Z) }
+	end
+	return nil
+end
+local markTicks = #played
+fire("Kill", 2010, 88, Vector3.new(-2600, 11, -20), { from = Vector3.new(-2600, 4, -20), worth = 2, king = false })
+step(1 / 30)
+local fx = workspace:FindFirstChild("RewardFx")
+assert(fx, "the rewards burst out of the dummy")
+local coins, gems = 0, 0
+for _, p in ipairs(fx:GetChildren()) do
+	if p.Name == "Coin" then
+		coins += 1
+	elseif p.Name == "XPGem" then
+		gems += 1
+	end
+	assert(p.Anchored and not p.CanCollide and not p.CanQuery and not p.CanTouch, "reward pieces can't be touched or stood on")
+end
+print(string.format("a kill worth 2: %d coins, %d gems", coins, gems))
+assert(coins >= 3 and gems >= 2, "coins and XP gems both fly")
+local sawBump, sawBar = false, false
+for _ = 1, 150 do
+	step(1 / 60)
+	local sc = coinIcon:FindFirstChild("CollectPop")
+	if sc and sc.Scale > 1.01 then
+		sawBump = true
+	end
+	local sb = goalBar:FindFirstChild("CollectPop")
+	if sb and sb.Scale > 1.001 then
+		sawBar = true
+	end
+end
+assert(#fx:GetChildren() == 0, "every piece reaches you (none left flying)")
+assert(sawBump and sawBar, "the coin counter and the level bar bump as they land")
+step(0.3)
+assert(coinIcon:FindFirstChild("CollectPop").Scale == 1, "the bump settles back")
+local ticks = 0
+for i = markTicks + 1, #played do
+	if played[i] == "Reward Pop" then
+		ticks += 1
+	end
+end
+print("reward sounds for one kill (the pop + the ticks): " .. ticks)
+assert(ticks >= 3 and ticks <= coins + gems + 1, "each landing ticks, but not all at once")
+-- the King's shower is big; leaving clears whatever's still flying
+fire("Kill", 30150, 1320, Vector3.new(-2600, 25, -10), { from = Vector3.new(-2600, 9, -10), worth = 30, king = true })
+step(1 / 30)
+local kingPieces = #fx:GetChildren()
+print("the King's shower: " .. kingPieces .. " pieces")
+assert(kingPieces >= 35, "the King bursts into a big shower")
+fire("Left")
+step(0.1)
+assert(#fx:GetChildren() == 0, "leaving clears the shower")
+
+-- THE DIFFICULTY BOARD: its menu, its plaques, choosing
+M.onInvokeServer = function(remote, name, arg)
+	table.insert(asked, name .. ":" .. tostring(arg))
+	if name == "ColosseumDifficulty" then
+		return true, Config.colosseumDifficulty(arg).name .. " it is!"
+	end
+	return true, "ok"
+end
+table.clear(asked)
+local board = Instance.new("Part")
+board.Name = "DifficultyFace"
+board.CFrame = CFrame.new(-2589, 7, -85)
+board.Parent = workspace
+local boardPrompt = Instance.new("ProximityPrompt")
+boardPrompt.Parent = board
+M.services.CollectionService:AddTag(boardPrompt, "ColosseumDifficultyBoard")
+local plaques = {}
+for _, def in ipairs(Config.Colosseum.Difficulties) do
+	local plaque = Instance.new("Part")
+	plaque.Name = "Plaque"
+	plaque:SetAttribute("Difficulty", def.id)
+	local sg = Instance.new("SurfaceGui")
+	sg.Name = "Face"
+	sg.Parent = plaque
+	local st = Instance.new("TextLabel")
+	st.Name = "Status"
+	st.Text = ""
+	st.Parent = sg
+	plaque.Parent = workspace
+	M.services.CollectionService:AddTag(plaque, "DifficultyPlaque")
+	plaques[def.id] = st
+end
+player:SetAttribute("Colosseum", true)
+fire("State", { wave = 1, of = 5, left = 3, quest = 0, goal = 5, diff = "Normal", pick = "Normal", questPower = 500, questCoins = 300 })
+remotes.StateUpdate.OnClientEvent:Fire({ Quests = { day = 0, list = {} }, Colosseum = { clears = 1, pick = "Normal", wins = { Normal = 1 }, bests = { Normal = 150.5 } } })
+step(0.2)
+assert(plaques.Normal.Text == "PICKED" and plaques.Hard.Text == "" and plaques.Nightmare.Text == "LOCKED",
+	"the plaques show your pick and what's locked: " .. plaques.Normal.Text .. "/" .. plaques.Hard.Text .. "/" .. plaques.Nightmare.Text)
+root.CFrame = CFrame.new(-2590, 3, -80)
+boardPrompt.Triggered:Fire(player)
+step(0.1)
+local menu = playerGui:FindFirstChild("ColosseumDifficulty")
+assert(menu and menu.Enabled, "pressing E at the board opens the menu")
+local function cardText(id)
+	local card = find(menu, "Card" .. id)
+	local list = {}
+	for _, d in ipairs(card:GetDescendants()) do
+		if (d.ClassName == "TextLabel" or d.ClassName == "TextButton") and d.Text ~= "" then
+			list[#list + 1] = d.Text
+		end
+	end
+	return table.concat(list, " | ")
+end
+print("Normal card: " .. cardText("Normal"))
+print("Hard card: " .. cardText("Hard"))
+print("Nightmare card: " .. cardText("Nightmare"))
+assert(string.find(cardText("Normal"), "PICKED", 1, true) and string.find(cardText("Normal"), "BEST 2:30.5", 1, true), "Normal: picked, with its best time")
+assert(string.find(cardText("Hard"), "PICK", 1, true) and string.find(cardText("Hard"), "PAYS x2", 1, true), "Hard: open to pick, pays x2")
+assert(string.find(cardText("Nightmare"), "LOCKED", 1, true), "Nightmare: locked")
+-- a locked one says what opens it, without asking the server
+find(find(menu, "CardNightmare"), "Pick").Activated:Fire()
+step(0.1)
+assert(#asked == 0, "a locked pick doesn't ask the server")
+local says = nil
+for _, d in ipairs(menu:GetDescendants()) do
+	if d.ClassName == "TextLabel" and string.find(d.Text, "Clear a HARD run", 1, true) then
+		says = d.Text
+	end
+end
+assert(says, "a locked pick says what opens it")
+-- picking Hard asks the server, and the menu and plaques follow
+find(find(menu, "CardHard"), "Pick").Activated:Fire()
+step(0.2)
+assert(asked[1] == "ColosseumDifficulty:Hard", "picking asks the server: " .. tostring(asked[1]))
+assert(string.find(cardText("Hard"), "PICKED", 1, true), "Hard shows PICKED after picking")
+assert(plaques.Hard.Text == "PICKED" and plaques.Normal.Text == "", "the plaques follow the pick")
+-- walking away closes it
+root.CFrame = CFrame.new(-2600, 3, 0)
+step(0.5)
+assert(not menu.Enabled, "walking away from the board closes the menu")
+
+-- THE CLEARED SCREEN on Hard: the quest's pay, a newly opened difficulty, and
+-- the difficulty buttons for the next run
+remotes.StateUpdate.OnClientEvent:Fire({ Quests = { day = 0, list = {} }, Colosseum = { clears = 2, pick = "Hard", wins = { Normal = 1, Hard = 1 }, bests = { Normal = 150.5, Hard = 201 } } })
+table.clear(asked)
+local questMark = #played
+fire("RunClear", { time = 201, best = 201, newBest = true, clears = 2, wins = 1, diff = "Hard", questPower = 83790, questCoins = 2700, unlocked = "Nightmare" })
+step(3.5)
+assert(clear.Enabled, "the clear screen opens")
+local ctexts = {}
+for _, d in ipairs(clear:GetDescendants()) do
+	if (d.ClassName == "TextLabel" or d.ClassName == "TextButton") and d.Visible ~= false and d.Text ~= "" then
+		ctexts[#ctexts + 1] = d.Text
+	end
+end
+local call = table.concat(ctexts, " | ")
+print("clear screen (Hard): " .. call)
+assert(string.find(call, "HARD RUNS CLEARED: 1", 1, true), "runs cleared on Hard")
+assert(string.find(call, "QUEST COMPLETE!  +83,790 XP  +2,700 coins", 1, true) or string.find(call, "QUEST COMPLETE!", 1, true), "the quest's pay")
+assert(string.find(call, "NIGHTMARE UNLOCKED!", 1, true), "the newly opened difficulty")
+assert(string.find(call, "NEXT RUN:", 1, true), "the difficulty row")
+local fanfare = false
+for i = questMark + 1, #played do
+	if played[i] == "Quest Complete" then
+		fanfare = true
+	end
+end
+assert(fanfare, "the quest's fanfare plays as the screen opens")
+find(clear, "DifficultyNightmare").Activated:Fire()
+step(0.2)
+assert(asked[1] == "ColosseumDifficulty:Nightmare", "the clear screen's buttons pick the next run's difficulty: " .. tostring(asked[1]))
+local nmButton = find(clear, "DifficultyNightmare")
+assert(nmButton.BackgroundColor3 == Config.colosseumDifficulty("Nightmare").color, "the picked one lights up in its colour")
+player:SetAttribute("Colosseum", nil)
+step(0.1)
 
 print(string.format("camera kicks %d (total %.2f)", kicks, kickTotal))
 local counts = {}

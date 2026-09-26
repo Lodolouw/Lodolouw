@@ -10,8 +10,10 @@
 	    over the board while you have one to hand in.
 
 	  * THE COLOSSEUM - hides other players' dummies (everyone farms on their
-	    own), and shows the wave and the quest at the top of the screen, with
-	    the rewards popping up as you beat dummies.
+	    own), and shows the wave and the quest (BEAT 5 WAVES) on the screen.
+	    Every dummy you beat bursts into gold coins and green XP gems that
+	    fly into you, ticking as they land and bumping your coin counter
+	    and level bar.
 
 	  * THE BOSS WAVE - the Giant Straw King's boss bar across the top of the
 	    screen, the BOSS WAVE banner, the ground shaking when he lands, and
@@ -19,7 +21,12 @@
 
 	  * RUNS AND STREAKS - "WAVE 3/5", your kill streak beside it, and when
 	    the King falls the COLOSSEUM CLEARED screen: your time, your best,
-	    runs cleared, the day's first-clear bonus, and RUN AGAIN / LEAVE.
+	    runs cleared, the quest's reward, the day's first-clear bonus, the
+	    difficulty for the next run, and RUN AGAIN / LEAVE.
+
+	  * DIFFICULTY - press E at the DIFFICULTY board by the Colosseum's exit
+	    gate to pick Normal, Hard or Nightmare (the board's plaques show,
+	    on your screen, which you've picked and which are still locked).
 
 	The server decides everything (PlayerService / CombatService); this only
 	shows it and asks.
@@ -527,23 +534,35 @@ head.BorderSizePixel = 0
 head.Size = UDim2.new(1, 0, 0, 30)
 head.Parent = box
 label(head, "QUEST", UDim2.new(1, -16, 1, -6), UDim2.fromOffset(8, 3), RGB(24, 20, 37), Enum.TextXAlignment.Left)
-local questLabel = label(box, "Defeat 10 Dummies", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 38), RGB(255, 255, 255), Enum.TextXAlignment.Left)
-local countLabel = label(box, "(0/10)", UDim2.new(1, -20, 0, 26), UDim2.fromOffset(10, 62), GOLD, Enum.TextXAlignment.Left)
+local questLabel = label(box, "Beat 5 Waves", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 38), RGB(255, 255, 255), Enum.TextXAlignment.Left)
+local countLabel = label(box, "(0/5)", UDim2.new(1, -20, 0, 26), UDim2.fromOffset(10, 62), GOLD, Enum.TextXAlignment.Left)
 local qbar = Instance.new("Frame")
 qbar.BackgroundColor3 = RGB(38, 43, 68)
 qbar.BorderSizePixel = 0
 qbar.Position = UDim2.fromOffset(10, 92)
 qbar.Size = UDim2.new(1, -20, 0, 12)
 qbar.Parent = box
+-- one chunky block per wave (8-bit)
 local qblocks = {}
-for b = 1, 10 do
-	local blk = Instance.new("Frame")
-	blk.BorderSizePixel = 0
-	blk.Size = UDim2.new(0.1, -2, 1, -4)
-	blk.Position = UDim2.new((b - 1) * 0.1, 1, 0, 2)
-	blk.Parent = qbar
-	qblocks[b] = blk
+local function setBlocks(n)
+	n = math.clamp(n, 1, 10)
+	if #qblocks == n then
+		return
+	end
+	for _, blk in ipairs(qblocks) do
+		blk:Destroy()
+	end
+	table.clear(qblocks)
+	for b = 1, n do
+		local blk = Instance.new("Frame")
+		blk.BorderSizePixel = 0
+		blk.Size = UDim2.new(1 / n, -2, 1, -4)
+		blk.Position = UDim2.new((b - 1) / n, 1, 0, 2)
+		blk.Parent = qbar
+		qblocks[b] = blk
+	end
 end
+setBlocks(Config.Colosseum.QuestWaves or 5)
 label(box, "Reward:", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 110), GREY, Enum.TextXAlignment.Left)
 local xpLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 128), GREEN, Enum.TextXAlignment.Left)
 local coinLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 148), GOLD, Enum.TextXAlignment.Left)
@@ -641,29 +660,57 @@ streakEdge.Thickness = 3
 streakEdge.Parent = streakBox
 local streakLabel = label(streakBox, "", UDim2.new(1, -12, 1, -8), UDim2.fromOffset(6, 4), GOLD)
 
+-- a colour as RichText wants it ("#F77622")
+local function hex(c)
+	return string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+end
+-- (Normal needs no label: only the harder difficulties show theirs)
+local function isFirstDifficulty(id)
+	local first = (Config.Colosseum.Difficulties or {})[1]
+	return first == nil or first.id == Config.colosseumDifficulty(id).id
+end
+
 local runLength = nil -- (waves in a run, from the server)
+local runDiff = nil -- (this run's difficulty, from the server)
 local function renderTracker(st)
 	runLength = st.of
+	runDiff = st.diff
 	local n = tostring(math.max(1, st.wave or 0)) .. (st.of and ("/" .. tostring(st.of)) or "")
+	-- the difficulty, after the wave in its colour ("WAVE 3/5  HARD"), and
+	-- the box's border in its colour too (white on Normal)
+	local D = Config.colosseumDifficulty(st.diff)
+	local tag = ""
+	if not isFirstDifficulty(D.id) then
+		tag = '  <font color="' .. hex(D.color) .. '">' .. D.name .. "</font>"
+	end
+	waveLabel.RichText = true
 	if st.cleared then
-		waveLabel.Text = "CLEARED!"
+		waveLabel.Text = "CLEARED!" .. tag
 		waveLabel.TextColor3 = GOLD
 	else
-		waveLabel.Text = st.boss and "BOSS WAVE" or ("WAVE " .. n)
+		waveLabel.Text = (st.boss and "BOSS WAVE" or ("WAVE " .. n)) .. tag
 		waveLabel.TextColor3 = st.boss and RED or RGB(255, 255, 255)
 	end
+	local wide = (tag ~= "") and (D.name:len() > 5 and 300 or 260) or 200
+	waveBox.Size = UDim2.fromOffset(wide, 34)
+	waveEdge.Color = (tag ~= "") and D.color or RGB(255, 255, 255)
+	streakBox.Position = UDim2.new(0.5, wide / 2 + 12, 0, 12)
 	local streak = st.streak or 0
 	streakBox.Visible = streak > 0
 	if streak > 0 then
 		local bonus = math.floor((st.streakBonus or 0) * 100 + 0.5)
 		streakLabel.Text = "x" .. streak .. " STREAK" .. (bonus > 0 and ("  +" .. bonus .. "%") or "")
 	end
-	local q, goal = st.quest or 0, st.goal or 10
-	questLabel.Text = "Defeat " .. goal .. " Dummies"
-	countLabel.Text = "(" .. q .. "/" .. goal .. ")"
-	local filled = math.floor(q / goal * 10 + 1e-6)
+	-- THE QUEST: beat 5 waves (a whole run)
+	local goal = math.max(1, st.goal or 5)
+	local q = math.clamp(st.quest or 0, 0, goal)
+	local done = q >= goal
+	questLabel.Text = "Beat " .. goal .. " Waves"
+	countLabel.Text = "(" .. q .. "/" .. goal .. ")" .. (done and "  DONE!" or "")
+	countLabel.TextColor3 = done and GREEN or GOLD
+	setBlocks(goal)
 	for b, blk in ipairs(qblocks) do
-		blk.BackgroundColor3 = (b <= filled) and GOLD or RGB(58, 68, 102)
+		blk.BackgroundColor3 = (b <= q) and (done and GREEN or GOLD) or RGB(58, 68, 102)
 	end
 	xpLabel.Text = Config.format(st.questPower or 0) .. " XP"
 	coinLabel.Text = Config.format(st.questCoins or 0) .. " coins"
@@ -1286,9 +1333,416 @@ do
 	end)
 end
 
+----------------------------------------------------------------------
+-- Difficulty: Normal, Hard, Nightmare
+----------------------------------------------------------------------
+-- What the server says about your Colosseum runs (data.Colosseum: the
+-- difficulty you've picked, and the runs you've cleared and your best time
+-- on each one), and asking it to change the pick. The DIFFICULTY board's
+-- menu, the board's plaques and the CLEARED screen all use these.
+local colData = nil
+local Difficulty = { listeners = {} }
+do
+	local function num(x)
+		return string.format("%g", x)
+	end
+	local function clock(seconds)
+		seconds = tonumber(seconds) or 0
+		local m = math.floor(seconds / 60)
+		return string.format("%d:%04.1f", m, seconds - m * 60)
+	end
+	Difficulty.clock = clock
+
+	function Difficulty.list()
+		return Config.Colosseum.Difficulties or {}
+	end
+	-- the one your next run is on
+	function Difficulty.picked()
+		local id = colData and colData.pick
+		if not Config.colosseumUnlocked(colData, id) then
+			id = nil
+		end
+		return Config.colosseumDifficulty(id).id
+	end
+	function Difficulty.unlocked(id)
+		return Config.colosseumUnlocked(colData, id)
+	end
+	-- the difficulty before this one (clear a run on it to open this one)
+	function Difficulty.before(id)
+		local list = Difficulty.list()
+		for i, d in ipairs(list) do
+			if d.id == id then
+				return list[i - 1]
+			end
+		end
+		return nil
+	end
+	-- your runs cleared and best time on one difficulty
+	function Difficulty.record(id)
+		local wins = colData and type(colData.wins) == "table" and colData.wins[id] or 0
+		local best = colData and type(colData.bests) == "table" and colData.bests[id] or nil
+		return wins, best
+	end
+	-- what it does, in a few short lines
+	function Difficulty.describe(def)
+		local lines = {}
+		if (def.health or 1) ~= 1 then
+			lines[#lines + 1] = "Dummies x" .. num(def.health) .. " tougher"
+		end
+		if (def.damage or 1) ~= 1 then
+			lines[#lines + 1] = "They hit x" .. num(def.damage) .. " harder"
+		end
+		if (def.extra or 0) > 0 then
+			lines[#lines + 1] = "+" .. def.extra .. (def.extra == 1 and " dummy" or " dummies") .. " every wave"
+		end
+		if (def.pace or 1) < 1 then
+			lines[#lines + 1] = "They move faster"
+		end
+		if def.angry then
+			lines[#lines + 1] = "The King is ANGRY"
+		end
+		if #lines == 0 then
+			lines = { "The Colosseum", "as you know it" }
+		end
+		return lines
+	end
+	function Difficulty.payText(def)
+		return "PAYS x" .. num(def.reward or 1)
+	end
+	-- why a locked one is locked
+	function Difficulty.lockText(def)
+		local prev = Difficulty.before(def.id)
+		return "Clear a " .. (prev and prev.name or "") .. " run to open " .. def.name .. "!"
+	end
+	function Difficulty.onChange(fn)
+		table.insert(Difficulty.listeners, fn)
+	end
+	local function changed()
+		for _, fn in ipairs(Difficulty.listeners) do
+			task.spawn(fn)
+		end
+	end
+
+	-- asks the server to change the pick; `say(text, color)` shows its answer
+	local busy = false
+	function Difficulty.choose(id, say)
+		local def = Config.colosseumDifficulty(id)
+		if not Difficulty.unlocked(def.id) then
+			say(Difficulty.lockText(def), RED)
+			return
+		end
+		if busy then
+			return
+		end
+		busy = true
+		local ok, done, msg = pcall(function()
+			return Remotes.Action:InvokeServer("ColosseumDifficulty", def.id)
+		end)
+		busy = false
+		if not ok then
+			say("Couldn't reach the server.", RED)
+			return
+		end
+		say(tostring(msg or ""), done and GREEN or RED)
+		if done and colData then
+			colData.pick = def.id -- (right away: the server's snapshot follows)
+			changed()
+		end
+	end
+
+	-- A row of buttons, one per difficulty, filling `parent`. Returns a
+	-- function that paints them: the picked one in its colour with a white
+	-- border, the other open ones dark with their colour, locked ones grey.
+	function Difficulty.row(parent, say)
+		local list = Difficulty.list()
+		local buttons = {}
+		local gap = 0.03
+		local w = (1 - gap * (#list - 1)) / math.max(1, #list)
+		for i, def in ipairs(list) do
+			local b = Instance.new("TextButton")
+			b.Name = "Difficulty" .. def.id
+			b.Font = FONT
+			b.TextScaled = true
+			b.BorderSizePixel = 0
+			b.AutoButtonColor = true
+			b.Size = UDim2.fromScale(w, 1)
+			b.Position = UDim2.fromScale((i - 1) * (w + gap), 0)
+			b.Parent = parent
+			local edge = Instance.new("UIStroke")
+			edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			edge.Thickness = 3
+			edge.Parent = b
+			local pad = Instance.new("UIPadding")
+			pad.PaddingTop = UDim.new(0.12, 0)
+			pad.PaddingBottom = UDim.new(0.12, 0)
+			pad.PaddingLeft = UDim.new(0.06, 0)
+			pad.PaddingRight = UDim.new(0.06, 0)
+			pad.Parent = b
+			b.Activated:Connect(function()
+				Difficulty.choose(def.id, say)
+			end)
+			buttons[i] = { button = b, edge = edge, def = def }
+		end
+		return function()
+			local picked = Difficulty.picked()
+			for _, it in ipairs(buttons) do
+				local def, b = it.def, it.button
+				if not Difficulty.unlocked(def.id) then
+					b.Text = def.name .. " (LOCKED)"
+					b.BackgroundColor3 = RGB(38, 43, 68)
+					b.TextColor3 = GREY
+					it.edge.Color = RGB(90, 105, 136)
+				elseif def.id == picked then
+					b.Text = def.name
+					b.BackgroundColor3 = def.color
+					b.TextColor3 = RGB(255, 255, 255)
+					it.edge.Color = RGB(255, 255, 255)
+				else
+					b.Text = def.name
+					b.BackgroundColor3 = def.color:Lerp(RGB(24, 20, 37), 0.72)
+					b.TextColor3 = def.color
+					it.edge.Color = def.color
+				end
+			end
+		end
+	end
+
+	Remotes:WaitForChild("StateUpdate").OnClientEvent:Connect(function(data)
+		if type(data) == "table" and type(data.Colosseum) == "table" then
+			colData = data.Colosseum
+			changed()
+		end
+	end)
+end
+
+-- THE DIFFICULTY BOARD'S MENU: press E at the board by the exit gate. A card
+-- for each difficulty: what it does, what it pays, your best time and runs
+-- cleared on it, and PICK (or PICKED, or LOCKED with what opens it). It
+-- closes with the X, or when you walk away from the board.
+local DifficultyMenu = {}
+do
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ColosseumDifficulty"
+	gui.ResetOnSpawn = false
+	gui.Enabled = false
+	gui.DisplayOrder = 7
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local panel = Instance.new("Frame")
+	panel.Name = "DifficultyPanel"
+	panel.BackgroundColor3 = RGB(24, 20, 37)
+	panel.BorderSizePixel = 0
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
+	panel.Position = UDim2.fromScale(0.5, 0.5)
+	panel.Size = UDim2.fromScale(0.64, 0.66)
+	panel.Parent = gui
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1.7
+	aspect.Parent = panel
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 4
+	edge.Parent = panel
+
+	local close = Instance.new("TextButton")
+	close.Name = "Close"
+	close.Text = "X"
+	close.Font = FONT
+	close.TextScaled = true
+	close.TextColor3 = RGB(255, 255, 255)
+	close.BackgroundColor3 = RED
+	close.BorderSizePixel = 0
+	close.Size = UDim2.fromScale(0.06, 0.1)
+	close.Position = UDim2.fromScale(0.925, 0.025)
+	close.Parent = panel
+	close.Activated:Connect(function()
+		gui.Enabled = false
+	end)
+
+	label(panel, "CHOOSE DIFFICULTY", UDim2.fromScale(0.8, 0.1), UDim2.fromScale(0.1, 0.03), GOLD)
+	local note = label(panel, "", UDim2.fromScale(0.9, 0.05), UDim2.fromScale(0.05, 0.135), GREY)
+	local menuStatus = label(panel, "", UDim2.fromScale(0.9, 0.05), UDim2.fromScale(0.05, 0.925), RGB(255, 255, 255))
+	local statusUntilD = 0
+	local function say(text, color)
+		menuStatus.Text = text
+		menuStatus.TextColor3 = color or RGB(255, 255, 255)
+		statusUntilD = os.clock() + 3.5
+	end
+
+	local cards = {}
+	local list = Difficulty.list()
+	local gap = 0.025
+	local w = (0.92 - gap * (#list - 1)) / math.max(1, #list)
+	for i, def in ipairs(list) do
+		local card = Instance.new("Frame")
+		card.Name = "Card" .. def.id
+		card.BackgroundColor3 = RGB(24, 20, 37)
+		card.BorderSizePixel = 0
+		card.Size = UDim2.fromScale(w, 0.7)
+		card.Position = UDim2.fromScale(0.04 + (i - 1) * (w + gap), 0.205)
+		card.Parent = panel
+		local ce = Instance.new("UIStroke")
+		ce.Color = def.color -- (coloured: RetroUI leaves it be)
+		ce.Thickness = 3
+		ce.Parent = card
+		local c = { def = def, frame = card, edge = ce }
+		c.name = label(card, def.name, UDim2.fromScale(0.9, 0.12), UDim2.fromScale(0.05, 0.04), def.color)
+		-- 1, 2 or 3 chunky pips: how hard it is
+		for k = 1, i do
+			local pip = Instance.new("Frame")
+			pip.BorderSizePixel = 0
+			pip.BackgroundColor3 = def.color
+			pip.Size = UDim2.fromScale(0.08, 0.045)
+			pip.Position = UDim2.fromScale(0.5 + (k - (i + 1) / 2) * 0.11 - 0.04, 0.18)
+			pip.Parent = card
+		end
+		local lines = Difficulty.describe(def)
+		for k, line in ipairs(lines) do
+			label(card, line, UDim2.fromScale(0.9, 0.07), UDim2.fromScale(0.05, 0.25 + (k - 1) * 0.075), RGB(255, 255, 255))
+		end
+		c.pay = label(card, Difficulty.payText(def), UDim2.fromScale(0.9, 0.1), UDim2.fromScale(0.05, 0.63), GOLD)
+		c.record = label(card, "", UDim2.fromScale(0.9, 0.06), UDim2.fromScale(0.05, 0.735), GREY)
+		local b = Instance.new("TextButton")
+		b.Name = "Pick"
+		b.Font = FONT
+		b.TextScaled = true
+		b.BorderSizePixel = 0
+		b.Size = UDim2.fromScale(0.8, 0.12)
+		b.Position = UDim2.fromScale(0.1, 0.83)
+		b.Parent = card
+		b.Activated:Connect(function()
+			Difficulty.choose(def.id, say)
+		end)
+		c.button = b
+		cards[i] = c
+	end
+
+	local function refresh()
+		local picked = Difficulty.picked()
+		local midRun = player:GetAttribute("Colosseum") == true and runDiff ~= nil and runDiff ~= picked
+		if midRun then
+			note.Text = "This run is on " .. Config.colosseumDifficulty(runDiff).name .. ". " .. Config.colosseumDifficulty(picked).name .. " starts on your next run."
+		else
+			note.Text = "Your pick is saved, and used from your next run (straight away on wave 1)."
+		end
+		for _, c in ipairs(cards) do
+			local def = c.def
+			local open = Difficulty.unlocked(def.id)
+			local wins, best = Difficulty.record(def.id)
+			if not open then
+				local prev = Difficulty.before(def.id)
+				c.record.Text = "Clear a " .. (prev and prev.name or "") .. " run first"
+				c.button.Text = "LOCKED"
+				c.button.BackgroundColor3 = RGB(38, 43, 68)
+				c.button.TextColor3 = GREY
+				c.button.AutoButtonColor = false
+				c.edge.Color = def.color -- (a coloured edge: RetroUI would turn a grey one white)
+				c.name.TextColor3 = GREY
+			else
+				if (wins or 0) > 0 then
+					c.record.Text = "CLEARED " .. Config.format(wins) .. (best and ("   BEST " .. Difficulty.clock(best)) or "")
+				else
+					c.record.Text = "NOT CLEARED YET"
+				end
+				c.edge.Color = def.color
+				c.name.TextColor3 = def.color
+				if def.id == picked then
+					c.button.Text = "PICKED"
+					c.button.BackgroundColor3 = def.color
+					c.button.TextColor3 = RGB(255, 255, 255)
+					c.button.AutoButtonColor = false
+				else
+					c.button.Text = "PICK"
+					c.button.BackgroundColor3 = GOLD
+					c.button.TextColor3 = RGB(24, 20, 37)
+					c.button.AutoButtonColor = true
+				end
+			end
+		end
+	end
+	Difficulty.onChange(refresh)
+
+	function DifficultyMenu.open(board)
+		DifficultyMenu.board = board
+		menuStatus.Text = ""
+		refresh()
+		gui.Enabled = true
+	end
+	function DifficultyMenu.close()
+		gui.Enabled = false
+	end
+	DifficultyMenu.refresh = refresh
+
+	-- press E at the board: open the menu
+	local function hookBoard(pp)
+		if pp:IsA("ProximityPrompt") then
+			pp.Triggered:Connect(function()
+				DifficultyMenu.open(pp.Parent)
+			end)
+		end
+	end
+	for _, pp in ipairs(CollectionService:GetTagged("ColosseumDifficultyBoard")) do
+		hookBoard(pp)
+	end
+	CollectionService:GetInstanceAddedSignal("ColosseumDifficultyBoard"):Connect(hookBoard)
+
+	-- walk away from the board (or leave the Colosseum) and it closes
+	task.spawn(function()
+		while true do
+			task.wait(0.3)
+			if gui.Enabled then
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				local board = DifficultyMenu.board
+				if not root or not (board and board:IsA("BasePart") and board.Parent)
+					or (Vector3.new(root.Position.X - board.Position.X, 0, root.Position.Z - board.Position.Z)).Magnitude > 26 then
+					gui.Enabled = false
+				end
+			end
+			if statusUntilD > 0 and os.clock() > statusUntilD then
+				statusUntilD = 0
+				menuStatus.Text = ""
+			end
+		end
+	end)
+	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
+		if not player:GetAttribute("Colosseum") then
+			gui.Enabled = false
+		end
+	end)
+
+	-- THE BOARD'S PLAQUES, on your screen only: the one you've picked says
+	-- PICKED, the locked ones say LOCKED (everyone else sees their own)
+	local function paintPlaques()
+		local picked = Difficulty.picked()
+		for _, plaque in ipairs(CollectionService:GetTagged("DifficultyPlaque")) do
+			local id = plaque:GetAttribute("Difficulty")
+			local face = plaque:FindFirstChild("Face")
+			local st = face and face:FindFirstChild("Status", true)
+			if id and st and st:IsA("TextLabel") then
+				if not Difficulty.unlocked(id) then
+					st.Text = "LOCKED"
+					st.TextColor3 = GREY
+				elseif id == picked then
+					st.Text = "PICKED"
+					st.TextColor3 = RGB(255, 255, 255)
+				else
+					st.Text = ""
+				end
+			end
+		end
+	end
+	Difficulty.onChange(paintPlaques)
+	CollectionService:GetInstanceAddedSignal("DifficultyPlaque"):Connect(function()
+		task.defer(paintPlaques)
+	end)
+	task.defer(paintPlaques)
+end
+
 -- COLOSSEUM CLEARED: the King fell on the last wave of a run. Your time,
--- your best, how many runs you've cleared, the day's first-clear bonus - and
--- a choice: RUN AGAIN (healed, flasks refilled, back to wave 1) or LEAVE.
+-- your best, how many runs you've cleared, the quest's reward, the day's
+-- first-clear bonus, a harder difficulty if this clear opened it - and a
+-- choice: the difficulty for the next run, then RUN AGAIN (healed, flasks
+-- refilled, back to wave 1) or LEAVE.
 -- (Styled by RetroUI like the quest menu: a black box with a white border.)
 local ClearScreen = {}
 do
@@ -1305,23 +1759,56 @@ do
 	panel.BorderSizePixel = 0
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromScale(0.42, 0.5)
+	panel.Size = UDim2.fromScale(0.44, 0.7)
 	panel.Parent = gui
 	local aspect = Instance.new("UIAspectRatioConstraint")
-	aspect.AspectRatio = 1.45
+	aspect.AspectRatio = 1.12
 	aspect.Parent = panel
 	local edge = Instance.new("UIStroke")
 	edge.Color = RGB(255, 255, 255)
 	edge.Thickness = 4
 	edge.Parent = panel
 
-	local title = label(panel, "COLOSSEUM CLEARED!", UDim2.fromScale(0.9, 0.15), UDim2.fromScale(0.05, 0.05), GOLD)
-	local timeLabel = label(panel, "", UDim2.fromScale(0.8, 0.09), UDim2.fromScale(0.1, 0.25), RGB(255, 255, 255))
-	local bestLabel = label(panel, "", UDim2.fromScale(0.8, 0.09), UDim2.fromScale(0.1, 0.36), GREY)
-	local clearsLabel = label(panel, "", UDim2.fromScale(0.8, 0.07), UDim2.fromScale(0.1, 0.47), GREY)
-	local bonusLabel = label(panel, "", UDim2.fromScale(0.9, 0.08), UDim2.fromScale(0.05, 0.57), GREEN)
-	local statusLine = label(panel, "", UDim2.fromScale(0.9, 0.06), UDim2.fromScale(0.05, 0.67), RGB(255, 255, 255))
-	local _ = title
+	label(panel, "COLOSSEUM CLEARED!", UDim2.fromScale(0.9, 0.1), UDim2.fromScale(0.05, 0.03), GOLD)
+	local diffLabel = label(panel, "", UDim2.fromScale(0.6, 0.05), UDim2.fromScale(0.2, 0.13), GREEN)
+
+	-- the lines about the run, one under another (empty ones take no room)
+	local lines = Instance.new("Frame")
+	lines.Name = "Lines"
+	lines.BackgroundTransparency = 1
+	lines.Position = UDim2.fromScale(0.05, 0.195)
+	lines.Size = UDim2.fromScale(0.9, 0.43)
+	lines.Parent = panel
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0.015, 0)
+	layout.Parent = lines
+	local function line(order, height, color)
+		local l = label(lines, "", UDim2.fromScale(1, height), UDim2.new(), color)
+		l.LayoutOrder = order
+		return l
+	end
+	local timeLabel = line(1, 0.17, RGB(255, 255, 255))
+	local bestLabel = line(2, 0.14, GREY)
+	local clearsLabel = line(3, 0.12, GREY)
+	local questLabelC = line(4, 0.13, GREEN)
+	local bonusLabel = line(5, 0.13, GOLD)
+	local unlockLabel = line(6, 0.14, RED)
+
+	label(panel, "NEXT RUN:", UDim2.fromScale(0.9, 0.04), UDim2.fromScale(0.05, 0.635), GREY)
+	local statusLine = label(panel, "", UDim2.fromScale(0.9, 0.045), UDim2.fromScale(0.05, 0.775), RGB(255, 255, 255))
+	local function say(text, color)
+		statusLine.Text = text
+		statusLine.TextColor3 = color or RGB(255, 255, 255)
+	end
+	local rowFrame = Instance.new("Frame")
+	rowFrame.Name = "DifficultyRow"
+	rowFrame.BackgroundTransparency = 1
+	rowFrame.Position = UDim2.fromScale(0.05, 0.68)
+	rowFrame.Size = UDim2.fromScale(0.9, 0.085)
+	rowFrame.Parent = panel
+	local paintRow = Difficulty.row(rowFrame, say)
+	Difficulty.onChange(paintRow)
 
 	local busy = false
 	local function button(text, color, x, action)
@@ -1334,8 +1821,8 @@ do
 		b.BackgroundColor3 = color
 		b.BorderSizePixel = 0
 		b.AutoButtonColor = true
-		b.Size = UDim2.fromScale(0.38, 0.14)
-		b.Position = UDim2.fromScale(x, 0.78)
+		b.Size = UDim2.fromScale(0.38, 0.12)
+		b.Position = UDim2.fromScale(x, 0.84)
 		b.Parent = panel
 		b.Activated:Connect(function()
 			if busy then
@@ -1348,13 +1835,11 @@ do
 			end)
 			busy = false
 			if not ok then
-				statusLine.Text = "Couldn't reach the server."
-				statusLine.TextColor3 = RED
+				say("Couldn't reach the server.", RED)
 			elseif done then
 				gui.Enabled = false
 			else
-				statusLine.Text = tostring(msg or "")
-				statusLine.TextColor3 = RED
+				say(tostring(msg or ""), RED)
 			end
 		end)
 		return b
@@ -1362,10 +1847,9 @@ do
 	button("RUN AGAIN", RGB(62, 137, 72), 0.07, "ColosseumAgain")
 	button("LEAVE", RGB(162, 38, 51), 0.55, "ColosseumLeave")
 
-	local function clock(seconds)
-		seconds = tonumber(seconds) or 0
-		local m = math.floor(seconds / 60)
-		return string.format("%d:%04.1f", m, seconds - m * 60)
+	local function set(l, text)
+		l.Text = text or ""
+		l.Visible = (text or "") ~= ""
 	end
 
 	local showing = 0
@@ -1373,33 +1857,65 @@ do
 		if type(info) ~= "table" then
 			return
 		end
-		timeLabel.Text = "TIME  " .. clock(info.time)
+		local D = Config.colosseumDifficulty(info.diff)
+		set(diffLabel, D.name)
+		diffLabel.TextColor3 = D.color
+		set(timeLabel, "TIME  " .. Difficulty.clock(info.time))
 		if info.newBest then
-			bestLabel.Text = "NEW BEST TIME!"
+			set(bestLabel, "NEW BEST TIME!")
 			bestLabel.TextColor3 = GOLD
 		elseif info.best then
-			bestLabel.Text = "BEST  " .. clock(info.best)
+			set(bestLabel, "BEST  " .. Difficulty.clock(info.best))
 			bestLabel.TextColor3 = GREY
 		else
-			bestLabel.Text = ""
+			set(bestLabel, "")
 		end
-		clearsLabel.Text = info.clears and ("RUNS CLEARED: " .. Config.format(info.clears)) or ""
-		if info.bonusPower then
-			bonusLabel.Text = "FIRST CLEAR TODAY!  +" .. Config.format(info.bonusPower) .. " XP  +" .. Config.format(info.bonusCoins or 0) .. " coins"
+		if info.wins then
+			set(clearsLabel, D.name .. " RUNS CLEARED: " .. Config.format(info.wins))
+		elseif info.clears then
+			set(clearsLabel, "RUNS CLEARED: " .. Config.format(info.clears))
 		else
-			bonusLabel.Text = ""
+			set(clearsLabel, "")
+		end
+		if info.questPower then
+			set(questLabelC, "QUEST COMPLETE!  +" .. Config.format(info.questPower) .. " XP  +" .. Config.format(info.questCoins or 0) .. " coins")
+		else
+			set(questLabelC, "")
+		end
+		if info.bonusPower then
+			set(bonusLabel, "FIRST CLEAR TODAY!  +" .. Config.format(info.bonusPower) .. " XP  +" .. Config.format(info.bonusCoins or 0) .. " coins")
+		else
+			set(bonusLabel, "")
+		end
+		local U = info.unlocked and Config.colosseumDifficulty(info.unlocked)
+		if U and U.id == info.unlocked then
+			set(unlockLabel, U.name .. " UNLOCKED!")
+			unlockLabel.TextColor3 = U.color -- (it flashes, so you see it's there to pick)
+		else
+			set(unlockLabel, "")
 		end
 		statusLine.Text = ""
 		busy = false
+		paintRow()
 		showing = showing + 1
 		local mine = showing
 		-- (a moment after he falls, so his banner and confetti get their turn)
 		task.delay(3.2, function()
 			if showing == mine and player:GetAttribute("Colosseum") then
 				gui.Enabled = true
-				-- a new best time flashes
-				while info.newBest and gui.Enabled and showing == mine do
-					bestLabel.TextColor3 = (bestLabel.TextColor3 == GOLD) and RGB(255, 255, 255) or GOLD
+				if info.questPower then
+					KingHud.sfx("Quest") -- (the quest's done: its fanfare as the screen opens)
+				end
+				-- a new best time, and a newly opened difficulty, flash
+				local flip = false
+				while (info.newBest or unlockLabel.Visible) and gui.Enabled and showing == mine do
+					flip = not flip
+					if info.newBest then
+						bestLabel.TextColor3 = flip and RGB(255, 255, 255) or GOLD
+					end
+					if unlockLabel.Visible and U then
+						unlockLabel.TextColor3 = flip and RGB(255, 255, 255) or U.color
+					end
 					task.wait(0.35)
 				end
 			end
@@ -1416,8 +1932,272 @@ do
 	end)
 end
 
+----------------------------------------------------------------------
+-- Rewards flying into you
+----------------------------------------------------------------------
+-- Every dummy you beat bursts into little gold coins and green XP gems. They
+-- pop out and bounce once on the sand, then zip into you: each one that
+-- reaches you ticks (a little higher each time, like a coin chain) and bumps
+-- your coin counter or your level bar. Only on your screen - the server paid
+-- you the moment the dummy fell; this is just the show.
+local Loot = {}
+do
+	local SoundService = game:GetService("SoundService")
+	local COIN = RGB(254, 174, 52)
+	local GEM = RGB(99, 199, 77)
+	local MAX = 120 -- (never more than this many flying at once)
+	local STEP = 1 / 30 -- (moved 30 times a second: a little 8-bit)
+	local GRAVITY = 70
+	local pieces = {}
+	local holder = nil
+	local rngL = Random.new()
+
+	local function folder()
+		if not holder or not holder.Parent then
+			holder = Instance.new("Folder")
+			holder.Name = "RewardFx"
+			holder.Parent = workspace
+		end
+		return holder
+	end
+
+	-- where the sand is under a spot (so the pieces bounce on it)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.RespectCanCollide = true
+	local function floorBelow(p)
+		local skip = { folder() }
+		if player.Character then
+			skip[#skip + 1] = player.Character
+		end
+		local enemies = workspace:FindFirstChild("ColosseumEnemies")
+		if enemies then
+			skip[#skip + 1] = enemies
+		end
+		params.FilterDescendantsInstances = skip
+		local hit = workspace:Raycast(p + Vector3.new(0, 2, 0), Vector3.new(0, -30, 0), params)
+		return hit and hit.Position.Y or (p.Y - 4)
+	end
+
+	-- the bump on the HUD as a piece reaches you: the coin counter's coin, or
+	-- the level bar (Hud builds them; if they're not there, no bump)
+	local bumping = {}
+	local function hudPart(kind)
+		local hud = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("BossGrowHud")
+		local root = hud and hud:FindFirstChild("Root")
+		if not root then
+			return nil
+		end
+		if kind == "coin" then
+			local stats = root:FindFirstChild("Stats")
+			return stats and stats:FindFirstChild("Coin", true)
+		end
+		return root:FindFirstChild("GoalBar")
+	end
+	local function bump(kind)
+		local target = hudPart(kind)
+		if not target then
+			return
+		end
+		local sc = target:FindFirstChild("CollectPop")
+		if not sc then
+			if target:FindFirstChildOfClass("UIScale") then
+				return -- (it has a scale of its own: leave it be)
+			end
+			sc = Instance.new("UIScale")
+			sc.Name = "CollectPop"
+			sc:SetAttribute("RetroSkip", true)
+			sc.Parent = target
+		end
+		local peak = (kind == "coin") and 1.35 or 1.05
+		sc.Scale = peak
+		bumping[sc] = { t = os.clock(), peak = peak }
+	end
+
+	-- the tick as a piece reaches you: a little higher each time through a
+	-- chain of them (and never more than about 16 a second)
+	local chain, lastTick, lastGot = 0, 0, 0
+	local function tick()
+		local now = os.clock()
+		if now - lastGot > 0.7 then
+			chain = 0
+		end
+		lastGot = now
+		if now - lastTick < 0.06 then
+			return
+		end
+		lastTick = now
+		chain = math.min(chain + 1, 14)
+		local def = Config.Colosseum.Sounds and Config.Colosseum.Sounds.Collect
+		local template = def and findNamedSound(def.names)
+		if not template then
+			return
+		end
+		local snd = template:Clone()
+		snd.Looped = false
+		snd.Volume = template.Volume * (def.volume or 0.3)
+		snd.PlaybackSpeed = (tonumber(template.PlaybackSpeed) or 1) * (1 + chain * 0.045)
+		local effects = SoundService:FindFirstChild("Effects")
+		if effects and effects:IsA("SoundGroup") then
+			snd.SoundGroup = effects
+		end
+		snd.Parent = SoundService
+		snd:Play()
+		task.delay(3, function()
+			snd:Destroy()
+		end)
+	end
+
+	-- A shower of coins and gems from `from`. `worth` = what the dummy was
+	-- worth (a straw dummy on Normal is 1): more for the tougher ones.
+	function Loot.burst(from, worth, king)
+		if typeof(from) ~= "Vector3" then
+			return
+		end
+		worth = math.max(0.3, tonumber(worth) or 1)
+		local coins, gems
+		if king then
+			local k = math.sqrt(worth / 15)
+			coins = math.floor(20 + 6 * k)
+			gems = math.floor(14 + 4 * k)
+		else
+			coins = math.clamp(math.floor(2 + math.sqrt(worth) * 2.2 + 0.5), 3, 12)
+			gems = math.clamp(math.floor(1 + math.sqrt(worth) * 1.6 + 0.5), 2, 9)
+		end
+		local room = MAX - #pieces
+		if room < coins + gems then
+			local k = math.max(0, room) / (coins + gems)
+			coins, gems = math.floor(coins * k), math.floor(gems * k)
+		end
+		if coins + gems <= 0 then
+			return
+		end
+		local floorY = floorBelow(from)
+		local big = king and 1.3 or 1
+		for i = 1, coins + gems do
+			local isCoin = i <= coins
+			local p = Instance.new("Part")
+			p.Name = isCoin and "Coin" or "XPGem"
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p.CastShadow = false
+			if isCoin then
+				p.Size = Vector3.new(1.1, 1.1, 0.25) * big
+				p.Color = COIN
+				p.Material = Enum.Material.SmoothPlastic
+			else
+				p.Size = Vector3.new(0.8, 0.8, 0.8) * big
+				p.Color = GEM
+				p.Material = Enum.Material.Neon
+			end
+			local a = rngL:NextNumber() * math.pi * 2
+			local out = rngL:NextNumber(6, king and 26 or 16)
+			local start = from + Vector3.new(0, rngL:NextNumber(-0.5, 0.5), 0)
+			p.CFrame = CFrame.new(start)
+			p.Parent = folder()
+			pieces[#pieces + 1] = {
+				part = p,
+				coin = isCoin,
+				pos = start,
+				vel = Vector3.new(math.cos(a) * out, rngL:NextNumber(18, king and 38 or 30), math.sin(a) * out),
+				floor = floorY + p.Size.Y / 2,
+				spin = rngL:NextNumber() * math.pi * 2,
+				spinRate = rngL:NextNumber(8, 14) * (rngL:NextNumber() < 0.5 and -1 or 1),
+				t = 0,
+				home = rngL:NextNumber(0.45, 0.75) + (king and 0.35 or 0), -- (when it starts coming to you)
+				speed = 0,
+				bounced = false,
+			}
+		end
+	end
+
+	-- (leaving the Colosseum: any still flying just vanish)
+	function Loot.clear()
+		for _, pc in ipairs(pieces) do
+			pc.part:Destroy()
+		end
+		table.clear(pieces)
+	end
+
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		-- the HUD bumps: back to normal size in a moment
+		local now = os.clock()
+		for sc, b in pairs(bumping) do
+			local k = (now - b.t) / 0.16
+			if k >= 1 or not sc.Parent then
+				sc.Scale = 1
+				bumping[sc] = nil
+			else
+				sc.Scale = 1 + (b.peak - 1) * (1 - k)
+			end
+		end
+		if #pieces == 0 then
+			acc = 0
+			return
+		end
+		acc = acc + dt
+		if acc < STEP then
+			return
+		end
+		local h = math.min(acc, 0.1)
+		acc = 0
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local target = root and root.Position
+		for i = #pieces, 1, -1 do
+			local pc = pieces[i]
+			pc.t = pc.t + h
+			local done = false
+			if pc.t < pc.home or not target then
+				-- popping out: up and out, falling, one bounce on the sand
+				pc.vel = pc.vel - Vector3.new(0, GRAVITY * h, 0)
+				pc.pos = pc.pos + pc.vel * h
+				if pc.pos.Y < pc.floor then
+					pc.pos = Vector3.new(pc.pos.X, pc.floor, pc.pos.Z)
+					if pc.bounced then
+						pc.vel = Vector3.new(pc.vel.X * 0.5, 0, pc.vel.Z * 0.5)
+					else
+						pc.bounced = true
+						pc.vel = Vector3.new(pc.vel.X * 0.55, -pc.vel.Y * 0.45, pc.vel.Z * 0.55)
+					end
+				end
+				if not target and pc.t > 3 then
+					done = true
+				end
+			else
+				-- zipping into you, faster and faster
+				pc.speed = math.min(110, pc.speed + 160 * h)
+				local to = target - pc.pos
+				local d = to.Magnitude
+				local want = (d > 0.01 and to.Unit or Vector3.zero) * math.max(pc.speed, 20)
+				pc.vel = pc.vel:Lerp(want, math.min(1, h * (9 + (pc.t - pc.home) * 30)))
+				if d < 1.8 or pc.vel.Magnitude * h >= d or pc.t > pc.home + 2.5 then
+					done = true
+					tick()
+					bump(pc.coin and "coin" or "xp")
+				else
+					pc.pos = pc.pos + pc.vel * h
+				end
+			end
+			if done then
+				pc.part:Destroy()
+				table.remove(pieces, i)
+			else
+				pc.spin = pc.spin + pc.spinRate * h
+				if pc.coin then
+					pc.part.CFrame = CFrame.new(pc.pos) * CFrame.Angles(0, pc.spin, 0)
+				else
+					pc.part.CFrame = CFrame.new(pc.pos) * CFrame.Angles(pc.spin, pc.spin * 0.7, 0)
+				end
+			end
+		end
+	end)
+end
+
 local kingBannerUntil = 0 -- (while "THE STRAW KING FALLS!" is up, WAVE CLEARED waits its turn)
-ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b, c)
+ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b, c, d)
 	if kind == "PipeIn" then
 		task.spawn(pipeIn, a, b, c)
 	elseif kind == "PipeOut" then
@@ -1432,6 +2212,10 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 	elseif kind == "Kill" then
 		popReward(a, b, c)
 		KingHud.sfx("Reward")
+		-- the coins and XP burst out of it and fly into you
+		local info = type(d) == "table" and d or {}
+		local from = typeof(info.from) == "Vector3" and info.from or (typeof(c) == "Vector3" and c - Vector3.new(0, 7, 0)) or nil
+		Loot.burst(from, info.worth, info.king == true)
 	elseif kind == "Sfx" then
 		KingHud.sfx(a, b)
 	elseif kind == "WaveClear" then
@@ -1441,7 +2225,8 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 			KingHud.sfx("Cheer")
 		end
 	elseif kind == "QuestDone" then
-		-- (if the King's banner is up, this one comes straight after it)
+		-- (only without runs: a run's quest shows on the CLEARED screen.
+		-- If the King's banner is up, this one comes straight after it.)
 		KingHud.sfx("Quest")
 		local text = "QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins"
 		local later = kingBannerUntil - os.clock()
@@ -1472,9 +2257,16 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		ClearScreen.show(a)
 	elseif kind == "RunStart" then
 		ClearScreen.hide()
-		showBanner("A NEW RUN BEGINS!", GOLD, 1.6)
+		-- ("HARD RUN BEGINS!" in its colour; just "A NEW RUN" on Normal)
+		local D = Config.colosseumDifficulty(a)
+		if type(a) == "string" and not isFirstDifficulty(D.id) then
+			showBanner(D.name .. " RUN BEGINS!", D.color, 1.8)
+		else
+			showBanner("A NEW RUN BEGINS!", GOLD, 1.6)
+		end
 	elseif kind == "Left" then
 		ClearScreen.hide()
+		Loot.clear()
 	elseif kind == "Streak" then
 		-- every 5 kills in a row
 		local bonus = math.floor((tonumber(b) or 0) * 100 + 0.5)

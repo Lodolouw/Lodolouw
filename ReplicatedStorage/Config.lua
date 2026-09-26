@@ -43,8 +43,10 @@ Config.StationTurn = {
 -- your dummies, and theirs can't hurt you - everyone farms on their own.
 -- Dummies are always your level, so a fight takes the same few punches
 -- whatever your level; the rewards grow as you do. A quest runs the whole
--- time: defeat QuestKills dummies for a big lump of Power (XP) and coins, and
--- it starts straight over again.
+-- time: BEAT 5 WAVES (a whole run, the King's wave last) for a big lump of
+-- Power (XP) and coins, and it starts over with the next run. Pick how hard
+-- it is at the DIFFICULTY board by the exit gate (or on the CLEARED screen):
+-- Normal, Hard or Nightmare.
 Config.Colosseum = {
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 82, -- how far out dummies can go: right up to the foot of the stands, so nowhere is safe
@@ -78,6 +80,9 @@ Config.Colosseum = {
 		WaveHorn = { names = { "Wave Horn" }, volume = 0.8 }, -- a wave starting
 		Cheer = { names = { "Crowd Cheer" }, volume = 0.8 }, -- a wave cleared, the King beaten
 		Reward = { names = { "Reward Pop" }, volume = 0.6 }, -- XP and coins popping out
+		-- the coins and XP reaching you (quiet, quick ticks that rise in pitch);
+		-- it borrows the Reward Pop until you add a "Coin Collect" sound
+		Collect = { names = { "Coin Collect", "Reward Pop" }, volume = 0.3 },
 		Quest = { names = { "Quest Complete" }, volume = 0.9 }, -- the quest done
 	},
 	-- the crowd murmuring in the stands the whole time you're inside (looped)
@@ -146,7 +151,7 @@ Config.Colosseum = {
 		ClearBonus = { Power = 0.5, Coins = { 150, 15 } },
 		name = "Giant Straw King",
 		health = 10, -- about 40 punches at your level (without gear)
-		reward = 15, -- pays as much as 15 straw dummies (and counts as 1 for the quest)
+		reward = 15, -- pays as much as 15 straw dummies
 		scale = 2.3, -- how big he's built (a straw dummy is 1)
 		IntroTime = 2.8, -- seconds he stands and shows off before the fight starts
 		Rest = { 0.45, 1 }, -- the pause between his moves
@@ -230,13 +235,63 @@ Config.Colosseum = {
 	-- x10 = +20%... Getting hurt ends it. It carries on from run to run.
 	Streak = { Every = 5, Bonus = 0.1, Max = 0.5 },
 
+	-- DIFFICULTY: picked at the board by the exit gate, or on the CLEARED
+	-- screen, and used from the next run on (it's saved). The first is open to
+	-- everyone; each one after it opens once you've cleared a run on the one
+	-- before it. For each:
+	--   health  dummies (and the King) take this many times the punches
+	--   damage  their hits hurt this many times as much
+	--   extra   this many more dummies in every wave
+	--   pace    dummies wait and hop this much of the time (0.85 = 15% faster;
+	--           their red warnings stay just as long, so you can still dodge)
+	--   reward  EVERYTHING the run pays is multiplied by this: each kill, the
+	--           quest, and the first clear of the day
+	--   angry   the King is ANGRY from the start (faster, two shockwaves...)
+	--   color   the colour it shows in, on the board and the screen
+	Difficulties = {
+		{ id = "Normal", name = "NORMAL", health = 1, damage = 1, extra = 0, pace = 1, reward = 1, color = Color3.fromRGB(99, 199, 77) },
+		{ id = "Hard", name = "HARD", health = 1.4, damage = 1.5, extra = 1, pace = 0.85, reward = 2, color = Color3.fromRGB(247, 118, 34) },
+		{ id = "Nightmare", name = "NIGHTMARE", health = 2, damage = 2, extra = 2, pace = 0.7, reward = 3.5, angry = true, color = Color3.fromRGB(228, 59, 68) },
+	},
+
 	-- rewards, worked out from how much Power your level needs to reach the next
 	KillPower = 0.012, -- each dummy: this share of the Power between your level and the next
 	KillCoins = { 4, 1 }, -- each dummy: 4 coins + 1 per level
-	QuestKills = 10,
-	QuestPower = 0.2, -- the quest: a fifth of the way to your next level...
-	QuestCoins = { 60, 12 }, -- ...and 60 coins + 12 per level
+	-- THE QUEST: beat QuestWaves waves (a whole run: the King's wave is the
+	-- 5th) for this share of the way to your next level...
+	QuestWaves = 5,
+	QuestPower = 0.5,
+	QuestCoins = { 150, 30 }, -- ...and 150 coins + 30 per level
 }
+
+-- A Colosseum difficulty by its id ("Normal", "Hard", "Nightmare"): the first
+-- one (Normal) if there's no such difficulty
+function Config.colosseumDifficulty(id)
+	local list = Config.Colosseum.Difficulties or {}
+	for _, d in ipairs(list) do
+		if d.id == id then
+			return d
+		end
+	end
+	return list[1] or { id = "Normal", name = "NORMAL", health = 1, damage = 1, extra = 0, pace = 1, reward = 1, color = Color3.fromRGB(99, 199, 77) }
+end
+
+-- Whether a difficulty is open to a player. `col` is their saved Colosseum
+-- record (data.Colosseum): the first difficulty is always open, and each one
+-- after it once they've cleared a run on the one before it.
+function Config.colosseumUnlocked(col, id)
+	local list = Config.Colosseum.Difficulties or {}
+	for i, d in ipairs(list) do
+		if d.id == id then
+			if i == 1 then
+				return true
+			end
+			local wins = type(col) == "table" and type(col.wins) == "table" and col.wins[list[i - 1].id]
+			return type(wins) == "number" and wins > 0
+		end
+	end
+	return false
+end
 
 -- The rewards for a player of this level (kill = one dummy, quest = the whole quest)
 function Config.colosseumRewards(level)
@@ -851,7 +906,7 @@ Config.LobbyMusic = { "Lobby1song", "Lobby2song", "Lobby3song" }
 -- it, menu chimes quietest of all - you should always hear a punch land over
 -- the song, and a coin ding should never drown out the room.
 Config.Audio = {
-	Music = 1, -- every song
+	Music = 0.7, -- every song (turned down a bit)
 	Effects = 1, -- punches, the boss, the world
 	UI = 0.8, -- coins, buttons, level-ups, menus
 

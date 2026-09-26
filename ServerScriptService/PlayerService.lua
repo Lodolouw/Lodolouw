@@ -83,8 +83,10 @@ local function defaultData()
 		Quests = { day = 0, list = {}, pick = nil },
 		-- the Colosseum's 5-wave runs: how many you've cleared, your fastest
 		-- clear (seconds; nil until you've cleared one), and the day you last
-		-- got the first-clear-of-the-day bonus
-		Colosseum = { clears = 0, best = nil, bonusDay = 0 },
+		-- got the first-clear-of-the-day bonus. And the difficulty you picked
+		-- (Config.Colosseum.Difficulties), with runs cleared (`wins`) and your
+		-- fastest clear (`bests`) on each one: ["Hard"] = 3
+		Colosseum = { clears = 0, best = nil, bonusDay = 0, pick = "Normal", wins = {}, bests = {} },
 	}
 end
 
@@ -205,6 +207,29 @@ local function mergeSaved(saved)
 		end
 		if type(c.bonusDay) == "number" then
 			d.Colosseum.bonusDay = math.floor(c.bonusDay)
+		end
+		-- (only difficulties that exist, and only sensible numbers)
+		for _, def in ipairs(Config.Colosseum.Difficulties or {}) do
+			local w = type(c.wins) == "table" and c.wins[def.id]
+			if type(w) == "number" and w > 0 then
+				d.Colosseum.wins[def.id] = math.floor(w)
+			end
+			local b = type(c.bests) == "table" and c.bests[def.id]
+			if type(b) == "number" and b > 0 then
+				d.Colosseum.bests[def.id] = b
+			end
+		end
+		-- (saved before there were difficulties: every run then was Normal)
+		local first = Config.colosseumDifficulty(nil).id
+		if type(c.wins) ~= "table" and d.Colosseum.clears > 0 then
+			d.Colosseum.wins[first] = d.Colosseum.clears
+		end
+		if type(c.bests) ~= "table" and d.Colosseum.best then
+			d.Colosseum.bests[first] = d.Colosseum.best
+		end
+		-- (a pick that's still open to you, or back to Normal)
+		if type(c.pick) == "string" and Config.colosseumUnlocked(d.Colosseum, c.pick) then
+			d.Colosseum.pick = c.pick
 		end
 	end
 	-- stat points: only real stats, and never more than you've earned
@@ -556,20 +581,38 @@ function PlayerService.AddChest(player, floorId, count)
 	markDirty(player)
 end
 
--- A Colosseum run was cleared in `seconds` (worked out by the server).
--- Counts it, keeps the fastest time, and says whether it was the first clear
--- today (ColosseumService pays a bonus for that). Returns
--- { clears, best, newBest, firstToday }, or nil if the player has no data.
-function PlayerService.RecordColosseumClear(player, seconds)
+-- A Colosseum run was cleared in `seconds` (worked out by the server) on the
+-- difficulty `diffId`. Counts it, keeps the fastest time on that difficulty,
+-- and says whether it was the first clear today (ColosseumService pays a
+-- bonus for that) and which difficulty it opened, if any. Returns
+-- { clears (on every difficulty), wins (on this one), best (on this one),
+-- newBest, firstToday, unlocked }, or nil if the player has no data.
+function PlayerService.RecordColosseumClear(player, seconds, diffId)
 	local profile = profiles[player]
 	if not profile then
 		return nil
 	end
 	local c = profile.data.Colosseum
+	local id = Config.colosseumDifficulty(diffId).id
+	-- (which difficulties were locked before this clear)
+	local locked = {}
+	for _, def in ipairs(Config.Colosseum.Difficulties or {}) do
+		locked[def.id] = not Config.colosseumUnlocked(c, def.id)
+	end
 	c.clears = c.clears + 1
-	local newBest = seconds > 0 and (c.best == nil or seconds < c.best)
+	c.wins[id] = (c.wins[id] or 0) + 1
+	local newBest = seconds > 0 and (c.bests[id] == nil or seconds < c.bests[id])
 	if newBest then
-		c.best = seconds
+		c.bests[id] = seconds
+	end
+	if seconds > 0 and (c.best == nil or seconds < c.best) then
+		c.best = seconds -- (the fastest on any difficulty)
+	end
+	local unlocked = nil
+	for _, def in ipairs(Config.Colosseum.Difficulties or {}) do
+		if locked[def.id] and Config.colosseumUnlocked(c, def.id) then
+			unlocked = def.id
+		end
 	end
 	local today = Config.questDay()
 	local firstToday = c.bonusDay ~= today
@@ -577,7 +620,27 @@ function PlayerService.RecordColosseumClear(player, seconds)
 		c.bonusDay = today
 	end
 	markDirty(player)
-	return { clears = c.clears, best = c.best, newBest = newBest, firstToday = firstToday }
+	return { clears = c.clears, wins = c.wins[id], best = c.bests[id], newBest = newBest, firstToday = firstToday, unlocked = unlocked }
+end
+
+-- Chooses the Colosseum difficulty the player's next runs use (it's saved).
+-- Returns true, or false and why not.
+function PlayerService.SetColosseumPick(player, diffId)
+	local profile = profiles[player]
+	if not profile then
+		return false, "Not ready yet."
+	end
+	local def = type(diffId) == "string" and Config.colosseumDifficulty(diffId)
+	if not def or def.id ~= diffId then
+		return false, "There's no such difficulty."
+	end
+	local c = profile.data.Colosseum
+	if not Config.colosseumUnlocked(c, def.id) then
+		return false, "Locked! Clear a run on the one before it first."
+	end
+	c.pick = def.id
+	markDirty(player)
+	return true
 end
 
 -- Lets another service add an action the client can ask for through the

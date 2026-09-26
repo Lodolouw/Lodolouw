@@ -6106,6 +6106,116 @@ local Extras = (function()
 		end
 	end
 
+	-- THE DIFFICULTY BOARD, beside the Colosseum's exit gate: a wooden board
+	-- under a little red roof with a plaque for each difficulty (Normal, Hard,
+	-- Nightmare: its name, 1-3 pips and what it pays), torches on its posts
+	-- and a sign over it. It stands at the edge of the sand, turned towards
+	-- where you arrive. Press E at it to choose (LobbyActivities opens the
+	-- menu, and on your own screen the plaques say PICKED or LOCKED).
+	--   doorCF  the exit door's frame (local +Z = into the arena)
+	local function buildDifficultyBoard(f, doorCF)
+		local C = Config.Colosseum
+		local list = C.Difficulties or {}
+		if #list == 0 then
+			return
+		end
+		-- (10 studs to the right of the door as you face it and 15 in, in the
+		-- gap between the stands, clear of the way into the arena; its front,
+		-- local +Z, turned to where you arrive, so you see it as you come in)
+		local at = doorCF * V3(10, 0, 15)
+		local look = doorCF * V3(2, 0, 9)
+		local base = V3(at.X, C.Center.Y, at.Z)
+		local O = CFrame.lookAt(base, base + (base - V3(look.X, base.Y, look.Z)))
+		local dark, wood = RGB(96, 64, 48), RGB(158, 104, 66)
+		local n = #list
+		local width = n * 4.6 + 1.6
+		for _, sx in ipairs({ -1, 1 }) do
+			part(f, "Post", V3(1, 13, 1), O * CFrame.new(sx * (width / 2 + 0.2), 5.5, 0), dark, Mat.Wood)
+			-- a torch on top of each post
+			part(f, "Torch", V3(0.5, 1.4, 0.5), O * CFrame.new(sx * (width / 2 + 0.2), 12.7, 0), wood, Mat.Wood, { CanCollide = false })
+			local flame = part(f, "Flame", V3(0.7, 0.7, 0.7), O * CFrame.new(sx * (width / 2 + 0.2), 13.7, 0), RGB(254, 174, 52), Mat.Neon, { CanCollide = false })
+			local l = Instance.new("PointLight")
+			l.Color = RGB(255, 170, 90)
+			l.Range = 12
+			l.Brightness = 1
+			l.Parent = flame
+		end
+		part(f, "BoardFrame", V3(width + 0.6, 8, 1), O * CFrame.new(0, 7.4, 0), dark, Mat.Wood)
+		-- the face the plaques hang on (its front is local +Z); press E here
+		local face = part(f, "DifficultyFace", V3(width - 0.2, 7.2, 0.4), O * CFrame.new(0, 7.4, 0.45), RGB(190, 128, 88), Mat.WoodPlanks)
+		local pp = Instance.new("ProximityPrompt")
+		pp.Name = "DifficultyPrompt"
+		pp.ActionText = "Choose"
+		pp.ObjectText = "Difficulty"
+		pp.HoldDuration = 0
+		pp.MaxActivationDistance = 14
+		pp.KeyboardKeyCode = Enum.KeyCode.E
+		pp.GamepadKeyCode = Enum.KeyCode.ButtonX
+		pp.RequiresLineOfSight = false
+		pp.Parent = face
+		CollectionService:AddTag(pp, "ColosseumDifficultyBoard")
+		-- a plaque for each difficulty, in its colour, with words on it
+		for i, def in ipairs(list) do
+			local x = (i - (n + 1) / 2) * 4.6
+			part(f, "PlaqueRim", V3(4.2, 6, 0.2), O * CFrame.new(x, 7.4, 0.72), RGB(24, 20, 37), Mat.SmoothPlastic, { CanCollide = false })
+			local plaque = part(f, "Plaque", V3(3.8, 5.6, 0.3), O * CFrame.new(x, 7.4, 0.85), def.color, Mat.SmoothPlastic, { CanCollide = false })
+			plaque:SetAttribute("Difficulty", def.id)
+			CollectionService:AddTag(plaque, "DifficultyPlaque")
+			local sg = Instance.new("SurfaceGui")
+			sg.Name = "Face"
+			sg.Face = Enum.NormalId.Back -- (local +Z: the front)
+			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			sg.PixelsPerStud = 40
+			sg.LightInfluence = 0
+			sg.MaxDistance = 90
+			sg.Parent = plaque
+			local function words(name, text, y, h, color)
+				local l = Instance.new("TextLabel")
+				l.Name = name
+				l.BackgroundTransparency = 1
+				l.Position = UDim2.fromScale(0.06, y)
+				l.Size = UDim2.fromScale(0.88, h)
+				l.Font = FONT
+				l.Text = text
+				l.TextColor3 = color
+				l.TextScaled = true
+				l.Parent = sg
+				local st = Instance.new("UIStroke")
+				st.Thickness = 3
+				st.Color = RGB(24, 20, 37)
+				st.Parent = l
+				return l
+			end
+			words("Name", def.name, 0.06, 0.16, RGB(255, 255, 255))
+			-- 1, 2 or 3 chunky pips: how hard it is
+			for k = 1, i do
+				local pip = Instance.new("Frame")
+				pip.BorderSizePixel = 0
+				pip.BackgroundColor3 = RGB(255, 255, 255)
+				pip.Size = UDim2.fromScale(0.14, 0.06)
+				pip.Position = UDim2.fromScale(0.5 + (k - (i + 1) / 2) * 0.2 - 0.07, 0.27)
+				pip.Parent = sg
+				local ps = Instance.new("UIStroke")
+				ps.Thickness = 2
+				ps.Color = RGB(24, 20, 37)
+				ps.Parent = pip
+			end
+			words("Pay", "x" .. string.format("%g", def.reward or 1), 0.38, 0.26, RGB(254, 231, 97))
+			words("Coins", "COINS & XP", 0.62, 0.09, RGB(255, 255, 255))
+			words("Status", "", 0.77, 0.14, RGB(255, 255, 255)) -- (PICKED / LOCKED: LobbyActivities)
+		end
+		-- a little pitched roof of stepped planks, and crossed swords on a shield
+		for k = 0, 2 do
+			part(f, "Roof", V3(width + 2.4 - k * 0.2, 0.5, 3.4 - k * 1.1), O * CFrame.new(0, 11.7 + k * 0.5, 0), (k % 2 == 0) and ROOF_RED or RGB(158, 40, 53), Mat.WoodPlanks)
+		end
+		for _, a in ipairs({ -40, 40 }) do
+			part(f, "Sword", V3(0.4, 4.4, 0.3), O * CFrame.new(0, 14.4, 0.2) * CFrame.Angles(0, 0, math.rad(a)), RGB(192, 203, 220), Mat.Metal, { CanCollide = false })
+		end
+		part(f, "Shield", V3(1.8, 1.8, 0.4), O * CFrame.new(0, 14.4, 0.4), BANNER_RED, Mat.Metal, { CanCollide = false })
+		part(f, "ShieldBoss", V3(0.7, 0.7, 0.5), O * CFrame.new(0, 14.4, 0.5), GOLD, Mat.Metal, { CanCollide = false })
+		titleSign(f, O * CFrame.new(0, 18.4, 0), "DIFFICULTY", nil, RGB(254, 174, 52), 300, 90)
+	end
+
 	-- The real Colosseum, far from the lobby: the same sand castle, 2.6 times
 	-- as big, its sand floor level with Config.Colosseum.Center. Its gate is on
 	-- the north side and the door (the way out) is on the inside.
@@ -6142,6 +6252,8 @@ local Extras = (function()
 		-- where you arrive: in front of the door, looking in
 		local spawnAt = anchorPart(f, "ColosseumSpawn", CFrame.lookAt(doorCF.Position + doorCF.LookVector * -8 + V3(0, 3, 0), C.Center + V3(0, 3, 0)))
 		CollectionService:AddTag(spawnAt, "ColosseumSpawn")
+		-- and beside the exit gate, the board where you pick how hard it is
+		buildDifficultyBoard(f, doorCF)
 	end
 
 	-- The Quest Board: a wooden notice board with a little roof, by the road
