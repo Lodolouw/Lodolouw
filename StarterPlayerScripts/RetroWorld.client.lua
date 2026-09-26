@@ -766,33 +766,65 @@ table.insert(steppers, function(now)
 	end
 end)
 
--- THE SPIRE'S BEACON: a pillar of light from its peak into the sky, with
--- runes turning round it - you can see where the bosses are from anywhere
+-- THE SPIRE'S BEACON: a pillar of light shooting up into the sky out of the
+-- blue flame in the middle of the Spire's crown, with runes turning round it
+-- just above the crown's spikes - you can see where the bosses are from
+-- anywhere. (It used to start from whichever part reached highest - a spike
+-- on the RIM of the crown - so it rose off to one side of the top.)
 local beacon = nil
+-- how high a part really reaches: the highest of its corners (a part that's
+-- tilted, or turned on its side, reaches higher or lower than its middle
+-- plus half its height)
+local function topOf(p)
+	local cf, half = p.CFrame, p.Size / 2
+	return p.Position.Y + math.abs(cf.RightVector.Y) * half.X + math.abs(cf.UpVector.Y) * half.Y + math.abs(cf.LookVector.Y) * half.Z
+end
 local function raiseBeacon(spire)
-	local top, glowColor = nil, RGB(44, 232, 245)
+	local highest, glowColor = nil, RGB(44, 232, 245)
+	local parts = {}
 	for _, p in ipairs(spire:GetDescendants()) do
 		if p:IsA("BasePart") and p.Transparency < 1 then
-			local y = p.Position.Y + p.Size.Y / 2
-			if not top or y > top.Y then
-				top = V3(p.Position.X, y, p.Position.Z)
+			local y = topOf(p)
+			table.insert(parts, { part = p, top = y })
+			if not highest or y > highest then
+				highest = y
 			end
 			if p.Material == Enum.Material.Neon then
 				glowColor = p.Color
 			end
 		end
 	end
-	if not top then
+	if not highest then
 		return
+	end
+	-- where the beam starts: the top of the flame in the crown...
+	local base
+	local orb = spire:FindFirstChild("FlameOrb", true)
+	if orb and orb:IsA("BasePart") then
+		base = orb.Position + V3(0, orb.Size.Y / 2, 0)
+		glowColor = orb.Color
+	else
+		-- ...or (no flame) the middle of everything near the very top: the
+		-- crown is a ring, so the middle of the ring
+		local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+		for _, e in ipairs(parts) do
+			if e.top > highest - 14 then
+				local pos = e.part.Position
+				minX, maxX = math.min(minX, pos.X), math.max(maxX, pos.X)
+				minZ, maxZ = math.min(minZ, pos.Z), math.max(maxZ, pos.Z)
+			end
+		end
+		base = V3((minX + maxX) / 2, highest, (minZ + maxZ) / 2)
 	end
 	glowColor = snap(glowColor)
 	local function pillar(width, transparency)
 		local p = block(V3(420, width, width), glowColor, Enum.Material.Neon, transparency)
 		p.Shape = Enum.PartType.Cylinder
-		p.CFrame = CFrame.new(top + V3(0, 210, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		p.CFrame = CFrame.new(base + V3(0, 210, 0)) * CFrame.Angles(0, 0, math.pi / 2)
 		return p
 	end
-	beacon = { core = pillar(3, 0.45), halo = pillar(8, 0.85), top = top, runes = {} }
+	-- (the runes turn round the beam a little above the crown's highest spike)
+	beacon = { core = pillar(3, 0.45), halo = pillar(8, 0.85), runeAt = V3(base.X, highest + 3, base.Z), runes = {} }
 	for i = 1, 10 do
 		beacon.runes[i] = block(V3(1.3, 1.3, 1.3), i % 2 == 0 and glowColor or RGB(255, 255, 255), Enum.Material.Neon)
 	end
@@ -807,7 +839,7 @@ table.insert(steppers, function(now)
 	for i, r in ipairs(beacon.runes) do
 		local a = turn + i / #beacon.runes * math.pi * 2
 		local bob = math.floor(math.sin(now * 2 + i) * 2 + 0.5) * 0.3
-		move(r, CFrame.new(beacon.top + V3(math.cos(a) * 9, 5 + bob, math.sin(a) * 9)) * CFrame.Angles(0, -a, math.pi / 4))
+		move(r, CFrame.new(beacon.runeAt + V3(math.cos(a) * 9, bob, math.sin(a) * 9)) * CFrame.Angles(0, -a, math.pi / 4))
 	end
 end)
 

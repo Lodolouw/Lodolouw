@@ -899,9 +899,11 @@ do
 			end
 		end
 	end
-	-- the Spire: where it will rise (for the camera: under its peak - its
-	-- bridge and stairs reach back towards the castle, so not their middle -
-	-- and how tall it is), and it rising, bottom to top
+	-- the Spire: where it will rise (for the camera: the middle of the tower,
+	-- under the blue flame in its crown - its bridge and stairs reach back
+	-- towards the castle, so not the middle of everything; and not its highest
+	-- part either, a spike on the rim of the crown, off to one side), how tall
+	-- it is, and it rising, bottom to top
 	function Dark.spireSpot()
 		if #spire == 0 then
 			return nil
@@ -913,6 +915,10 @@ do
 			if pos.Y > high then
 				high, peak = pos.Y, pos
 			end
+		end
+		local orb = spireModel and spireModel:FindFirstChild("FlameOrb", true)
+		if orb and orb:IsA("BasePart") then
+			peak = orb.Position
 		end
 		return V3(peak.X, (low + high) / 2, peak.Z), V3(0, high - low, 0), low, high
 	end

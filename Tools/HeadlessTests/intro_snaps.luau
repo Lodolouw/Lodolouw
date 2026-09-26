@@ -168,6 +168,7 @@ Players.LocalPlayer = me
 local cam = Instance.new("Camera")
 cam.CFrame = CFrame.new(Vector3.new(0, 12, 30), Vector3.new(0, 3, 0))
 cam.CameraType = Enum.CameraType.Custom
+cam.ViewportSize = { X = 1280, Y = 720 } -- (RetroWorld sizes its screens by it)
 cam.Parent = workspace
 workspace.CurrentCamera = cam
 
