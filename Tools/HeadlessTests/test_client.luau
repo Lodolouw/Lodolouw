@@ -337,6 +337,40 @@ player:SetAttribute("Colosseum", nil)
 step(0.1)
 assert(not clear.Enabled, "closes when you leave")
 
+-- THE COLOSSEUM'S SOUNDS: dummy sounds on "Sfx", the horn, cheers, reward pops,
+-- the quest, and the farming music + crowd while inside (lobby music ducked)
+for _, n in ipairs({ "Dummy Land", "Dummy Slam", "Dummy poof", "Brute Charge", "Hay Throw", "Hay Landing", "Shield Clang",
+	"Cursed Blink", "Wave Horn", "Crowd Cheer", "Reward Pop", "Quest Complete", "Colosseum Crowd", "Colosseum Song" }) do
+	addSound(n)
+end
+local mark = #played
+player:SetAttribute("Colosseum", true)
+step(2)
+assert(SoundService:FindFirstChild("ColosseumMusicPlaying"), "the Colosseum song should play inside")
+assert(SoundService:FindFirstChild("ColosseumCrowdPlaying"), "the crowd should murmur inside")
+assert(lobbyGroup.Volume < 0.3, "the lobby music steps aside for the Colosseum song: " .. lobbyGroup.Volume)
+for _, key in ipairs({ "Land", "Slam", "Poof", "Charge", "Throw", "HayLand", "Clang", "Blink" }) do
+	fire("Sfx", key, Vector3.new(-2600, 0, -30))
+end
+fire("Wave", 2)
+fire("Kill", 10, 5, Vector3.new(-2600, 10, -30))
+fire("WaveClear", 2)
+fire("QuestDone", 100, 50)
+fire("Sfx", "NoSuchSound", Vector3.new(0, 0, 0)) -- (unknown: nothing, no error)
+step(0.5)
+local heard = {}
+for i = mark + 1, #played do
+	heard[played[i]] = true
+end
+for _, n in ipairs({ "Dummy Land", "Dummy Slam", "Dummy poof", "Brute Charge", "Hay Throw", "Hay Landing", "Shield Clang",
+	"Cursed Blink", "Wave Horn", "Crowd Cheer", "Reward Pop", "Quest Complete" }) do
+	assert(heard[n], "should have heard " .. n)
+end
+player:SetAttribute("Colosseum", nil)
+step(4)
+assert(not SoundService:FindFirstChild("ColosseumMusicPlaying") and not SoundService:FindFirstChild("ColosseumCrowdPlaying"), "music and crowd stop when you leave")
+assert(math.abs(lobbyGroup.Volume - 1) < 1e-6, "the lobby music comes back")
+
 print(string.format("camera kicks %d (total %.2f)", kicks, kickTotal))
 local counts = {}
 for _, n in ipairs(played) do

@@ -92,6 +92,13 @@ local function flat(v)
 	return Vector3.new(v.X, 0, v.Z)
 end
 
+-- one of the Colosseum's sounds on the player's screen (by name from
+-- Config.Colosseum.Sounds: "Land", "Slam", "Poof"...), at `at` so a far-off
+-- one sounds quieter
+local function sfx(s, key, at)
+	send(s.player, "Sfx", key, at)
+end
+
 ----------------------------------------------------------------------
 -- Going down the pipe: you shrink, bit by bit (8-bit steps), into the
 -- mini colosseum's little door, and pop back out growing the same way.
@@ -355,6 +362,8 @@ local function slam(s, e, tell)
 	strawPuff(e.fx, at, e.puff, e.king and 40 or nil)
 	if e.king then
 		send(s.player, "KingFx", "Land", at, 0.8)
+	else
+		sfx(s, "Slam", at)
 	end
 end
 
@@ -416,6 +425,7 @@ local function charge(s, e, target)
 		task.wait(1 / 20)
 	end
 	-- the charge
+	sfx(s, "Charge", start)
 	local hit = false
 	local t1 = os.clock()
 	local time = len / CH.Speed
@@ -474,6 +484,7 @@ local function throw(s, e, target)
 	end
 	place(model, CFrame.lookAt(from, from + face))
 	-- the bale, in a high arc
+	sfx(s, "Throw", from)
 	local bale = Instance.new("Part")
 	bale.Name = "HayBale"
 	bale.Size = Vector3.new(2.6, 1.8, 1.8)
@@ -499,6 +510,7 @@ local function throw(s, e, target)
 	square:Destroy()
 	bale:Destroy()
 	hurtNear(s, at, TH.Radius + 0.5, TH.Damage, 30)
+	sfx(s, "HayLand", at)
 	strawPuff(e.fx, at)
 end
 
@@ -517,6 +529,7 @@ local function blink(s, e)
 		task.wait(1 / 20)
 	end
 	strawPuff(e.fx, from.Position, e.puff)
+	sfx(s, "Blink", from.Position)
 	place(model, from + Vector3.new(0, -80, 0)) -- (gone)
 	task.wait(0.35)
 	local root = rootOf(s.player)
@@ -532,6 +545,7 @@ local function blink(s, e)
 	local look = flat(root.Position - spot)
 	place(model, CFrame.lookAt(spot, spot + (look.Magnitude > 0.1 and look or back)))
 	strawPuff(e.fx, spot, e.puff)
+	sfx(s, "Blink", spot)
 	slam(s, e, BL.SlamTell)
 end
 
@@ -1033,6 +1047,7 @@ local function brain(s, e)
 	if e.alive then
 		place(e.model, CFrame.new(land) * turn)
 		strawPuff(e.fx, land, e.puff)
+		sfx(s, "Land", land)
 		-- a little bounce
 		for k = 1, 6 do
 			place(e.model, CFrame.new(land + Vector3.new(0, math.sin(k / 6 * math.pi) * 1.6, 0)) * turn)
@@ -1233,6 +1248,9 @@ spawnDummy = function(s, kind, spot, level, opts)
 		onBlock.Parent = model
 		local lastBash = 0
 		onBlock.Event:Connect(function()
+			if e.alive then
+				sfx(s, "Clang", feet(model).Position)
+			end
 			local r = rootOf(s.player)
 			if e.alive and r and os.clock() - lastBash > 1 then
 				lastBash = os.clock()
@@ -1369,6 +1387,9 @@ end
 function ColosseumService.OnKill(s, model, e)
 	local player = s.player
 	crumble(model, e)
+	if not (e and e.king) then
+		sfx(s, "Poof", feet(model).Position) -- (the King has his own death sound)
+	end
 
 	local rewards = Config.colosseumRewards(playerLevel(player))
 	-- (tougher kinds pay more: a Knight is worth 2.2 straw dummies; and a

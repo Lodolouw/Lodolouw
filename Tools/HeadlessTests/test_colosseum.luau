@@ -242,6 +242,11 @@ M.onFireClient = function(remote, p, kind, a, b, c)
 		if a == "Land" and c == 1.3 then
 			lastLand = b
 		end
+	elseif kind == "Sfx" then
+		stats.sfx = stats.sfx or {}
+		stats.sfx[a] = (stats.sfx[a] or 0) + 1
+		assert(C.Sounds[a], "unknown Colosseum sound " .. tostring(a))
+		assert(M.typeof(b) == "Vector3" and not M.isNaNv(b), "a sound needs a good position")
 	elseif kind == "KingDown" then
 		stats.kingKills += 1
 		stats.kingReward = { a, b }
@@ -696,6 +701,9 @@ dump("king moves", stats.moves)
 dump("fx", stats.fx)
 dump("events", stats.events)
 dump("damage taken by move", stats.damage)
+if stats.sfx then
+	dump("dummy sounds", stats.sfx)
+end
 if stats.byKind then
 	dump("hits by kind", stats.byKind)
 end

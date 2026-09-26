@@ -253,6 +253,7 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - "Best wave" was dropped (runs always end at 5): the best clear time replaces it.
 - **Spawning:** a new dummy (and the King) is parked out of sight 200 studs up (`PARKED`) until its turn to drop in, and lands at `e.land`. It must never stand on the sand first and then vanish (that was a bug).
 - **The pipe sound:** LobbyActivities plays `Config.Colosseum.PipeSound` ("Pipe" / "Mario Pipe" / "Warp Pipe") going in and popping out.
+- **Colosseum sounds** (`Config.Colosseum.Sounds`, names + volumes): the server sends `"Sfx", key, position` for dummy moments (Land, Slam, Poof, Charge, Throw, HayLand, Clang, Blink); the client adds WaveHorn, Cheer, Reward and Quest. While inside, `Config.Colosseum.Music` ("Colosseum Song") plays and the looping crowd (`CrowdSound`) murmurs; the King's song takes over in his fight; the lobby's "Music" SoundGroup is ducked under both. All are warmed up and listed in the Output sound report. ("coin2" and "dummy punch" in SoundService are deliberately unused.)
 
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.

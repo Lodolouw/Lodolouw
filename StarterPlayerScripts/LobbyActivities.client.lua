@@ -843,6 +843,11 @@ task.delay(2, function()
 		end
 	end
 	add(Config.Colosseum.PipeSound)
+	for _, def in pairs(Config.Colosseum.Sounds or {}) do
+		add(def.names)
+	end
+	add(Config.Colosseum.CrowdSound)
+	add(Config.Colosseum.Music)
 	local K = Config.Colosseum.King
 	if K then
 		for _, names in pairs(K.Sounds or {}) do
@@ -875,6 +880,11 @@ task.delay(2, function()
 		end
 	end
 	report("Pipe", Config.Colosseum.PipeSound)
+	for key, def in pairs(Config.Colosseum.Sounds or {}) do
+		report(key, def.names)
+	end
+	report("Crowd", Config.Colosseum.CrowdSound)
+	report("Colosseum music", Config.Colosseum.Music)
 	if K then
 		for key, names in pairs(K.Sounds or {}) do
 			report("King " .. key, names)
@@ -1013,6 +1023,30 @@ do
 			snd:Destroy()
 		end)
 		return snd
+	end
+
+	-- one of the Colosseum's sounds (Config.Colosseum.Sounds), quieter the
+	-- further from you it happens
+	function KingHud.sfx(key, at)
+		local def = Config.Colosseum.Sounds and Config.Colosseum.Sounds[key]
+		local template = def and findSound(def.names)
+		if not template then
+			return
+		end
+		local volume = def.volume or 1
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root and typeof(at) == "Vector3" then
+			volume = volume * math.clamp(1.2 - (root.Position - at).Magnitude / 110, 0.35, 1)
+		end
+		local snd = template:Clone()
+		snd.Looped = false
+		snd.Volume = template.Volume * volume
+		snd.SoundGroup = group("Effects", (Config.Audio and Config.Audio.Effects) or 1)
+		snd.Parent = SoundService
+		snd:Play()
+		task.delay(6, function()
+			snd:Destroy()
+		end)
 	end
 
 	-- the ground shaking (smaller the further away it happens)
@@ -1155,8 +1189,14 @@ do
 	end)
 
 	-- HIS MUSIC (a SoundGroup of its own, so turning the lobby's down leaves it be)
-	local music, musicLevel, ducked = nil, 0, false
+	local ducked = false
 	local musicGroup = group("KingMusic", (Config.Audio and Config.Audio.Music) or 1)
+	local CC0 = Config.Colosseum
+	local tracks = {
+		king = { names = K.Music, volume = K.MusicVolume or 0.6, name = "KingMusicPlaying", group = musicGroup, music = true, level = 0 },
+		arena = { names = CC0.Music, volume = CC0.MusicVolume or 0.45, name = "ColosseumMusicPlaying", group = musicGroup, music = true, level = 0 },
+		crowd = { names = CC0.CrowdSound, volume = CC0.CrowdVolume or 0.25, name = "ColosseumCrowdPlaying", group = group("Effects", (Config.Audio and Config.Audio.Effects) or 1), level = 0 },
+	}
 
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
@@ -1194,33 +1234,49 @@ do
 			end
 		end
 
-		-- the music: in over about a second, out over about two
-		if fighting and not music then
-			local template = findSound(K.Music)
-			if template then
-				music = template:Clone()
-				music.Name = "KingMusicPlaying"
-				music.Looped = true
-				music.Volume = 0
-				music.SoundGroup = musicGroup
-				music.Parent = SoundService
-				music:Play()
+		-- THE MUSIC AND THE CROWD. Each is a looping track that fades in when
+		-- it's wanted and out when it isn't (in over about a second, out over
+		-- about two):
+		--   the King's song    - during his fight
+		--   the Colosseum song - the rest of the time you're in there (it
+		--                        keeps its place under his, and carries on after)
+		--   the crowd          - murmuring in the stands the whole time
+		local inside = player:GetAttribute("Colosseum") == true
+		local want = { king = fighting, arena = inside and not fighting, crowd = inside }
+		local duck = 0
+		for key, tr in pairs(tracks) do
+			local on = want[key]
+			if on and not tr.sound then
+				local template = findSound(tr.names)
+				if template then
+					tr.sound = template:Clone()
+					tr.sound.Name = tr.name
+					tr.sound.Looped = true
+					tr.sound.Volume = 0
+					tr.sound.SoundGroup = tr.group
+					tr.sound.Parent = SoundService
+					tr.sound:Play()
+				end
+			end
+			tr.level = tr.level + ((on and 1 or 0) - tr.level) * math.min(1, dt * (on and 1.5 or 1.8))
+			if tr.sound then
+				tr.sound.Volume = tr.volume * tr.level
+				-- (gone once it's faded out - except the Colosseum song while
+				-- you're still in there: it waits, silent, under the King's)
+				if not on and tr.level < 0.02 and not (key == "arena" and inside) then
+					tr.sound:Destroy()
+					tr.sound = nil
+				elseif tr.music then
+					duck = math.max(duck, tr.level)
+				end
 			end
 		end
-		musicLevel = musicLevel + ((fighting and 1 or 0) - musicLevel) * math.min(1, dt * (fighting and 1.5 or 1.8))
-		if music then
-			music.Volume = (K.MusicVolume or 0.6) * musicLevel
-			if not fighting and musicLevel < 0.02 then
-				music:Destroy()
-				music = nil
-			end
-		end
-		-- the lobby's music (the "Music" SoundGroup) fades out under his
+		-- the lobby's music (the "Music" SoundGroup) fades out under ours
 		local lobby = SoundService:FindFirstChild("Music")
 		if lobby and lobby:IsA("SoundGroup") then
 			local full = (Config.Audio and Config.Audio.Music) or 1
-			if music then
-				lobby.Volume = full * (1 - musicLevel)
+			if duck > 0 then
+				lobby.Volume = full * (1 - duck)
 				ducked = true
 			elseif ducked then
 				lobby.Volume = full
@@ -1372,15 +1428,21 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		showBanner("THE COLOSSEUM", GOLD, 1.8)
 	elseif kind == "Wave" then
 		showBanner("WAVE " .. tostring(a) .. (runLength and ("/" .. runLength) or ""), RGB(255, 255, 255), 1.4)
+		KingHud.sfx("WaveHorn")
 	elseif kind == "Kill" then
 		popReward(a, b, c)
+		KingHud.sfx("Reward")
+	elseif kind == "Sfx" then
+		KingHud.sfx(a, b)
 	elseif kind == "WaveClear" then
 		if os.clock() > kingBannerUntil then
 			showBanner("WAVE " .. tostring(a) .. " CLEARED!", GOLD, 1.8)
 			task.spawn(confetti)
+			KingHud.sfx("Cheer")
 		end
 	elseif kind == "QuestDone" then
 		-- (if the King's banner is up, this one comes straight after it)
+		KingHud.sfx("Quest")
 		local text = "QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins"
 		local later = kingBannerUntil - os.clock()
 		if later > 0 then
@@ -1429,6 +1491,7 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		kingBannerUntil = os.clock() + 3
 		showBanner("THE STRAW KING FALLS!  +" .. Config.format(a or 0) .. " XP  +" .. Config.format(b or 0) .. " coins", GOLD, 3)
 		KingHud.play("Victory", 0.8)
+		KingHud.sfx("Cheer")
 		task.spawn(confetti)
 	end
 end)

@@ -61,6 +61,32 @@ Config.Colosseum = {
 	-- list that's in SoundService (capitals and spaces don't matter)
 	PipeSound = { "Pipe", "Mario Pipe", "Warp Pipe" },
 	PipeVolume = 0.7,
+
+	-- THE COLOSSEUM'S SOUNDS: names of Sounds in SoundService (the first one on
+	-- each list that's there; capitals and spaces don't matter), and how loud
+	-- each plays (x its own Volume). The dummy ones happen a lot, so they're
+	-- quieter. Further-off dummies sound quieter still.
+	Sounds = {
+		Land = { names = { "Dummy Land" }, volume = 0.6 }, -- a dummy dropping in
+		Slam = { names = { "Dummy Slam" }, volume = 0.7 }, -- its slam coming down
+		Poof = { names = { "Dummy Poof" }, volume = 0.7 }, -- a dummy beaten
+		Charge = { names = { "Brute Charge" }, volume = 0.8 }, -- the Brute starting its charge
+		Throw = { names = { "Hay Throw" }, volume = 0.7 }, -- the Slinger throwing a bale
+		HayLand = { names = { "Hay Landing", "Hay Land" }, volume = 0.7 }, -- the bale landing
+		Clang = { names = { "Shield Clang" }, volume = 0.8 }, -- a punch off the Knight's shield
+		Blink = { names = { "Cursed Blink" }, volume = 0.8 }, -- the Cursed Dummy vanishing / reappearing
+		WaveHorn = { names = { "Wave Horn" }, volume = 0.8 }, -- a wave starting
+		Cheer = { names = { "Crowd Cheer" }, volume = 0.8 }, -- a wave cleared, the King beaten
+		Reward = { names = { "Reward Pop" }, volume = 0.6 }, -- XP and coins popping out
+		Quest = { names = { "Quest Complete" }, volume = 0.9 }, -- the quest done
+	},
+	-- the crowd murmuring in the stands the whole time you're inside (looped)
+	CrowdSound = { "Colosseum Crowd" },
+	CrowdVolume = 0.25,
+	-- the music while you farm (the King's own song takes over in his fight;
+	-- the lobby's music steps aside while you're in there)
+	Music = { "Colosseum Song" },
+	MusicVolume = 0.45,
 	EnterRange = 20,
 
 	HitsToKill = 4, -- punches a dummy takes from a player at its level (no gear)
