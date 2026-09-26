@@ -13,6 +13,7 @@ local now = 0
 local heap = {}
 local seqN = 0
 M.errors = {}
+M.writes = {} -- (how many CFrame / Transparency writes, for measuring how much moves)
 
 local function hless(a, b)
 	if a.t ~= b.t then
@@ -308,6 +309,10 @@ function CFrame.fromAxisAngle(axis, t)
 		c + x * x * C, x * y * C - z * s, x * z * C + y * s,
 		y * x * C + z * s, c + y * y * C, y * z * C - x * s,
 		z * x * C - y * s, z * y * C + x * s, c + z * z * C)
+end
+function CFrame.fromMatrix(p, right, up, back)
+	back = back or right:Cross(up)
+	return fromAxes(p, right, up, back)
 end
 CFrame.identity = cf(0, 0, 0)
 CFmt.__index = function(f, k)
@@ -773,6 +778,7 @@ Imt.__newindex = function(self, k, v)
 		return
 	elseif k == "CFrame" then
 		assert(getmetatable(v) == CFmt, "CFrame must be a CFrame")
+		M.writes.CFrame = (M.writes.CFrame or 0) + 1
 		if CFmethods.isNaN(v) then
 			M.nanWrites = (M.nanWrites or 0) + 1
 			print("!! NaN CFrame written to " .. tostring(props.Name))
@@ -1112,6 +1118,13 @@ function methods.GetPlayers(self)
 end
 function methods.GetServerTimeNow()
 	return now
+end
+function methods.BulkMoveTo(self, parts, cfs, mode)
+	assert(#parts == #cfs, "BulkMoveTo needs as many CFrames as parts")
+	M.writes.Bulk = (M.writes.Bulk or 0) + 1
+	for i, p in ipairs(parts) do
+		p.CFrame = cfs[i]
+	end
 end
 function methods.Raycast(self, origin, dir, params)
 	return M.raycast and M.raycast(origin, dir, params) or nil

@@ -774,14 +774,19 @@ local function buildGround(parent)
 		lamp(decor, l[1], l[2])
 	end
 
-	-- Spawn
+	-- Spawn: invisible, so the path's cobbles show (a glowing pad lying on
+	-- them flickered through them). RetroWorld's spinning save star marks it.
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "LobbySpawn"
 	spawn.Anchored = true
 	spawn.Size = V3(12, 0.3, 12)
 	spawn.CFrame = CFrame.new(0, 0.55, 34)
 	spawn.Color = RGB(60, 220, 255)
-	spawn.Material = Mat.Neon
+	spawn.Material = Mat.SmoothPlastic
+	spawn.Transparency = 1
+	spawn.CanCollide = false
+	spawn.CanQuery = false
+	spawn.CastShadow = false
 	spawn.TopSurface = Enum.SurfaceType.Smooth
 	spawn.BottomSurface = Enum.SurfaceType.Smooth
 	spawn.Neutral = true
@@ -6362,13 +6367,23 @@ function LobbyBuilder.Build()
 		Blossom = true, BlossomSide = true, BlossomTop = true, Canopy = true, CanopyTop = true,
 		CanopyCrown = true, CanopyLump = true, CanopyLight = true,
 	}
+	-- Small things (shells, flowers, coconuts, foam, bricks, trim...) cast no
+	-- shadow: you'd hardly see one, but thousands of them made every frame
+	-- slower to draw. (Anything 4 studs or more on its longest side keeps its.)
+	local shadowless = 0
 	for _, d in ipairs(lobby:GetDescendants()) do
-		if d:IsA("BasePart") and (LEAVES[d.Name] or string.match(d.Name, "^Needles%d+$")) then
-			d.CanCollide = false
+		if d:IsA("BasePart") then
+			if LEAVES[d.Name] or string.match(d.Name, "^Needles%d+$") then
+				d.CanCollide = false
+			end
+			if d.CastShadow and math.max(d.Size.X, d.Size.Y, d.Size.Z) < 4 then
+				d.CastShadow = false
+				shadowless = shadowless + 1
+			end
 		end
 	end
 	if failed == 0 then
-		print("[LobbyBuilder] Lobby built OK")
+		print("[LobbyBuilder] Lobby built OK (" .. shadowless .. " small parts drawn without shadows)")
 	end
 
 	lobby.Parent = Workspace

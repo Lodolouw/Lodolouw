@@ -30,6 +30,11 @@
 	RotorStep = degrees per jump, for an 8-bit look: the sails snap from
 	one angle to the next like frames of a sprite instead of gliding
 	(0 or missing = smooth).
+
+	KEPT LIGHT (the lobby has thousands of moving bits): things far from the
+	camera aren't moved at all, everything that moves is moved in one go
+	(BulkMoveTo), and a wave or a palm is only moved when its next 8-bit step
+	is actually different from the last one.
 ]]
 
 local CollectionService = game:GetService("CollectionService")
@@ -58,6 +63,10 @@ local function add(inst)
 	if not inst:IsA("BasePart") or tracked[inst] or isInsideACharacter(inst) then
 		return
 	end
+	if (inst:GetAttribute("SpinSpeed") or 0) == 0 and (inst:GetAttribute("BobAmp") or 0) == 0
+		and ((inst:GetAttribute("OrbitRadius") or 0) == 0 or not inst:GetAttribute("OrbitCenter")) then
+		return -- (tagged, but nothing to animate)
+	end
 	tracked[inst] = {
 		base = inst.CFrame,
 		spin = inst:GetAttribute("SpinSpeed") or 0,
@@ -78,10 +87,24 @@ CollectionService:GetInstanceRemovedSignal(TAG):Connect(function(inst)
 	tracked[inst] = nil
 end)
 
-RunService.RenderStepped:Connect(function()
+local FX_RANGE = 400 -- (further from the camera than this, it isn't moved)
+local fxParts, fxCFs = {}, {}
+local fxClock = 0
+RunService.RenderStepped:Connect(function(dt)
+	-- (twenty steps a second: smooth enough in an 8-bit game, a third of the
+	-- work of every frame)
+	fxClock = fxClock + dt
+	if fxClock < 1 / 20 then
+		return
+	end
+	fxClock = 0
 	local t = os.clock()
+	local cam = workspace.CurrentCamera
+	local camPos = cam and cam.CFrame.Position
 	for inst, d in pairs(tracked) do
-		if inst.Parent then
+		if not inst.Parent then
+			tracked[inst] = nil
+		elseif not camPos or (camPos - d.base.Position).Magnitude < FX_RANGE then
 			local pos = d.base.Position
 			if d.radius > 0 and d.center then
 				local a = math.rad(d.phase + d.orbitSpeed * t)
@@ -91,10 +114,14 @@ RunService.RenderStepped:Connect(function()
 				pos = pos + Vector3.new(0, d.bobAmp * math.sin(t * d.bobSpeed + math.rad(d.phase)), 0)
 			end
 			local rot = d.base - d.base.Position
-			inst.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(d.spin * t), 0) * rot
-		else
-			tracked[inst] = nil
+			fxParts[#fxParts + 1] = inst
+			fxCFs[#fxCFs + 1] = CFrame.new(pos) * CFrame.Angles(0, math.rad(d.spin * t), 0) * rot
 		end
+	end
+	if #fxParts > 0 then
+		workspace:BulkMoveTo(fxParts, fxCFs, Enum.BulkMoveMode.FireCFrameChanged)
+		table.clear(fxParts)
+		table.clear(fxCFs)
 	end
 end)
 
@@ -171,20 +198,35 @@ end)
 
 local localPlayer = Players.LocalPlayer
 
-RunService.RenderStepped:Connect(function(dt)
+-- (twenty steps a second, in twentieths: only set when it changes, and not
+-- at all far from the camera)
+local pulseClock = 0
+RunService.Heartbeat:Connect(function(dt)
+	pulseClock = pulseClock + dt
+	if pulseClock < 1 / 20 then
+		return
+	end
+	pulseClock = 0
 	local t = os.clock()
+	local cam = workspace.CurrentCamera
+	local camPos = cam and cam.CFrame.Position
 	for inst, d in pairs(pulsing) do
-		if inst.Parent then
-			local g = glowAt(d, t)
-			inst.Transparency = d.hi + (d.lo - d.hi) * g
-			for light, bright in pairs(d.lights) do
-				light.Brightness = bright * (0.35 + 0.65 * g)
-			end
-		else
+		if not inst.Parent then
 			pulsing[inst] = nil
+		elseif not camPos or (camPos - inst.Position).Magnitude < 600 then
+			local g = math.floor(glowAt(d, t) * 20 + 0.5) / 20
+			if g ~= d.shown then
+				d.shown = g
+				inst.Transparency = d.hi + (d.lo - d.hi) * g
+				for light, bright in pairs(d.lights) do
+					light.Brightness = bright * (0.35 + 0.65 * g)
+				end
+			end
 		end
 	end
+end)
 
+RunService.RenderStepped:Connect(function(dt)
 	local char = localPlayer and localPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local target = root and root.Position or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position)
@@ -314,21 +356,27 @@ end)
 
 local STEP = 1 / 12 -- (twelve frames a second: the 8-bit look)
 local SNAP = 0.5 -- (and moved in half-stud jumps)
+local WAVE_RANGE = 450 -- (further out, the sea's too far to see the foam move)
+local WAVE_NEAR = 200 -- (beyond this, half as often and in whole-stud jumps: it looks the same from there)
 local waveClock = 0
+local waveTick = 0
+local waveParts, waveCFs = {}, {}
 RunService.Heartbeat:Connect(function(dt)
 	waveClock = waveClock + dt
 	if waveClock < STEP then
 		return
 	end
 	waveClock = 0
+	waveTick = waveTick + 1
 	local t = os.clock()
 	local cam = workspace.CurrentCamera
 	local camPos = cam and cam.CFrame.Position
-	local parts, cfs = {}, {}
+	local parts, cfs = waveParts, waveCFs
 	for inst, w in pairs(waves) do
+		local far = camPos and (camPos - w.base.Position).Magnitude or 0
 		if not inst.Parent then
 			waves[inst] = nil
-		elseif not camPos or (camPos - w.base.Position).Magnitude < 800 then
+		elseif far < WAVE_RANGE and (far < WAVE_NEAR or waveTick % 2 == 0) then
 			local off, tr
 			if w.drift then
 				local f = (t * w.speed + w.phase / (2 * math.pi)) % 1
@@ -339,17 +387,25 @@ RunService.Heartbeat:Connect(function(dt)
 				off = w.amp * g
 				tr = w.baseTr + (1 - w.baseTr) * 0.25 * g -- (a little fainter the further out it reaches)
 			end
-			off = math.floor(off / SNAP + 0.5) * SNAP
+			local snap = (far < WAVE_NEAR) and SNAP or SNAP * 2
+			off = math.floor(off / snap + 0.5) * snap
 			tr = math.floor(tr * 4 + 0.5) / 4
-			table.insert(parts, inst)
-			table.insert(cfs, w.base + w.dir * off)
-			if inst.Transparency ~= tr then
+			-- (most steps it's the same half-stud as last time: then leave it be)
+			if off ~= w.off then
+				w.off = off
+				parts[#parts + 1] = inst
+				cfs[#cfs + 1] = w.base + w.dir * off
+			end
+			if tr ~= w.tr then
+				w.tr = tr
 				inst.Transparency = tr
 			end
 		end
 	end
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+		table.clear(parts)
+		table.clear(cfs)
 	end
 end)
 
@@ -389,6 +445,8 @@ CollectionService:GetInstanceAddedSignal("Sway"):Connect(function(m)
 	task.defer(addSway, m)
 end)
 local swayClock = 0
+local SWAY_STEP = math.rad(1) -- (tilted in one-degree steps)
+local swayParts, swayCFs = {}, {}
 RunService.Heartbeat:Connect(function(dt)
 	swayClock = swayClock + dt
 	if swayClock < 1 / 12 then
@@ -398,22 +456,30 @@ RunService.Heartbeat:Connect(function(dt)
 	local t = os.clock()
 	local cam = workspace.CurrentCamera
 	local camPos = cam and cam.CFrame.Position
-	local parts, cfs = {}, {}
+	local parts, cfs = swayParts, swayCFs
 	for model, w in pairs(swaying) do
 		if not model.Parent then
 			swaying[model] = nil
-		elseif not camPos or (camPos - w.base.Position).Magnitude < 500 then
+		elseif not camPos or (camPos - w.base.Position).Magnitude < 350 then
 			-- (mostly one way, the way the breeze blows, with a little wobble)
 			local ax = w.amp * math.sin(t * w.speed + w.phase)
 			local az = w.amp * 0.4 * math.sin(t * w.speed * 1.7 + w.phase * 2)
-			local cf = w.base * CFrame.Angles(ax, 0, az)
-			for i, off in ipairs(w.offsets) do
-				table.insert(parts, w.parts[i])
-				table.insert(cfs, cf * off)
+			ax = math.floor(ax / SWAY_STEP + 0.5) * SWAY_STEP
+			az = math.floor(az / SWAY_STEP + 0.5) * SWAY_STEP
+			-- (only moved when the step it's on changes)
+			if ax ~= w.ax or az ~= w.az then
+				w.ax, w.az = ax, az
+				local cf = w.base * CFrame.Angles(ax, 0, az)
+				for i, off in ipairs(w.offsets) do
+					parts[#parts + 1] = w.parts[i]
+					cfs[#cfs + 1] = cf * off
+				end
 			end
 		end
 	end
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+		table.clear(parts)
+		table.clear(cfs)
 	end
 end)

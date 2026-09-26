@@ -36,6 +36,12 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   -a full 7 snap`) drawn inside a simple model of the arena.
 - `render_board.py` - the DIFFICULTY board beside the exit gate, from
   `test_builder.luau -a dump`, with the words on its plaques.
+- `lobby_count.luau` - builds the whole lobby with the real LobbyBuilder and
+  counts parts, shadow-casting parts, lights and Neon per piece (`-a client`
+  also runs RetroWorld and counts its detail; `-a names` lists the island's
+  biggest part names and the animated tags).
+- `fx_cost.luau` - runs LobbyFX for 10 pretend seconds at the spawn and
+  counts parts moved and see-through changes per second (and by name).
 
 Run them all with `./run_all.sh` (needs the Luau tools from
 https://github.com/luau-lang/luau/releases; the pictures also need Python

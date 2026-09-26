@@ -9,6 +9,9 @@ files = {
     'ColosseumService': 'ServerScriptService/ColosseumService.lua',
     'LobbyActivities': 'StarterPlayerScripts/LobbyActivities.client.lua',
     'BossIntro': 'StarterPlayerScripts/BossIntro.client.lua',
+    'LobbyBuilder': 'ServerScriptService/LobbyBuilder.lua',
+    'RetroWorld': 'StarterPlayerScripts/RetroWorld.client.lua',
+    'LobbyFX': 'StarterPlayerScripts/LobbyFX.client.lua',
 }
 out = ['return {']
 def lit(s):

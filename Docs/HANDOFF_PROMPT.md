@@ -151,7 +151,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
   It has about **192 top-level locals** — same rule: use `do ... end` blocks.
 - `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the DIFFICULTY board's menu and plaques, the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: boss visuals (8-bit PIXEL mode).
-- `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`, `RollDebug`.
+- `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`. (`RollDebug`, a temporary roll-debugging tool, was removed.)
 
 **Docs/**: preview images.
 
@@ -272,6 +272,12 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 ### Reward feel ✅ (no chests: they're being reworked later)
 - Every kill sends `"Kill", power, coins, textPos, { from, worth, king }`. Besides the "+XP / +coins" pop-up, LobbyActivities' `Loot` bursts gold coins (flat spinning squares) and green neon XP gems out of the dummy: they pop out, bounce once on the sand, then zip into you (30 steps a second, 8-bit). How many depends on `worth` (the kind's reward x the difficulty's; the King's is a big shower of 40+). Each one that lands ticks (the Collect sound, rising in pitch through a chain, at most ~16 a second) and bumps the HUD's coin counter (Hud's "Coin" frame) or level bar ("GoalBar") with a `CollectPop` UIScale. At most 120 fly at once; leaving the Colosseum clears them. Client-only: the server paid the moment the dummy fell. Preview: `Docs/reward_shower.png`.
 - `Config.Audio.Music` is now 0.7 (the music was turned down on request).
+
+### Lobby performance
+- Measured with `Tools/HeadlessTests/lobby_count.luau` (parts per lobby piece; `-a client` adds what RetroWorld builds on your screen) and `fx_cost.luau` (how much LobbyFX moves a second, standing at the spawn). The lobby is ~15,400 parts from LobbyBuilder (the island and sea alone ~7,100, of which ~2,000 are foam) plus ~3,800 of RetroWorld detail (cobbles, bricks, grass) on each screen, and 82 lights.
+- Done: parts under 4 studs on their longest side cast no shadow (LobbyBuilder, end of `Build`: ~5,000 parts; 9,700 -> 4,800 casting shadows). LobbyFX moves everything with `BulkMoveTo`, skips far-away things, and only moves a wave or a palm when its 8-bit step changes; FX spin/bob steps 20 times a second, pulses 20 a second, far foam (200+ studs) half as often in 1-stud jumps, palms sway in 1-degree steps. Result at the spawn: part moves 45,900 -> 8,500 a second, see-through changes 15,900 -> 2,900 a second.
+- The lobby's spawn pad (`LobbySpawn`) is invisible and non-solid now: the glowing cyan pad flickered through the path's cobbles. RetroWorld's save star still marks it.
+- Still possible if it's needed: fewer foam pieces, fewer lights, fewer RetroWorld cobbles, or turning on streaming.
 
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
