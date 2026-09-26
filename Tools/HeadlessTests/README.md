@@ -9,7 +9,11 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `task.spawn`, `task.delay`) and a flat sand floor for raycasts.
 - `build_sources.py` - bundles the real game scripts into `sources.luau`
   (the Luau command line can't read files), plus the dummy builder cut out
-  of LobbyBuilder.
+  of LobbyBuilder. Every script is also bundled by its path in the project.
+- `mount.luau` - puts those scripts into the pretend Roblox where Rojo puts
+  them (ModuleScripts in their folders, each with its own `script`), so a
+  script that requires another by its place in the game works: the bosses'
+  files in `ServerScriptService/Bosses` and `ReplicatedStorage/BossBodies`.
 - `test_colosseum.luau` - ColosseumService: a pretend player goes in, beats
   waves 1-4 and fights the Giant Straw King on wave 5. It checks for errors,
   NaN (broken numbers), dummies leaving the arena or sinking into the sand,
@@ -38,6 +42,20 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `dump_dummies.luau` + `render.py`, and `render2.py` - the preview pictures
   in `Docs/`: the models, and snapshots of the fight (`test_colosseum.luau
   -a full 7 snap`) drawn inside a simple model of the arena.
+- `test_bosses.luau` + `golden.sh` - GOLDEN TRACES of the Spire's bosses.
+  `test_bosses.luau -a <scenario> <seed> [server|client]` fights Oozark or
+  Nahrzul with pretend players, the real BossService and (client mode) the
+  real BossClient, and prints every boss attribute, hit, shove and reward
+  (server) or a fingerprint of everything drawn on screen five times a
+  second (client). `./golden.sh record` saves 16 scenarios in `golden/`
+  (gzipped); `./golden.sh check` replays them and fails on any difference -
+  the proof that a change to the boss code (like splitting it into one file
+  per boss) changed nothing players can see. `./golden.sh check client_`
+  runs only the client ones.
+- `test_boss_template.luau` - the "how to add a boss" templates really
+  work: `Bosses/_Template.lua` and `BossBodies/_Template.lua` plugged in as
+  a pretend third boss, fought to the death with the real BossService and
+  BossClient.
 - `lobby_count.luau` - builds the whole lobby with the real LobbyBuilder and
   counts parts, shadow-casting parts, lights and Neon per piece (`-a client`
   also runs RetroWorld and counts its detail; `-a names` lists the island's
@@ -52,6 +70,6 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `render_lobby.py` - draws the lobby from that dump from any camera
   (`--eye=x,y,z --look=x,y,z`, `--mark` circles spots in red).
 
-Run them all with `./run_all.sh` (needs the Luau tools from
+Run them all with `./run_all.sh` (it ends with `./golden.sh check`) (needs the Luau tools from
 https://github.com/luau-lang/luau/releases; the pictures also need Python
 with numpy and pillow).

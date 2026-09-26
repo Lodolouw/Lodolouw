@@ -39,11 +39,11 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - Share one framework: warnings, health bar, 8-bit block style, attack timing, sounds and music by name.
   - Each new boss is mostly new attacks plus a new body.
   - Mix a few huge showpieces (like the worm) with simpler bosses.
-- **The planned boss-code split (not done yet):**
-  - Server: `BossService` keeps the shared parts, and each boss gets its own ModuleScript in a `ServerScriptService/Bosses/` folder (`Bosses/Oozark`, `Bosses/Nahrzul`).
-  - Client: `BossClient` keeps the shared visuals, and each boss gets its own ModuleScript in a `ReplicatedStorage/BossBodies/` folder with its body and animations.
-  - Include a "how to add a boss" template.
-  - Players see no difference. Test that both bosses behave identically before and after.
+- **The boss-code split ✅ (done, players see no difference):**
+  - Server: `BossService` keeps what every boss shares; each boss has its own ModuleScript in `ServerScriptService/Bosses/` (`Oozark.lua`, `Nahrzul.lua`), found by its `Short` name in `Config.Bosses`.
+  - Client: `BossClient` keeps the shared visuals; each boss's body has its own ModuleScript in `ReplicatedStorage/BossBodies/` (`Oozark.lua`, `Nahrzul.lua`).
+  - "How to add a boss": `Bosses/_Template.lua` + `BossBodies/_Template.lua` (a tiny working boss with one attack, STOMP; `test_boss_template.luau` fights it). See "Adding a boss" below.
+  - Proven identical by golden traces: `Tools/HeadlessTests/golden.sh check` (16 recorded fights, server and screen, byte-identical before and after).
 - **The MMO direction** (Hypixel Skyblock / Wynncraft / Blox Fruits) is what keeps the game alive long-term:
   - Every boss drops a **treasure chest**, a "gamble crate", with gear in rarities: Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret. This is **done**.
   - Gear goes in your inventory and drives a player **market**.
@@ -137,6 +137,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 **ReplicatedStorage/**
 - `Config.lua`: ALL the tuning numbers (levels, colosseum, bosses, combat, spire, retro look).
 - `Items.lua`: gear rarities, stats, sets and loot tables.
+- `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Nahrzul.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
 
 **ServerScriptService/**
 - `Main.server.lua`: a Script. It builds the world and then starts each service inside `pcall`.
@@ -145,13 +146,18 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - `PlayerService.lua`: DataStore with session locking, the movement anti-cheat guard, request rate limits, daily quests, stats and upgrades.
 - `CombatService.lua`: server-authoritative combat: punches, the owner filter, damage, the shield block, and Disintegrate.
 - `ColosseumService.lua`: the Colosseum wave arena (details below).
-- `BossService.lua`, `SpireService.lua`, `DunesBuilder.lua`: the bosses and the Spire floors (Gloomgut the slime, Mireworm the sand worm).
+- `BossService.lua`: what every boss shares: an encounter's life (asleep, waking, fighting, the break at half health, resetting, dead + rewards), targets, publishing actions for the screens, timing, hitting players, the surface-boss brain (choose an attack by distance, do it, breathe), moving and turning, shock rings and burning puddles. It loads each boss's own file and hands it the shared helpers (`Boss.init(kit)`; the list is `makeKit`).
+- `Bosses/` (a Folder): one ModuleScript per boss, named after its `Short` name in `Config.Bosses`:
+  - `Oozark.lua` (floor 1, the slime; "Gloomgut" in older code): its attacks.
+  - `Nahrzul.lua` (floor 2, the worm; "Mireworm" in older code): its whole way of fighting (hunting by sound under the sand, its attacks, its every-frame step) and hooks (`brain`, `step`, `onBuild`, `onReset`, `onHome`, `onDie`, `onBreak`).
+  - `_Template.lua`: NOT a boss: the starting point for a new one (see "Adding a boss").
+- `SpireService.lua`, `DunesBuilder.lua`: the Spire's menu and travel, and floor 2's arena.
 
 **StarterPlayerScripts/** (LocalScripts)
 - `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying.
   It has about **192 top-level locals** — same rule: use `do ... end` blocks.
 - `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door and the "Leave?" check at its exit, the walk-up pop-ups (no "press E"), the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
-- `BossClient.client.lua`: boss visuals (8-bit PIXEL mode).
+- `BossClient.client.lua`: what every boss's visuals share: the drawing kit (8-bit parts, rings, bursts, camera kicks, sounds, warnings, one-off moments on the server's clock), tracking each boss and its pose every frame, the arena weather (acid rain, the dunes' sandstorm), the boss bar, the victory banner, and the music. Each boss's body is in `ReplicatedStorage/BossBodies/` (below).
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`. (`RollDebug`, a temporary roll-debugging tool, was removed.)
 
 **Docs/**: preview images.
@@ -362,12 +368,21 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 4. **Juice** (skipped for now, maybe later): the crowd cheering kills, throwing hearts (heal pickups) and coin bags onto the sand. (The wave horn already exists.)
 5. ~~**Reward feel**~~ ✅ Done: coins and XP fly from the dummy to you (see "Reward feel" above). **No chest drops**: chests are being reworked later.
 
-**Later (bosses last):** more bosses (my goal is 20+), and possibly splitting the big BossService / BossClient into one module per boss.
+**Next (I asked for it): more bosses** (my goal is 20+). The code split is done (see "Adding a boss"); Floor 3 (level 45) is next. Ideas I was offered: a frost giant (icy cavern, slippery floor, falling icicles, a freezing breath sweep), a haunted knight (a souls-like sword duel with a parry window and ghost copies in phase 2), or a mechanical golem (a forge, conveyor belts, a weak spot on its back). Ask me which.
+
+### Adding a boss
+1. Copy `ServerScriptService/Bosses/_Template.lua` and `ReplicatedStorage/BossBodies/_Template.lua`, naming both copies after the new boss's short name (e.g. `Frostjaw.lua`). Their headers explain everything.
+2. Add it to `Config.Bosses` on its floor (copy Oozark's entry and change it: `Short`, name, size, colours, health, and its `Attacks` - one entry per attack function, same names).
+3. Give it an arena with a `BossHome` part (attributes `Floor`, `Facing`) and its floor in `Config.Spire.Floors`.
+4. A surface boss only needs its attacks (server) and its body, poses and starts (client): BossService and BossClient do the rest. Something unusual (like the worm) uses the hooks - `Bosses/Nahrzul.lua` and `BossBodies/Nahrzul.lua` show every one.
+5. Test: `test_boss_template.luau` shows how to fight a boss headlessly; add golden scenarios for the new boss to `golden.sh` once it's finished.
 
 ## Testing tips
 
 - Before pushing, compile-check every changed file with a Luau compiler (`luau-compile`) and run `luau-analyze`.
 - Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before. They're now in `Tools/HeadlessTests/` (`./run_all.sh`); add new tests there.
+- **Changing boss code without changing the fights** (a cleanup, a split): run `./golden.sh check` before and after - it replays 16 recorded boss fights (server decisions and hits, and a fingerprint of everything drawn on screen) and fails on any difference. Only when a change is MEANT to change a boss, re-record with `./golden.sh record` (and say so in the commit).
+- `mount.luau` loads the game's scripts into the mock the way Rojo lays them out (folders and all), so scripts that require each other by their place in the game work in tests.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`. The Colosseum polish plan is done; ask me what's next (for example: the chest rework, pets, a settings menu, or more bosses; the tutorial comes last).
+Start by reading `ReplicatedStorage/Config.lua` (the `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files. The Colosseum polish plan is done and the boss code is split; I chose **more bosses** next - ask me which Floor 3 boss (see "Next" above). Other ideas for later: the chest rework, pets, a settings menu; the tutorial comes last.

@@ -20,5 +20,15 @@ for sc in cursed clearleave leave die oldbuilder kite kitejump nextrun locked; d
 for seed in 1 2 3; do run test_colosseum.luau -a hard $seed; run test_colosseum.luau -a nightmare $seed; done
 run test_client.luau
 run test_builder.luau
+run test_boss_template.luau
+# the bosses' golden traces: they must match exactly (see golden.sh)
+if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
+	echo "pass  golden.sh check (16 boss traces)"
+else
+	echo "FAIL  golden.sh check"
+	grep -v "^same" /tmp/golden_check.$$ | head -20
+	fails=$((fails + 1))
+fi
+rm -f /tmp/golden_check.$$
 echo "$fails failed"
 exit $fails
