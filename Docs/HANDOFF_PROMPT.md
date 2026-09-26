@@ -279,6 +279,14 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - The lobby's spawn pad (`LobbySpawn`) is invisible and non-solid now: the glowing cyan pad flickered through the path's cobbles. RetroWorld's save star still marks it.
 - Still possible if it's needed: fewer foam pieces, fewer lights, fewer RetroWorld cobbles, or turning on streaming.
 
+### Lobby tidy-up (building inconsistencies)
+- Checked with `Tools/HeadlessTests/lobby_dump.luau` (every lobby part as JSON), `check_lobby.py` (things floating, touching nothing, plants poking into walls, bits on the paths, faces that flicker) and `render_lobby.py` (draws the lobby from any camera). Before/after: `Docs/lobby_fixes.png`.
+- **Blue paths:** the cobbles were SmoothPlastic, which reflects the blue sky. RetroWorld's `cobble()` / `cobblePlaza()` slabs and cobbles and the curbs (`Curb`, `PlazaCurb`, `CurbPost`) are matte `Plastic` now (`MATTE`).
+- **Floating bits:** the banners and torches on the inside of the island's walls hung 0.4 studs off the wall; they sit flat on it now (`buildDecor`'s N/S/W/E). Flowers' blooms sit on the grass, or on a leafy clump when they're over one (they used to hang in the air).
+- **Moved so they don't poke into things:** a pine (-48, 160, clear of the south gate's tower), two rocks (48, -104) and (-92, 160), a flower patch (13, 138, off the lamp by the road), and the farm tree (95.5, 75.5, a little smaller: clear of the cottage's roof and the fence).
+- **Flicker (two faces in one place):** a tree lump's underside, the banner trims (castle and mini colosseum, a hair wider than the cloth), the castle gate's jambs, the angel's robe, the moss on the stone walls (`mossDepth`: each pixel of moss its own depth), the paving lines, the log steps' edges and the pier's plank lines. The curbs' corner posts (`CurbPost`) were left orange brick; they're dark stone like the curbs now.
+- **Left alone on purpose:** the Pet Sanctuary (its bush pokes into the corner tower; it's getting redone later).
+
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
 - The gap behind the stands is filled (`StandFill` parts).

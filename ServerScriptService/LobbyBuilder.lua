@@ -467,7 +467,8 @@ local function voxelTree(m, x, z, s, y0)
 	part(m, "Canopy", V3(12, 6, 12) * s, CFrame.new(x, y0 + 11 * s, z), VT_LEAF2, Mat.Grass)
 	part(m, "CanopyTop", V3(9, 4, 9) * s, CFrame.new(x - 0.5 * s, y0 + 15.5 * s, z + 0.5 * s), VT_LEAF, Mat.Grass)
 	part(m, "CanopyCrown", V3(5, 2, 5) * s, CFrame.new(x + 0.5 * s, y0 + 18.2 * s, z - 0.5 * s), VT_LEAF, Mat.Grass)
-	for _, o in ipairs({ { 5, 9.5, 2 }, { -5, 10, -2 }, { 1.5, 9, -5 }, { -2, 9.5, 5 } }) do
+	-- (no lump's underside level with the canopy's: two faces in one place flicker)
+	for _, o in ipairs({ { 5, 9.5, 2 }, { -5, 9.9, -2 }, { 1.5, 9, -5 }, { -2, 9.5, 5 } }) do
 		part(m, "CanopyLump", V3(6, 4, 6) * s, CFrame.new(x + o[1] * s, y0 + o[2] * s, z + o[3] * s), (o[1] > 0) and VT_LEAF2 or VT_LEAF3, Mat.Grass)
 	end
 	for _, o in ipairs({ { 3, 14, 3 }, { -3.5, 13.5, -2 } }) do
@@ -867,7 +868,7 @@ local function banner(parent, pos, facing, color)
 	local cf = CFrame.lookAt(pos, pos + facing)
 	part(m, "Rod", V3(8, 0.6, 0.6), cf * CFrame.new(0, 8.3, -0.3), RGB(90, 70, 40), Mat.Wood)
 	part(m, "Cloth", V3(6, 16, 0.3), cf * CFrame.new(0, 0, -0.2), color, Mat.Fabric)
-	part(m, "Trim", V3(6, 1, 0.35), cf * CFrame.new(0, -7.6, -0.25), GOLD, Mat.Fabric)
+	part(m, "Trim", V3(6.1, 1, 0.35), cf * CFrame.new(0, -7.6, -0.25), GOLD, Mat.Fabric) -- (a hair wider than the cloth, so their edges don't flicker)
 	part(m, "Emblem", V3(2.6, 2.6, 0.4), cf * CFrame.new(0, 2, -0.4) * CFrame.Angles(0, 0, math.rad(45)), GOLD, Mat.SmoothPlastic)
 	part(m, "EmblemCore", V3(1.2, 1.2, 0.45), cf * CFrame.new(0, 2, -0.45) * CFrame.Angles(0, 0, math.rad(45)), color, Mat.SmoothPlastic)
 end
@@ -970,13 +971,27 @@ local function flowers(parent, x, z, r)
 	m.Name = "Flowers"
 	m.Parent = parent
 	r = r or 3
+	local leaves = {}
 	for _ = 1, 2 do
 		local a, d = rnd() * math.pi * 2, rnd() * r * 0.5
-		part(m, "Leaf", V3(2, 0.8, 1.6), CFrame.new(x + math.cos(a) * d, 0.4, z + math.sin(a) * d) * CFrame.Angles(0, a, 0), VT_LEAF2, Mat.Grass, { CanCollide = false })
+		local at = V3(x + math.cos(a) * d, 0.4, z + math.sin(a) * d)
+		part(m, "Leaf", V3(2, 0.8, 1.6), CFrame.new(at) * CFrame.Angles(0, a, 0), VT_LEAF2, Mat.Grass, { CanCollide = false })
+		table.insert(leaves, at)
 	end
-	for _ = 1, 6 do
+	-- each bloom sits on a leafy clump if it's over one, or on the grass if
+	-- not (never hanging in the air), each a touch higher or lower than the
+	-- next so no two tops lie in one plane (that flickers)
+	for i = 1, 6 do
 		local a, d = rnd() * math.pi * 2, rnd() * r
-		part(m, "Bloom", V3(0.7, 0.7, 0.7), CFrame.new(x + math.cos(a) * d, 0.95, z + math.sin(a) * d), FLOWER_COLORS[1 + math.floor(rnd() * #FLOWER_COLORS)], Mat.SmoothPlastic, { CanCollide = false })
+		local bx, bz = x + math.cos(a) * d, z + math.sin(a) * d
+		local onLeaf = false
+		for _, l in ipairs(leaves) do
+			if (V3(bx, 0, bz) - V3(l.X, 0, l.Z)).Magnitude < 0.8 then
+				onLeaf = true
+			end
+		end
+		local y = (onLeaf and 1.05 or 0.33) + (i % 3) * 0.03
+		part(m, "Bloom", V3(0.7, 0.7, 0.7), CFrame.new(bx, y, bz), FLOWER_COLORS[1 + math.floor(rnd() * #FLOWER_COLORS)], Mat.SmoothPlastic, { CanCollide = false })
 	end
 end
 
@@ -997,13 +1012,13 @@ local NEW_TREES = {
 	{ pineTree, 60, -88, 1 }, { roundTree, 76, -104, 0.9 }, { blossomTree, 96, -76, 0.9 },
 	{ roundTree, -100, 36, 0.9 }, { blossomTree, -30, -40, 0.9 },
 	{ blossomTree, 28, -40, 0.9 }, { pineTree, 90, 22, 0.9 }, { roundTree, 92, 60, 0.9 },
-	{ pineTree, 96, 150, 0.9 }, { blossomTree, 62, 160, 0.9 }, { pineTree, -30, 164, 0.8 },
+	{ pineTree, 96, 150, 0.9 }, { blossomTree, 62, 160, 0.9 }, { pineTree, -48, 160, 0.8 }, -- (clear of the south gate's tower)
 	{ roundTree, -100, 152, 0.9 },
 }
 
 local ROCKS = {
-	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 26, -100, 0.9 }, { -94, 42, 0.8 },
-	{ 90, 150, 0.9 }, { -104, 160, 0.9 }, { 20, 160, 0.8 },
+	{ -108, -40, 1 }, { 96, -10, 0.9 }, { 48, -104, 0.9 }, { -94, 42, 0.8 }, -- (clear of the Great Hall's wing)
+	{ 90, 150, 0.9 }, { -92, 160, 0.9 }, { 20, 160, 0.8 }, -- (clear of the corner tower)
 }
 
 local BUSHES = {
@@ -1014,7 +1029,7 @@ local BUSHES = {
 
 local FLOWER_PATCHES = {
 	{ 40, 24 }, { -28, -14 }, { 28, -14 }, { -95, 12 },
-	{ 12, 150 }, { 60, 150 }, { 80, 150 }, { 50, 160 },
+	{ 13, 138 }, { 60, 150 }, { 80, 150 }, { 50, 160 }, -- (not on the lamp by the road)
 }
 
 local function buildDecor(parent)
@@ -1026,9 +1041,10 @@ local function buildDecor(parent)
 	cornerTower(d, -112, SOUTH_WALL - 6, ROOF_RED)
 	cornerTower(d, 112, SOUTH_WALL - 6, ROOF_RED)
 
-	-- Banners and torches on the inside of each wall. Inner faces sit 3
-	-- studs in from each wall's centre line.
-	local N, S, W, E = -114.6, SOUTH_WALL - 3.4, -114.6, 114.6
+	-- Banners and torches on the inside of each wall, flat against its inner
+	-- face (3 studs in from the wall's centre line - they used to hang 0.4
+	-- studs off it, in the air)
+	local N, S, W, E = -115, SOUTH_WALL - 3, -115, 115
 	for i, x in ipairs({ -100, -80, 80, 100 }) do
 		banner(d, V3(x, 32, N), V3(0, 0, 1), i % 2 == 0 and BANNER_BLUE or BANNER_RED)
 	end
@@ -2156,7 +2172,7 @@ local function buildCastleGate(parent)
 	-- the arch ring (voussoirs) on both faces, in darker stone
 	for _, face in ipairs({ GATE_Z1 + 0.4, GATE_Z0 - 0.4 }) do
 		for _, sx in ipairs({ -1, 1 }) do
-			part(m, "Jamb", V3(2, ARCH_SPRING, 1.2), CFrame.new(sx * (ARCH_HALF + 1), ARCH_SPRING / 2, face), GATE_DARK, Mat.Cobblestone)
+			part(m, "Jamb", V3(2, ARCH_SPRING, 1.2), CFrame.new(sx * (ARCH_HALF + 0.97), ARCH_SPRING / 2, face), GATE_DARK, Mat.Cobblestone) -- (a hair proud of the side, so they don't flicker)
 			local N = 9
 			for k = 0, N - 1 do
 				local function pt(t) -- t: 0 at the spring, 1 at the point
@@ -3598,7 +3614,7 @@ local function buildFountain(parent)
 	b("AngelLegL", V3(1, 2, 1), -0.5, 1, 0)
 	b("AngelLegR", V3(1, 2, 1), 0.5, 1, 0, STONE2)
 	b("AngelTorso", V3(2, 2, 1), 0, 3, 0)
-	b("AngelRobe", V3(2.2, 0.4, 1.2), 0, 2.2, 0, STONE2)
+	b("AngelRobe", V3(2.2, 0.4, 1.2), 0, 2.18, 0, STONE2)
 	b("AngelHead", V3(1.2, 1.2, 1.2), 0, 4.6, 0)
 	b("AngelFace", V3(0.8, 0.15, 0.1), 0, 4.55, -0.62, STONE3)
 	-- arms raised up to the sky
@@ -4175,7 +4191,7 @@ local function buildFarm(parent)
 	farmHay(m, 97, 2.2, 111.8, 1.57)
 
 	-- trees and bushes
-	farmTree(m, 95, 76.5, 0.9)
+	farmTree(m, 95.5, 75.5, 0.75) -- (a little smaller: clear of the cottage's roof and the fence)
 	farmTree(m, 64, 139, 0.85)
 	blockBush(m, 21.5, 139, 1)
 	blockBush(m, 97, 140, 0.9)
@@ -4744,7 +4760,7 @@ local function buildIsland(parent)
 		part(m, "GateLanding", V3(HW * 2 + 8, -0.4 - base, z1 - z0), CFrame.new(0, (base - 0.4) / 2, (z0 + z1) / 2), STONE, Mat.Slate)
 		part(m, "GateLandingPaving", V3(HW * 2 + 8, 0.4, z1 - z0), CFrame.new(0, -0.2, (z0 + z1) / 2), CREAM, Mat.Slate)
 		for x = -HW - 1, HW + 1, 4 do
-			part(m, "PavingLine", V3(0.2, 0.42, z1 - z0), CFrame.new(x, -0.2, (z0 + z1) / 2), CREAM2, Mat.Slate, nc)
+			part(m, "PavingLine", V3(0.2, 0.46, z1 - z0 - 0.06), CFrame.new(x, -0.2, (z0 + z1) / 2), CREAM2, Mat.Slate, nc) -- (a hair above the paving, stopping short of its edges: no flicker)
 		end
 		for _, sx in ipairs({ -1, 1 }) do
 			local x = sx * (HW + 3.4)
@@ -4927,7 +4943,7 @@ local function buildIsland(parent)
 			local top = TERRACE1_TOP - i * rise
 			local za = zGrassEnd + (i - 1) * TREAD
 			part(m, "LogStep", V3(HALF * 2, top - BEACH_TOP + 0.5, TREAD + 0.02), CFrame.new(xEnd, (top + BEACH_TOP - 0.5) / 2, za + TREAD / 2), RGB(184, 111, 80), Mat.Ground)
-			part(m, "LogStepEdge", V3(HALF * 2, 0.6, 0.6), CFrame.new(xEnd, top - 0.1, za + TREAD - 0.3), RGB(115, 62, 57), Mat.Wood, nc)
+			part(m, "LogStepEdge", V3(HALF * 2, 0.6, 0.6), CFrame.new(xEnd, top - 0.1, za + TREAD - 0.27), RGB(115, 62, 57), Mat.Wood, nc) -- (a hair proud of the step's face)
 			for _, sx in ipairs({ -1, 1 }) do
 				part(m, "LogStepPeg", V3(0.5, 0.9, 0.5), CFrame.new(xEnd + sx * (HALF - 0.6), top + 0.05, za + TREAD + 0.05), RGB(62, 39, 49), Mat.Wood, nc)
 				-- the bank either side, stepping down with the steps
@@ -4955,7 +4971,7 @@ local function buildIsland(parent)
 	local deckY = SEA_Y + 2.2
 	part(m, "Pier", V3(8, 0.6, p1 - p0), CFrame.new(xEnd, deckY, (p0 + p1) / 2), RGB(184, 111, 80), Mat.WoodPlanks)
 	for z = p0 + 2, p1, 4 do
-		part(m, "PierPlankLine", V3(8.1, 0.62, 0.2), CFrame.new(xEnd, deckY, z), RGB(115, 62, 57), Mat.WoodPlanks, { CanCollide = false })
+		part(m, "PierPlankLine", V3(8.1, 0.66, 0.2), CFrame.new(xEnd, deckY, z), RGB(115, 62, 57), Mat.WoodPlanks, { CanCollide = false }) -- (a hair above the deck, so they don't flicker)
 	end
 	for z = p0 + 1, p1 - 1, 8 do
 		for _, sx in ipairs({ -1, 1 }) do
@@ -6034,7 +6050,7 @@ local Extras = (function()
 		for _, sx in ipairs({ -1, 1 }) do
 			P("DoorPost", V3(0.7, 4.4, 0.5), D * CFrame.new(sx * 1.85, 3.2, 3.1), SAND_LIGHT, flat)
 			P("Banner", V3(2.6, 7, 0.3), D * CFrame.new(sx * 4.6, 10, 3.15), BANNER_RED, Mat.Fabric, { CanCollide = false })
-			P("BannerTrim", V3(2.6, 0.5, 0.35), D * CFrame.new(sx * 4.6, 6.7, 3.15), GOLD, Mat.Fabric, { CanCollide = false })
+			P("BannerTrim", V3(2.7, 0.5, 0.35), D * CFrame.new(sx * 4.6, 6.7, 3.15), GOLD, Mat.Fabric, { CanCollide = false })
 			P("Torch", V3(0.5, 1.6, 0.5), D * CFrame.new(sx * 2.8, 5, 3.4), RGB(96, 64, 48), Mat.Wood, { CanCollide = false })
 			local flame = P("Flame", V3(0.7, 0.7, 0.7), D * CFrame.new(sx * 2.8, 6.1, 3.4), RGB(254, 174, 52), Mat.Neon, { CanCollide = false })
 			local l = Instance.new("PointLight")

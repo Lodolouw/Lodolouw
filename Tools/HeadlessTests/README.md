@@ -42,6 +42,13 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   biggest part names and the animated tags).
 - `fx_cost.luau` - runs LobbyFX for 10 pretend seconds at the spawn and
   counts parts moved and see-through changes per second (and by name).
+- `lobby_dump.luau` - builds the whole lobby (LobbyBuilder, then RetroWorld's
+  detail) and prints every part as one line of JSON.
+- `check_lobby.py` - reads that dump and lists what looks wrong: things
+  floating in the air, objects touching nothing, plants poking into walls,
+  bits sticking up on the paths, and faces in the same spot (flicker).
+- `render_lobby.py` - draws the lobby from that dump from any camera
+  (`--eye=x,y,z --look=x,y,z`, `--mark` circles spots in red).
 
 Run them all with `./run_all.sh` (needs the Luau tools from
 https://github.com/luau-lang/luau/releases; the pictures also need Python

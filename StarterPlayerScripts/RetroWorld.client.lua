@@ -470,15 +470,22 @@ local function stoneWall(w)
 			blob.Transparency = 1
 		end
 	end
+	-- (each pixel of moss stands out from the wall a different hair: two
+	-- overlapping with their fronts in one plane would flicker)
+	local mossStep = 0
+	local function mossDepth(base)
+		mossStep = mossStep % 5 + 1
+		return base + mossStep * 0.03
+	end
 	local function patch(u, y, reach)
 		for _ = 1, rng:NextInteger(4, 10) do
 			local sz = 0.6 + rng:NextNumber() * 1.3
 			slab(u + spread() * reach * 2, y + spread() * reach * 1.2, sz, sz * (0.5 + rng:NextNumber() * 0.7),
-				0.25, GRASS[rng:NextInteger(1, #GRASS)])
+				mossDepth(0.22), GRASS[rng:NextInteger(1, #GRASS)])
 		end
 		if rng:NextNumber() < 0.4 then
 			local len = 1.5 + rng:NextNumber() * 5
-			slab(u + spread() * reach, y - len / 2 - 0.4, 0.4, len, 0.2, GRASS[rng:NextInteger(2, #GRASS)])
+			slab(u + spread() * reach, y - len / 2 - 0.4, 0.4, len, mossDepth(0.17), GRASS[rng:NextInteger(2, #GRASS)])
 		end
 	end
 	for _ = 1, math.floor(length / 22) do
@@ -835,6 +842,9 @@ end)
 -- cobbles are laid on it, staggered like real paving, each a little
 -- different in size and shade, with moss in some of the gaps; the curbs go
 -- dark stone. (Paper-thin and not solid: walking on it is unchanged.)
+-- Matte plastic, not SmoothPlastic: shiny cobbles mirrored the blue sky, so
+-- the paths out in the open looked blue and the ones by walls grey.
+local MATTE = Enum.Material.Plastic
 local PATHS = {
 	PathEastWest = true, PathToForge = true, PathRoadToPlaza = true, PathForgeSide = true,
 	PathBehindForge = true, PathToGate = true, StairLanding = true, PathToYard = true,
@@ -844,6 +854,7 @@ local function cobble(slab)
 	local size, top = slab.Size, slab.Position.Y + slab.Size.Y / 2
 	local plaza = slab.Parent and slab.Parent:FindFirstChild("PlazaOuter")
 	slab.Color = RGB(90, 105, 136)
+	slab.Material = MATTE
 	local cell = 2.2
 	local nx, nz = math.ceil(size.X / cell) + 1, math.ceil(size.Z / cell)
 	for iz = 0, nz - 1 do
@@ -862,7 +873,7 @@ local function cobble(slab)
 			if xb - xa > 0.5 and zb - za > 0.5 and not inPlaza then
 				do
 					local w, d = (xb - xa) - rng:NextNumber() * 0.3, (zb - za) - rng:NextNumber() * 0.3
-					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
+					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)], MATTE).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
 				end
 			end
 		end
@@ -881,6 +892,7 @@ local function cobblePlaza(ground)
 		local d = ground:FindFirstChild(n)
 		if d then
 			d.Color = RGB(90, 105, 136)
+			d.Material = MATTE
 			table.insert(rings, { r = d.Size.Y / 2, top = d.Position.Y + d.Size.X / 2 })
 		end
 	end
@@ -913,7 +925,7 @@ local function cobblePlaza(ground)
 				if top then
 					local at = V3(center.X + x, top + 0.04, center.Z + z)
 					local w, d = cell - 0.35 - rng:NextNumber() * 0.4, cell - 0.35 - rng:NextNumber() * 0.4
-					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)]).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
+					block(V3(w, 0.08, d), COBBLES[rng:NextInteger(1, #COBBLES)], MATTE).CFrame = CFrame.new(at) * CFrame.Angles(0, spread() * 0.12, 0)
 				end
 			end
 		end
@@ -940,8 +952,11 @@ local function dressLobby(lobby)
 			if p:IsA("BasePart") then
 				if PATHS[p.Name] then
 					pcall(cobble, p)
-				elseif p.Name == "Curb" or p.Name == "PlazaCurb" then
+				elseif p.Name == "Curb" or p.Name == "PlazaCurb" or p.Name == "CurbPost" then
+					-- (the posts at the curbs' corners too: they were left
+					-- orange brick at the ends of the dark stone curbs)
 					p.Color = RGB(58, 68, 102)
+					p.Material = MATTE
 				end
 			end
 		end
