@@ -3,7 +3,9 @@
 
 	The player's side of fighting in the Spire, Souls style. Only switched on
 	while you're inside an arena (the "SpireFloor" attribute SpireService sets,
-	or "Colosseum" from ColosseumService):
+	or "Colosseum" from ColosseumService), or fighting Oozlet in the intro
+	("Intro" is "Void" or "Fight": IntroService - there, stamina is free,
+	because the intro shows no stamina bar):
 	  * Stamina: punching and rolling cost stamina, which refills a moment
 	    after you stop spending it. No stamina, no action.
 	  * Dodge roll: a quick dash with a short window of invincibility at the
@@ -85,8 +87,17 @@ local function pushState(player, st)
 end
 
 local function spend(st, amount, now)
-	st.stamina = math.max(0, st.stamina - amount)
+	if not st.free then
+		st.stamina = math.max(0, st.stamina - amount)
+	end
 	st.lastSpend = now
+end
+
+-- Fighting Oozlet in the intro? (IntroService: "Void" is before it's angry -
+-- you can already punch it - and "Fight" after; "Reveal" is the end)
+local function introFight(player)
+	local stage = player:GetAttribute("Intro")
+	return stage == "Void" or stage == "Fight"
 end
 
 -- what your worn gear gives you (see ReplicatedStorage.Items)
@@ -709,6 +720,7 @@ end
 ----------------------------------------------------------------------
 local function startFighting(player)
 	fighters[player] = {
+		free = introFight(player), -- (the intro: nothing costs stamina)
 		stamina = CC.MaxStamina,
 		lastSpend = 0,
 		iframeUntil = 0,
@@ -736,7 +748,7 @@ local function restoreWalkSpeed(player, hum)
 end
 
 local function onFloorChanged(player)
-	local fighting = player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum")
+	local fighting = player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") or introFight(player)
 	if fighting then
 		startFighting(player)
 	else
@@ -934,6 +946,13 @@ function CombatService.Start(playerService)
 		end)
 		player:GetAttributeChangedSignal("Colosseum"):Connect(function()
 			onFloorChanged(player)
+		end)
+		-- the intro: on when Oozlet can be punched, off when it's over
+		-- (going from "Void" to "Fight" changes nothing: you were already fighting)
+		player:GetAttributeChangedSignal("Intro"):Connect(function()
+			if introFight(player) ~= (fighters[player] ~= nil) then
+				onFloorChanged(player)
+			end
 		end)
 		player.CharacterAdded:Connect(function(char)
 			hookDeath(player, char)

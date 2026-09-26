@@ -112,6 +112,27 @@ boss arena" — that's your teleport hook once the arena place/area exists.
   name, CollectionService tag, instance attribute, and part name referenced
   across files was cross-checked to match exactly.
 
+## The intro: Oozlet (a brand-new player's first minute)
+
+A new player wakes up in the dark, like the start of Undertale: only the
+fountain and the plaza are there, with 8-bit mist at the edge, no buttons and
+no other players. Oozlet - Oozark's baby, a blocky slime with a tiny crown -
+is happily hopping round the fountain, and HIT THE SLIME! builds up letter
+by letter until the "!" lands with a BOOM. Punch it and it gets angry: a
+short fight you can't lose that teaches punching and rolling (its first slam
+hangs over you until you roll), it cracks at half health and pops, and drops
+your first chest (Oozlet's Chest: starter gear anyone can wear). Then the mist
+rolls back, the lobby builds itself around you piece by piece, and the Spire
+rises out of nothing: OOZARK AWAITS...
+
+- `ServerScriptService/IntroService.lua` runs the fight (all on the server);
+  `StarterPlayerScripts/IntroClient.client.lua` draws everything, on that
+  player's screen only. Every number and word is in `Config.Intro`.
+- Only brand-new players get it (it's saved). **In Studio every Play shows it
+  while `Config.Intro.AlwaysInStudio = true`** - set it false to test the
+  normal start. `Config.Intro.On = false` switches it off for everyone.
+- Preview: `Docs/intro_preview.png`.
+
 ## The Spire's second floor: Mireworm (the Sunken Dunes)
 
 Mireworm doesn't reuse any of Gloomgut's attacks. It sleeps coiled round the

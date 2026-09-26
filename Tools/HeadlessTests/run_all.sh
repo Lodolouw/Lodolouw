@@ -21,6 +21,9 @@ for seed in 1 2 3; do run test_colosseum.luau -a hard $seed; run test_colosseum.
 run test_client.luau
 run test_builder.luau
 run test_boss_template.luau
+run test_intro.luau
+run test_intro.luau -a skip
+run test_intro.luau -a fail
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
 	echo "pass  golden.sh check (16 boss traces)"

@@ -69,9 +69,10 @@ local function defaultData()
 		-- t = when it dropped, lock = true if protected from salvaging}
 		Items = {},
 		Gear = {}, -- [slot] = uid of the item worn there
-		Chests = {}, -- ["1"] = unopened treasure chests from floor 1's boss
+		Chests = {}, -- ["1"] = unopened treasure chests from floor 1's boss ("0" = Oozlet's, from the intro)
 		NextId = 1, -- (each item gets a new, never-reused id)
 		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
+		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
 		Stats = {}, -- stat points spent: [stat] = points (see Config.StatPoints)
 		-- today's quests (see Config.Quests): which day they're for, and for
 		-- each one how far along you are and whether you've handed it in
@@ -98,6 +99,9 @@ local function mergeSaved(saved)
 	if type(saved.Coins) == "number" then
 		d.Coins = saved.Coins
 	end
+	-- (the intro is for brand-new players: a save from before it existed that
+	-- has any progress counts as having done it)
+	d.IntroDone = saved.IntroDone == true or d.Power > 0
 	-- (prestige is gone: every prestige you had becomes one of Oozark's
 	-- treasure chests, once, and your count goes back to 0)
 	local oldPrestige = type(saved.Prestige) == "number" and math.floor(saved.Prestige) or 0
@@ -516,6 +520,15 @@ function PlayerService.RecordBossKill(player, floorId)
 	markDirty(player)
 	PlayerService.QuestProgress(player, "boss", 1)
 	return before == 0
+end
+
+-- Oozlet (the intro) has been beaten: saved, so it never comes back
+function PlayerService.SetIntroDone(player)
+	local profile = profiles[player]
+	if profile then
+		profile.data.IntroDone = true
+		markDirty(player)
+	end
 end
 
 -- A treasure chest from floor `floorId`'s boss, into the bag (unopened)

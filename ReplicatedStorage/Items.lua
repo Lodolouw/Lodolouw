@@ -8,6 +8,8 @@
 	  * Beat a boss -> you get its TREASURE CHEST (kept in your bag until you
 	    open it). Opening one rolls a RARITY first (see Rarities' odds), then
 	    picks an item of that rarity from that boss's loot.
+	  * Every new player's first chest is OOZLET'S (from the intro: Config.Intro):
+	    starter gear anyone can wear, kept as "floor" 0.
 	  * Every item ROLLS its stats inside a range when it drops, so two of the
 	    same item aren't equal. The better the rolls, the more stars it shows
 	    (0-3); an item with every stat at its best is PERFECT and glows.
@@ -93,6 +95,21 @@ Items.Sets = {
 -- pixel icon is drawn in. floor = the boss (Spire floor) that drops it.
 ----------------------------------------------------------------------
 local list = {
+	-- OOZLET, Oozark's little one (the intro - "floor" 0): its chest is every
+	-- new player's first, so it's starter gear anyone can wear
+	{ id = "SquishyGloves", name = "Squishy Gloves", slot = "Weapon", rarity = "Common", level = 1, floor = 0,
+		stats = { Damage = { 3, 6 } }, tint = { RGB(120, 255, 90), RGB(62, 137, 72) },
+		lore = "* Every punch goes 'boing'. Oozlet would be proud." },
+	{ id = "BouncyBoots", name = "Bouncy Boots", slot = "Boots", rarity = "Common", level = 1, floor = 0,
+		stats = { Health = { 4, 8 } }, tint = { RGB(99, 199, 77), RGB(234, 212, 170) },
+		lore = "* Still a little sticky. That's how you know they're real." },
+	{ id = "OozletCap", name = "Oozlet Cap", slot = "Helmet", rarity = "Uncommon", level = 1, floor = 0,
+		stats = { Health = { 6, 10 }, Defense = { 1, 2 } }, tint = { RGB(120, 255, 90), RGB(254, 231, 97) },
+		lore = "* A tiny crown of jelly. It wobbles when you're brave." },
+	{ id = "GooVest", name = "Goo Vest", slot = "Chest", rarity = "Uncommon", level = 1, floor = 0,
+		stats = { Health = { 8, 14 } }, tint = { RGB(99, 199, 77), RGB(38, 92, 66) },
+		lore = "* Warm, green, and slightly alive." },
+
 	-- OOZARK, the Gelatinous Tyrant (floor 1)
 	{ id = "GooBoots", name = "Goo-Stained Boots", slot = "Boots", rarity = "Common", level = 10, floor = 1, set = "Gelatinous",
 		stats = { Health = { 6, 12 } }, tint = { RGB(99, 199, 77), RGB(62, 137, 72) },
@@ -169,8 +186,12 @@ for i, it in ipairs(list) do
 end
 Items.List = list
 
--- The treasure chests: one per boss, named for it
+-- The treasure chests: one per boss, named for it (and Oozlet's, from the intro)
+Items.ChestNames = { [0] = "Oozlet's Chest" }
 function Items.chestName(floor)
+	if Items.ChestNames[floor] then
+		return Items.ChestNames[floor]
+	end
 	local def = Config.Bosses and Config.Bosses[floor]
 	return ((def and def.Short) or ("Floor " .. floor)) .. "'s Chest"
 end

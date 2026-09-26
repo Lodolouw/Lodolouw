@@ -93,3 +93,10 @@ local ColosseumService = load("ColosseumService", 3)
 if CombatService and PlayerService then
 	start("ColosseumService", ColosseumService and ColosseumService.Start, CombatService, PlayerService)
 end
+
+-- The intro: a brand-new player's first fight, Oozlet, by the fountain (needs
+-- combat and player data; started last, so nothing else ever waits on it)
+local IntroService = load("IntroService", 3)
+if CombatService and PlayerService then
+	start("IntroService", IntroService and IntroService.Start, CombatService, PlayerService)
+end

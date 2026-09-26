@@ -56,6 +56,24 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   work: `Bosses/_Template.lua` and `BossBodies/_Template.lua` plugged in as
   a pretend third boss, fought to the death with the real BossService and
   BossClient.
+- `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
+  real PlayerService, CombatService and IntroService run Oozlet's fight and
+  the real IntroClient draws it, on a little lobby (the plaza, the fountain,
+  the island, a tree, a shop with a sign, the Spire). It checks the dark
+  (what stays lit, what hides, the black box, the mist, the screens and
+  Roblox buttons hidden, other players hidden, the camera held in), the
+  words building up letter by letter, Oozlet hopping and bumping you, the
+  first punch waking it (through CombatService's own remote), the lesson
+  slam following you until you roll, the crack, the pop, the rewards, that
+  you never drop below 30% health, and the reveal putting everything back.
+  `-a full detail` prints every change of words and move; `-a skip` is a
+  returning player (no intro); `-a fail` is a screen that breaks mid-intro
+  (everything back, no reward).
+- `intro_snaps.luau` + `render_intro.py` - the intro's preview picture
+  (`Docs/intro_preview.png`): the real lobby and the real intro, four
+  moments (the dark, the lesson, the reveal, the Spire) drawn with what's
+  on the screen: `luau intro_snaps.luau > snaps.txt`, then
+  `python3 render_intro.py snaps.txt out.png`.
 - `lobby_count.luau` - builds the whole lobby with the real LobbyBuilder and
   counts parts, shadow-casting parts, lights and Neon per piece (`-a client`
   also runs RetroWorld and counts its detail; `-a names` lists the island's

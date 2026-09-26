@@ -21,6 +21,9 @@
 	  * A green stamina bar sits above your health: punching and rolling use
 	    it, and it refills when you stop.
 	  * Damage numbers, a red flash when you're hit, and YOU DIED.
+	  * In the intro (fighting Oozlet: the "Intro" attribute) it's all on too,
+	    but with nothing on screen except the phone's ROLL button - stamina
+	    is free there (the server agrees), so there's no bar to watch.
 
 	The server (CombatService) has the final say on stamina, invincibility,
 	damage and healing - this script just makes it feel instant.
@@ -379,7 +382,9 @@ local punchStartedAt = 0
 local savedWalkSpeed = nil
 
 local function spendLocal(amount)
-	stamina = math.max(0, stamina - amount)
+	if not player:GetAttribute("Intro") then -- (the intro: free)
+		stamina = math.max(0, stamina - amount)
+	end
 	lastSpend = os.clock()
 end
 
@@ -2097,16 +2102,20 @@ local function setActive(on)
 	active = on
 	combatUI.Visible = on
 	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	-- (the intro shows nothing but the ROLL button: the big words teach the rest)
+	local intro = player:GetAttribute("Intro") ~= nil
+	stamBack.Visible = not intro
+	flaskBox.Visible = not intro
 	rollBtn.Visible = on and touch
-	flaskBtn.Visible = on and touch
-	hints.Visible = on and not touch
+	flaskBtn.Visible = on and touch and not intro
+	hints.Visible = on and not touch and not intro
 	-- nudge the main HUD's pop-up messages up so they don't sit on the stamina bar
 	local toasts = hudToasts()
 	if toasts then
 		toastHome = toastHome or toasts.Position
 		toasts.Position = on and UDim2.new(0.5, 0, 1, -178) or toastHome
 	end
-	lockBtn.Visible = on and touch
+	lockBtn.Visible = on and touch and not intro
 	if on then
 		stamina, flasks = CC.MaxStamina, CC.Flasks
 		renderStats()
@@ -2120,15 +2129,23 @@ local function setActive(on)
 	end
 end
 
--- on in a Spire arena, and in the Colosseum
+-- on in a Spire arena, in the Colosseum, and fighting Oozlet in the intro
 local function inFight()
+	local intro = player:GetAttribute("Intro")
 	return player:GetAttribute("SpireFloor") ~= nil or player:GetAttribute("Colosseum") == true
+		or intro == "Void" or intro == "Fight"
 end
 player:GetAttributeChangedSignal("SpireFloor"):Connect(function()
 	setActive(inFight())
 end)
 player:GetAttributeChangedSignal("Colosseum"):Connect(function()
 	setActive(inFight())
+end)
+player:GetAttributeChangedSignal("Intro"):Connect(function()
+	-- ("Void" to "Fight" is the same fight going on: nothing to switch)
+	if inFight() ~= active then
+		setActive(inFight())
+	end
 end)
 setActive(inFight())
 

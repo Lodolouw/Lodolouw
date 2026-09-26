@@ -1193,7 +1193,8 @@ local function nextLobbySong()
 end
 
 local function stepLobbyMusic(dt)
-	local want = player:GetAttribute("SpireFloor") == nil
+	-- (quiet in a Spire arena, and in the intro: Oozlet has its own song)
+	local want = player:GetAttribute("SpireFloor") == nil and player:GetAttribute("Intro") == nil
 	if want and not lobbyMusic then
 		nextLobbySong()
 	end

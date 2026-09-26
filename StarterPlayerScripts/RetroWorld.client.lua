@@ -1297,8 +1297,11 @@ RunService.RenderStepped:Connect(function(dt)
 				hush()
 			end
 		end
-		-- (not while the title screen is still up)
-		if not saying and not playerGui:FindFirstChild("RetroTitle") then
+		-- (not while the title screen is still up, nor in the intro's dark)
+		if saying and player:GetAttribute("Intro") then
+			hush()
+		end
+		if not saying and not playerGui:FindFirstChild("RetroTitle") and not player:GetAttribute("Intro") then
 			for _, s in ipairs(spots) do
 				local d = (pos - V3(s.at.X, 0, s.at.Z)).Magnitude
 				if d < s.reach and now - (lastSaid[s.key] or -1e9) > (W.Repeat or 150) then

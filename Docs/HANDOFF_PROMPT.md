@@ -83,6 +83,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - **The farm:** a Stardew-style farm with a cottage, crop rows, a windmill with 8-bit stepped spinning sails, a coop, a well and a scarecrow. The entrance is open, with no gate.
 - **Quest Board:** daily quests, pick 1 of 3.
 - **Walk-up pop-ups (no "press E"):** every station opens by walking up to it. LobbyBuilder's `autoZone(parent, cf, size, attr, value)` makes an invisible box tagged `AutoOpenZone` in front of each one: the shops (attribute `Panel`, watched by Hud), the Spire's doors and fog gates (attribute `Spire`, SpireClient), and the Quest Board and the Colosseum's two doors (attribute `Activity` = `Quests` / `ColosseumEnter` / `ColosseumLeave`, LobbyActivities' "Walk up and it pops up"). The rules are the same everywhere: step in and it opens, step out and it closes (2 studs of slack so it doesn't flicker); close it yourself and it stays closed until you step out and back in. In LobbyActivities, a box you *arrive* in (popping out of the Colosseum's little door, a respawn) also waits until you step out and back. The boxes stop short of the roads, so walking past doesn't open them. The shops' and the Spire's old prompts still exist but are switched off on each screen (`Enabled = false`); the Quest Board and the Colosseum have none. Preview: `Docs/walkup_popups.png`.
+- **The intro (Oozlet) ✅:** a brand-new player's first minute - see "The intro: Oozlet" below.
 - **The mini sand-castle Colosseum:** this is where the old training field / training yard was. **The old training yard dummies are gone.** Power now comes from the Colosseum (plus bosses and quests).
 - **Spire floors:**
   - Floor 1: "Oozark's Hollow", the slime pit.
@@ -136,7 +137,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 
 **ReplicatedStorage/**
 - `Config.lua`: ALL the tuning numbers (levels, colosseum, bosses, combat, spire, retro look).
-- `Items.lua`: gear rarities, stats, sets and loot tables.
+- `Items.lua`: gear rarities, stats, sets and loot tables. "Floor" 0 is Oozlet's Chest (the intro's starter gear, level 1: Squishy Gloves, Bouncy Boots, Oozlet Cap, Goo Vest).
 - `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Nahrzul.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
 
 **ServerScriptService/**
@@ -152,12 +153,14 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
   - `Nahrzul.lua` (floor 2, the worm; "Mireworm" in older code): its whole way of fighting (hunting by sound under the sand, its attacks, its every-frame step) and hooks (`brain`, `step`, `onBuild`, `onReset`, `onHome`, `onDie`, `onBreak`).
   - `_Template.lua`: NOT a boss: the starting point for a new one (see "Adding a boss").
 - `SpireService.lua`, `DunesBuilder.lua`: the Spire's menu and travel, and floor 2's arena.
+- `IntroService.lua`: the intro's fight, all decided on the server (see "The intro: Oozlet").
 
 **StarterPlayerScripts/** (LocalScripts)
 - `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying.
   It has about **192 top-level locals** — same rule: use `do ... end` blocks.
 - `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door and the "Leave?" check at its exit, the walk-up pop-ups (no "press E"), the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: what every boss's visuals share: the drawing kit (8-bit parts, rings, bursts, camera kicks, sounds, warnings, one-off moments on the server's clock), tracking each boss and its pose every frame, the arena weather (acid rain, the dunes' sandstorm), the boss bar, the victory banner, and the music. Each boss's body is in `ReplicatedStorage/BossBodies/` (below).
+- `IntroClient.client.lua`: everything the intro shows (see "The intro: Oozlet").
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`. (`RollDebug`, a temporary roll-debugging tool, was removed.)
 
 **Docs/**: preview images.
@@ -301,6 +304,27 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
 - The gap behind the stands is filled (`StandFill` parts).
 
+## The intro: Oozlet ✅
+
+A brand-new player's first minute, from the growth plan we worked out (step 1: "get a boss into the first minute"). Preview: `Docs/intro_preview.png`. All the numbers and words are in `Config.Intro`.
+
+- **The dark (like Undertale's start):** behind the title screen, the player is put by the fountain (`SpawnAt`) and everything but the fountain and the plaza goes dark - a black box round the plaza on their screen only (Neon black walls, ceiling and floor; solid, so the camera never swings outside it), everything outside it hidden with `LocalTransparencyModifier` (and what's stuck on those parts: decals, signs, sparkles), the air turned black, and pale 8-bit mist blocks drifting at the edge (they melt when the camera's close). No HUD or other screens, none of Roblox's buttons, no other players, no music; the camera can't zoom out past `Zoom`; an invisible fence keeps you on the plaza.
+- **Oozlet:** Oozark's baby - a blocky green slime with big eyes, rosy cheeks and a tiny gold crown - happily hopping round the fountain. Stand still for `Bump` seconds and it hops over and bumps you (a heart pops up).
+- **The words:** HIT THE SLIME! builds up letter by letter (each letter scrambles through symbols, then locks in with a blip), a pause, then the "!" slams down with a BOOM. Then the words throb like a heartbeat and flash, and react: AGAIN! HARDER! YES!! KEEP GOING!! ... ROLL!! ... NICE ROLL! ... IT'S CRACKING! ... FINISH IT!!! A small line underneath says how (click / tap / gamepad). Punch before the words are up and they snap in, BOOM and all.
+- **The fight** (IntroService decides everything; Oozlet has your UserId as `Owner`, so it's only yours):
+  - Your first punch wakes it: angry face, a "!", its bar drops in at the top, its song starts (`Music`: the first of "Oozlet Song", "Slime boss song", "Colosseum Song" in SoundService).
+  - **The lesson:** its first slam leaps up over you and hangs above a red circle (it can't be hit up there) until you ROLL - walk away and it drifts over you again. On phones the ROLL button throbs. Then it drops, dizzy: NOW HIT IT! (After 12s it gives up and drops anyway; after two tries it moves on.)
+  - Then it hops after you and slams when you're close (a red circle fills as it rises).
+  - At half health it **cracks** (can't be hurt for a moment, pushes you back, cracks glow on its shell) and gets faster, sometimes **bouncing** at you three times (a small red circle each).
+  - It never takes you below `Floor` (30%) of your health: **you can't lose**. Stamina is free (there's no stamina bar in the intro).
+  - It **pops** into pixels, its crown bounces away, and a **chest** drops out of the sky and bursts open: +1 OOZLET'S CHEST.
+- **The reveal:** the mist rolls back over `Reveal.Time` seconds and the lobby builds itself round you - the island's ground unrolls under the mist and every piece pops in (in 8-bit steps) as it passes. Then the screen blinks, and we're past the castle walls looking up at **the Spire building itself out of nothing**, bottom to top: BOOM, **OOZARK AWAITS...** A blink back, and everything returns: your HUD (LEVEL UP!), the music, the other players.
+- **Rewards:** Oozlet's Chest and 100 coins when it pops; enough Power to be at least level 3 once the lobby is back; full health; a toast saying to open the chest in your bag.
+- **Who gets it:** brand-new players only (`IntroDone` in their save; an old save with any Power counts as done). **In Studio every Play shows it while `Config.Intro.AlwaysInStudio = true`** - set it false to test the normal start.
+- **Never stuck:** if the fight breaks on the server, or anything breaks on the player's screen, everything is put back and they play on normally (no reward; they get the intro next time).
+- **How it plugs in:** the player attribute `Intro` = `"Void"` (dark, Oozlet happy) / `"Fight"` / `"Reveal"` / nil (over), and `IntroChecked` once the server has decided. CombatService and CombatClient fight while it's "Void" or "Fight"; BossClient keeps the lobby music off, LobbyActivities keeps its pop-ups shut, RetroWorld keeps its flavour text quiet while `Intro` is set. The screen tells the server only "IntroLook" (I can see: the bump waits for it), "IntroDone" (the reveal's finished) and "IntroFailed" (Actions).
+- **Sounds** (by name in SoundService, each with a built-in Roblox fallback): Blip "UI Blip", Boom "Boss Slam", Hop "Dummy Land", Squish "Boss Splat", Wake "Boss Wake", Slam "Boss Slam", Crack "Boss Break", Pop "Boss Death"/"Dummy Poof", Chest "Reward Pop", Win "Quest Complete", Awaits "Boss Wake". Add a Sound named **"Oozlet Song"** for its own music.
+
 ## Everything we've built and decided so far (history)
 
 ### Lobby and world
@@ -368,7 +392,9 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 4. **Juice** (skipped for now, maybe later): the crowd cheering kills, throwing hearts (heal pickups) and coin bags onto the sand. (The wave horn already exists.)
 5. ~~**Reward feel**~~ ✅ Done: coins and XP fly from the dummy to you (see "Reward feel" above). **No chest drops**: chests are being reworked later.
 
-**Next (I asked for it): more bosses** (my goal is 20+). The code split is done (see "Adding a boss"); Floor 3 (level 45) is next. Ideas I was offered: a frost giant (icy cavern, slippery floor, falling icicles, a freezing breath sweep), a haunted knight (a souls-like sword duel with a parry window and ghost copies in phase 2), or a mechanical golem (a forge, conveyor belts, a weak spot on its back). Ask me which.
+**Growth plan (we worked it out together, step by step):** the big risk was a new player's first minutes - the name promises a boss, but the first real one (Oozark) is level 15. Step 1, a boss in the first minute, is done: the intro (above). **Step 2 is next: the gap after it** - you finish the intro at level 3 and the Spire says level 15, so you farm dummies for a long time. We haven't decided how to close it yet.
+
+**Also asked for: more bosses** (my goal is 20+). The code split is done (see "Adding a boss"); Floor 3 (level 45) is next. Ideas I was offered: a frost giant (icy cavern, slippery floor, falling icicles, a freezing breath sweep), a haunted knight (a souls-like sword duel with a parry window and ghost copies in phase 2), or a mechanical golem (a forge, conveyor belts, a weak spot on its back). Ask me which.
 
 ### Adding a boss
 1. Copy `ServerScriptService/Bosses/_Template.lua` and `ReplicatedStorage/BossBodies/_Template.lua`, naming both copies after the new boss's short name (e.g. `Frostjaw.lua`). Their headers explain everything.
@@ -382,7 +408,8 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 - Before pushing, compile-check every changed file with a Luau compiler (`luau-compile`) and run `luau-analyze`.
 - Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before. They're now in `Tools/HeadlessTests/` (`./run_all.sh`); add new tests there.
 - **Changing boss code without changing the fights** (a cleanup, a split): run `./golden.sh check` before and after - it replays 16 recorded boss fights (server decisions and hits, and a fingerprint of everything drawn on screen) and fails on any difference. Only when a change is MEANT to change a boss, re-record with `./golden.sh record` (and say so in the commit).
+- **The intro:** `test_intro.luau` plays it end to end with the real server and screen scripts (`-a skip`: a returning player; `-a fail`: a broken screen). `luau intro_snaps.luau > snaps.txt` then `python3 render_intro.py snaps.txt out.png` draws the four-picture preview from the real lobby.
 - `mount.luau` loads the game's scripts into the mock the way Rojo lays them out (folders and all), so scripts that require each other by their place in the game work in tests.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files. The Colosseum polish plan is done and the boss code is split; I chose **more bosses** next - ask me which Floor 3 boss (see "Next" above). Other ideas for later: the chest rework, pets, a settings menu; the tutorial comes last.
+Start by reading `ReplicatedStorage/Config.lua` (the `Intro`, `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files. The Colosseum polish plan is done, the boss code is split, and the intro (Oozlet) is in. Next: step 2 of the growth plan (the gap between the intro and Oozark - ask me), and more bosses (ask me which Floor 3 boss). Other ideas for later: the chest rework, pets, a settings menu.

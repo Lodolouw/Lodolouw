@@ -845,6 +845,155 @@ Config.Audio = {
 	Victory = 0.6, -- the sting when it falls
 }
 
+----------------------------------------------------------------------
+-- THE INTRO: OOZLET (a brand-new player's first minute)
+----------------------------------------------------------------------
+-- A new player wakes up in the dark, like the start of Undertale: only the
+-- fountain and the plaza round it are there, with 8-bit mist all round and
+-- nothing else - no buttons, no bars, no other players. Oozlet, a baby
+-- slime (Oozark's little one), is happily hopping round the fountain. Big
+-- pixel letters build up one by one - HIT THE SLIME! - and the "!" lands
+-- with a BOOM. Punch it and it gets angry: a short, easy fight that
+-- teaches punching and rolling (its first slam waits up in the air until
+-- you roll out of the red), it cracks at half health, and then it pops.
+-- It drops your first chest, the mist rolls back and the lobby builds
+-- itself around you, piece by piece - and the Spire last: OOZARK AWAITS...
+-- You can't lose (Oozlet never takes you below Floor of your health), and
+-- only brand-new players get it (beating it is saved). IntroService runs
+-- the fight; IntroClient draws all of it, on that player's screen only.
+Config.Intro = {
+	On = true, -- false: nobody gets the intro (new players start in the lobby)
+	-- In Studio, every Play starts with the intro so you can see it (even with
+	-- your own save). Set false and Studio works like the real game: only a
+	-- brand-new player gets it.
+	AlwaysInStudio = true,
+
+	-- Where it happens
+	Center = Vector3.new(0, 0, 0), -- the fountain: the middle of the lit circle
+	Radius = 23.5, -- how far out the light reaches (the plaza is 23 studs from the middle)
+	Wall = 24.5, -- you can't walk out past this while it's dark
+	SpawnAt = Vector3.new(0, 0, 17), -- where you wake up (facing the fountain)
+	Zoom = 26, -- how far the camera can pull back while it's dark (so the dark never ends)
+
+	Oozlet = {
+		Name = "OOZLET", -- on its health bar
+		Health = 12, -- punches from a brand-new player (each of their punches does 1)
+		Size = 4.6, -- studs across
+		Hitbox = 2.6, -- how close to its middle a punch counts
+		Color = Color3.fromRGB(99, 199, 77), -- the slime
+		DeepColor = Color3.fromRGB(62, 137, 72), -- deeper inside it
+		HeartColor = Color3.fromRGB(254, 231, 97), -- the little glowing heart in the middle
+		CheekColor = Color3.fromRGB(246, 117, 122), -- rosy cheeks (while it's happy)
+		CrownColor = Color3.fromRGB(254, 231, 97), -- its tiny crown (it's a prince)
+
+		-- HAPPY (before you hit it): little hops round the fountain on a circle
+		Circle = 13.5, -- studs from the fountain's middle
+		HappyHop = 0.42, -- seconds a hop takes
+		HappyHeight = 2.2, -- how high it hops
+		HappyStep = 3.4, -- how far one hop goes
+		HappyRest = { 0.2, 0.45 }, -- the pause between hops (seconds, lowest-highest)
+		Bump = 10, -- stand still this long and it hops over and bumps you (it's harmless)
+		WakeTime = 1.3, -- seconds it takes to get angry after your first punch
+
+		-- ANGRY: it hops after you...
+		HopTime = 0.45,
+		HopHeight = 3,
+		HopLength = 6.5,
+		Rest = { 0.35, 0.7 },
+		-- ...and slams when you're close: it rises up while a red circle fills
+		-- round it, then comes down. Out of the circle (or rolling) = safe.
+		SlamReach = 6, -- it slams when you're this close
+		SlamTell = 0.95, -- seconds from the circle appearing to the landing
+		SlamRadius = 6.5,
+		SlamRise = 3.5, -- how high it rises
+		SlamDamage = 0.12, -- share of your max health
+		SlamRecover = 0.8, -- it stays squished on the ground this long after: hit it!
+
+		-- ITS FIRST SLAM IS THE LESSON: it leaps up over you and HANGS in the air
+		-- above a red circle (it can't be hit up there) until you roll out of
+		-- the red - or walk out. Then it drops, and it's dizzy: hit it!
+		Lesson = {
+			Height = 7, -- how high it hangs
+			Rise = 0.7, -- seconds to get up there
+			Radius = 7, -- the red circle
+			Wait = 12, -- the longest it hangs there (then it just drops)
+			Drop = 0.2, -- seconds to come down
+			Dizzy = 1.6, -- seconds it's dizzy after
+		},
+
+		-- AT HALF HEALTH IT CRACKS: it can't be hurt for a moment, its shell
+		-- bursts (pushing you back, no harm), and it gets faster...
+		Crack = { Time = 1.4, Push = 9 },
+		Cracked = { HopTime = 0.36, Rest = { 0.18, 0.4 }, SlamTell = 0.8 },
+		-- ...and sometimes it BOUNCES at you three times in a row, each one
+		-- landing in a small red circle
+		Bounce = {
+			Count = 3,
+			Time = 0.6, -- each bounce (the circle shows for this long before it lands)
+			Height = 4,
+			Length = 9, -- furthest one bounce goes
+			Radius = 4.5,
+			Damage = 0.08,
+			Tired = 1.1, -- it's out of breath after: hit it!
+			Chance = 0.4, -- how often it picks this (0-1)
+		},
+
+		Floor = 0.3, -- it never takes you below this share of your health: you can't lose
+	},
+
+	-- The words (capitals look best in the pixel font)
+	Text = {
+		Hit = "HIT THE SLIME!", -- built up letter by letter at the start
+		Hits = { "AGAIN!", "HARDER!", "YES!!", "KEEP GOING!!" }, -- a new one each punch
+		Roll = "ROLL!!", -- while it hangs over you
+		Rolled = "NICE ROLL!",
+		Stepped = "DODGED!",
+		Ouch = "OUCH! ROLL!!", -- it waited and landed on you
+		Dizzy = "NOW HIT IT!",
+		Crack = "IT'S CRACKING!",
+		Finish = "FINISH IT!!!", -- one or two punches left
+		Awaits = "OOZARK AWAITS...", -- at the end, looking at the Spire
+		-- the little line under the big words: how, on each kind of controls
+		PunchHow = { Mouse = "CLICK TO PUNCH", Touch = "TAP TO PUNCH", Gamepad = "PRESS R2 TO PUNCH" },
+		RollHow = { Mouse = "PRESS SHIFT TO ROLL", Touch = "TAP ROLL", Gamepad = "PRESS B TO ROLL" },
+	},
+
+	-- The end: the mist rolls back and the lobby builds itself round you
+	Reveal = {
+		Delay = 3.6, -- seconds after Oozlet pops before the mist starts to go (the chest lands and opens)
+		Time = 8, -- how long the mist takes to roll back across the whole island
+		Reach = 600, -- how far it rolls (past the island's edge)
+		Spire = 3.4, -- the look at the Spire at the very end (OOZARK AWAITS...)
+	},
+
+	-- What beating it gives you
+	Reward = {
+		Chest = true, -- Oozlet's Chest: starter gear anyone can wear (Items, "floor" 0)
+		Coins = 100, -- enough for a first upgrade
+		Level = 3, -- you're at least this level after
+	},
+
+	-- The fight's music: the first of these Sounds that's in SoundService
+	Music = { "Oozlet Song", "Slime boss song", "Colosseum Song" },
+	MusicVolume = 0.45,
+	-- Its sounds: the first name on each list that's in SoundService (capitals
+	-- and spaces don't matter). If none of them is there, a built-in Roblox
+	-- sound plays instead, so it's never silent.
+	Sounds = {
+		Blip = { "UI Blip" }, -- each letter locking in
+		Boom = { "Boss Slam" }, -- the "!" landing
+		Hop = { "Dummy Land" }, -- Oozlet landing a hop
+		Squish = { "Boss Splat" }, -- Oozlet getting punched
+		Wake = { "Boss Wake" }, -- Oozlet getting angry
+		Slam = { "Boss Slam" }, -- its slams landing
+		Crack = { "Boss Break" }, -- its shell cracking
+		Pop = { "Boss Death", "Dummy Poof" }, -- the end of it
+		Chest = { "Reward Pop" }, -- the chest landing and opening
+		Win = { "Quest Complete" },
+		Awaits = { "Boss Wake" }, -- the Spire appearing
+	},
+}
+
 Config.Bosses = {
 	[1] = {
 		Name = "Oozark, the Gelatinous Tyrant",

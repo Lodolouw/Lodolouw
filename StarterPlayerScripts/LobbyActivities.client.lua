@@ -2133,8 +2133,9 @@ do
 			return
 		end
 		lastLook = now
-		if piping then
-			settle = true -- (going down the pipe, or popping out of it)
+		if piping or player:GetAttribute("Intro") then
+			settle = true -- (going down the pipe, or popping out of it; or in the intro's dark)
+			closeActive()
 			return
 		end
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
