@@ -478,7 +478,7 @@ local function enter(player)
 	end)
 	local doorGround = door and groundBelow(door.Position, char) or root.Position
 	local inside = groundBelow(spawnAt.Position, char)
-	allowMove(player, inside, pipeTime() + 3) -- (their own screen makes this jump)
+	allowMove(player, inside, pipeTime() + 5) -- (their own screen makes this jump)
 	send(player, "PipeIn", doorGround, spawnAt.CFrame, inside)
 	task.wait(pipeTime())
 	going[player] = nil
@@ -512,7 +512,7 @@ local function leave(player)
 	local exitPrompt = CollectionService:GetTagged("ColosseumExit")[1]
 	local exitDoor = exitPrompt and exitPrompt.Parent
 	local root = rootOf(player)
-	if not root or (exitDoor and exitDoor:IsA("BasePart") and (root.Position - exitDoor.Position).Magnitude > 24) then
+	if not root or (exitDoor and exitDoor:IsA("BasePart") and (root.Position - exitDoor.Position).Magnitude > 32) then
 		return
 	end
 	endSession(player)
@@ -534,7 +534,7 @@ local function leave(player)
 	end)
 	local _, _, char = rootOf(player)
 	local outside = groundBelow(back.Position, char)
-	allowMove(player, outside, pipeTime() + 3) -- (their own screen makes this jump)
+	allowMove(player, outside, pipeTime() + 5) -- (their own screen makes this jump)
 	send(player, "PipeOut", back.CFrame, outside)
 	task.wait(pipeTime())
 	going[player] = nil

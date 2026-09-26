@@ -277,6 +277,10 @@ local function loadData(player)
 		end
 		if locked then
 			lockedTries = lockedTries + 1
+		elseif attempt >= 2 then
+			-- (DataStores not reachable - e.g. Studio without API access: play
+			-- straight away without saving, rather than waiting on it)
+			return nil, false, false
 		end
 		if not player.Parent then
 			return nil, false, false
@@ -1112,24 +1116,27 @@ end
 -- the sea washing you back) are allowed: whatever moves a player sets
 --   player:SetAttribute("MoveTo", destination)
 --   player:SetAttribute("MoveUntil", workspace:GetServerTimeNow() + seconds)
--- first, and a jump to within MOVE_TO_SLACK studs of that spot is fine.
+-- first, and for that long the player isn't judged (then starts fresh from
+-- wherever the move put them).
 -- (A client can't set those: attributes a client sets never reach the server.)
 local TELEPORT_STUDS = 60
 local SPEED_WINDOW = 3
 local SPEED_SLACK = 12 -- studs a second on top of walk speed * 1.35
 local FLY_SECONDS = 2.5
-local MOVE_TO_SLACK = 45
 local guard = setmetatable({}, { __mode = "k" })
 
 local function flatMag(v)
 	return Vector3.new(v.X, 0, v.Z).Magnitude
 end
 
+-- (while a move the server started is under way, the player isn't judged at
+-- all - their screen may take a moment to get them there, and network lag
+-- mustn't snap them back mid-trip - and once it's over, wherever they are
+-- is their new starting point)
 local function sanctioned(player, pos)
 	local to = player:GetAttribute("MoveTo")
 	local untilT = player:GetAttribute("MoveUntil")
 	return typeof(to) == "Vector3" and type(untilT) == "number" and workspace:GetServerTimeNow() <= untilT
-		and (pos - to).Magnitude <= MOVE_TO_SLACK
 end
 
 local function checkMovement(player, dt)
