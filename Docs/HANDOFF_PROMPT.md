@@ -82,6 +82,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - **Pet Sanctuary tower:** built, but **empty** (pets aren't made yet).
 - **The farm:** a Stardew-style farm with a cottage, crop rows, a windmill with 8-bit stepped spinning sails, a coop, a well and a scarecrow. The entrance is open, with no gate.
 - **Quest Board:** daily quests, pick 1 of 3.
+- **Walk-up pop-ups (no "press E"):** every station opens by walking up to it. LobbyBuilder's `autoZone(parent, cf, size, attr, value)` makes an invisible box tagged `AutoOpenZone` in front of each one: the shops (attribute `Panel`, watched by Hud), the Spire's doors and fog gates (attribute `Spire`, SpireClient), and the Quest Board and the Colosseum's two doors (attribute `Activity` = `Quests` / `ColosseumEnter` / `ColosseumLeave`, LobbyActivities' "Walk up and it pops up"). The rules are the same everywhere: step in and it opens, step out and it closes (2 studs of slack so it doesn't flicker); close it yourself and it stays closed until you step out and back in. In LobbyActivities, a box you *arrive* in (popping out of the Colosseum's little door, a respawn) also waits until you step out and back. The boxes stop short of the roads, so walking past doesn't open them. The shops' and the Spire's old prompts still exist but are switched off on each screen (`Enabled = false`); the Quest Board and the Colosseum have none. Preview: `Docs/walkup_popups.png`.
 - **The mini sand-castle Colosseum:** this is where the old training field / training yard was. **The old training yard dummies are gone.** Power now comes from the Colosseum (plus bosses and quests).
 - **Spire floors:**
   - Floor 1: "Oozark's Hollow", the slime pit.
@@ -149,7 +150,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 **StarterPlayerScripts/** (LocalScripts)
 - `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying.
   It has about **192 top-level locals** — same rule: use `do ... end` blocks.
-- `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door, the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
+- `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door and the "Leave?" check at its exit, the walk-up pop-ups (no "press E"), the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: boss visuals (8-bit PIXEL mode).
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`. (`RollDebug`, a temporary roll-debugging tool, was removed.)
 
@@ -178,6 +179,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - **Always warm up assets** so nothing stalls or plays silent the first time: preload new sounds, music, animations and textures with `ContentProvider:PreloadAsync` (like BossClient's `warmSounds`, CombatClient's `warmAnimations` and LobbyActivities' Colosseum warm-up).
 - Sounds: you can't upload audio. The code plays Sounds **by name from SoundService** (for example "UI Blip", "Punch 1".."Punch 4", "Roll", "Hurt 8-Bit"). I add sounds from the Toolbox and rename them. When you add sound hooks, tell me the exact names.
 - **Bosses come last**, after the Colosseum polish.
+- **No "press E" prompts** (they aren't mobile friendly): things pop up when you walk close to them. See "Walk-up pop-ups" in "What exists now" above.
 
 ## Security rules (always keep these)
 
@@ -202,9 +204,9 @@ A wave arena for farming XP and coins.
 
 ### Getting in and out
 - In the lobby there's a small sand-castle colosseum.
-- Press **E** at its little door and the **difficulty pop-up** opens (see "Difficulty" below). Pick one, press **ENTER**, and you shrink bit by bit, Mario-pipe style, and appear inside the real arena far away (centre `(-2600, 0, 0)`, radius 82, built at 2.6× scale by the same `sandColosseum` function). The door's prompt (tag `ColosseumEntrance`) only opens the pop-up; the server sends you in only through the ENTER button's Action "ColosseumEnter".
+- Walk onto the bridge to its little door and the **difficulty pop-up** opens (see "Difficulty" below). Pick one, press **ENTER**, and you shrink bit by bit, Mario-pipe style, and appear inside the real arena far away (centre `(-2600, 0, 0)`, radius 82, built at 2.6× scale by the same `sandColosseum` function). There's no prompt: the bridge has a walk-up box (`Activity` = "ColosseumEnter"), and the server sends you in only through the ENTER button's Action "ColosseumEnter".
 - The client does the teleport animation (`PipeIn`/`PipeOut` events). The server sets `MoveTo`/`MoveUntil` first.
-- Press **E** at the exit gate to leave (it heals you).
+- Walk up to the exit gate and a small **"LEAVE THE COLOSSEUM?"** check pops up (LobbyActivities `LeaveCheck`, ScreenGui `ColosseumLeaveCheck`: "Your run ends here.", STAY / LEAVE; walk-up box `Activity` = "ColosseumLeave", 5 studs deep in front of the gate, so where you arrive, 8 studs in, is outside it). LEAVE calls the Action **"ColosseumLeave"**: the server's `canLeave` only allows it within 32 studs of the gate (the gate part is tagged `ColosseumExit`), unless the run is cleared (then the CLEARED screen's LEAVE works from anywhere). Walking out heals you.
 - If you die in there, you respawn in the lobby.
 
 ### Quest
@@ -265,7 +267,7 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
   - **Nightmare** (red): x2 health, x2 damage, +2 dummies per wave, 30% faster, **the King is angry from the start**, pays x3.5.
   - "Pays" multiplies everything the run pays: each kill, the quest and the first clear of the day.
 - **Unlocks:** Normal is always open; each one opens after clearing a run on the one before (`Config.colosseumUnlocked(data.Colosseum, id)`, used on both server and client). The CLEARED screen says "NIGHTMARE UNLOCKED!" when a clear opens one.
-- **Picking, going in:** press E at the mini colosseum's little door in the lobby and a **pop-up** opens (LobbyActivities `DifficultyMenu`, ScreenGui `ColosseumDifficulty`): a card per difficulty with what it does, what it pays, your clears and best time on it, and PICK / PICKED / LOCKED ("Clear a HARD run first"). Clicking a card (or its button) only picks it on your screen; the one you went in on last time starts picked. The big **ENTER** button (in the picked one's colour) calls the Action **"ColosseumEnter"** with the pick: the server checks you can go in (`canEnter`: beside the door, not already in or on the way) and that the pick is open to you (`PlayerService.SetColosseumPick` validates and saves `data.Colosseum.pick`), then sends you down the pipe; if it refuses, the pop-up stays open and says why. It closes with the X, when you walk more than `EnterRange` + 4 studs from the door, or as you go in. Preview: `Docs/difficulty_menu.png`.
+- **Picking, going in:** walk up to the mini colosseum's little door in the lobby (onto its bridge) and a **pop-up** opens (LobbyActivities `DifficultyMenu`, ScreenGui `ColosseumDifficulty`): a card per difficulty with what it does, what it pays, your clears and best time on it, and PICK / PICKED / LOCKED ("Clear a HARD run first"). Clicking a card (or its button) only picks it on your screen; the one you went in on last time starts picked. The big **ENTER** button (in the picked one's colour) calls the Action **"ColosseumEnter"** with the pick: the server checks you can go in (`canEnter`: beside the door, not already in or on the way) and that the pick is open to you (`PlayerService.SetColosseumPick` validates and saves `data.Colosseum.pick`), then sends you down the pipe; if it refuses, the pop-up stays open and says why. It closes with the X, when you step off the bridge, or as you go in. Preview: `Docs/difficulty_menu.png`.
 - **Picking the next run:** the difficulty buttons on the CLEARED screen call the Action "ColosseumDifficulty" (saved the same way). A run keeps the difficulty it started on: a pick made mid-run (only a modded client could) waits for the next run. Preview: `Docs/colosseum_cleared_hard.png`.
 - **Screen:** the wave box shows the run's difficulty after the wave ("WAVE 3/5  HARD", RichText, in its colour, with a border in its colour), and a new run's banner says "HARD RUN BEGINS!".
 - (The DIFFICULTY board that stood beside the arena's exit gate is gone: the pop-up replaced it.)

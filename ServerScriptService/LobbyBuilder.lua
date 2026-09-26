@@ -6078,29 +6078,23 @@ local Extras = (function()
 		return base * CFrame.new((D * CFrame.new(0, 0, 3.05)).Position * s) * (D - D.Position), door
 	end
 
-	-- The little one in the lobby: the way in. Press E at its door and you
+	-- The little one in the lobby: the way in. Walk onto the bridge to its door
+	-- and the difficulty pop-up opens (LobbyActivities); press ENTER and you
 	-- shrink down into it, bit by bit, like going down a pipe (ColosseumService).
 	local function buildColosseumGate(parent)
 		local f = folder(parent, "ColosseumGate")
 		local C = Config.Colosseum
-		local doorCF, door = sandColosseum(f, C.LobbyModel, 1, C.GateTurn or 90, false)
+		local doorCF = sandColosseum(f, C.LobbyModel, 1, C.GateTurn or 90, false)
 		titleSign(f, doorCF * CFrame.new(0, 24, 0), "COLOSSEUM", nil, RGB(254, 174, 52), 300, 110)
 		-- a sand path and a plank bridge over the moat, up to the door
 		part(f, "GatePath", V3(5, 0.4, 14), doorCF * CFrame.new(0, 0.2, 7), RGB(190, 128, 88), Mat.SmoothPlastic)
 		for z = 2.5, 6.5, 1 do
 			part(f, "Plank", V3(6, 0.4, 0.8), doorCF * CFrame.new(0, 0.55, z), (z % 2 == 0.5) and SAND_DARK or RGB(158, 104, 66), Mat.WoodPlanks)
 		end
-		local pp = Instance.new("ProximityPrompt")
-		pp.Name = "ColosseumPrompt"
-		pp.ActionText = "Enter"
-		pp.ObjectText = "Colosseum"
-		pp.HoldDuration = 0
-		pp.MaxActivationDistance = 12
-		pp.KeyboardKeyCode = Enum.KeyCode.E
-		pp.GamepadKeyCode = Enum.KeyCode.ButtonX
-		pp.RequiresLineOfSight = false
-		pp.Parent = door
-		CollectionService:AddTag(pp, "ColosseumEntrance")
+		-- (no "press E": step onto the bridge - this invisible box - and the
+		-- difficulty pop-up opens. It only just reaches the road's edge, so
+		-- walking past along the road doesn't open it.)
+		autoZone(f, doorCF * CFrame.new(0, 4, 3.75), V3(8, 8, 6.5), "Activity", "ColosseumEnter")
 		-- the door's spot on the ground (you shrink into it) and where you pop back out
 		local doorSpot = anchorPart(f, "ColosseumDoor", doorCF * CFrame.new(0, 1, 0.35))
 		CollectionService:AddTag(doorSpot, "ColosseumDoor")
@@ -6150,25 +6144,21 @@ local Extras = (function()
 			})
 		end
 		titleSign(f, doorCF * CFrame.new(0, 10 * s, 0), "EXIT", nil, RGB(255, 255, 255), 160, 90)
-		local pp = Instance.new("ProximityPrompt")
-		pp.ActionText = "Leave"
-		pp.ObjectText = "Colosseum"
-		pp.HoldDuration = 0.4
-		pp.MaxActivationDistance = 14
-		pp.KeyboardKeyCode = Enum.KeyCode.E
-		pp.GamepadKeyCode = Enum.KeyCode.ButtonX
-		pp.RequiresLineOfSight = false
-		pp.Parent = door
-		CollectionService:AddTag(pp, "ColosseumExit")
+		-- the way out (ColosseumService only lets you leave from beside it)
+		CollectionService:AddTag(door, "ColosseumExit")
+		-- (no "press E": walk up to the gate - this invisible box, 5 studs
+		-- deep in front of it, level with the sand - and a "Leave?" check
+		-- pops up (LobbyActivities). Where you arrive, 8 studs in, is outside it.)
+		autoZone(f, doorCF * CFrame.new(0, 1.3 * s + 4, 2.5), V3(12, 8, 5), "Activity", "ColosseumLeave")
 		-- where you arrive: in front of the door, looking in
 		local spawnAt = anchorPart(f, "ColosseumSpawn", CFrame.lookAt(doorCF.Position + doorCF.LookVector * -8 + V3(0, 3, 0), C.Center + V3(0, 3, 0)))
 		CollectionService:AddTag(spawnAt, "ColosseumSpawn")
 	end
 
 	-- The Quest Board: a wooden notice board with a little roof, by the road
-	-- between the plaza and the training field. Walk up and press E: your own
-	-- quest menu opens on your screen (LobbyActivities client script). A gold "!" hovers over it when you have a reward
-	-- waiting.
+	-- between the plaza and the training field. Walk up to it and your own
+	-- quest menu pops up on your screen (LobbyActivities client script). A
+	-- gold "!" hovers over it when you have a reward waiting.
 	local function buildQuestBoard(parent)
 		local f = folder(parent, "QuestBoard")
 		local O = CFrame.new(Config.Stations.Quests) * CFrame.Angles(0, math.rad(Config.StationTurn.Quests or 90), 0)
@@ -6180,18 +6170,10 @@ local Extras = (function()
 		-- the face the notes are drawn on (its front is local +Z)
 		local face = part(f, "QuestFace", V3(10.6, 6.2, 0.4), O * CFrame.new(0, 6.4, 0.45), RGB(190, 128, 88), Mat.WoodPlanks)
 		CollectionService:AddTag(face, "QuestFace")
-		-- press E at the board to open your quest menu (LobbyActivities opens it)
-		local pp = Instance.new("ProximityPrompt")
-		pp.Name = "QuestPrompt"
-		pp.ActionText = "Quests"
-		pp.ObjectText = "Quest Board"
-		pp.HoldDuration = 0
-		pp.MaxActivationDistance = 14
-		pp.KeyboardKeyCode = Enum.KeyCode.E
-		pp.GamepadKeyCode = Enum.KeyCode.ButtonX
-		pp.RequiresLineOfSight = false
-		pp.Parent = face
-		CollectionService:AddTag(pp, "QuestPrompt")
+		-- (no "press E": walk onto the grass in front of it - this invisible
+		-- box, reaching just over the curb onto the road - and your quest menu
+		-- opens (LobbyActivities))
+		autoZone(f, O * CFrame.new(0, 4, 6), V3(14, 8, 10), "Activity", "Quests")
 		-- paper notes pinned to it
 		for k = -1, 1 do
 			part(f, "Note", V3(2.6, 3.2, 0.1), O * CFrame.new(k * 3.4, 6.6, 0.7) * CFrame.Angles(0, 0, math.rad(k * 4)), RGB(234, 212, 170), Mat.SmoothPlastic, { CanCollide = false })

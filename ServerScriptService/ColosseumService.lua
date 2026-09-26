@@ -3,12 +3,14 @@
 
 	The Colosseum: a wave arena for farming Power (XP) and coins.
 
-	  * Press E at the little door of the mini colosseum in the lobby: a
+	  * Walk up to the little door of the mini colosseum in the lobby: a
 	    pop-up asks how hard (LobbyActivities). Pick, press ENTER, and you
 	    shrink down into the door, bit by bit, like going down a pipe - and
 	    you're in the Colosseum (far from the lobby), already small enough.
-	    Press E at its EXIT gate and you pop out of the little door tiny and
-	    grow back. Die in there and you're simply back in the lobby.
+	    Walk up to its EXIT gate and a "Leave?" check pops up: LEAVE and you
+	    pop out of the little door tiny and grow back. (No "press E"
+	    anywhere: it isn't mobile friendly.) Die in there and you're simply
+	    back in the lobby.
 	  * Inside, dummies drop in wave after wave. They hop after you, and
 	    when one lands close it winds up a slam: a red ring shows on the sand -
 	    get out of it (or roll through it) before it comes down.
@@ -1696,21 +1698,40 @@ local function enter(player)
 	end)
 end
 
-local function leave(player)
-	local s = sessions[player]
-	if not s or going[player] then
-		return
+-- the arena's exit gate (LobbyBuilder tags it; an older one tagged a prompt on it)
+local function exitDoor()
+	local tagged = CollectionService:GetTagged("ColosseumExit")[1]
+	if tagged and tagged:IsA("ProximityPrompt") then
+		tagged = tagged.Parent
 	end
-	-- (only from the exit door: leaving heals you to full, so it mustn't work
-	-- from the middle of a fight by firing the prompt from anywhere. Once a
-	-- run is cleared there's no fight, so the LEAVE button works anywhere.)
-	local exitPrompt = CollectionService:GetTagged("ColosseumExit")[1]
-	local exitDoor = exitPrompt and exitPrompt.Parent
+	return (tagged and tagged:IsA("BasePart")) and tagged or nil
+end
+
+-- Can the player leave right now? Only from beside the exit gate: leaving
+-- heals you to full, so it mustn't work from the middle of a fight. Once a
+-- run is cleared there's no fight, so the CLEARED screen's LEAVE button works
+-- from anywhere. Returns true, or false and why not.
+local function canLeave(player)
+	local s = sessions[player]
+	if not s then
+		return false, "You're not in the Colosseum."
+	end
+	if going[player] then
+		return false, "Hold on, you're on your way!"
+	end
 	local root = rootOf(player)
 	if not root then
-		return
+		return false, "Not ready yet."
 	end
-	if not s.cleared and exitDoor and exitDoor:IsA("BasePart") and (root.Position - exitDoor.Position).Magnitude > 32 then
+	local door = exitDoor()
+	if not s.cleared and door and (root.Position - door.Position).Magnitude > 32 then
+		return false, "Walk out through the exit gate."
+	end
+	return true
+end
+
+local function leave(player)
+	if not canLeave(player) then
 		return
 	end
 	endSession(player)
@@ -1791,36 +1812,21 @@ function ColosseumService.Start(combatService, playerService)
 	enemyFolder:ClearAllChildren()
 	enemyFolder.Parent = workspace
 
-	local function hook(tag, fn)
-		local function one(prompt)
-			if prompt:IsA("ProximityPrompt") then
-				prompt.Triggered:Connect(function(player)
-					local ok, err = pcall(fn, player)
-					if not ok then
-						warn("[ColosseumService] " .. tag .. " failed: " .. tostring(err))
-					end
-				end)
-			end
-		end
-		for _, p in ipairs(CollectionService:GetTagged(tag)) do
-			one(p)
-		end
-		CollectionService:GetInstanceAddedSignal(tag):Connect(one)
-	end
-	-- (the little door's prompt only opens the difficulty pop-up on your
-	-- screen: going in is the "ColosseumEnter" action below)
-	hook("ColosseumExit", leave)
-
-	-- the RUN AGAIN / LEAVE buttons (asked through PlayerService's Action
-	-- remote, so they get its request budget and checks too)
+	-- Going in and out is asked for with buttons on your screen (there are no
+	-- "press E" prompts: walking up to a door pops its buttons up - see
+	-- LobbyActivities). They go through PlayerService's Action remote, so
+	-- they get its request budget and checks too.
 	if PlayerService.AddAction then
+		-- RUN AGAIN, on the CLEARED screen
 		PlayerService.AddAction("ColosseumAgain", function(player)
 			return runAgain(player)
 		end)
+		-- LEAVE: the "Leave?" check at the exit gate, or the CLEARED screen's
+		-- button (checked: beside the gate, unless the run is cleared)
 		PlayerService.AddAction("ColosseumLeave", function(player)
-			local s = sessions[player]
-			if not (s and s.cleared) or going[player] then
-				return false, "Walk out through the exit gate."
+			local ok, why = canLeave(player)
+			if not ok then
+				return false, why
 			end
 			task.spawn(leave, player)
 			return true, "See you soon!"

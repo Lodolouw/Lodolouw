@@ -84,14 +84,8 @@ end
 local spawnPart = anchor("ColosseumSpawn", C.Center + Vector3.new(0, 3, -60), "ColosseumSpawn")
 anchor("ColosseumDoor", C.GatePosition + Vector3.new(0, 1, 0), "ColosseumDoor")
 anchor("ColosseumReturn", C.GatePosition + Vector3.new(0, 3, 5), "ColosseumReturn")
-local exitDoor = anchor("ExitDoor", C.Center + Vector3.new(0, 3, -75))
-local exitPrompt = Instance.new("ProximityPrompt")
-exitPrompt.Parent = exitDoor
-CollectionService:AddTag(exitPrompt, "ColosseumExit")
-local gateDoor = anchor("Doorway", C.GatePosition + Vector3.new(0, 3, 0))
-local enterPrompt = Instance.new("ProximityPrompt")
-enterPrompt.Parent = gateDoor
-CollectionService:AddTag(enterPrompt, "ColosseumEntrance")
+-- (the exit gate is tagged itself: there are no "press E" prompts)
+local exitDoor = anchor("ExitDoor", C.Center + Vector3.new(0, 3, -75), "ColosseumExit")
 
 -- the player
 local LEVEL = (SCENARIO == "cursed") and 55 or 40 -- (Cursed Dummies join at 50)
@@ -416,13 +410,12 @@ enemyFolder.ChildAdded:Connect(function(m)
 	end
 end)
 
--- Going in: the door's prompt only opens the pop-up on the player's screen
--- (it mustn't send them in by itself); its ENTER button asks the server,
--- with the difficulty picked in it.
+-- Going in: walking up to the little door only pops the difficulty menu up
+-- on the player's screen - nothing sends them in until its ENTER button asks
+-- the server, with the difficulty picked in it.
 M.task.spawn(function()
-	enterPrompt.Triggered:Fire(player)
 	M.task.wait(1)
-	assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "the door's prompt alone mustn't send you in")
+	assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "standing at the door mustn't send you in by itself")
 	assert(actions.ColosseumEnter, "the ENTER button's action should be there")
 	if SCENARIO == "locked" then
 		-- a difficulty that isn't open to you (or isn't one at all): refused, and you stay out
@@ -758,12 +751,19 @@ while t < endAt do
 	if king and not kingSeenAt then
 		kingSeenAt = t
 	end
-	if SCENARIO == "leave" and kingSeenAt and t > kingSeenAt + 12 and player:GetAttribute("Colosseum") then
-		-- walk to the exit and leave mid-fight
+	if SCENARIO == "leave" and kingSeenAt and t > kingSeenAt + 12 and player:GetAttribute("Colosseum") and not stats.left then
+		-- LEAVE from the middle of the sand is refused mid-fight (walking out
+		-- heals you)...
+		root.CFrame = CFrame.new(C.Center + Vector3.new(0, 3, 0))
+		local okFar, whyFar = actions.ColosseumLeave(player)
+		assert(not okFar and string.find(tostring(whyFar), "exit gate", 1, true), "leaving from the middle of a fight is refused: " .. tostring(whyFar))
+		assert(player:GetAttribute("Colosseum"), "still in")
+		-- ...so walk up to the exit gate (where the "Leave?" check pops up) and LEAVE
 		root.CFrame = CFrame.new(exitDoor.Position)
-		M.task.spawn(function()
-			exitPrompt.Triggered:Fire(player)
-		end)
+		local ok, msg = actions.ColosseumLeave(player)
+		assert(ok, "LEAVE at the exit gate works mid-fight: " .. tostring(msg))
+		local again = actions.ColosseumLeave(player)
+		assert(not again, "pressing LEAVE twice doesn't leave twice")
 		stats.left = t
 	end
 	if SCENARIO == "die" and kingSeenAt and t > kingSeenAt + 12 and hum.Health > 0 and not stats.died then

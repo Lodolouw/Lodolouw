@@ -1,7 +1,8 @@
 --!nocheck
 -- Headless test of the Colosseum's screen side: LobbyActivities (boss bar,
 -- banners, shakes, sounds, music, the quest tab, the coins and XP flying into
--- you, the CLEARED screen, the difficulty pop-up at the Colosseum's door) and
+-- you, the CLEARED screen, the pop-ups that open when you walk up to the
+-- Quest Board and the Colosseum's doors) and
 -- BossIntro (VS splash, talking), fed a fake King and fake server messages.
 local M = require("./rbxmock")
 local S = require("./sources")
@@ -503,36 +504,62 @@ fire("Left")
 step(0.1)
 assert(#fx:GetChildren() == 0, "leaving clears the shower")
 
--- THE POP-UP AT THE DOOR: press E at the mini colosseum's little door, pick
--- how hard, press ENTER
+-- WALKING UP OPENS THINGS (no "press E"): invisible boxes in front of the
+-- Quest Board and the Colosseum's doors, like LobbyBuilder makes
 local enterAnswer = { true, "In you go!" }
+local leaveAnswer = { true, "See you soon!" }
 M.onInvokeServer = function(remote, name, arg)
 	table.insert(asked, name .. ":" .. tostring(arg))
 	if name == "ColosseumDifficulty" then
 		return true, Config.colosseumDifficulty(arg).name .. " it is!"
 	elseif name == "ColosseumEnter" then
 		return enterAnswer[1], enterAnswer[2]
+	elseif name == "ColosseumLeave" then
+		return leaveAnswer[1], leaveAnswer[2]
 	end
 	return true, "ok"
 end
 table.clear(asked)
+local function zone(activity, cf, size)
+	local z = Instance.new("Part")
+	z.Name = "AutoOpenZone"
+	z.Size = size
+	z.CFrame = cf
+	z.Transparency = 1
+	z:SetAttribute("Activity", activity)
+	z.Parent = workspace
+	M.services.CollectionService:AddTag(z, "AutoOpenZone")
+	return z
+end
+local function walkTo(pos)
+	root.CFrame = CFrame.new(pos)
+	step(0.3)
+end
+
+-- THE QUEST BOARD: walk up and your quests pop up; walk away and they close
 player:SetAttribute("Colosseum", nil)
+local QB = Config.Stations.Quests
+zone("Quests", CFrame.new(QB + Vector3.new(-6, 4, 0)), Vector3.new(10, 8, 14)) -- (in front of it: it faces west)
+local questMenu = playerGui:FindFirstChild("QuestMenu")
+walkTo(QB + Vector3.new(-40, 3, 0))
+assert(questMenu and not questMenu.Enabled, "the quest menu waits until you walk up")
+walkTo(QB + Vector3.new(-6, 3, 0))
+assert(questMenu.Enabled, "walking up to the Quest Board opens your quests")
+walkTo(QB + Vector3.new(-40, 3, 0))
+assert(not questMenu.Enabled, "walking away closes them")
+
+-- THE POP-UP AT THE DOOR: walk onto the little door's bridge, pick how hard,
+-- press ENTER
 local GATE = Config.Colosseum.GatePosition
-local door = Instance.new("Part")
-door.Name = "Doorway"
-door.CFrame = CFrame.new(GATE + Vector3.new(0, 3, 0))
-door.Parent = workspace
-local doorPrompt = Instance.new("ProximityPrompt")
-doorPrompt.Parent = door
-M.services.CollectionService:AddTag(doorPrompt, "ColosseumEntrance")
+zone("ColosseumEnter", CFrame.new(GATE + Vector3.new(3.75, 4, 0)), Vector3.new(6.5, 8, 8)) -- (the door faces east)
+local ON_BRIDGE = GATE + Vector3.new(4, 3, 0)
+local ON_ROAD = GATE + Vector3.new(20, 3, 0)
 remotes.StateUpdate.OnClientEvent:Fire({ Quests = { day = 0, list = {} }, Colosseum = { clears = 1, pick = "Normal", wins = { Normal = 1 }, bests = { Normal = 150.5 } } })
-root.CFrame = CFrame.new(GATE + Vector3.new(4, 3, 0))
-step(0.2)
+walkTo(ON_ROAD)
 local menu = playerGui:FindFirstChild("ColosseumDifficulty")
-assert(menu and not menu.Enabled, "the pop-up waits for the door")
-doorPrompt.Triggered:Fire(player)
-step(0.1)
-assert(menu.Enabled, "pressing E at the door pops up the difficulty menu")
+assert(menu and not menu.Enabled, "the pop-up waits until you walk up")
+walkTo(ON_BRIDGE)
+assert(menu.Enabled, "walking up to the door pops up the difficulty menu")
 assert(#asked == 0, "opening it doesn't ask the server anything")
 local function cardText(id)
 	local card = find(menu, "Card" .. id)
@@ -544,8 +571,8 @@ local function cardText(id)
 	end
 	return table.concat(list, " | ")
 end
-local function menuSays(text)
-	for _, d in ipairs(menu:GetDescendants()) do
+local function says(gui, text)
+	for _, d in ipairs(gui:GetDescendants()) do
 		if d.ClassName == "TextLabel" and string.find(d.Text, text, 1, true) then
 			return true
 		end
@@ -565,7 +592,7 @@ assert(enterButton.BackgroundColor3 == Config.colosseumDifficulty("Normal").colo
 find(find(menu, "CardNightmare"), "Pick").Activated:Fire()
 step(0.1)
 assert(#asked == 0, "a locked pick doesn't ask the server")
-assert(menuSays("Clear a HARD run"), "a locked pick says what opens it")
+assert(says(menu, "Clear a HARD run"), "a locked pick says what opens it")
 assert(not string.find(cardText("Nightmare"), "PICKED", 1, true), "a locked one can't be picked")
 -- clicking Hard's card picks it, here on the screen (nothing asked yet)
 find(find(menu, "CardHard"), "CardButton").Activated:Fire()
@@ -578,40 +605,83 @@ enterAnswer = { false, "Walk up to the Colosseum's door first." }
 enterButton.Activated:Fire()
 step(0.2)
 assert(asked[1] == "ColosseumEnter:Hard", "ENTER asks to go in on Hard: " .. tostring(asked[1]))
-assert(menu.Enabled and menuSays("Walk up to the Colosseum's door first."), "a refusal leaves it open, saying why")
+assert(menu.Enabled and says(menu, "Walk up to the Colosseum's door first."), "a refusal leaves it open, saying why")
 assert(enterButton.Text == "ENTER", "ENTER can be pressed again")
--- the server says yes: it closes (the pipe does the rest)
+-- the server says yes: it closes (the pipe does the rest), and stays closed
 enterAnswer = { true, "In you go!" }
 enterButton.Activated:Fire()
 step(0.2)
 assert(asked[2] == "ColosseumEnter:Hard", "ENTER asks again: " .. tostring(asked[2]))
 assert(not menu.Enabled, "going in closes it")
--- next time it opens on the one you went in on
-doorPrompt.Triggered:Fire(player)
-step(0.1)
-assert(menu.Enabled and string.find(cardText("Hard"), "PICKED", 1, true), "it opens on the one you went in on")
--- the X closes it
-find(menu, "Close").Activated:Fire()
-step(0.1)
-assert(not menu.Enabled, "the X closes it")
--- walking away from the door closes it
-doorPrompt.Triggered:Fire(player)
-step(0.1)
-assert(menu.Enabled, "it opens again")
-root.CFrame = CFrame.new(GATE + Vector3.new(40, 3, 0))
 step(0.5)
+assert(not menu.Enabled, "and it doesn't pop straight back up")
+-- step off the bridge and back on: it opens on the one you went in on
+walkTo(ON_ROAD)
+walkTo(ON_BRIDGE)
+assert(menu.Enabled and string.find(cardText("Hard"), "PICKED", 1, true), "it opens again, on the one you went in on")
+-- the X closes it, and it stays closed while you stand there
+find(menu, "Close").Activated:Fire()
+step(0.6)
+assert(not menu.Enabled, "the X closes it, and it stays closed while you stand there")
+walkTo(ON_ROAD)
+walkTo(ON_BRIDGE)
+assert(menu.Enabled, "step out and back in: it opens again")
+-- walking away closes it
+walkTo(ON_ROAD)
 assert(not menu.Enabled, "walking away from the door closes it")
--- arriving in the Colosseum closes it, and it doesn't open in there
-root.CFrame = CFrame.new(GATE + Vector3.new(4, 3, 0))
-doorPrompt.Triggered:Fire(player)
-step(0.1)
-assert(menu.Enabled, "open by the door")
+-- popping out of the little door lands you on the bridge: it waits until
+-- you step off and back on
+fire("PipeOut", CFrame.new(GATE + Vector3.new(5, 3, 0)), GATE + Vector3.new(5, 0, 0))
+step(1.5)
+assert((root.Position - (GATE + Vector3.new(5, 0, 0))).Magnitude < 5, "popped out on the bridge")
+assert(not menu.Enabled, "popping out of the door doesn't open it")
+walkTo(ON_ROAD)
+walkTo(ON_BRIDGE)
+assert(menu.Enabled, "...until you step off and back on")
+-- going in closes it, and it doesn't open in the Colosseum
 player:SetAttribute("Colosseum", true)
-step(0.1)
+step(0.2)
 assert(not menu.Enabled, "going in closes it")
-doorPrompt.Triggered:Fire(player)
-step(0.1)
-assert(not menu.Enabled, "it doesn't open from inside the Colosseum")
+walkTo(ON_ROAD)
+walkTo(ON_BRIDGE)
+assert(not menu.Enabled, "it doesn't open while you're in the Colosseum")
+
+-- THE "LEAVE?" CHECK at the arena's exit gate
+local EXIT = Vector3.new(-2600, 0, -75)
+zone("ColosseumLeave", CFrame.new(EXIT + Vector3.new(0, 4, 2.5)), Vector3.new(12, 8, 5))
+local IN_ARENA = Vector3.new(-2600, 3, -40)
+local AT_EXIT = EXIT + Vector3.new(0, 3, 2)
+walkTo(IN_ARENA)
+local leaveCheck = playerGui:FindFirstChild("ColosseumLeaveCheck")
+assert(leaveCheck and not leaveCheck.Enabled, "the check waits until you walk up to the exit")
+walkTo(AT_EXIT)
+assert(leaveCheck.Enabled and says(leaveCheck, "LEAVE THE COLOSSEUM?"), "walking up to the exit gate asks whether to leave")
+-- STAY closes it, and it stays closed while you stand there
+find(leaveCheck, "Stay").Activated:Fire()
+step(0.6)
+assert(not leaveCheck.Enabled, "STAY closes it, and it stays closed while you stand there")
+-- step away and back: it asks again
+walkTo(IN_ARENA)
+walkTo(AT_EXIT)
+assert(leaveCheck.Enabled, "it asks again")
+-- the server says no: it stays open, with the reason
+table.clear(asked)
+leaveAnswer = { false, "Walk out through the exit gate." }
+find(leaveCheck, "Leave").Activated:Fire()
+step(0.2)
+assert(asked[1] == "ColosseumLeave:nil", "LEAVE asks the server: " .. tostring(asked[1]))
+assert(leaveCheck.Enabled and says(leaveCheck, "Walk out through the exit gate."), "a refusal leaves it open, saying why")
+-- the server says yes: it closes (the pipe does the rest)
+leaveAnswer = { true, "See you soon!" }
+find(leaveCheck, "Leave").Activated:Fire()
+step(0.2)
+assert(asked[2] == "ColosseumLeave:nil" and not leaveCheck.Enabled, "LEAVE closes it")
+-- walking away with it open closes it
+walkTo(IN_ARENA)
+walkTo(AT_EXIT)
+assert(leaveCheck.Enabled, "open again")
+walkTo(IN_ARENA)
+assert(not leaveCheck.Enabled, "walking away from the exit closes it")
 root.CFrame = CFrame.new(-2600, 3, 0)
 
 -- THE CLEARED SCREEN on Hard: the quest's pay, a newly opened difficulty, and

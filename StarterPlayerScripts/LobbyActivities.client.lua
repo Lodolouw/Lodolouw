@@ -4,10 +4,10 @@
 	Your side of two things to do in the lobby:
 
 	  * THE QUEST BOARD - walk up to the wooden board by the south road and
-	    press E: a quest menu opens with today's three quests - what to do,
-	    how far along you are, the reward, and a HAND IN button once it's
-	    done. It closes with the X, or when you walk away. A gold "!" bobs
-	    over the board while you have one to hand in.
+	    a quest menu pops up with today's three quests - what to do, how far
+	    along you are, the reward, and a HAND IN button once it's done. It
+	    closes with the X, or when you walk away. A gold "!" bobs over the
+	    board while you have one to hand in.
 
 	  * THE COLOSSEUM - hides other players' dummies (everyone farms on their
 	    own), and shows the wave and the quest (BEAT 5 WAVES) on the screen.
@@ -24,10 +24,15 @@
 	    runs cleared, the quest's reward, the day's first-clear bonus, the
 	    difficulty for the next run, and RUN AGAIN / LEAVE.
 
-	  * DIFFICULTY - press E at the mini colosseum's little door and a
+	  * DIFFICULTY - walk up to the mini colosseum's little door and a
 	    pop-up asks how hard: Normal, Hard or Nightmare (what each does and
 	    pays, your best time on it, which are still locked). Pick one and
-	    press ENTER to go in.
+	    press ENTER to go in. At the arena's EXIT gate a "Leave?" check
+	    pops up the same way.
+
+	  * NO "PRESS E" - it isn't mobile friendly. The Quest Board and the
+	    Colosseum's two doors each have an invisible box in front of them:
+	    step in and its menu pops up, step out and it closes.
 
 	The server decides everything (PlayerService / CombatService); this only
 	shows it and asks.
@@ -455,33 +460,8 @@ buildMenu()
 render()
 Remotes:WaitForChild("RequestState"):FireServer()
 
--- press E at the board: open the menu
-local function hookPrompt(pp)
-	if pp:IsA("ProximityPrompt") then
-		pp.Triggered:Connect(function()
-			render()
-			menu.Enabled = true
-		end)
-	end
-end
-for _, pp in ipairs(CollectionService:GetTagged("QuestPrompt")) do
-	hookPrompt(pp)
-end
-CollectionService:GetInstanceAddedSignal("QuestPrompt"):Connect(hookPrompt)
-
--- walk away from the board and it closes
-task.spawn(function()
-	while true do
-		task.wait(0.3)
-		if menu.Enabled then
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			local board = Config.Stations.Quests
-			if not root or (Vector3.new(root.Position.X - board.X, 0, root.Position.Z - board.Z)).Magnitude > 24 then
-				menu.Enabled = false
-			end
-		end
-	end
-end)
+-- (walking up to the board opens the menu, and walking away closes it: see
+-- "Walk up and it pops up", further down)
 
 ----------------------------------------------------------------------
 -- The Colosseum
@@ -1521,12 +1501,13 @@ do
 	end)
 end
 
--- GOING IN: press E at the mini colosseum's little door and this pops up. A
+-- GOING IN: walk up to the mini colosseum's little door and this pops up. A
 -- card for each difficulty: what it does, what it pays, your runs cleared
 -- and best time on it, and PICK (or PICKED, or LOCKED with what opens it).
 -- The one you went in on last time starts picked. Press ENTER and down the
 -- pipe you go, on the one you picked (the server checks it's open to you).
 -- It closes with the X, when you walk away from the door, or as you go in.
+-- (The walk-up system further down opens and closes it.)
 local DifficultyMenu = {}
 do
 	local gui = Instance.new("ScreenGui")
@@ -1749,48 +1730,30 @@ do
 		refresh()
 	end)
 
+	-- (true if it opened: not while you're in the Colosseum)
 	function DifficultyMenu.open()
 		if player:GetAttribute("Colosseum") then
-			return
+			return false
 		end
 		selected = Difficulty.picked()
 		menuStatus.Text = ""
 		statusUntilD = 0
 		refresh()
 		gui.Enabled = true
+		return true
 	end
 	function DifficultyMenu.close()
 		gui.Enabled = false
 	end
+	function DifficultyMenu.shown()
+		return gui.Enabled
+	end
 	DifficultyMenu.refresh = refresh
 
-	-- press E at the little door: this pops up (the server doesn't send you
-	-- in until you press ENTER)
-	local function hookDoor(pp)
-		if pp:IsA("ProximityPrompt") then
-			pp.Triggered:Connect(function()
-				DifficultyMenu.open()
-			end)
-		end
-	end
-	for _, pp in ipairs(CollectionService:GetTagged("ColosseumEntrance")) do
-		hookDoor(pp)
-	end
-	CollectionService:GetInstanceAddedSignal("ColosseumEntrance"):Connect(hookDoor)
-
-	-- walk away from the door and it closes (a little before the server
-	-- would stop letting you in from there)
+	-- (the server's answers fade after a few seconds)
 	task.spawn(function()
-		local door = Config.Colosseum.GatePosition
-		local reach = (Config.Colosseum.EnterRange or 20) + 4
 		while true do
 			task.wait(0.3)
-			if gui.Enabled then
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				if not root or (Vector3.new(root.Position.X - door.X, 0, root.Position.Z - door.Z)).Magnitude > reach then
-					gui.Enabled = false
-				end
-			end
 			if statusUntilD > 0 and os.clock() > statusUntilD then
 				statusUntilD = 0
 				menuStatus.Text = ""
@@ -1992,9 +1955,228 @@ do
 		showing = showing + 1
 		gui.Enabled = false
 	end
+	function ClearScreen.shown()
+		return gui.Enabled
+	end
 	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
 		if not player:GetAttribute("Colosseum") then
 			ClearScreen.hide()
+		end
+	end)
+end
+
+-- THE "LEAVE?" CHECK: walk up to the Colosseum's EXIT gate and this pops
+-- up (no "press E"). LEAVE takes you back to the lobby (the server checks
+-- you're at the gate; walking out heals you, and the run ends). STAY, or
+-- walking away, closes it. (The walk-up system below opens and closes it.)
+local LeaveCheck = {}
+do
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ColosseumLeaveCheck"
+	gui.ResetOnSpawn = false
+	gui.Enabled = false
+	gui.DisplayOrder = 7
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local panel = Instance.new("Frame")
+	panel.Name = "LeavePanel"
+	panel.BackgroundColor3 = RGB(24, 20, 37)
+	panel.BorderSizePixel = 0
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
+	panel.Position = UDim2.fromScale(0.5, 0.6) -- (a little low: the arena stays in view)
+	panel.Size = UDim2.fromScale(0.42, 0.36)
+	panel.Parent = gui
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 2.1
+	aspect.Parent = panel
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 4
+	edge.Parent = panel
+
+	label(panel, "LEAVE THE COLOSSEUM?", UDim2.fromScale(0.9, 0.2), UDim2.fromScale(0.05, 0.08), GOLD)
+	label(panel, "Your run ends here.", UDim2.fromScale(0.9, 0.12), UDim2.fromScale(0.05, 0.31), RGB(255, 255, 255))
+	local leaveStatus = label(panel, "", UDim2.fromScale(0.9, 0.1), UDim2.fromScale(0.05, 0.86), RED)
+
+	local function button(text, color, x, name)
+		local b = Instance.new("TextButton")
+		b.Name = name
+		b.Text = text
+		b.Font = FONT
+		b.TextScaled = true
+		b.TextColor3 = RGB(255, 255, 255)
+		b.BackgroundColor3 = color
+		b.BorderSizePixel = 0
+		b.Size = UDim2.fromScale(0.38, 0.26)
+		b.Position = UDim2.fromScale(x, 0.52)
+		b.Parent = panel
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop = UDim.new(0.18, 0)
+		pad.PaddingBottom = UDim.new(0.18, 0)
+		pad.Parent = b
+		return b
+	end
+	-- (like the CLEARED screen: the green one keeps you in, the red one leaves)
+	local stay = button("STAY", RGB(62, 137, 72), 0.07, "Stay")
+	local leaveButton = button("LEAVE", RGB(162, 38, 51), 0.55, "Leave")
+	stay.Activated:Connect(function()
+		gui.Enabled = false
+	end)
+	local busy = false
+	leaveButton.Activated:Connect(function()
+		if busy then
+			return
+		end
+		busy = true
+		leaveStatus.Text = ""
+		local ok, done, msg = pcall(function()
+			return Remotes.Action:InvokeServer("ColosseumLeave")
+		end)
+		busy = false
+		if not ok then
+			leaveStatus.Text = "Couldn't reach the server."
+		elseif done then
+			gui.Enabled = false
+		else
+			leaveStatus.Text = tostring(msg or "Not right now!")
+		end
+	end)
+
+	-- (true if it opened: only in the Colosseum, and not over the CLEARED
+	-- screen - that has its own LEAVE button)
+	function LeaveCheck.open()
+		if not player:GetAttribute("Colosseum") or ClearScreen.shown() then
+			return false
+		end
+		leaveStatus.Text = ""
+		gui.Enabled = true
+		return true
+	end
+	function LeaveCheck.close()
+		gui.Enabled = false
+	end
+	function LeaveCheck.shown()
+		return gui.Enabled
+	end
+	-- (gone once you're out)
+	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
+		if not player:GetAttribute("Colosseum") then
+			gui.Enabled = false
+		end
+	end)
+end
+
+----------------------------------------------------------------------
+-- Walk up and it pops up (no "press E": it isn't mobile friendly)
+----------------------------------------------------------------------
+-- The Quest Board and the Colosseum's two doors each have an invisible
+-- "AutoOpenZone" box in front of them (made by LobbyBuilder; its "Activity"
+-- attribute says which). Step in and its menu pops up; step out and it
+-- closes. Close it yourself and it stays closed until you step out and back
+-- in - and so does one you arrive in (popping out of the little door, or
+-- appearing after a respawn), so it never pops up the moment you get there.
+-- (The shops and the Spire do the same with their own boxes: Hud, SpireClient.)
+do
+	local ACTIVITIES = {
+		Quests = {
+			open = function()
+				render()
+				menu.Enabled = true
+				return true
+			end,
+			close = function()
+				menu.Enabled = false
+			end,
+			shown = function()
+				return menu.Enabled
+			end,
+		},
+		ColosseumEnter = { open = DifficultyMenu.open, close = DifficultyMenu.close, shown = DifficultyMenu.shown },
+		ColosseumLeave = { open = LeaveCheck.open, close = LeaveCheck.close, shown = LeaveCheck.shown },
+	}
+	local zones = {} -- [box] = its activity
+	local function addZone(z)
+		if z:IsA("BasePart") and ACTIVITIES[z:GetAttribute("Activity")] then
+			zones[z] = z:GetAttribute("Activity")
+		end
+	end
+	for _, z in ipairs(CollectionService:GetTagged("AutoOpenZone")) do
+		addZone(z)
+	end
+	CollectionService:GetInstanceAddedSignal("AutoOpenZone"):Connect(addZone)
+	CollectionService:GetInstanceRemovedSignal("AutoOpenZone"):Connect(function(z)
+		zones[z] = nil
+	end)
+
+	local function inside(zone, pos, margin)
+		local rel = zone.CFrame:PointToObjectSpace(pos)
+		local half = zone.Size / 2
+		return math.abs(rel.X) <= half.X + margin and math.abs(rel.Y) <= half.Y + margin and math.abs(rel.Z) <= half.Z + margin
+	end
+
+	local active = nil -- the one walking in opened (and walking out closes)
+	local dismissed = nil -- closed by hand, or arrived in: waits until you step out
+	local settle = true -- (the first look after arriving somewhere)
+	local function closeActive()
+		if active and ACTIVITIES[active].shown() then
+			ACTIVITIES[active].close()
+		end
+		active = nil
+	end
+	player.CharacterAdded:Connect(function()
+		settle = true
+	end)
+	local lastLook = 0
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		if now - lastLook < 0.1 then
+			return
+		end
+		lastLook = now
+		if piping then
+			settle = true -- (going down the pipe, or popping out of it)
+			return
+		end
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if not root then
+			closeActive()
+			dismissed = nil
+			settle = true
+			return
+		end
+		-- which box you're in (2 studs of slack to stay in one, so a menu
+		-- doesn't flicker open and shut at its edge)
+		local here = nil
+		for zone, activity in pairs(zones) do
+			local margin = (activity == active or activity == dismissed) and 2 or 0
+			if zone.Parent and inside(zone, root.Position, margin) then
+				here = activity
+				break
+			end
+		end
+		if settle then
+			settle = false
+			if here and here ~= active then
+				dismissed = here -- (you arrived in it: step out and back in to open it)
+				return
+			end
+		end
+		if not here then
+			closeActive()
+			dismissed = nil
+		elseif here == active then
+			if not ACTIVITIES[here].shown() then
+				-- closed it yourself: it stays closed until you step out
+				active = nil
+				dismissed = here
+			end
+		elseif here ~= dismissed then
+			closeActive()
+			if ACTIVITIES[here].open() then
+				active = here
+			else
+				dismissed = here -- (not right now: e.g. the CLEARED screen is up)
+			end
 		end
 	end)
 end

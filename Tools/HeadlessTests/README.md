@@ -22,14 +22,17 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   pop-up at the door: health, dummies per wave, pay, the angry King, what
   the clear unlocks), `nextrun` (a new pick mid-run waits for the next run)
   and `locked` (going in on a locked difficulty or from too far away, and
-  picks that aren't allowed). Every scenario checks that the door's prompt
-  alone doesn't send you in: the pop-up's ENTER does.
+  picks that aren't allowed). Every scenario goes in through the pop-up's
+  ENTER (standing at the door sends nobody in), and `leave` checks LEAVE is
+  refused away from the exit gate mid-fight, then works at the gate.
 - `test_client.luau` - LobbyActivities and BossIntro: the boss bar, banners,
   camera shakes, sounds, music (and the lobby's stepping aside), the VS
   splash and his talking, the quest tab, the wave box's difficulty, the
-  coins and XP flying into you, the difficulty pop-up at the Colosseum's
-  door (picking, ENTER, refusals, closing) and the CLEARED screen, fed a
-  fake King and fake server messages.
+  coins and XP flying into you, walking up to the Quest Board and the
+  Colosseum's doors (the pop-ups open and close, stay shut after the X or
+  STAY until you step out and back, and wait when you pop out of the
+  door), the difficulty pop-up (picking, ENTER, refusals), the "Leave?"
+  check and the CLEARED screen, fed a fake King and fake server messages.
 - `test_builder.luau` - every dummy template the real LobbyBuilder code
   builds (the right pieces on the right kind).
 - `dump_dummies.luau` + `render.py`, and `render2.py` - the preview pictures
