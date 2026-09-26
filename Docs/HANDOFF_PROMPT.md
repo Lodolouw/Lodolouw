@@ -7,6 +7,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
 ## The game
 
 - It's a Roblox game in the style of **"+1 Defeat the boss to Grow"**: you punch things to gain Power (XP), level up, buy upgrades, and fight bosses.
+- **The theme is "modern retro"**: Undertale/Deltarune mixed with Pokémon, Stardew Valley, Celeste and a Terraria feel, with a souls-like twist. The inventory is styled after Minecraft Dungeons. There are Undertale touches: dummies and NPCs mock you in typed-out speech boxes with a voice blip, and there's a Smash Bros Ultimate-style intro splash when you approach a boss. The GUI should feel "extremely good and satisfying".
 - **The look is 8-bit / pixel-art**, using the **Endesga-32 palette**: flat materials (SmoothPlastic/Neon), chunky blocky shapes, and the Press Start 2P font. Keep everything new in that style.
 - **Everything is built from scripts.** There are no imported meshes or models (apart from optional NPC models loaded by ID with a blocky fallback).
 
@@ -21,7 +22,9 @@ You are continuing work on my Roblox game. Read this whole message before doing 
    - Levels come from Power. Total Power for a level = 17.9 × (level − 1)³, up to level 256.
    - Every level gives **stat points** to spend: Strength (damage), Vitality (health), Defense, and Training (+Power gain).
    - **Gear** drops from boss chests: rarities, stats and sets (see `Items.lua`, Inventory GUI).
-   - **Upgrades** (backpack, gloves, sell value, Swift Boots), **talismans** (3 slots) and **prestige** give more ways to get stronger.
+   - **Upgrades** (backpack, gloves, sell value, Swift Boots) and **talismans** (3 slots, crafted at the Armory/blacksmith) give more ways to get stronger.
+   - Levels are **Blox Fruits-style**: max 256, 3 stat points per level.
+   - **Prestige was removed completely** (on purpose). Old prestige was converted into Oozark chests once. `Config.MaxPrestige = 0`, and there's no prestige sign. Don't bring it back.
 3. **Fight bosses** in **the Spire**. Each floor is a boss with a recommended level:
    - Floor 1: **Oozark, the Gelatinous Tyrant**, the slime, "Gloomgut" in older code. Level 15, in the slime pit.
    - Floor 2: **Nahrzul, Devourer of the Dunes**, the sand worm "Mireworm". Level 30, in the Sunken Dunes.
@@ -41,6 +44,12 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - Client: `BossClient` keeps the shared visuals, and each boss gets its own ModuleScript in a `ReplicatedStorage/BossBodies/` folder with its body and animations.
   - Include a "how to add a boss" template.
   - Players see no difference. Test that both bosses behave identically before and after.
+- **The MMO direction** (Hypixel Skyblock / Wynncraft / Blox Fruits) is what keeps the game alive long-term:
+  - Every boss drops a **treasure chest**, a "gamble crate", with gear in rarities: Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret. This is **done**.
+  - Gear goes in your inventory and drives a player **market**.
+  - Gear and pets are permanent.
+  - I **declined** unidentified items and sockets.
+  - Still to build: **pets**, **fishing**, **trading**, then the **Auction House**. See "The world and its places" above.
 - **Other ideas I liked, for later:**
   - A **first-time tutorial**: an arrow to the Colosseum, "Beat 5 dummies", "Spend your stat points", "Open your chest".
   - **Pets** from eggs: the Pet Sanctuary tower is already built and empty.
@@ -49,6 +58,66 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - A **settings menu** (music and SFX volume, camera shake).
   - A **level-up celebration**.
 - **Order of work:** make the Colosseum great first (see the plan at the bottom). **Bosses come last.**
+
+## The world and its places
+
+### What exists now
+
+The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and walls, Sell Shop, Upgrade Shop, Armory, Colosseum gate, Colosseum, Quest Board, the Spire, castle gate, castle, island and sea, the slime arena, and decorations.
+
+- **The island:** the castle sits in the middle of an organic, "organised chaos" island in the sea (sea level y = −20). It has:
+  - beaches;
+  - animated 8-bit waves: foam lines lapping the shore, and "~" crests drifting in, moving in small jumps 12 times a second;
+  - voxel trees, palm trees and bushes.
+- **The castle:**
+  - The **Grand Keep** is in the north. The passage to **the Spire** goes through it.
+  - The **Spire** stands on its own islet, reached by a bridge.
+  - There's a south **gatehouse** with cozy cream-stone stairs and a rest landing.
+  - It has walls, towers, and a moat.
+- **The plaza:** a fountain plaza with lamp posts, cobble paths and auto curbs. The Prestige Shrine is gone and the plaza is open paving.
+- **Shops:**
+  - **Sell Shop** (south-east).
+  - **Upgrade Shop**: the **mushroom house** on the **cove**, with an **8-bit frog** shopkeeper. It sits at the end of a natural dirt path with log steps, and there's a **pier**.
+  - **Armory / blacksmith**, and the forge in the east **Gear Hall** with a waterwheel.
+- **Pet Sanctuary tower:** built, but **empty** (pets aren't made yet).
+- **The farm:** a Stardew-style farm with a cottage, crop rows, a windmill with 8-bit stepped spinning sails, a coop, a well and a scarecrow. The entrance is open, with no gate.
+- **Quest Board:** daily quests, pick 1 of 3.
+- **The mini sand-castle Colosseum:** this is where the old training field / training yard was. **The old training yard dummies are gone.** Power now comes from the Colosseum (plus bosses and quests).
+- **Spire floors:**
+  - Floor 1: "Oozark's Hollow", the slime pit.
+  - Floor 2: the **Sunken Dunes**, the worm's desert (DunesBuilder).
+  - Floor 3: sealed (level 45).
+- **Music:** there are 3 lobby songs, a slime boss song, and "SANDWORMSONG" for the worm, played by name from SoundService.
+
+### Places we discussed for later (not built yet)
+
+- **Fishing** (a big one, the "chill" second loop for players who don't want to fight):
+  - **Where:** the **cove / pier by the mushroom house** was chosen to be repurposed as the fishing spot. Earlier plans also mentioned fishing docks by a lake or waterfall outside the walls.
+  - **How it plays:** a timing minigame, not just waiting. The bobber dips, you hit the button in the sweet spot, and a pixel meter shows it.
+  - **What you catch:**
+    - fish to sell;
+    - fishing-only crafting materials;
+    - rare treasure (small chests);
+    - occasionally a **sea creature** mini-fight.
+  - **Progression:** fishing levels, better rods, rare fish, and a **fishing log / collection** to complete.
+  - **Feel:** calm music and a fishing hut NPC.
+- **Pets** (in the Pet Sanctuary tower), Hypixel Skyblock style:
+  - Cute pixel critters that follow you, like a baby slime or a mini sandworm.
+  - Each gives a perk: more Power, more coins, fishing luck, or boss damage.
+  - They drop from boss chests and fishing, and hatch from eggs bought with coins.
+  - They level up, and rarer pets have stronger perks.
+- **The market:**
+  - First **trading**: a two-player trade window where both confirm and the server swaps the items.
+  - Later an **Auction House / Bazaar** in the Grand Keep's great hall, working across servers.
+  - It must be exploit-proof, with everything done on the server. The saves are already session-locked, which was a prerequisite.
+- **Gear Hall:** an armoury display, and a place where you open chests in public to show off rare pulls.
+- **Hall of Champions** in the Grand Keep: live statues of the top players (by Power and fastest boss kill) and a trophy wall of the bosses you've beaten.
+- **PvP duels** in an arena courtyard, reusing the combat system and the VS splash.
+- **Ramparts parkour** up the walls to the highest tower, with a badge at the top.
+- **The Vault** under the keep: a daily chest, and a secret room that opens after beating a certain boss.
+- **A codes board** at the gatehouse for promo codes.
+
+**Robux rule we agreed:** never sell gear directly, because that ruins the market. Cosmetics, extra slots and similar are fine.
 
 ## The repository
 
@@ -171,7 +240,7 @@ Defined in `Config.Colosseum.Types`. Templates are built by LobbyBuilder into Se
 ### Lobby and world
 - **The lobby:** a castle plaza with a fountain, lamp posts, paths, a farm, a Sell Shop, and an Upgrade Shop with an 8-bit frog.
 - **The mushroom house:** I asked to keep the OLD mushroom house, just sharpened up. A pixel-circle version flickered.
-- **The training yard:** 12 practice dummies on two tiers, with Straw → Cosmic dummies.
+- **The training yard** (12 practice dummies on two tiers) was **replaced** by the mini Colosseum entrance. The Colosseum is now where you farm.
 - **The quest board:** pick 1 of 3 daily quests. The others rip off like a bandage, and completing one shows a stamp saying "COMPLETED".
 - **Everything is 8-bit.** Flat materials, no flickering.
 - **Flicker fixes:**
