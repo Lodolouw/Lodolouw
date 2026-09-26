@@ -154,6 +154,25 @@ local PORTRAITS = {
 		},
 		ink = { S = RGB(228, 166, 114), D = RGB(184, 111, 80), K = RGB(62, 39, 49), W = RGB(255, 255, 255) },
 	},
+	-- a blue helmet with curly gold horns, the T-shaped visor, two glowing eyes
+	Burrowmore = {
+		rows = {
+			"YO..........OY",
+			"Y.O........O.Y",
+			".YOBBBBBBBBOY.",
+			"..BBBBYYBBBB..",
+			"..BLBBBBBBBB..",
+			"..BKKKKKKKKB..",
+			"..BKWKKKKWKB..",
+			"..BBBBKKBBBB..",
+			"..BDBBKKBBDB..",
+			"..BDBBBBBBDB..",
+			".YYYYYYYYYYYY.",
+			"RRRDDBBBBDDRRR",
+		},
+		ink = { Y = RGB(254, 174, 52), O = RGB(247, 118, 34), B = RGB(0, 153, 219), L = RGB(44, 232, 245), D = RGB(18, 78, 137),
+			K = RGB(24, 20, 37), W = RGB(254, 231, 97), R = RGB(228, 59, 68) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -373,6 +392,25 @@ local LINES = {
 		phase2 = { "* YOU CRACKED MY SHELL. NOW THE SANDS WILL DROWN YOU.", "* Enough. I will pull this whole desert down on you." },
 		win = { "* Another bone for the dunes.", "* The sands keep you now." },
 		lose = { "* The dunes... fall... silent...", "* So even the desert... can be conquered..." },
+	},
+	-- a knight of the shovel: cheerful, honourable, and fond of a dig pun
+	Burrowmore = {
+		wake = {
+			"* HALT! I am KNIGHT BURROWMORE, and this dig is MINE!",
+			"* En garde, traveller! Let us see what treasure lies beneath your courage!",
+		},
+		idle = {
+			"* A true knight digs deep. In battle AND in dirt.",
+			"* Shovel justice! It's a thing. I made it a thing.",
+			"* A thousand treasures I have dug up. You shall be the thousand and first!",
+			"* Strike true, friend! I would expect no less.",
+			"* Ah, the smell of fresh soil and fresh combat!",
+			"* Honour before gold. ...Gold is a VERY close second.",
+		},
+		hit = { "* Shovel drop! Straight to the heart of the matter!", "* Dig it? I did!", "* Ha HA! You've been excavated!" },
+		phase2 = { "* NO QUARTER! My armour cracks, but my spirit shines GOLD!", "* You fight with honour! Now face me at my FULLEST!" },
+		win = { "* Rest now, brave one. The dirt is soft here.", "* A worthy foe... buried with full honours." },
+		lose = { "* You dig... with honour... the treasure... is yours...", "* Well fought! A knight knows when he's been... outdug." },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {

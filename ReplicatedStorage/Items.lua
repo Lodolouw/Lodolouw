@@ -88,6 +88,14 @@ Items.Sets = {
 		name = "Devourer's",
 		bonuses = { { need = 2, stats = { Crit = 10 } }, { need = 4, stats = { Damage = 25, Defense = 12 } } },
 	},
+	Spadeknight = {
+		name = "Spade Knight's",
+		bonuses = { { need = 2, stats = { Defense = 7 } }, { need = 4, stats = { Damage = 18, Health = 70 } } },
+	},
+	Relicbound = {
+		name = "Relicbound",
+		bonuses = { { need = 2, stats = { Crit = 11 } }, { need = 4, stats = { Damage = 28, Defense = 13 } } },
+	},
 }
 
 ----------------------------------------------------------------------
@@ -173,6 +181,38 @@ local list = {
 	{ id = "BuriedSun", name = "Heart of the Buried Sun", slot = "Chest", rarity = "Secret", level = 45, floor = 2,
 		stats = { Health = { 150, 220 }, Defense = { 15, 20 }, Damage = { 25, 35 }, Power = { 15, 25 } }, tint = { RGB(254, 231, 97), RGB(255, 255, 255) },
 		lore = "* th3 sun th@t f#ll und#r the s@nd. it is st*ll w@rm." },
+
+	-- KNIGHT BURROWMORE, the Honourable Digger (floor 3)
+	{ id = "DigBoots", name = "Digger's Boots", slot = "Boots", rarity = "Common", level = 40, floor = 3, set = "Spadeknight",
+		stats = { Health = { 20, 32 } }, tint = { RGB(18, 78, 137), RGB(115, 62, 57) },
+		lore = "* Steel toes. For kicking your shovel into stubborn dirt." },
+	{ id = "HornedHelm", name = "Curly-Horned Helm", slot = "Helmet", rarity = "Uncommon", level = 42, floor = 3, set = "Spadeknight",
+		stats = { Health = { 30, 44 }, Defense = { 4, 6 } }, tint = { RGB(0, 153, 219), RGB(254, 174, 52) },
+		lore = "* The horns are for style. The style is for honour." },
+	{ id = "Spadeplate", name = "Spadeplate", slot = "Chest", rarity = "Rare", level = 45, floor = 3, set = "Spadeknight",
+		stats = { Health = { 55, 80 }, Defense = { 7, 10 } }, tint = { RGB(0, 153, 219), RGB(18, 78, 137) },
+		lore = "* Polished every morning. Muddy by every afternoon." },
+	{ id = "TrustyShovel", name = "Trusty Shovel", slot = "Weapon", rarity = "Rare", level = 45, floor = 3, set = "Spadeknight",
+		stats = { Damage = { 18, 28 }, Crit = { 3, 5 } }, tint = { RGB(254, 174, 52), RGB(115, 62, 57) },
+		lore = "* Digs dirt. Digs foes. Mostly dirt." },
+	{ id = "FireStick", name = "Fire Stick", slot = "Weapon", rarity = "Epic", level = 48, floor = 3, set = "Relicbound",
+		stats = { Damage = { 30, 42 }, Crit = { 5, 9 } }, tint = { RGB(247, 118, 34), RGB(115, 62, 57) },
+		lore = "* Point the hot end at the enemy. Not at your face." },
+	{ id = "AnchorPlate", name = "Anchor Plate", slot = "Chest", rarity = "Epic", level = 48, floor = 3, set = "Relicbound",
+		stats = { Health = { 75, 105 }, Defense = { 9, 13 } }, tint = { RGB(139, 155, 180), RGB(58, 68, 102) },
+		lore = "* Nothing will knock you over. Getting up is another matter." },
+	{ id = "CheckpointCrown", name = "Checkpoint Crown", slot = "Helmet", rarity = "Legendary", level = 51, floor = 3, set = "Relicbound",
+		stats = { Damage = { 14, 20 }, Health = { 55, 80 }, Crit = { 6, 9 } }, tint = { RGB(44, 232, 245), RGB(254, 174, 52) },
+		lore = "* Smash it for gold, or keep it for luck. Why not both?" },
+	{ id = "PogoGreaves", name = "Pogo Greaves", slot = "Boots", rarity = "Legendary", level = 51, floor = 3, set = "Relicbound",
+		stats = { Health = { 45, 65 }, Defense = { 8, 11 }, Power = { 10, 16 } }, tint = { RGB(18, 78, 137), RGB(254, 231, 97) },
+		lore = "* Point your toes down and BOUNCE." },
+	{ id = "LegendShovel", name = "Shovel of Legends", slot = "Weapon", rarity = "Mythic", level = 55, floor = 3,
+		stats = { Damage = { 60, 85 }, Crit = { 12, 17 }, Defense = { 6, 9 } }, tint = { RGB(255, 0, 68), RGB(254, 174, 52) },
+		lore = "* It has dug up dragons. And politely put them back." },
+	{ id = "FirstShovel", name = "The Very First Shovel", slot = "Weapon", rarity = "Secret", level = 60, floor = 3,
+		stats = { Damage = { 70, 95 }, Crit = { 16, 20 }, Health = { 120, 180 }, Power = { 20, 30 } }, tint = { RGB(254, 231, 97), RGB(255, 255, 255) },
+		lore = "* b#fore the kn*ght th3re w@s a h0le. s0mebody d#g it." },
 }
 
 Items.ById = {}

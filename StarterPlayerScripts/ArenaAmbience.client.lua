@@ -3,8 +3,10 @@
 
 	How a Spire arena looks and sounds on your own screen while you're in it.
 	Each floor in Config.Spire.Floors can have an `ambience` table (the Sunken
-	Dunes does): walk in and the light shifts to it, and when you leave, the
-	lobby's own look comes back exactly as it was.
+	Dunes and the Glimmer Dig do): walk in and the light shifts to it, and when
+	you leave, the lobby's own look comes back exactly as it was. (The Glimmer
+	Dig asks for a bright afternoon and only a little drifting dust:
+	Grains = 0.2, Clouds = false.)
 
 	For the Sunken Dunes that means:
 	  * a low golden sun and a warm, dusty haze
@@ -541,8 +543,11 @@ RunService.RenderStepped:Connect(function(dt)
 			veilDown.BackgroundColor3 = veilColor
 		end
 	end
-	set(grains, "Rate", level * (GRAINS_CALM + (GRAINS_STORM - GRAINS_CALM) * k), 2)
-	set(dust, "Rate", level * (DUST_CALM + (DUST_STORM - DUST_CALM) * k), 0.2)
+	-- (a floor can ask for less: Grains = 0.2 is a fifth as much, Clouds = false none of the big clouds)
+	local grainsWanted = (amb and amb.Grains) or 1
+	local cloudsWanted = (amb and amb.Clouds == false) and 0 or 1
+	set(grains, "Rate", level * grainsWanted * (GRAINS_CALM + (GRAINS_STORM - GRAINS_CALM) * k), 2)
+	set(dust, "Rate", level * cloudsWanted * (DUST_CALM + (DUST_STORM - DUST_CALM) * k), 0.2)
 	set(sheets, "Rate", level * SHEETS_STORM * k, 0.5)
 
 	-- the dust in front of your eyes, breathing with the gusts

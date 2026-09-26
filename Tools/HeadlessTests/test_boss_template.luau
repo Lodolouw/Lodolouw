@@ -1,9 +1,10 @@
 --!nocheck
 -- The "how to add a boss" templates really work: ServerScriptService/Bosses/
 -- _Template.lua and ReplicatedStorage/BossBodies/_Template.lua are plugged in
--- as a pretend third boss (a Config entry with Short = "_Template" and its one
--- attack, STOMP, and a BossHome part on floor 3), and a pretend player fights
--- it to the death with the real BossService and BossClient running.
+-- as a pretend extra boss (a Config entry with Short = "_Template" and its one
+-- attack, STOMP, and a BossHome part on a made-up floor 99 - floors 1-3 are
+-- the real bosses'), and a pretend player fights it to the death with the
+-- real BossService and BossClient running.
 --   luau test_boss_template.luau
 local M = require("./rbxmock")
 local S = require("./sources")
@@ -14,7 +15,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
--- the pretend third boss: Oozark's numbers, the template's name and attack
+-- the pretend boss: Oozark's numbers, the template's name and attack
 local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
 local def = table.clone(Config.Bosses[1])
 def.Name = "The Template Golem"
@@ -24,7 +25,8 @@ def.Attacks = {
 	Stomp = { Tell = 0.7, Damage = 15, Radius = 14, Knockback = 40, Recovery = 0.8, Phase = 1, Range = { 0, 200 }, Weight = 1 },
 }
 def.HealthPunches = 30
-Config.Bosses[3] = def
+local FLOOR = 99
+Config.Bosses[FLOOR] = def
 
 -- its arena: a floor and the spot where it lives
 local HOME = Vector3.new(5000, 0, 5000)
@@ -36,7 +38,7 @@ floor.Parent = workspace
 local homePart = Instance.new("Part")
 homePart.Name = "BossHome"
 homePart.CFrame = CFrame.new(HOME)
-homePart:SetAttribute("Floor", 3)
+homePart:SetAttribute("Floor", FLOOR)
 homePart:SetAttribute("Facing", Vector3.new(0, 0, 1))
 homePart.Parent = workspace
 CollectionService:AddTag(homePart, "BossHome")
@@ -106,14 +108,14 @@ function Profile.AddChest() end
 local warned = {}
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
 BS.Start(Combat, Profile)
-local E = assert(BS.Encounter(3), "the template boss should be built")
+local E = assert(BS.Encounter(FLOOR), "the template boss should be built")
 assert(E.boss and E.boss.Attacks and E.boss.Attacks.Stomp, "BossService should load Bosses/_Template.lua for it")
 mount.runClient("StarterPlayerScripts/BossClient.client.lua", me)
 
 -- fight: walk in, stay close, punch it (like CombatService) until it falls
 local seen = {}
 local sawWarning, sawBody = false, false
-me:SetAttribute("SpireFloor", 3)
+me:SetAttribute("SpireFloor", FLOOR)
 local lastPunch = 0
 local model = E.model
 local DT = 1 / 30

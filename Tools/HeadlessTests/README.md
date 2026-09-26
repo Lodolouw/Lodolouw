@@ -47,15 +47,34 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   Nahrzul with pretend players, the real BossService and (client mode) the
   real BossClient, and prints every boss attribute, hit, shove and reward
   (server) or a fingerprint of everything drawn on screen five times a
-  second (client). `./golden.sh record` saves 16 scenarios in `golden/`
-  (gzipped); `./golden.sh check` replays them and fails on any difference -
-  the proof that a change to the boss code (like splitting it into one file
-  per boss) changed nothing players can see. `./golden.sh check client_`
-  runs only the client ones.
+  second (client). `./golden.sh record` saves the scenarios in `golden/`
+  (gzipped: 16 for Oozark and Nahrzul, and 4 for Knight Burrowmore -
+  `knight_full` and `knight_attacks`, server and client); `./golden.sh check`
+  replays them and fails on any difference - the proof that a change to the
+  boss code (like splitting it into one file per boss) changed nothing
+  players can see. `./golden.sh check client_` runs only the client ones, and
+  `./golden.sh record server_knight` re-records only those.
 - `test_boss_template.luau` - the "how to add a boss" templates really
   work: `Bosses/_Template.lua` and `BossBodies/_Template.lua` plugged in as
-  a pretend third boss, fought to the death with the real BossService and
-  BossClient.
+  a pretend extra boss (on a made-up floor 99), fought to the death with the
+  real BossService and BossClient.
+- `test_burrowmore.luau` - KNIGHT BURROWMORE (floor 3) on the real Glimmer
+  Dig (DigBuilder) with the real BossService (and, with `client` at the end,
+  the real BossClient drawing him). `-a full` fights him to the death (both
+  phases, the meteor, the reward), `attacks` forces every move on a player
+  standing still (each must land) and on one rolling (each must be dodged),
+  `reset` leaves mid-fight and comes back, `duo` is two players, and `timing`
+  checks the dodge windows (a roll as a drop's circle locks dodges it; a roll
+  a second early doesn't; the delayed drop punishes a roll at the lock). It
+  also checks he never leaves the dirt, never takes a punch high in the air,
+  and (client) that every part of him and every warning gets drawn.
+- `burrowmore_snaps.luau` + `render_snaps.py` - Burrowmore's preview
+  pictures: `luau burrowmore_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/burrowmore_preview.png` (the
+  fight: seven moments and a title card); `-a poses` and
+  `render_snaps.py ... --cols 3 --title ""` the pose sheet
+  (`Docs/burrowmore_poses.png`). `render_snaps.py` draws any snapshot file
+  (SNAP / part lines / BAR for the boss bar).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,
@@ -73,7 +92,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   (`Docs/intro_preview.png`): the real lobby and the real intro, four
   moments (the dark, the lesson, the reveal, the Spire) drawn with what's
   on the screen: `luau intro_snaps.luau > snaps.txt`, then
-  `python3 render_intro.py snaps.txt out.png`.
+  `python3 render_intro.py snaps.txt out.png`. (Its pretend camera has a
+  screen size now, so RetroWorld's whole look - cobbles, the Spire's beacon -
+  is in the pictures too.)
 - `lobby_count.luau` - builds the whole lobby with the real LobbyBuilder and
   counts parts, shadow-casting parts, lights and Neon per piece (`-a client`
   also runs RetroWorld and counts its detail; `-a names` lists the island's

@@ -8,6 +8,7 @@
 #   ./golden.sh check    run them again and compare: any difference fails,
 #                        showing the first lines that differ
 #   ./golden.sh check client_    (only the scenarios whose names start so)
+#   ./golden.sh record server_knight   (records only those: a new boss's own)
 # Needs the Luau command-line tools on your PATH (or LUAU=/path/to/luau).
 cd "$(dirname "$0")"
 LUAU=${LUAU:-luau}
@@ -31,6 +32,10 @@ SCENARIOS=(
 	"client_worm_full|test_bosses.luau -a worm_full 1 client"
 	"client_worm_reset|test_bosses.luau -a worm_reset 1 client"
 	"client_worm_attacks|test_bosses.luau -a worm_attacks 1 client"
+	"server_knight_full|test_bosses.luau -a knight_full 1"
+	"server_knight_attacks|test_bosses.luau -a knight_attacks 1"
+	"client_knight_full|test_bosses.luau -a knight_full 1 client"
+	"client_knight_attacks|test_bosses.luau -a knight_attacks 1 client"
 )
 mode=${1:-check}
 only=${2:-}

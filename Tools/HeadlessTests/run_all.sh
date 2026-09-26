@@ -25,9 +25,15 @@ run test_intro.luau
 run test_intro.luau -a skip
 run test_intro.luau -a fail
 run test_intro.luau -a replay
+# Knight Burrowmore (floor 3): whole fights, every move, resets, two players,
+# the dodge windows, and the same with his body drawn on screen
+for seed in 1 2 3; do run test_burrowmore.luau -a full $seed; done
+for sc in attacks reset duo timing; do run test_burrowmore.luau -a $sc 1; done
+run test_burrowmore.luau -a full 2 client
+run test_burrowmore.luau -a attacks 1 client
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (16 boss traces)"
+	echo "pass  golden.sh check (20 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20

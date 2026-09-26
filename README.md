@@ -170,6 +170,44 @@ moment the fight starts a sandstorm rolls in.
   looping Worm Rumble and a looping Sandstorm. Missing ones borrow Gloomgut's
   (or are simply silent).
 
+## The Spire's third floor: Knight Burrowmore (the Glimmer Dig)
+
+A knight of the shovel (a parody of a certain blue shovel knight, with his
+own name, colours and curly horns) kneels in the middle of an old dig site on
+the sunny plains. Walk near and he gets up, pulls his shovel out of the dirt,
+twirls it and strikes a pose. It's a **souls-like** fight: every move has one
+clear wind-up, one way to dodge it, and a moment afterwards when he's open -
+you learn him by losing to him. Recommended level 45.
+
+- **His moves:** Shovel Drop (jumps high; the red circle under him FOLLOWS you,
+  flashes and locks - roll just before he lands), Triple Pogo (three hops at
+  you, dizzy after), Shovel Swing (a red wedge in front of him), Dirt Fling (a
+  fan of clods), Anchor Toss (a relic: "item get!", swung round overhead, lobbed
+  onto you, then he has to tug it out of the floor), Fire Stick (a relic:
+  fireballs along red strips on the floor), Charge Dash (a red lane that locks
+  on; running into the edge of the dig dizzies him) and a Taunt (free hits).
+- **Phase two, "No Quarter!":** at half health his shoulder plates fly off,
+  cracks glow gold in his armour and he gets faster: the Delayed Drop (he hangs
+  at the top to catch early rollers), Swing into Drop, Gem Rain (treasure falls
+  into marked circles while he keeps fighting) and his final move, the Shovel
+  Meteor (below 30% health: he jumps out of sight, a huge shadow grows in the
+  middle - get to the edge - then he's stuck in the ground).
+- **The end:** he drops to one knee ("You dig... with honour..."), pops into
+  pixels, and a treasure chest bursts up out of the dirt. Everyone in the dig
+  gets Burrowmore's Chest (Spade Knight's and Relicbound gear).
+- **Where things are:** every number in `Config.Bosses[3]`; the floor in
+  `Config.Spire.Floors[3]`; his moves in `ServerScriptService/Bosses/Burrowmore.lua`;
+  his body in `ReplicatedStorage/BossBodies/Burrowmore.lua`; the arena in
+  `ServerScriptService/DigBuilder.lua`; his portrait and lines in `BossIntro`.
+- **Music:** a Sound named `Burrowmore Song` in SoundService (Oozark's plays
+  until you add it). **Sounds** (all optional, missing ones borrow Oozark's):
+  Burrowmore Wake, Burrowmore Jump, Burrowmore Land, Shovel Swing, Shovel Dig,
+  Dirt Land, Relic Get, Anchor Throw, Anchor Land, Fire Stick, Burrowmore Dash,
+  Burrowmore Crash, Burrowmore Laugh, Gem Land, Shovel Meteor, Armour Crack,
+  Burrowmore Death.
+- Previews: `Docs/burrowmore_preview.png` (the fight) and
+  `Docs/burrowmore_poses.png` (him, pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without
@@ -198,7 +236,7 @@ spawn, and Undertale-style lines typed out when you walk up to a shop, the
 shrine or the Spire. It also dresses the lobby with detail: stone
 courses and chunky stones on the walls, pixel flames and smoke in place of
 the old fire effects, grass and flowers, sparks at the shrine, voxel clouds, flocks of birds, and a beacon of
-light from the Spire's peak. It only changes how things look, only on your
+light shooting up out of the blue flame in the Spire's crown (`Docs/spire_beacon.png`). It only changes how things look, only on your
 screen: nothing is moved, nothing solid changes, and the people and the
 boss arenas are left alone.
 
@@ -222,7 +260,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
 - **Slots:** Weapon, Helmet, Chest, Boots. Stats: Damage, Crit Chance (x1.75),
   Health, Defense (both capped at 60%) and Training Power.
 - **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
-  Oozark, Duneworn and Devourer's for Nahrzul) with bonuses for 2 and 4 pieces.
+  Oozark, Duneworn and Devourer's for Nahrzul, Spade Knight's and Relicbound
+  for Burrowmore) with bonuses for 2 and 4 pieces.
 - **Level:** each item needs a level: the highest you've ever reached, so
   prestiging never locks you out. Gear and chests stay through prestige.
 - **The bag:** your loadout and total stats on the left; your items, tabs,

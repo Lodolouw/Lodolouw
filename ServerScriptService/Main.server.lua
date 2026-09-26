@@ -1,7 +1,8 @@
 --[[
 	Main  (Script, parent: ServerScriptService, name: "Main")
 
-	Builds the lobby (and the Spire's arenas), then starts the game logic.
+	Builds the lobby (and the Spire's arenas: the slime pit, the Sunken Dunes
+	and the Glimmer Dig), then starts the game logic.
 
 	Every system is loaded and started on its own, protected: if one of them
 	errors (a script pasted in half, a name that doesn't match), the others still
@@ -82,6 +83,11 @@ start("CombatService", CombatService and CombatService.Start, PlayerService) -- 
 -- only the dunes are.
 local DunesBuilder = load("DunesBuilder", 3)
 start("DunesBuilder", DunesBuilder and DunesBuilder.Build)
+
+-- The Spire's third floor, The Glimmer Dig (Knight Burrowmore's arena): the
+-- same way - if it's missing or broken, only the dig is
+local DigBuilder = load("DigBuilder", 3)
+start("DigBuilder", DigBuilder and DigBuilder.Build)
 
 local BossService = load("BossService")
 if CombatService then

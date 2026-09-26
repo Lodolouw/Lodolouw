@@ -28,7 +28,8 @@ You are continuing work on my Roblox game. Read this whole message before doing 
 3. **Fight bosses** in **the Spire**. Each floor is a boss with a recommended level:
    - Floor 1: **Oozark, the Gelatinous Tyrant**, the slime, "Gloomgut" in older code. Level 15, in the slime pit.
    - Floor 2: **Nahrzul, Devourer of the Dunes**, the sand worm "Mireworm". Level 30, in the Sunken Dunes.
-   - Floor 3: sealed (level 45).
+   - Floor 3: **Knight Burrowmore, the Honourable Digger**, a knight of the shovel (a parody of Shovel Knight). Level 45, in the Glimmer Dig.
+   - Floor 4: sealed (level 60).
 
    Boss fights are souls-like: dodge rolls with invincibility frames, stamina, **flasks** to heal (R), lock-on (Tab, Q/E to switch), and clear red telegraphs before attacks. Bosses drop **chests** with gear.
 4. **Repeat.** Beating a boss unlocks the next level target, which means more farming with tougher Colosseum enemies and better gear.
@@ -43,7 +44,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - Server: `BossService` keeps what every boss shares; each boss has its own ModuleScript in `ServerScriptService/Bosses/` (`Oozark.lua`, `Nahrzul.lua`), found by its `Short` name in `Config.Bosses`.
   - Client: `BossClient` keeps the shared visuals; each boss's body has its own ModuleScript in `ReplicatedStorage/BossBodies/` (`Oozark.lua`, `Nahrzul.lua`).
   - "How to add a boss": `Bosses/_Template.lua` + `BossBodies/_Template.lua` (a tiny working boss with one attack, STOMP; `test_boss_template.luau` fights it). See "Adding a boss" below.
-  - Proven identical by golden traces: `Tools/HeadlessTests/golden.sh check` (16 recorded fights, server and screen, byte-identical before and after).
+  - Proven identical by golden traces: `Tools/HeadlessTests/golden.sh check` (16 recorded fights, server and screen, byte-identical before and after; Burrowmore added 4 more of his own: 20 now).
 - **The MMO direction** (Hypixel Skyblock / Wynncraft / Blox Fruits) is what keeps the game alive long-term:
   - Every boss drops a **treasure chest**, a "gamble crate", with gear in rarities: Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret. This is **done**.
   - Gear goes in your inventory and drives a player **market**.
@@ -88,8 +89,9 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - **Spire floors:**
   - Floor 1: "Oozark's Hollow", the slime pit.
   - Floor 2: the **Sunken Dunes**, the worm's desert (DunesBuilder).
-  - Floor 3: sealed (level 45).
-- **Music:** there are 3 lobby songs, a slime boss song, and "SANDWORMSONG" for the worm, played by name from SoundService.
+  - Floor 3: the **Glimmer Dig**, Knight Burrowmore's dig site on the sunny plains (DigBuilder).
+  - Floor 4: sealed (level 60).
+- **Music:** there are 3 lobby songs, a slime boss song, "SANDWORMSONG" for the worm, and "Burrowmore Song" for the knight (add it: until then Oozark's plays), played by name from SoundService.
 
 ### Places we discussed for later (not built yet)
 
@@ -138,7 +140,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 **ReplicatedStorage/**
 - `Config.lua`: ALL the tuning numbers (levels, colosseum, bosses, combat, spire, retro look).
 - `Items.lua`: gear rarities, stats, sets and loot tables. "Floor" 0 is Oozlet's Chest (the intro's starter gear, level 1: Squishy Gloves, Bouncy Boots, Oozlet Cap, Goo Vest).
-- `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Nahrzul.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
+- `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Nahrzul.lua`, `Burrowmore.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
 
 **ServerScriptService/**
 - `Main.server.lua`: a Script. It builds the world and then starts each service inside `pcall`.
@@ -151,8 +153,9 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - `Bosses/` (a Folder): one ModuleScript per boss, named after its `Short` name in `Config.Bosses`:
   - `Oozark.lua` (floor 1, the slime; "Gloomgut" in older code): its attacks.
   - `Nahrzul.lua` (floor 2, the worm; "Mireworm" in older code): its whole way of fighting (hunting by sound under the sand, its attacks, its every-frame step) and hooks (`brain`, `step`, `onBuild`, `onReset`, `onHome`, `onDie`, `onBreak`).
+  - `Burrowmore.lua` (floor 3, the knight): his moves (a surface boss: the shared brain picks them by distance), his body shape for punches (high in the air he's out of reach) and a few hooks (see "Floor 3: Knight Burrowmore").
   - `_Template.lua`: NOT a boss: the starting point for a new one (see "Adding a boss").
-- `SpireService.lua`, `DunesBuilder.lua`: the Spire's menu and travel, and floor 2's arena.
+- `SpireService.lua`, `DunesBuilder.lua`, `DigBuilder.lua`: the Spire's menu and travel, floor 2's arena and floor 3's arena.
 - `IntroService.lua`: the intro's fight, all decided on the server (see "The intro: Oozlet").
 
 **StarterPlayerScripts/** (LocalScripts)
@@ -318,12 +321,30 @@ A brand-new player's first minute, from the growth plan we worked out (step 1: "
   - At half health it **cracks** (can't be hurt for a moment, pushes you back, cracks glow on its shell) and gets faster, sometimes **bouncing** at you three times (a small red circle each).
   - It never takes you below `Floor` (30%) of your health: **you can't lose**. Stamina is free (there's no stamina bar in the intro).
   - It **pops** into pixels, its crown bounces away, and a **chest** drops out of the sky and bursts open: +1 OOZLET'S CHEST.
-- **The reveal:** the mist rolls back over `Reveal.Time` seconds and the lobby builds itself round you - the island's ground unrolls under the mist and every piece pops in (in 8-bit steps) as it passes. Then the screen blinks, and we're past the castle walls looking up at **the Spire building itself out of nothing**, bottom to top: BOOM, **OOZARK AWAITS...** A blink back, and everything returns: your HUD (LEVEL UP!), the music, the other players.
+- **The reveal:** the mist rolls back over `Reveal.Time` seconds and the lobby builds itself round you - the island's ground unrolls under the mist and every piece pops in (in 8-bit steps) as it passes. Then the screen blinks, and we're past the castle walls looking up at **the Spire building itself out of nothing**, bottom to top: BOOM, **OOZARK AWAITS...** A blink back, and everything returns: your HUD (LEVEL UP!), the music, the other players. (The shot looks at the middle of the tower, under the blue flame in its crown - `FlameOrb` - and RetroWorld's beacon shoots up out of that flame, with its runes turning just above the crown's spikes: it used to start at a spike on the crown's rim, off to one side, and looked odd. `Docs/spire_beacon.png`.)
 - **Rewards:** Oozlet's Chest and 100 coins when it pops; enough Power to be at least level 3 once the lobby is back; full health; a toast saying to open the chest in your bag.
 - **Who gets it:** brand-new players only (`IntroDone` in their save; an old save with any Power counts as done). **In Studio every Play shows it while `Config.Intro.AlwaysInStudio = true`** - set it false to test the normal start. In Studio there's also a **"DEV: Replay Intro"** button (with the HUD's other DEV buttons, bottom right) that plays it again from the start (it pays its rewards again - Studio only).
 - **Never stuck:** if the fight breaks on the server, or anything breaks on the player's screen, everything is put back and they play on normally (no reward; they get the intro next time).
 - **How it plugs in:** the player attribute `Intro` = `"Void"` (dark, Oozlet happy) / `"Fight"` / `"Reveal"` / nil (over), and `IntroChecked` once the server has decided. CombatService and CombatClient fight while it's "Void" or "Fight"; BossClient keeps the lobby music off, LobbyActivities keeps its pop-ups shut, RetroWorld keeps its flavour text quiet while `Intro` is set. The screen tells the server only "IntroLook" (I can see: the bump waits for it), "IntroDone" (the reveal's finished) and "IntroFailed" (Actions).
 - **Sounds** (by name in SoundService, each with a built-in Roblox fallback): Blip "UI Blip", Boom "Boss Slam", Hop "Dummy Land", Squish "Boss Splat", Wake "Boss Wake", Slam "Boss Slam", Crack "Boss Break", Pop "Boss Death"/"Dummy Poof", Chest "Reward Pop", Win "Quest Complete", Awaits "Boss Wake". Add a Sound named **"Oozlet Song"** for its own music.
+
+## Floor 3: Knight Burrowmore ✅
+
+A knight of the shovel - a parody of Shovel Knight with his own name ("Knight Burrowmore, the Honourable Digger"), colours and curly horns - in a souls-like fight: every move has ONE clear wind-up, ONE way to dodge it and a moment afterwards when he's open ("you fight him and you learn him"). No parrying, nothing the player has to do but hit, roll and move. Previews: `Docs/burrowmore_preview.png` (the fight) and `Docs/burrowmore_poses.png` (a pose sheet). All his numbers are in `Config.Bosses[3]`.
+
+- **The arena, the Glimmer Dig** (`DigBuilder`, centre `(-2600, 0, 2600)`): a round floor of packed dirt (84 studs out to the invisible wall, a wooden fence just outside) on sunny 8-bit plains; a stone gate south with the fog way out, a glowing checkpoint orb (a Shovel Knight nod) and a sign; his campfire (east) and striped tent (west); coin piles, open chests, gem rocks, dirt mounds with spare shovels; hills, trees, a purple castle on a far hill, floating dirt islands, clouds and blue mountains. `Config.Spire.Floors[3].ambience`: a bright afternoon, a little drifting dust (`ArenaAmbience` now takes `Grains` and `Clouds = false`). No acid rain (`Weather = "Clear"`).
+- **The fight** (`Bosses/Burrowmore.lua`; he's a surface boss, so BossService's shared brain chooses his moves by distance): Shovel Drop (the red circle under him follows you, flashes and locks: roll just before he lands; he bounces, then tugs his shovel out), Triple Pogo (three hops, dizzy after), Shovel Swing (a red wedge), Dirt Fling (a fan of clods), Anchor Toss (relic: "item get!", swung, lobbed onto you, stuck: a big opening), Fire Stick (relic: fireballs along red strips; jump or roll them), Charge Dash (a red lane; hitting the edge of the dig dizzies him), Taunt (free hits). **Phase two "No Quarter!"**: shoulder plates fly off, gold cracks, faster; Delayed Drop (hangs at the top after the lock to catch early rollers), Swing into Drop, Gem Rain (treasure into marked circles while he keeps fighting; its own attributes `RainAt`/`RainK`/`Rain1..`), and the **Shovel Meteor** (the first time below `MeteorAt` 30%: out of sight, a huge shadow in the middle - get to the edge - then stuck in the ground for `Stuck` seconds).
+- **Can't be punched high in the air**: his file gives CombatService his body shape (`SetTargetShape`), using the same jump sum (`jumpHeight`) the screen draws him with.
+- **The end:** down on one knee (BossIntro's last words: "You dig... with honour... the treasure... is yours..."), a pop into pixels, and a treasure chest bursts up out of the dirt. Reward: Burrowmore's Chest (floor 3 in `Items`: sets Spade Knight's and Relicbound, levels 40-60, a Secret "Very First Shovel").
+- **The dodge windows are checked** by `test_burrowmore.luau -a timing`: a roll as a drop's circle locks dodges it, a roll a second early doesn't; the delayed drop punishes the roll at the lock and lets the one as he falls through.
+- **Sounds** (by name in SoundService, all optional - missing ones borrow Oozark's through `SOUND_FALLBACK` in BossClient): Burrowmore Wake, Burrowmore Jump, Burrowmore Land, Shovel Swing, Shovel Dig, Dirt Land, Relic Get, Anchor Throw, Anchor Land, Fire Stick, Burrowmore Dash, Burrowmore Crash, Burrowmore Laugh, Gem Land, Shovel Meteor, Armour Crack, Burrowmore Death. Music: "Burrowmore Song".
+
+**The boss lineup we agreed (parodies with new names, so no lawsuit; each fight unique - no wave spam, no just throwing itself at you):**
+1. Floor 3: **Knight Burrowmore** (Shovel Knight) ✅ done (above).
+2. Floor 4: **Kaze the Headband Hero** (Ryu) - chosen: **Option A, the Special Move Meter**, with **charging and animation canceling**: a KI meter (fills when he lands hits or you whiff near him; hitting him while he charges knocks it down); specials at 1 bar, shouted in pixel text - "KAZE-BLAST!" (floor fireball: jump/roll over), "RISING DRAGON!" (close uppercut: back off, punish the landing), "TORNADO KICK!" (spins across: roll through); he can HOLD a special to charge it (blue glow, rising hum; bigger move; open to hits while charging); he cancels punch strings into specials, fakes a charge into a dash (white flash), a cancel bar (3 a round; empty = guaranteed opening); full meter "SUPER!": a giant beam, hide behind one of 4 breakable pillars; phase two "ROUND 2 - FIGHT!": meter twice as fast, 2 specials chained, 5 cancels, tired longer when they run out.
+3. Floor 5: **Speedy Revvington** (Lightning McQueen) - "Drive-By Duel", like Elden Ring's Tree Sentinel at the start but a cartoon car: drive-by swipe, skid-turn window, wheelie slam, honk, exhaust backfire, straight charge lane; phase two TURBO.
+4. Floor 6 finale: the **Geometry Dash "Deadlocked" parody** (name not picked yet; suggested "Gridlock, the Final Beat") - fights with the arena like a GD level: cube/ship/UFO/wave forms, neon tiles on the beat, jump pads, a drop stun window; phase two faster switches and a gravity flip.
+Rough levels 45 / 60 / 75 / 90. Build one boss at a time, with its arena (arenas depend on the moves).
 
 ## Everything we've built and decided so far (history)
 
@@ -394,7 +415,7 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
 **Growth plan (we worked it out together, step by step):** the big risk was a new player's first minutes - the name promises a boss, but the first real one (Oozark) is level 15. Step 1, a boss in the first minute, is done: the intro (above). **Step 2 is next: the gap after it** - you finish the intro at level 3 and the Spire says level 15, so you farm dummies for a long time. We haven't decided how to close it yet.
 
-**Also asked for: more bosses** (my goal is 20+). The code split is done (see "Adding a boss"); Floor 3 (level 45) is next. Ideas I was offered: a frost giant (icy cavern, slippery floor, falling icicles, a freezing breath sweep), a haunted knight (a souls-like sword duel with a parry window and ghost copies in phase 2), or a mechanical golem (a forge, conveyor belts, a weak spot on its back). Ask me which.
+**Also asked for: more bosses** (my goal is 20+). Floor 3 is done: Knight Burrowmore (see "Floor 3: Knight Burrowmore" above, with the agreed lineup for floors 4-6). Next boss: **Kaze the Headband Hero** (floor 4) - its design is agreed (above); build it the same way (a preview picture first, then the arena and the fight together).
 
 ### Adding a boss
 1. Copy `ServerScriptService/Bosses/_Template.lua` and `ReplicatedStorage/BossBodies/_Template.lua`, naming both copies after the new boss's short name (e.g. `Frostjaw.lua`). Their headers explain everything.
@@ -407,9 +428,10 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
 - Before pushing, compile-check every changed file with a Luau compiler (`luau-compile`) and run `luau-analyze`.
 - Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before. They're now in `Tools/HeadlessTests/` (`./run_all.sh`); add new tests there.
-- **Changing boss code without changing the fights** (a cleanup, a split): run `./golden.sh check` before and after - it replays 16 recorded boss fights (server decisions and hits, and a fingerprint of everything drawn on screen) and fails on any difference. Only when a change is MEANT to change a boss, re-record with `./golden.sh record` (and say so in the commit).
+- **Changing boss code without changing the fights** (a cleanup, a split): run `./golden.sh check` before and after - it replays 20 recorded boss fights (Oozark, Nahrzul and Burrowmore: server decisions and hits, and a fingerprint of everything drawn on screen) and fails on any difference. Only when a change is MEANT to change a boss, re-record it with `./golden.sh record <name prefix>` (e.g. `server_knight`; and say so in the commit). A new boss adds its own scenarios to `test_bosses.luau` and `golden.sh` once it's finished.
+- **Burrowmore:** `test_burrowmore.luau -a <full|attacks|reset|duo|timing> [seed] [client]` fights him on the real Glimmer Dig (see its header). `luau burrowmore_snaps.luau > s.txt` then `python3 render_snaps.py s.txt out.png` draws the fight sheet; `-a poses` and `--cols 3 --title ""` the pose sheet. `render_snaps.py` works for any snapshot file with `SNAP`/`BAR` lines.
 - **The intro:** `test_intro.luau` plays it end to end with the real server and screen scripts (`-a skip`: a returning player; `-a fail`: a broken screen). `luau intro_snaps.luau > snaps.txt` then `python3 render_intro.py snaps.txt out.png` draws the four-picture preview from the real lobby.
 - `mount.luau` loads the game's scripts into the mock the way Rojo lays them out (folders and all), so scripts that require each other by their place in the game work in tests.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Intro`, `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files. The Colosseum polish plan is done, the boss code is split, and the intro (Oozlet) is in. Next: step 2 of the growth plan (the gap between the intro and Oozark - ask me), and more bosses (ask me which Floor 3 boss). Other ideas for later: the chest rework, pets, a settings menu.
+Start by reading `ReplicatedStorage/Config.lua` (the `Intro`, `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files (and `Bosses/Burrowmore.lua` + `BossBodies/Burrowmore.lua`: the newest, most complete example of a surface boss). The Colosseum polish plan is done, the boss code is split, the intro (Oozlet) is in, and floor 3 (Knight Burrowmore) is in. Next: the floor 4 boss, Kaze (design agreed, above), and step 2 of the growth plan (the gap between the intro and Oozark - ask me). Other ideas for later: the chest rework, pets, a settings menu.

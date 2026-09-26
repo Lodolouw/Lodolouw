@@ -23,6 +23,8 @@
 --   worm_full     Nahrzul (floor 2) fought to the death by one player
 --   worm_reset    the player leaves mid-fight (it resets), then returns and wins
 --   worm_attacks  every attack forced in turn, in phase one and phase two
+--   knight_full   Knight Burrowmore (floor 3) fought to the death by one player
+--   knight_attacks every one of his moves forced in turn, in both phases
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -38,7 +40,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
-local FLOOR = string.find(SCENARIO, "^worm") and 2 or 1
+local FLOOR = string.find(SCENARIO, "^worm") and 2 or (string.find(SCENARIO, "^knight") and 3 or 1)
 
 ----------------------------------------------------------------------
 -- the log: numbers rounded so tiny float noise can't differ, -0 written as 0
@@ -101,6 +103,9 @@ end
 ----------------------------------------------------------------------
 mount.require(mount.module("ServerScriptService/LobbyBuilder.lua")).Build()
 mount.require(mount.module("ServerScriptService/DunesBuilder.lua")).Build()
+if FLOOR == 3 then
+	mount.require(mount.module("ServerScriptService/DigBuilder.lua")).Build()
+end
 M.run(1)
 -- (one boss per run: two would take turns in an order that isn't fixed)
 for _, h in ipairs(CollectionService:GetTagged("BossHome")) do
@@ -736,7 +741,7 @@ local function forcedAttacks(tableOf)
 	end
 end
 
-if SCENARIO == "slime_full" or SCENARIO == "worm_full" then
+if SCENARIO == "slime_full" or SCENARIO == "worm_full" or SCENARIO == "knight_full" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -794,7 +799,7 @@ elseif SCENARIO == "slime_die" or SCENARIO == "worm_reset" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_attacks" then
+elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)

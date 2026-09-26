@@ -659,8 +659,8 @@ function Config.formatMult(m)
 end
 
 ----------------------------------------------------------------------
--- The Spire (boss floors). Only floor 1's arena exists so far; the rest
--- show as locked in the Spire menu.
+-- The Spire (boss floors). Floors 1-3 have arenas and bosses; the rest
+-- show as sealed in the Spire menu.
 ----------------------------------------------------------------------
 Config.Spire = {
 	EnterRange = 38, -- how close to the Spire's doors you must be to enter
@@ -729,7 +729,36 @@ Config.Spire = {
 				},
 			},
 		},
-		{ id = 3, boss = "???", area = "???", level = 45, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
+		{
+			id = 3,
+			boss = "Knight Burrowmore, the Honourable Digger",
+			area = "The Glimmer Dig",
+			level = 45,
+			blurb = "An old dig on the sunny plains, heaped with treasure. Its keeper is a knight of the shovel: cheerful, honourable - and he hits like a falling anvil.",
+			color = Color3.fromRGB(0, 153, 219),
+			open = true,
+			-- how the dig looks on your screen while you're in it (ArenaAmbience):
+			-- a bright afternoon over the plains, a little dust drifting past
+			ambience = {
+				ClockTime = 15.2, -- the sun a little past its highest
+				Atmosphere = {
+					Density = 0.28,
+					Offset = 0.1,
+					Color = Color3.fromRGB(206, 226, 255),
+					Decay = Color3.fromRGB(150, 180, 230),
+					Glare = 0.2,
+					Haze = 1.2,
+				},
+				Tint = Color3.fromRGB(255, 248, 232),
+				Saturation = 0.08,
+				Contrast = 0.04,
+				Sand = Color3.fromRGB(214, 180, 130), -- the drifting dust
+				Grains = 0.2, -- how much of it (1 = the dunes' breeze): only a little
+				Clouds = false, -- (no big rolling clouds of dust either)
+				Wind = Vector3.new(1, 0, -0.4),
+			},
+		},
+		{ id = 4, boss = "???", area = "???", level = 60, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
 	},
 }
 
@@ -1204,6 +1233,146 @@ Config.Bosses = {
 			Break = "Worm Crack", -- its armour blowing off
 			Death = "Worm Death",
 			Rumble = "SandRumble", -- a LOOPING low rumble, louder the closer it swims to you
+		},
+	},
+
+	[3] = {
+		Name = "Knight Burrowmore, the Honourable Digger",
+		Short = "Burrowmore",
+		-- A knight of the shovel (a parody of a certain blue shovel knight - with
+		-- his own name, colours and curly horns). He fights on the surface like
+		-- Oozark, so BossService's shared brain runs him: he picks a move that
+		-- suits how far away you are. His moves are in ServerScriptService/
+		-- Bosses/Burrowmore.lua; his body in ReplicatedStorage/BossBodies/Burrowmore.lua.
+		-- A souls-like fight: every move has one clear wind-up, one way to dodge
+		-- it, and a moment afterwards when he's open. You learn him by losing.
+		Color = Color3.fromRGB(0, 153, 219), -- his armour
+		DeepColor = Color3.fromRGB(18, 78, 137), -- the armour's shadowed side
+		CoreColor = Color3.fromRGB(24, 20, 37), -- the dark behind his visor
+		EyeColor = Color3.fromRGB(254, 231, 97), -- the glow in the visor's slit
+		TrimColor = Color3.fromRGB(254, 174, 52), -- gold: his trim, his horns and his shovel's blade
+		CapeColor = Color3.fromRGB(228, 59, 68), -- his cape
+
+		HealthPunches = 34, -- (a little longer than Oozark's 30: he gives you more openings)
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 10, -- how wide he is for hits (he stands about three times your height)
+		WakeRange = 42, -- walk this close and he stands up
+		WakeTime = 3.0, -- getting up, pulling his shovel out of the dirt, a twirl, a pose
+		WakeSoundLead = 0.3,
+		Leash = 78, -- he can go anywhere on the dirt (its edge is 84 out): there's nowhere to hide
+		MoveSpeed = { 15, 19 }, -- striding after you between moves, per phase (you run 16-24)
+		TurnSpeed = { 300, 430 }, -- degrees a second while he lines up, per phase
+		Breather = { { 0.45, 0.8 }, { 0.25, 0.55 } }, -- the pause between moves, per phase
+
+		PhaseAt = 0.5, -- NO QUARTER! at half health his armour cracks and he glows gold
+		BreakTime = 2.6,
+		BreakShove = 52,
+		BreakReach = 30,
+		Phase2Recovery = 0.78, -- phase two: every opening is a little shorter
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.66,
+		MeteorAt = 0.3, -- below this much health his final move, the Shovel Meteor, comes
+		-- straight away (once), and after that it's one of his moves
+
+		-- His moves. Tell = the wind-up you see before it lands (every one is
+		-- longer than your roll's 0.5s). Recovery = how long he's open after it:
+		-- that's your chance to hit him. Range = { closest, furthest } he uses it
+		-- from; Weight = how often; Phase = 2 only after his armour cracks.
+		Attacks = {
+			-- SHOVEL DROP, his signature: he jumps high, pointing his shovel down,
+			-- and his shadow (a red circle) FOLLOWS you. Lock = how far through the
+			-- jump it stops following (it flashes): roll just before he lands. He
+			-- bounces once where he lands, then tugs his shovel out of the dirt.
+			-- (Air = seconds in the air; Rise = the share of that spent going up;
+			-- Hang = extra seconds held at the top; Follow = how fast, in studs a
+			-- second, the circle can chase you)
+			ShovelDrop = { Tell = 0.55, Air = 1.15, Rise = 0.5, Lock = 0.7, Height = 22, Follow = 30, Radius = 7.5,
+				Damage = 24, Knockback = 45, Bounce = 0.55, Recovery = 0.9, Phase = 1, Range = { 0, 70 }, Weight = 6 },
+			-- TRIPLE POGO: he crouches and glows, then pogos three times in a row,
+			-- each landing aimed at you: roll three times, in rhythm. After the
+			-- third he's dizzy (stars round his head) - a big opening.
+			TriplePogo = { Tell = 0.8, Hops = 3, Air = 0.7, Ground = 0.12, Rise = 0.45, Lock = 0.55, Height = 12, Follow = 26, Hop = 28, Radius = 6.5,
+				Damage = 17, Knockback = 38, Recovery = 1.8, Phase = 1, Range = { 0, 55 }, Weight = 3 },
+			-- SHOVEL SWING: he pulls the shovel back over his shoulder and sweeps it
+			-- round in front of him (the red wedge on the floor). Roll through it or
+			-- step back. A small opening after.
+			ShovelSwing = { Tell = 0.6, Commit = 0.7, Reach = 13, Arc = 210, Damage = 20, Knockback = 42, Recovery = 0.55, Phase = 1, Range = { 0, 15 }, Weight = 6 },
+			-- DIRT FLING: he digs in (the dirt on his shovel glows orange), then
+			-- flings clods in a fan at you. Roll out sideways - or rush in while
+			-- he's still digging.
+			DirtFling = { Tell = 0.85, Commit = 0.65, Clods = 5, Spread = 11, Flight = 0.75, Near = 14, Far = 48, Radius = 4.5,
+				Damage = 15, Knockback = 30, Recovery = 0.65, Phase = 1, Range = { 14, 60 }, Weight = 4 },
+			-- ANCHOR TOSS (a relic): he holds up an anchor ("item get!"), swings it
+			-- round on its chain, then lobs it at you in a high arc - watch its
+			-- shadow. It sticks in the floor and he has to tug it out: a big opening.
+			AnchorToss = { Tell = 1.0, Commit = 0.75, Flight = 1.0, Height = 18, Lead = 0.35, Radius = 8,
+				Damage = 26, Knockback = 55, Recovery = 1.6, Phase = 1, Range = { 18, 80 }, Weight = 3 },
+			-- FIRE STICK (a relic): he raises a wand that sparks, then shoots
+			-- fireballs along the floor, each one at you. Roll through them,
+			-- step aside, or jump them.
+			FireStick = { Tell = 0.7, Balls = 3, Gap = 0.35, Speed = 40, Reach = 80, Radius = 2.4, Height = 3,
+				Damage = 15, Knockback = 26, Recovery = 0.8, Phase = 1, Range = { 12, 90 }, Weight = 3 },
+			-- CHARGE DASH: he crouches and scrapes his shovel along the ground
+			-- (sparks fly) while a red lane shows where he'll go - it follows you,
+			-- then flashes and locks. Roll aside late. If he runs into the edge of
+			-- the dig he crashes and is dizzy for longer.
+			ChargeDash = { Tell = 0.85, Commit = 0.7, Speed = 72, MaxDistance = 80, Overshoot = 18, Width = 5.5,
+				Damage = 26, Knockback = 60, Recovery = 1.1, WallStun = 2.0, Phase = 1, Range = { 20, 200 }, Weight = 4 },
+			-- TAUNT: now and then he stops, plants his shovel and laughs at you.
+			-- Free hits, for anyone patient enough to wait for it.
+			Taunt = { Time = 1.9, Phase = 1, Range = { 14, 200 }, Weight = 1.4 },
+
+			-- PHASE TWO ("No Quarter!")
+			-- the Shovel Drop again, but he HANGS at the top a moment longer after
+			-- the circle locks (it locks as he reaches the top) - to catch anyone
+			-- who rolls too early. Roll as he starts to fall.
+			DelayedDrop = { Tell = 0.5, Air = 1.0, Rise = 0.55, Hang = 0.55, Lock = 0.36, Height = 24, Follow = 32, Radius = 7.5,
+				Damage = 26, Knockback = 48, Bounce = 0.5, Recovery = 0.9, Phase = 2, Range = { 8, 70 }, Weight = 4 },
+			-- SWING INTO DROP: a quick Shovel Swing, and straight up into a Shovel Drop
+			SwingDrop = { Tell = 0.5, Commit = 0.7, Reach = 13, Arc = 210, SwingDamage = 18, Crouch = 0.2, Air = 1.0, Rise = 0.5, Lock = 0.7,
+				Height = 20, Follow = 30, Radius = 7.5, Damage = 24, Knockback = 45, Bounce = 0.5, Recovery = 1.1, Phase = 2, Range = { 0, 16 }, Weight = 5 },
+			-- GEM RAIN: he strikes the ground and treasure rains down in marked
+			-- circles round you for a few seconds - while he carries on fighting.
+			GemRain = { Tell = 0.9, Gems = 16, Gap = 0.22, Fuse = 1.1, Spread = 14, Radius = 5, Damage = 14, Knockback = 26,
+				Recovery = 0.35, Phase = 2, Range = { 0, 200 }, Weight = 2.5 },
+			-- SHOVEL METEOR, his final move: he jumps right out of sight, and a huge
+			-- shadow grows in the middle of the dig. Get to the edge! Afterwards
+			-- he's stuck in the ground for a long time.
+			ShovelMeteor = { Tell = 0.7, Up = 0.45, Fall = 2.3, Radius = 36, Damage = 38, Knockback = 75, Stuck = 3.2,
+				Phase = 2, Range = { 0, 200 }, Weight = 3 },
+		},
+
+		Reward = { Power = 2.4, FirstClear = 6 },
+
+		-- the fight's music: add a Sound named "Burrowmore Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Burrowmore Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear", -- no acid rain here, and no sandstorm
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient).
+		Sounds = {
+			Wake = "Burrowmore Wake", -- the shout as he strikes his pose
+			Jump = "Burrowmore Jump", -- leaping into the air
+			Land = "Burrowmore Land", -- a Shovel Drop or a pogo landing
+			Swing = "Shovel Swing", -- the big swing
+			Dig = "Shovel Dig", -- digging in (Dirt Fling)
+			Clod = "Dirt Land", -- a clod landing
+			Relic = "Relic Get", -- holding up a relic (the anchor, the fire stick)
+			Anchor = "Anchor Throw", -- swinging and throwing the anchor
+			AnchorLand = "Anchor Land", -- the anchor hitting the floor
+			Fire = "Fire Stick", -- each fireball
+			Dash = "Burrowmore Dash", -- the charge
+			Crash = "Burrowmore Crash", -- running into the edge of the dig
+			Taunt = "Burrowmore Laugh", -- his laugh
+			Gem = "Gem Land", -- treasure landing
+			Meteor = "Shovel Meteor", -- the final move landing
+			Break = "Armour Crack", -- NO QUARTER! his armour cracking
+			Death = "Burrowmore Death",
 		},
 	},
 }

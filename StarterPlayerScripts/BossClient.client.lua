@@ -353,7 +353,10 @@ local recentSplats = {}
 -- Mireworm's own sounds that have no Gloomgut sound of the same name: if you
 -- haven't added one yet, it borrows the nearest thing (a dive sounds like a
 -- lunge, its body crashing down like a slam, and so on).
-local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = "Wail", Devour = "Roar" }
+local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = "Wail", Devour = "Roar",
+	-- (Knight Burrowmore's: a jump sounds like a lunge, a landing like a slam...)
+	Jump = "Lunge", Land = "Slam", Swing = "Wave", Dig = "Spit", Clod = "Splat", Anchor = "Lunge",
+	AnchorLand = "Slam", Fire = "Spit", Dash = "Lunge", Taunt = "Wail", Gem = "Splat", Meteor = "Slam" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]
