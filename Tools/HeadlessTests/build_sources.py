@@ -21,6 +21,18 @@ def lit(s):
     return '[' + '=' * lvl + '[\n' + s + ']' + '=' * lvl + ']'
 for k, p in files.items():
     out.append('\t%s = %s,' % (k, lit(open(REPO + '/' + p).read())))
+# every script in the game, by its path in the project (for mount.luau, which
+# puts them where Rojo does - folders and all - so a script that requires
+# another one by its place in the game finds it)
+out.append('\tfiles = {')
+for top in ('ReplicatedStorage', 'ServerScriptService', 'StarterPlayerScripts'):
+    for dirpath, dirs, names in sorted(os.walk(os.path.join(REPO, top))):
+        dirs.sort()
+        for n in sorted(names):
+            if n.endswith('.lua'):
+                rel = os.path.relpath(os.path.join(dirpath, n), REPO).replace(os.sep, '/')
+                out.append('\t\t["%s"] = %s,' % (rel, lit(open(os.path.join(dirpath, n)).read())))
+out.append('\t},')
 lb = open(REPO + '/ServerScriptService/LobbyBuilder.lua').read().split('\n')
 start = next(i for i, l in enumerate(lb) if l.startswith('\tlocal STRAW = RGB(228, 166, 114)'))
 end = next(i for i, l in enumerate(lb) if l.startswith('\tlocal SAND_STONE = RGB(228, 166, 114)'))
