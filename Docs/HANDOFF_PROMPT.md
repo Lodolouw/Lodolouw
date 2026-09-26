@@ -10,6 +10,46 @@ You are continuing work on my Roblox game. Read this whole message before doing 
 - **The look is 8-bit / pixel-art**, using the **Endesga-32 palette**: flat materials (SmoothPlastic/Neon), chunky blocky shapes, and the Press Start 2P font. Keep everything new in that style.
 - **Everything is built from scripts.** There are no imported meshes or models (apart from optional NPC models loaded by ID with a blocky fallback).
 
+## The core vision
+
+**The pitch:** a Roblox grow-and-fight game in the style of **"+1 Defeat the boss to Grow"**, crossed with **souls-like boss fights** and **Blox Fruits-style farming quests**, all in a chunky, colourful **8-bit look**.
+
+**The core loop:**
+
+1. **Farm.** In the **Colosseum** you fight waves of dummies at your level to gain **Power (XP)** and **coins**, and complete looping quests ("Defeat 10 Dummies") and daily quests. This is where players spend most of their time, so it has to be *fun*: varied enemies, telegraphed moves to dodge, and rewards that feel good.
+2. **Grow.**
+   - Levels come from Power. Total Power for a level = 17.9 × (level − 1)³, up to level 256.
+   - Every level gives **stat points** to spend: Strength (damage), Vitality (health), Defense, and Training (+Power gain).
+   - **Gear** drops from boss chests: rarities, stats and sets (see `Items.lua`, Inventory GUI).
+   - **Upgrades** (backpack, gloves, sell value, Swift Boots), **talismans** (3 slots) and **prestige** give more ways to get stronger.
+3. **Fight bosses** in **the Spire**. Each floor is a boss with a recommended level:
+   - Floor 1: **Oozark, the Gelatinous Tyrant**, the slime, "Gloomgut" in older code. Level 15, in the slime pit.
+   - Floor 2: **Nahrzul, Devourer of the Dunes**, the sand worm "Mireworm". Level 30, in the Sunken Dunes.
+   - Floor 3: sealed (level 45).
+
+   Boss fights are souls-like: dodge rolls with invincibility frames, stamina, **flasks** to heal (R), lock-on (Tab, Q/E to switch), and clear red telegraphs before attacks. Bosses drop **chests** with gear.
+4. **Repeat.** Beating a boss unlocks the next level target, which means more farming with tougher Colosseum enemies and better gear.
+
+**Where it's going:**
+- **20+ bosses.** With 20 bosses, a player's full playthrough would be roughly **30–60 hours**. Right now a player finishes both bosses in about **1–3 hours**. A game like this wants 10+ hours of progression.
+- **Every boss should be EPIC, but efficient to build:**
+  - Share one framework: warnings, health bar, 8-bit block style, attack timing, sounds and music by name.
+  - Each new boss is mostly new attacks plus a new body.
+  - Mix a few huge showpieces (like the worm) with simpler bosses.
+- **The planned boss-code split (not done yet):**
+  - Server: `BossService` keeps the shared parts, and each boss gets its own ModuleScript in a `ServerScriptService/Bosses/` folder (`Bosses/Oozark`, `Bosses/Nahrzul`).
+  - Client: `BossClient` keeps the shared visuals, and each boss gets its own ModuleScript in a `ReplicatedStorage/BossBodies/` folder with its body and animations.
+  - Include a "how to add a boss" template.
+  - Players see no difference. Test that both bosses behave identically before and after.
+- **Other ideas I liked, for later:**
+  - A **first-time tutorial**: an arrow to the Colosseum, "Beat 5 dummies", "Spend your stat points", "Open your chest".
+  - **Pets** from eggs: the Pet Sanctuary tower is already built and empty.
+  - **Gear upgrading** from +1 to +10.
+  - **Cosmetics** such as auras and titles.
+  - A **settings menu** (music and SFX volume, camera shake).
+  - A **level-up celebration**.
+- **Order of work:** make the Colosseum great first (see the plan at the bottom). **Bosses come last.**
+
 ## The repository
 
 - **Repo:** `https://github.com/Lodolouw/Lodolouw`
@@ -125,6 +165,55 @@ Defined in `Config.Colosseum.Types`. Templates are built by LobbyBuilder into Se
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
 - The gap behind the stands is filled (`StandFill` parts).
+
+## Everything we've built and decided so far (history)
+
+### Lobby and world
+- **The lobby:** a castle plaza with a fountain, lamp posts, paths, a farm, a Sell Shop, and an Upgrade Shop with an 8-bit frog.
+- **The mushroom house:** I asked to keep the OLD mushroom house, just sharpened up. A pixel-circle version flickered.
+- **The training yard:** 12 practice dummies on two tiers, with Straw → Cosmic dummies.
+- **The quest board:** pick 1 of 3 daily quests. The others rip off like a bandage, and completing one shows a stamp saying "COMPLETED".
+- **Everything is 8-bit.** Flat materials, no flickering.
+- **Flicker fixes:**
+  - no two faces in the same spot (alternate thicknesses);
+  - no overlapping transparent parts;
+  - no rope on the bunting ("NO ROPE"). Note: a thin bunting rope does currently exist in the colosseum builder, so check with me if it bothers me.
+
+### The Colosseum
+- **The entrance:** a mini sand-castle colosseum in the lobby, placed to use the space well, where the two roads connect. You enter through a Mario-pipe shrink animation.
+- **The real arena:** built to match the little model.
+  - The spawn/entry animation must not play again inside, since you're already shrunk.
+  - The arena floor has extra grip.
+  - The crowd in the stands is decorative, and you can be pushed against the stands.
+  - There's no invisible barrier stopping dummies from reaching you at the edge.
+- **Farming is solo:** your dummies are only yours. Other players can't hit them or see them.
+- **Rewards:** XP and coins per kill, plus the quest reward, exactly like Blox Fruits. There's an active quest tab on the right.
+- **HP:** you're healed when you leave. HP resets outside the arena.
+- **Effects:** a spawn-in animation for dummies (a shadow grows, then they drop in), and confetti from the stands when you clear a wave.
+- **Lock-on:**
+  - Tab / middle-click / R3 to lock.
+  - Q/E to switch left or right on screen.
+  - The lock jumps to the nearest enemy when your target dies, and releases when out of range or out of sight.
+  - 8-bit corner brackets and Q/E tags show the targets.
+  - Shift is the dodge roll in fights, so Shift Lock is off there.
+- **Health bars declutter:** only the focused enemy shows its name and numbers.
+
+### Bosses (both made 8-bit)
+- **Slime boss:** flicker fixed, and its spawn fixed.
+- **Worm boss:** reworked to be more fun and less laggy.
+  - A sandstorm rolls in when the fight starts.
+  - It has a tail lash, breach, coil and tremor attacks.
+  - Its armour cracks off.
+  - The music is "SANDWORMSONG".
+  - Players can't clip through it.
+- **Heart health display:** a liquid heart that spills.
+
+### Security audit
+I asked for a full client-exploit audit: remote abuse, economy duplication, teleport and speed hacks, combat spoofing, inventory manipulation and privilege escalation. The fixes are in (see "Security rules" above). Keep everything server-authoritative.
+
+### Other things I asked about
+- **Claude plans and effort:** use a high effort setting for careful restructures (like the boss split), and medium for small tweaks. Don't ask for huge multi-feature jobs in one go.
+- **Sounds:** you can't make audio. Hook sounds by name in SoundService and tell me the names.
 
 ## What to do next (the approved plan, in this order)
 
