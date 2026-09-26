@@ -511,6 +511,8 @@ local PROPS = {
 	"Volume", "PlaybackSpeed", "Playing", "Looped", "SoundId", "Brightness", "Range", "Enabled", "Rate",
 	"TintColor", "Saturation", "Contrast", "Density", "Offset", "Adornee", "StudsOffset", "Face",
 	"Width0", "Width1", "LightEmission", "Speed", "Lifetime",
+	"DisplayOrder", "ZIndex", "AnchorPoint", "Font", "TextSize", "TextScaled", "Image", "Thickness",
+	"TextXAlignment", "Scale", "MaxDistance", "AlwaysOnTop",
 }
 local hashValue
 function hashValue(h, v)
@@ -796,12 +798,12 @@ elseif SCENARIO == "slime_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
-	forcedAttacks(BS._Attacks)
+	forcedAttacks((BS._BossAttacks and BS._BossAttacks[def.Short]) or BS._Attacks)
 elseif SCENARIO == "worm_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
-	forcedAttacks(BS._WormAttacks)
+	forcedAttacks((BS._BossAttacks and BS._BossAttacks[def.Short]) or BS._WormAttacks)
 else
 	error("unknown scenario " .. SCENARIO)
 end
