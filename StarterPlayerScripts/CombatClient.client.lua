@@ -1818,6 +1818,75 @@ local function nearestTarget(except)
 	return best
 end
 
+-- TIDY HEALTH BARS. When enemies bunch up, their bars piled on top of each
+-- other into an unreadable mess. Now only the one you're fighting (the one
+-- you're locked on to, or else the one nearest the middle of the screen)
+-- shows its name and numbers, in front of everything. The rest shrink to a
+-- small plain bar that hides behind things like anything else does.
+do
+	local FULL = UDim2.fromOffset(180, 46)
+	local SMALL = UDim2.fromOffset(84, 46)
+	local focus = nil
+	local function score(m, hrp, cam)
+		local pos = targetPoint(m)
+		if not (pos and lockable(m)) then
+			return nil
+		end
+		local dist = (pos - hrp.Position).Magnitude
+		if dist > 60 then
+			return nil
+		end
+		local toT = (pos - cam.CFrame.Position).Unit
+		return math.acos(math.clamp(toT:Dot(cam.CFrame.LookVector), -1, 1)) * 60 + dist
+	end
+	local function style(bb, full)
+		local size = full and FULL or SMALL
+		if bb.Size ~= size then
+			bb.Size = size
+		end
+		bb.AlwaysOnTop = full
+		for _, name in ipairs({ "Title", "Amount" }) do
+			local label = bb:FindFirstChild(name)
+			if label and label:IsA("GuiObject") then
+				label.Visible = full
+			end
+		end
+	end
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
+			local _, hrp = charParts()
+			local cam = workspace.CurrentCamera
+			local tagged = game:GetService("CollectionService"):GetTagged("CombatTarget")
+			if lockTarget then
+				focus = lockTarget
+			elseif hrp and cam then
+				-- (sticks with the one it has unless another is clearly better, so it
+				-- doesn't flick back and forth between two side by side)
+				local keep = focus and focus.Parent and score(focus, hrp, cam)
+				local best, bestScore = nil, math.huge
+				for _, m in ipairs(tagged) do
+					local sc = score(m, hrp, cam)
+					if sc and sc < bestScore then
+						best, bestScore = m, sc
+					end
+				end
+				if not (keep and keep <= bestScore * 1.25 + 4) then
+					focus = best
+				end
+			else
+				focus = nil
+			end
+			for _, m in ipairs(tagged) do
+				local bb = m:FindFirstChild("HealthBar", true)
+				if bb and bb:IsA("BillboardGui") then
+					style(bb, m == focus)
+				end
+			end
+		end
+	end)
+end
+
 -- the next enemy to the left (side = -1) or right (side = 1) of your target,
 -- as you see them on screen: the nearest one that way wins
 local function neighbour(side)

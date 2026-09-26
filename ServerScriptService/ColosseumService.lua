@@ -511,11 +511,13 @@ local function brain(s, e)
 		local dist = to.Magnitude
 		-- too close to another dummy? hop apart first (they never stack up)
 		local push = Vector3.zero
-		for other in pairs(s.enemies) do
+		for other, oe in pairs(s.enemies) do
 			if other ~= e.model and other.Parent then
+				-- (bigger kinds need more room: a Knight's shield and a Brute's fists)
+				local gap = 3.4 * ((e.scale or 1) + (oe.scale or 1))
 				local d = flat(pos - feet(other).Position)
-				if d.Magnitude < 6 then
-					push += (d.Magnitude > 0.1 and d.Unit or Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit) * (6 - d.Magnitude)
+				if d.Magnitude < gap then
+					push += (d.Magnitude > 0.1 and d.Unit or Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit) * (gap - d.Magnitude)
 				end
 			end
 		end
@@ -543,7 +545,7 @@ local function brain(s, e)
 		else
 			-- hop towards its own spot round you (each dummy has a different
 			-- one), so they close in from all sides instead of piling up
-			local slot = root.Position + Vector3.new(math.cos(e.slot), 0, math.sin(e.slot)) * 6.5
+			local slot = root.Position + Vector3.new(math.cos(e.slot), 0, math.sin(e.slot)) * 6.5 * (e.scale or 1)
 			local go = flat(slot - pos)
 			local dest = pos
 			if go.Magnitude > 0.5 then
@@ -641,6 +643,13 @@ local function spawnWave(s)
 		model:SetAttribute("Health", hp)
 		model:SetAttribute("HitRadius", 2.6 * (T.scale or 1))
 		model:SetAttribute("Kind", kind)
+		-- its health bar floats just over its own head (a big Brute's higher up
+		-- than a small Slinger's, so bunched-up bars don't all sit in one line)
+		local body = model.PrimaryPart
+		local okBox, boxCf, boxSize = pcall(model.GetBoundingBox, model)
+		if body and okBox then
+			model:SetAttribute("BarHeight", boxCf.Position.Y + boxSize.Y / 2 - body.Position.Y + 1.6)
+		end
 		local onHit = Instance.new("BindableEvent")
 		onHit.Name = "OnHit"
 		onHit.Parent = model
