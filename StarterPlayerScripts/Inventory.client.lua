@@ -215,7 +215,7 @@ local function itemIcon(def)
 end
 local function chestIcon(floor)
 	local def = Config.Bosses[floor]
-	return icon("Treasure", RGB(184, 111, 80), (def and def.Color) or GOLD)
+	return icon("Treasure", RGB(184, 111, 80), (def and (def.Accent or def.Color)) or GOLD)
 end
 
 ----------------------------------------------------------------------

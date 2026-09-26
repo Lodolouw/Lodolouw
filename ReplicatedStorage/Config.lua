@@ -758,7 +758,36 @@ Config.Spire = {
 				Wind = Vector3.new(1, 0, -0.4),
 			},
 		},
-		{ id = 4, boss = "???", area = "???", level = 60, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
+		{
+			id = 4,
+			boss = "Kaze, the Headband Hero",
+			area = "The Rooftop Dojo",
+			level = 60,
+			blurb = "A dojo on a mountain peak above the clouds. A wandering fighter trains here, headband streaming in the wind. He has waited a long time for a real challenger.",
+			color = Color3.fromRGB(228, 59, 68),
+			open = true,
+			-- sunset on the mountain, cherry blossom petals drifting past
+			ambience = {
+				ClockTime = 17.6,
+				Atmosphere = {
+					Density = 0.32,
+					Offset = 0.15,
+					Color = Color3.fromRGB(255, 196, 150),
+					Decay = Color3.fromRGB(214, 120, 110),
+					Glare = 0.5,
+					Haze = 1.6,
+				},
+				Tint = Color3.fromRGB(255, 232, 214),
+				Saturation = 0.1,
+				Contrast = 0.05,
+				Sand = Color3.fromRGB(246, 117, 122), -- (the "dust" here is petals)
+				Grains = 0.3,
+				Clouds = false,
+				Wind = Vector3.new(1, 0, 0.3),
+			},
+		},
+		{ id = 5, boss = "???", area = "???", level = 75, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
+		{ id = 6, boss = "???", area = "???", level = 90, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
 	},
 }
 
@@ -1373,6 +1402,171 @@ Config.Bosses = {
 			Meteor = "Shovel Meteor", -- the final move landing
 			Break = "Armour Crack", -- NO QUARTER! his armour cracking
 			Death = "Burrowmore Death",
+		},
+	},
+
+	[4] = {
+		Name = "Kaze, the Headband Hero",
+		Short = "Kaze",
+		-- A wandering martial artist (a parody of a certain headband-wearing
+		-- world warrior - with his own name, look and moves). He fights like a
+		-- fighting-game character: a KI METER that fills when he hits you (and
+		-- when you punch thin air near him), special moves that cost a bar of
+		-- it, specials he can CHARGE, and CANCELS - cutting one move short into
+		-- another. He has his own brain for all that: ServerScriptService/
+		-- Bosses/Kaze.lua. His body: ReplicatedStorage/BossBodies/Kaze.lua.
+		Color = Color3.fromRGB(255, 255, 255), -- his gi
+		DeepColor = Color3.fromRGB(192, 203, 220), -- the gi's folds and shadows
+		CoreColor = Color3.fromRGB(24, 20, 37), -- his black belt and eyebrows
+		EyeColor = Color3.fromRGB(44, 232, 245), -- his ki: the glow in his eyes and fists
+		SkinColor = Color3.fromRGB(232, 183, 150),
+		HairColor = Color3.fromRGB(62, 39, 49),
+		BandColor = Color3.fromRGB(228, 59, 68), -- the headband (and his gloves)
+		Accent = Color3.fromRGB(228, 59, 68), -- the VS splash's colour (his gi's white would be too pale)
+
+		HealthPunches = 36, -- (a little longer than Burrowmore: he gives you fewer free hits)
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 9, -- how wide he is for hits (he stands a bit over twice your height)
+		WakeRange = 44, -- walk this close and he stops meditating
+		WakeTime = 3.4, -- opens his eyes, stands, bows, drops into his stance ("ROUND 1... FIGHT!")
+		WakeSoundLead = 0.3,
+		Leash = 58, -- he can go anywhere on the dojo floor (its edge is 62 out)
+		MoveSpeed = { 17, 21 }, -- shuffling after you between moves, per round (you run 16-24)
+		TurnSpeed = { 420, 560 }, -- degrees a second: he turns fast, like a fighter
+		Breather = { { 0.35, 0.7 }, { 0.2, 0.45 } }, -- the pause between moves, per round
+
+		PhaseAt = 0.5, -- ROUND 2 at half health
+		BreakTime = 3.0, -- down on one knee, a burst of ki (everyone near is thrown back), "ROUND 2... FIGHT!"
+		BreakShove = 44,
+		BreakReach = 26,
+		Phase2Recovery = 0.8,
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.7,
+
+		-- THE KI METER (the blue bar at the bottom of your screen): three bars of
+		-- `Bar` each. Every special move costs one bar; at a full meter he does
+		-- his SUPER. It fills when one of his hits lands on you (Hit), when you
+		-- punch thin air within WhiffRange studs of him (Whiff: don't swing
+		-- wildly!), a little all the time (Passive, a second), and fast while he
+		-- meditates for it (Focus, a second). Every punch you land while he's
+		-- meditating or charging knocks FocusHit off it. In ROUND 2 it all fills
+		-- Phase2 times as fast.
+		Ki = { Bar = 100, Bars = 3, Hit = 45, Whiff = 12, WhiffRange = 16, Passive = 4, Focus = 70, FocusHit = 55, Phase2 = 2 },
+		-- CANCELS (the little diamonds under the meter): cutting a move short
+		-- into another - a punch string into a special, a fake charge into a
+		-- dash, a hop back out of a missed special, one special into another.
+		-- He has this many a round; when they run out he's TIRED (hands on his
+		-- knees, panting) for Tired seconds - wide open - and then they refill.
+		Cancels = { 3, 5 }, -- per round
+		Tired = { 2.4, 3.0 }, -- per round
+		-- CHARGING: now and then (Chance, per round) he holds a special before
+		-- letting it go, glowing brighter and humming higher for Time seconds (a
+		-- random amount between the two): the longer, the bigger the move. He
+		-- can be hit while he charges - land Breaks punches and the charge
+		-- breaks: he staggers for Stagger seconds (and loses ki).
+		Charge = { Chance = { 0.4, 0.55 }, Time = { 0.55, 1.1 }, Breaks = 2, Stagger = 1.1 },
+		-- ROUND 2: straight from one special into another (Chance, per round)
+		Chain = { 0, 0.55 },
+		-- KI FLARE: the first time his health drops below this share in each
+		-- round, his meter flares straight to MAX ("HAAA!") - so every round
+		-- has at least one Super in it, however well you're doing
+		SuperAt = { 0.7, 0.25 },
+		-- how he gets about: a dash (with afterimages) and a little hop back
+		Movement = {
+			Dash = { Distance = 14, Time = 0.25 },
+			BackHop = { Distance = 12, Time = 0.35, Height = 4, Chance = 0.45 }, -- (Chance: hopping out of a missed special)
+		},
+
+		-- His moves. Tell = the wind-up you see before it hits (every one is at
+		-- least your roll's half a second). Recovery = how long he's open after
+		-- it. Range = { closest, furthest } he uses it from; Weight = how often.
+		-- In his SPECIALS (Kaze-Blast, Rising Dragon, Tornado Kick) a pair like
+		-- { 2.6, 4.6 } means { not charged, fully charged }.
+		Attacks = {
+			-- PUNCH STRING: jab, straight, then a heavy ("HYAH!"), each stepping in.
+			-- Tells = the wind-up before each hit. Reach = how far his fists go
+			-- (from his middle), in a wedge Arc degrees wide in front of him.
+			-- After the first or second hit he may CANCEL into a special.
+			PunchString = { Tells = { 0.55, 0.4, 0.45 }, Reach = 10, Arc = 150, Step = 3, Damage = { 12, 12, 18 }, Knockback = { 20, 20, 50 },
+				Recovery = 0.7, CancelChance = 0.55, Phase = 1, Range = { 0, 13 }, Weight = 5 },
+			-- DASH IN: a quick dash at you (white afterimages), straight into a punch string
+			DashIn = { Phase = 1, Range = { 11, 42 }, Weight = 2.5 },
+			-- KAZE-BLAST!: cups his hands at his hip (a ball of ki grows), then
+			-- pushes it out along the floor at you. Jump it or roll through it.
+			-- It bursts on a pillar - hide behind one!
+			KazeBlast = { Tell = 0.6, Speed = { 40, 52 }, Radius = { 2.6, 4.6 }, Height = { 3, 5 }, Damage = { 18, 28 }, Knockback = { 30, 44 },
+				Reach = 90, Recovery = 0.55, Phase = 1, Range = { 12, 200 }, Weight = 3.5 },
+			-- RISING DRAGON!: crouches (a red ring round him fills in), then a
+			-- spinning uppercut straight up. Back off out of the ring (or roll),
+			-- then punish him when he lands. Up high he's out of your reach.
+			-- (Active = how long the rising fist hurts; Forward = studs he drifts at you)
+			RisingDragon = { Tell = 0.5, Radius = { 6.5, 8 }, Height = { 16, 22 }, Air = { 0.9, 1.1 }, Active = 0.3, Forward = 4,
+				Damage = { 26, 34 }, Knockback = { 45, 60 }, Recovery = { 1.1, 1.4 }, Phase = 1, Range = { 0, 11 }, Weight = 3 },
+			-- TORNADO KICK!: hops up and spins across the dojo along the red lane
+			-- (it follows you until Commit of the wind-up, then locks). Roll
+			-- through him or get out of the lane. A pillar stops him.
+			TornadoKick = { Tell = 0.55, Commit = 0.7, Distance = { 34, 50 }, Speed = { 38, 44 }, Radius = 5.5, Hop = 3.5,
+				Damage = { 20, 26 }, Knockback = { 40, 50 }, Recovery = 0.8, Phase = 1, Range = { 6, 44 }, Weight = 2.5 },
+			-- KI FOCUS: plants his feet and shouts "HAAAA..." - his meter shoots
+			-- up. RUSH HIM: every punch knocks his ki down, and a couple break it
+			-- (he staggers). Time = the longest he meditates for.
+			KiFocus = { Time = 2.2, Phase = 1, Range = { 14, 200 }, Weight = 1.8 },
+			-- FAKE CHARGE: starts charging a Kaze-Blast... and cancels it (a white
+			-- flash) into a dash at you and a punch string. Don't roll too early!
+			FakeCharge = { Hold = { 0.4, 0.6 }, Phase = 1, Range = { 12, 32 }, Weight = 1.5 },
+			-- SUPER! (only with a full meter): "SUPER!", the screen flashes, he
+			-- leaps to the middle of the dojo and fires a giant beam that sweeps
+			-- round (Sweep degrees in SweepTime seconds) across the red fan on the
+			-- floor. HIDE BEHIND A PILLAR (the beam can't go through one), get out
+			-- of the fan, or roll through the beam. Every pillar the beam hits
+			-- crumbles afterwards (they're all back for ROUND 2). Then he's
+			-- exhausted for Recovery seconds: your big chance.
+			-- (Leap = the jump to the middle; Lock = how far through the wind-up
+			-- the fan stops following you; Cooldown = the least time between
+			-- two Supers - while it lasts, a full meter flashes MAX at you)
+			Super = { Leap = 0.6, Tell = 1.8, Lock = 0.8, Sweep = 160, SweepTime = 1.4, Length = 100, Width = 10, Damage = 45, Knockback = 70,
+				Recovery = 2.4, Cooldown = 22, Phase = 1, Range = { 0, 200 }, Weight = 0 },
+		},
+
+		Reward = { Power = 2.8, FirstClear = 7 },
+
+		-- the fight's music: add a Sound named "Kaze Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Kaze Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear",
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient),
+		-- except the announcer's (Round1, Round2, Fight, KO, Perfect): those just
+		-- stay quiet until you add them.
+		Sounds = {
+			Wake = "Kaze Wake", -- "HAH!" as he drops into his stance
+			Punch = "Kaze Punch", -- a jab or a straight
+			Heavy = "Kaze Heavy", -- the third, heavy hit ("HYAH!")
+			Blast = "Kaze Blast", -- "KAZE-BLAST!"
+			Dragon = "Kaze Dragon", -- "RISING DRAGON!"
+			Tornado = "Kaze Tornado", -- "TORNADO KICK!"
+			Charge = "Kaze Charge", -- the rising hum while he holds a special
+			Cancel = "Kaze Cancel", -- the white flash of a cancel
+			Dash = "Kaze Dash", -- a dash, a hop back
+			Land = "Kaze Land", -- landing from a jump
+			Focus = "Kaze Focus", -- "HAAAAA..." building ki
+			Stagger = "Kaze Stagger", -- his charge or focus broken
+			Tired = "Kaze Pant", -- out of cancels: panting
+			Super = "Kaze Super", -- "SUPER!"
+			Beam = "Kaze Beam", -- the beam itself
+			Pillar = "Pillar Crumble", -- a pillar breaking
+			Break = "Kaze Round Two", -- down on one knee, then the burst of ki
+			Death = "Kaze Death", -- his last cry
+			Round1 = "Round One", -- the announcer: "ROUND ONE"
+			Round2 = "Round Two", -- "ROUND TWO"
+			Fight = "Fight", -- "FIGHT!"
+			KO = "KO", -- "K.O.!"
+			Perfect = "Perfect", -- "PERFECT!" (you beat him without a scratch)
 		},
 	},
 }

@@ -40,6 +40,8 @@
 	  Boss.step(E, dt)      its own every-frame step (movement, hazards)
 	  Boss.onBuild(E), Boss.onReset(E), Boss.onHome(E), Boss.onDie(E),
 	  Boss.onBreak(E)       extras at those moments
+	  Boss.onMove(E, dt)    a say in where it stands, each frame, after the
+	                        shared movement (Bosses/Kaze.lua: round pillars)
 	  Every shared helper is in BossService's makeKit list.
 ]]
 

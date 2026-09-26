@@ -96,6 +96,14 @@ Items.Sets = {
 		name = "Relicbound",
 		bonuses = { { need = 2, stats = { Crit = 11 } }, { need = 4, stats = { Damage = 28, Defense = 13 } } },
 	},
+	Windwalker = {
+		name = "Windwalker",
+		bonuses = { { need = 2, stats = { Defense = 8 } }, { need = 4, stats = { Damage = 21, Health = 90 } } },
+	},
+	KiMaster = {
+		name = "Ki Master's",
+		bonuses = { { need = 2, stats = { Crit = 12 } }, { need = 4, stats = { Damage = 32, Defense = 14 } } },
+	},
 }
 
 ----------------------------------------------------------------------
@@ -213,6 +221,38 @@ local list = {
 	{ id = "FirstShovel", name = "The Very First Shovel", slot = "Weapon", rarity = "Secret", level = 60, floor = 3,
 		stats = { Damage = { 70, 95 }, Crit = { 16, 20 }, Health = { 120, 180 }, Power = { 20, 30 } }, tint = { RGB(254, 231, 97), RGB(255, 255, 255) },
 		lore = "* b#fore the kn*ght th3re w@s a h0le. s0mebody d#g it." },
+
+	-- KAZE, the Headband Hero (floor 4)
+	{ id = "DojoSandals", name = "Dojo Sandals", slot = "Boots", rarity = "Common", level = 60, floor = 4, set = "Windwalker",
+		stats = { Health = { 26, 40 } }, tint = { RGB(184, 111, 80), RGB(232, 183, 150) },
+		lore = "* Worn smooth by ten thousand laps of the dojo." },
+	{ id = "RedHeadband", name = "Red Headband", slot = "Helmet", rarity = "Uncommon", level = 62, floor = 4, set = "Windwalker",
+		stats = { Health = { 38, 54 }, Defense = { 5, 7 } }, tint = { RGB(228, 59, 68), RGB(162, 38, 51) },
+		lore = "* Tie it on and you feel 20% more heroic. Scientifically." },
+	{ id = "TrainingGi", name = "Training Gi", slot = "Chest", rarity = "Rare", level = 65, floor = 4, set = "Windwalker",
+		stats = { Health = { 68, 96 }, Defense = { 8, 11 } }, tint = { RGB(255, 255, 255), RGB(24, 20, 37) },
+		lore = "* Smells like hard work. And a little like sunset." },
+	{ id = "WindWraps", name = "Wind Wraps", slot = "Weapon", rarity = "Rare", level = 65, floor = 4, set = "Windwalker",
+		stats = { Damage = { 22, 34 }, Crit = { 4, 6 } }, tint = { RGB(192, 203, 220), RGB(228, 59, 68) },
+		lore = "* Wrap your fists. Feel the breeze. Punch the breeze." },
+	{ id = "KazeGloves", name = "Kaze's Gloves", slot = "Weapon", rarity = "Epic", level = 68, floor = 4, set = "KiMaster",
+		stats = { Damage = { 36, 50 }, Crit = { 6, 10 } }, tint = { RGB(228, 59, 68), RGB(44, 232, 245) },
+		lore = "* Still warm from the last KAZE-BLAST!" },
+	{ id = "FocusMantle", name = "Focus Mantle", slot = "Chest", rarity = "Epic", level = 68, floor = 4, set = "KiMaster",
+		stats = { Health = { 90, 125 }, Defense = { 10, 14 } }, tint = { RGB(0, 153, 219), RGB(44, 232, 245) },
+		lore = "* Breathe in. Breathe out. Hit things." },
+	{ id = "DragonBand", name = "Rising Dragon Band", slot = "Helmet", rarity = "Legendary", level = 72, floor = 4, set = "KiMaster",
+		stats = { Damage = { 17, 24 }, Health = { 68, 95 }, Crit = { 7, 10 } }, tint = { RGB(228, 59, 68), RGB(254, 174, 52) },
+		lore = "* Uppercuts not included. Okay, a few are included." },
+	{ id = "TornadoTreads", name = "Tornado Treads", slot = "Boots", rarity = "Legendary", level = 72, floor = 4, set = "KiMaster",
+		stats = { Health = { 55, 78 }, Defense = { 9, 12 }, Power = { 12, 18 } }, tint = { RGB(255, 255, 255), RGB(44, 232, 245) },
+		lore = "* Spin to win. Spin to win. Spin to... dizzy." },
+	{ id = "FourWinds", name = "Fist of the Four Winds", slot = "Weapon", rarity = "Mythic", level = 74, floor = 4,
+		stats = { Damage = { 72, 100 }, Crit = { 14, 19 }, Defense = { 7, 10 } }, tint = { RGB(255, 0, 68), RGB(44, 232, 245) },
+		lore = "* North, south, east and west. All of them punch." },
+	{ id = "EndlessHeadband", name = "The Endless Headband", slot = "Helmet", rarity = "Secret", level = 78, floor = 4,
+		stats = { Damage = { 80, 110 }, Crit = { 18, 22 }, Health = { 140, 200 }, Power = { 22, 32 } }, tint = { RGB(228, 59, 68), RGB(255, 255, 255) },
+		lore = "* th# w*nd n3ver st0ps bl0wing. n#ither d0es h3." },
 }
 
 Items.ById = {}

@@ -48,8 +48,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   real BossClient, and prints every boss attribute, hit, shove and reward
   (server) or a fingerprint of everything drawn on screen five times a
   second (client). `./golden.sh record` saves the scenarios in `golden/`
-  (gzipped: 16 for Oozark and Nahrzul, and 4 for Knight Burrowmore -
-  `knight_full` and `knight_attacks`, server and client); `./golden.sh check`
+  (gzipped: 16 for Oozark and Nahrzul, 4 for Knight Burrowmore -
+  `knight_full` and `knight_attacks`, server and client - and 4 for Kaze,
+  `kaze_full` and `kaze_attacks`); `./golden.sh check`
   replays them and fails on any difference - the proof that a change to the
   boss code (like splitting it into one file per boss) changed nothing
   players can see. `./golden.sh check client_` runs only the client ones, and
@@ -74,7 +75,30 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   fight: seven moments and a title card); `-a poses` and
   `render_snaps.py ... --cols 3 --title ""` the pose sheet
   (`Docs/burrowmore_poses.png`). `render_snaps.py` draws any snapshot file
-  (SNAP / part lines / BAR for the boss bar).
+  (SNAP / part lines / BAR for the boss bar; a file can bring its own
+  CAPTION lines and a SKY colour).
+- `test_kaze.luau` - KAZE (floor 4) on the real Rooftop Dojo (DojoBuilder)
+  with the real BossService and his own brain (and, with `client` at the end,
+  the real BossClient drawing him, his ki meter and his screens). Its pretend
+  players also swing at thin air now and then (his ki feeds on it). `-a full`
+  fights him to the death (both rounds, a Super in each, tired spells,
+  cancels, the reward), `attacks` forces every move in both rounds on a
+  player standing still (each must land) and on one rolling (each must be
+  dodged), `reset` leaves after a pillar has crumbled and comes back (meter
+  empty, cancels back, every pillar whole), `duo` is two players, `timing`
+  checks the dodge windows (the jab's wedge, the dragon's ring, the tornado
+  arriving, the ball of ki), `rules` checks the ki rules (a miss near him
+  feeds his meter and one far away doesn't; two punches break his focus or
+  a charge; out of cancels he's tired, then they refill; a full meter means a
+  Super) and `super` checks the beam (a player behind a pillar is safe, one in
+  the open is hit, the pillar crumbles, round 2 mends it). It also checks he
+  never leaves his ground or stands inside a pillar, and is never hit high in
+  a Rising Dragon.
+- `kaze_snaps.luau` + `render_snaps.py` - Kaze's preview pictures (a sunset
+  sky): `luau kaze_snaps.luau > s.txt` then `python3 render_snaps.py s.txt
+  ../../Docs/kaze_preview.png --title "KAZE|FLOOR 4  -  THE ROOFTOP DOJO|RECOMMENDED LV 60"`
+  (the fight, eight moments); `-a poses` with `--cols 3 --title ""` the pose
+  sheet (`Docs/kaze_poses.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

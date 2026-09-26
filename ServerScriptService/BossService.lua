@@ -600,6 +600,9 @@ local function stepMovement(E, dt)
 		E.pos = Vector3.new(E.home.X, E.floorY, E.home.Z) + fromHome.Unit * def.Leash
 	end
 	E.pos = Vector3.new(E.pos.X, E.floorY, E.pos.Z)
+	if E.boss.onMove then
+		E.boss.onMove(E, dt) -- (the boss's own say in where it can stand: e.g. Kaze walks round pillars)
+	end
 
 	-- turning: lined up on its target while it winds up, frozen once it commits
 	if E.track and E.target then
@@ -896,6 +899,11 @@ local function makeKit()
 		makeTarget = makeTarget,
 		-- the phase change at half health
 		breakShell = breakShell,
+		-- the shared every-frame steps, for a boss with its own step that still
+		-- wants some of them (moving and turning, the waves, the puddles)
+		stepMovement = stepMovement,
+		stepWaves = stepWaves,
+		stepPuddles = stepPuddles,
 	}
 end
 

@@ -1,8 +1,8 @@
 --[[
 	Main  (Script, parent: ServerScriptService, name: "Main")
 
-	Builds the lobby (and the Spire's arenas: the slime pit, the Sunken Dunes
-	and the Glimmer Dig), then starts the game logic.
+	Builds the lobby (and the Spire's arenas: the slime pit, the Sunken Dunes,
+	the Glimmer Dig and the Rooftop Dojo), then starts the game logic.
 
 	Every system is loaded and started on its own, protected: if one of them
 	errors (a script pasted in half, a name that doesn't match), the others still
@@ -88,6 +88,10 @@ start("DunesBuilder", DunesBuilder and DunesBuilder.Build)
 -- same way - if it's missing or broken, only the dig is
 local DigBuilder = load("DigBuilder", 3)
 start("DigBuilder", DigBuilder and DigBuilder.Build)
+
+-- The Spire's fourth floor, The Rooftop Dojo (Kaze's arena): the same way
+local DojoBuilder = load("DojoBuilder", 3)
+start("DojoBuilder", DojoBuilder and DojoBuilder.Build)
 
 local BossService = load("BossService")
 if CombatService then

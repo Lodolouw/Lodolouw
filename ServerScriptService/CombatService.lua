@@ -24,6 +24,8 @@
 	    CombatService.PlayersInArena(floorId)
 	    CombatService.Disintegrate(model)          --> ashes away a corpse
 	    CombatService.Shove(player, velocity)       --> throw them, no damage
+	    CombatService.Launch(player, velocity)      --> fling them up (a jump pad): they fly on
+	    CombatService.OnWhiff(function(player, pos) --> hear about punches that hit nothing
 	    CombatService.IsFighting(player)            --> in an arena and alive
 	A target Model can also carry: NoBar (draws its own bar), Invulnerable,
 	MinHealth (damage can't take it below this), StudioFair (see DamageAgainst),
@@ -50,6 +52,7 @@ local PlayerService = nil -- set in Start (avoids a require loop)
 local remotes = {}
 local fighters = {} -- [player] = combat state while in an arena
 local targets = {} -- [model] = true for every punchable enemy
+local whiffListeners = {} -- functions that hear about punches at thin air (CombatService.OnWhiff)
 
 ----------------------------------------------------------------------
 -- Helpers
@@ -291,6 +294,24 @@ function CombatService.Shove(player, velocity)
 	if fighters[player] and typeof(velocity) == "Vector3" then
 		send(player, "Shove", velocity)
 	end
+end
+
+-- Flings a player up (and along) without hurting them - a jump pad. Unlike a
+-- shove they keep flying afterwards, so they sail up and come down in an arc.
+-- The movement guard is told it's the server's own move.
+function CombatService.Launch(player, velocity)
+	local _, root = charParts(player)
+	if fighters[player] and root and typeof(velocity) == "Vector3" then
+		player:SetAttribute("MoveTo", root.Position + velocity * 0.6)
+		player:SetAttribute("MoveUntil", workspace:GetServerTimeNow() + 2)
+		send(player, "Launch", velocity)
+	end
+end
+
+-- Something (a boss) wants to hear about punches that hit nothing: `fn(player,
+-- position)` is called for each one, from where the player stood.
+function CombatService.OnWhiff(fn)
+	table.insert(whiffListeners, fn)
 end
 
 -- Fills a fighter's flasks back up (a Colosseum run starting over: a fresh start)
@@ -817,6 +838,12 @@ local function onAction(player, action, arg, swing)
 			if target then
 				local dmg, crit = CombatService.DamageAgainst(player, target)
 				hitTarget(player, target, dmg, crit and 3 or weight) -- (a crit lands as the heaviest punch)
+			else
+				-- a punch at thin air: anything listening hears about it (Kaze
+				-- feeds on your misses)
+				for _, fn in ipairs(whiffListeners) do
+					pcall(fn, player, atRoot.Position)
+				end
 			end
 		end)
 	elseif action == "Roll" then

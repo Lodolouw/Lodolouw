@@ -29,7 +29,8 @@ You are continuing work on my Roblox game. Read this whole message before doing 
    - Floor 1: **Oozark, the Gelatinous Tyrant**, the slime, "Gloomgut" in older code. Level 15, in the slime pit.
    - Floor 2: **Nahrzul, Devourer of the Dunes**, the sand worm "Mireworm". Level 30, in the Sunken Dunes.
    - Floor 3: **Knight Burrowmore, the Honourable Digger**, a knight of the shovel (a parody of Shovel Knight). Level 45, in the Glimmer Dig.
-   - Floor 4: sealed (level 60).
+   - Floor 4: **Kaze, the Headband Hero**, a wandering martial artist (a parody of Ryu) who fights like a fighting-game character. Level 60, in the Rooftop Dojo.
+   - Floors 5 and 6: sealed (levels 75 and 90).
 
    Boss fights are souls-like: dodge rolls with invincibility frames, stamina, **flasks** to heal (R), lock-on (Tab, Q/E to switch), and clear red telegraphs before attacks. Bosses drop **chests** with gear.
 4. **Repeat.** Beating a boss unlocks the next level target, which means more farming with tougher Colosseum enemies and better gear.
@@ -44,7 +45,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - Server: `BossService` keeps what every boss shares; each boss has its own ModuleScript in `ServerScriptService/Bosses/` (`Oozark.lua`, `Nahrzul.lua`), found by its `Short` name in `Config.Bosses`.
   - Client: `BossClient` keeps the shared visuals; each boss's body has its own ModuleScript in `ReplicatedStorage/BossBodies/` (`Oozark.lua`, `Nahrzul.lua`).
   - "How to add a boss": `Bosses/_Template.lua` + `BossBodies/_Template.lua` (a tiny working boss with one attack, STOMP; `test_boss_template.luau` fights it). See "Adding a boss" below.
-  - Proven identical by golden traces: `Tools/HeadlessTests/golden.sh check` (16 recorded fights, server and screen, byte-identical before and after; Burrowmore added 4 more of his own: 20 now).
+  - Proven identical by golden traces: `Tools/HeadlessTests/golden.sh check` (16 recorded fights, server and screen, byte-identical before and after; Burrowmore added 4 more of his own and Kaze 4 more: 24 now).
 - **The MMO direction** (Hypixel Skyblock / Wynncraft / Blox Fruits) is what keeps the game alive long-term:
   - Every boss drops a **treasure chest**, a "gamble crate", with gear in rarities: Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret. This is **done**.
   - Gear goes in your inventory and drives a player **market**.
@@ -90,8 +91,9 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
   - Floor 1: "Oozark's Hollow", the slime pit.
   - Floor 2: the **Sunken Dunes**, the worm's desert (DunesBuilder).
   - Floor 3: the **Glimmer Dig**, Knight Burrowmore's dig site on the sunny plains (DigBuilder).
-  - Floor 4: sealed (level 60).
-- **Music:** there are 3 lobby songs, a slime boss song, "SANDWORMSONG" for the worm, and "Burrowmore Song" for the knight (add it: until then Oozark's plays), played by name from SoundService.
+  - Floor 4: the **Rooftop Dojo**, Kaze's dojo on a mountain peak above the clouds at sunset (DojoBuilder).
+  - Floors 5 and 6: sealed (levels 75 and 90). The Spire menu scrolls, so more floors fit.
+- **Music:** there are 3 lobby songs, a slime boss song, "SANDWORMSONG" for the worm, "Burrowmore Song" for the knight and "Kaze Song" for Kaze (add them: until then Oozark's plays), played by name from SoundService.
 
 ### Places we discussed for later (not built yet)
 
@@ -140,7 +142,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 **ReplicatedStorage/**
 - `Config.lua`: ALL the tuning numbers (levels, colosseum, bosses, combat, spire, retro look).
 - `Items.lua`: gear rarities, stats, sets and loot tables. "Floor" 0 is Oozlet's Chest (the intro's starter gear, level 1: Squishy Gloves, Bouncy Boots, Oozlet Cap, Goo Vest).
-- `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Nahrzul.lua`, `Burrowmore.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
+- `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Nahrzul.lua`, `Burrowmore.lua`, `Kaze.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
 
 **ServerScriptService/**
 - `Main.server.lua`: a Script. It builds the world and then starts each service inside `pcall`.
@@ -154,8 +156,9 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
   - `Oozark.lua` (floor 1, the slime; "Gloomgut" in older code): its attacks.
   - `Nahrzul.lua` (floor 2, the worm; "Mireworm" in older code): its whole way of fighting (hunting by sound under the sand, its attacks, its every-frame step) and hooks (`brain`, `step`, `onBuild`, `onReset`, `onHome`, `onDie`, `onBreak`).
   - `Burrowmore.lua` (floor 3, the knight): his moves (a surface boss: the shared brain picks them by distance), his body shape for punches (high in the air he's out of reach) and a few hooks (see "Floor 3: Knight Burrowmore").
+  - `Kaze.lua` (floor 4, the fighter): his own brain (the ki meter, cancels, charging, the Super and the pillars), his moves, his every-frame step and hooks, including the new `onMove` (see "Floor 4: Kaze").
   - `_Template.lua`: NOT a boss: the starting point for a new one (see "Adding a boss").
-- `SpireService.lua`, `DunesBuilder.lua`, `DigBuilder.lua`: the Spire's menu and travel, floor 2's arena and floor 3's arena.
+- `SpireService.lua`, `DunesBuilder.lua`, `DigBuilder.lua`, `DojoBuilder.lua`: the Spire's menu and travel, and the arenas of floors 2, 3 and 4.
 - `IntroService.lua`: the intro's fight, all decided on the server (see "The intro: Oozlet").
 
 **StarterPlayerScripts/** (LocalScripts)
@@ -339,9 +342,23 @@ A knight of the shovel - a parody of Shovel Knight with his own name ("Knight Bu
 - **The dodge windows are checked** by `test_burrowmore.luau -a timing`: a roll as a drop's circle locks dodges it, a roll a second early doesn't; the delayed drop punishes the roll at the lock and lets the one as he falls through.
 - **Sounds** (by name in SoundService, all optional - missing ones borrow Oozark's through `SOUND_FALLBACK` in BossClient): Burrowmore Wake, Burrowmore Jump, Burrowmore Land, Shovel Swing, Shovel Dig, Dirt Land, Relic Get, Anchor Throw, Anchor Land, Fire Stick, Burrowmore Dash, Burrowmore Crash, Burrowmore Laugh, Gem Land, Shovel Meteor, Armour Crack, Burrowmore Death. Music: "Burrowmore Song".
 
+## Floor 4: Kaze, the Headband Hero ✅
+
+A wandering martial artist - a parody of Ryu with his own name, look and moves - who fights like a **fighting-game character**: a KI meter, specials that cost a bar, charging and canceling. Previews: `Docs/kaze_preview.png` (the fight) and `Docs/kaze_poses.png` (a pose sheet). All his numbers are in `Config.Bosses[4]` (including `Ki`, `Cancels`, `Tired`, `Charge`, `Chain`, `SuperAt`, `Movement`).
+
+- **The arena, the Rooftop Dojo** (`DojoBuilder`, centre `(2600, 0, 0)`): a square wooden floor (the invisible walls 62 out: the model's `Half` attribute) with a red border and a wind-swirl emblem, his tatami mat in the middle; **4 stone lantern pillars** at (+-27, +-27), tagged `DojoPillar` (attributes `Floor`, `Radius` 3.5, `Broken`; their parts are marked `Whole` or `Rubble`); a red torii gate south with the fog way out, a stone landing and stairs down into the clouds; the dojo hall north ("KAZE DOJO"), a gong, training posts, tall banners; paper lanterns on ropes, cherry trees shedding petals, stone lanterns; a sea of clouds, far purple peaks (two with pagodas) and a huge setting sun. `Config.Spire.Floors[4].ambience`: sunset, pink petals drifting on the wind.
+- **His brain** (`Bosses/Kaze.lua`, `Boss.brain`, pcall-protected like Nahrzul's): picks a move by distance and by his meter (specials need a bar; he meditates more with an empty meter; blocked by a pillar, he avoids throwing into it). **KI** fills when his hits land (`Hit`), when you punch thin air near him (`Whiff`, through the new `CombatService.OnWhiff`), a trickle (`Passive`), and fast while meditating (`Focus`); round 2 fills it `Phase2` times as fast; a **ki flare** fills it to MAX once a round (`SuperAt` 70% / 25%). **Cancels** (3, then 5 a round): string into special, fake charge into dash, hop back out of a missed special (or out of a string with no ki), chain special into special (round 2). Out of cancels: **Tired** (free hits), then they refill. **Charging** (`Charge.Chance`): a special held for 0.55-1.1s is bigger (every special's numbers are pairs { not charged, fully charged }); two punches while he charges or meditates break it (**Stagger**) and knock ki off.
+- **His moves:** PunchString (jab, straight, heavy; small red wedges), DashIn, KazeBlast (a ball of ki along a red lane; stops at a pillar), RisingDragon (a ring, then up; out of reach at the top), TornadoKick (a lane that locks; he spins along it), KiFocus, FakeCharge, and **Super** (full meter, cooldown 22s: leaps to the middle, a red fan follows you and locks, the beam sweeps 160 degrees; a player hidden behind a standing pillar is safe - the test is the ray from the middle to the player; every pillar inside the fan crumbles afterwards). **Round 2** mends the pillars, tears his gi, more cancels, chains.
+- **Published for the screens:** `Ki`, `Cancels`, `CancelAt`/`CancelKind`, `WhiffAt`, `KiHitAt`, `KiFlareAt`, plus each move's slots and (specials) how long he charged in `ActN`.
+- **His body** (`BossBodies/Kaze.lua`): the rig (gi, belt with flapping tails, bare arms, red gloves, spiky hair, the headband with two long tails simulated as little chains in the wind), every pose, afterimages, the ki ball, the beam (strands cut off by the pillars), the fan, pillar hints, crumbling pillars; **his KI meter** under the boss bar (3 bars, MAX, cancel diamonds, +KI / -KI pops); hints over his head ("TIRED! HIT HIM!", "PUNCH HIM TO BREAK IT!", "CHARGING! BREAK IT!"); `kit.bigText` screens ROUND 1 / FIGHT! / ROUND 2 / SUPER! / K.O.! / PERFECT! (no damage taken); `kit.shout` bubbles for his move names.
+- **The end:** K.O.! - he falls on his back, his headband floats away on the wind, he scatters into cherry blossom petals. Reward: Kaze's Chest (floor 4 in `Items`: sets Windwalker and Ki Master's, levels 60-78, a Secret "Endless Headband").
+- **Checked by** `test_kaze.luau` (full, attacks, reset, duo, timing, rules, super, and client mode) and 4 golden traces.
+- **Sounds** (all optional; missing ones borrow Oozark's through `SOUND_FALLBACK`): Kaze Wake, Kaze Punch, Kaze Heavy, Kaze Blast, Kaze Dragon, Kaze Tornado, Kaze Charge, Kaze Cancel, Kaze Dash, Kaze Land, Kaze Focus, Kaze Stagger, Kaze Pant, Kaze Super, Kaze Beam, Pillar Crumble, Kaze Round Two, Kaze Death; the announcer (silent until added): Round One, Round Two, Fight, KO, Perfect. Music: "Kaze Song".
+- **Shared additions he brought:** `Boss.onMove(E, dt)` (a say in where the boss stands each frame), `stepMovement`/`stepWaves`/`stepPuddles` in the kit, `CombatService.OnWhiff` and `CombatService.Launch` (a jump pad, for Gridlock), BossClient's `kit.bigText` and `kit.shout`, a scrolling Spire menu, and `Accent` in a boss's Config (the VS splash and its chest icon, when its own colour is too pale).
+
 **The boss lineup we agreed (parodies with new names, so no lawsuit; each fight unique - no wave spam, no just throwing itself at you):**
 1. Floor 3: **Knight Burrowmore** (Shovel Knight) ✅ done (above).
-2. Floor 4: **Kaze the Headband Hero** (Ryu) - chosen: **Option A, the Special Move Meter**, with **charging and animation canceling**: a KI meter (fills when he lands hits or you whiff near him; hitting him while he charges knocks it down); specials at 1 bar, shouted in pixel text - "KAZE-BLAST!" (floor fireball: jump/roll over), "RISING DRAGON!" (close uppercut: back off, punish the landing), "TORNADO KICK!" (spins across: roll through); he can HOLD a special to charge it (blue glow, rising hum; bigger move; open to hits while charging); he cancels punch strings into specials, fakes a charge into a dash (white flash), a cancel bar (3 a round; empty = guaranteed opening); full meter "SUPER!": a giant beam, hide behind one of 4 breakable pillars; phase two "ROUND 2 - FIGHT!": meter twice as fast, 2 specials chained, 5 cancels, tired longer when they run out.
+2. Floor 4: **Kaze the Headband Hero** (Ryu) ✅ done (above) - chosen: **Option A, the Special Move Meter**, with **charging and animation canceling**: a KI meter (fills when he lands hits or you whiff near him; hitting him while he charges knocks it down); specials at 1 bar, shouted in pixel text - "KAZE-BLAST!" (floor fireball: jump/roll over), "RISING DRAGON!" (close uppercut: back off, punish the landing), "TORNADO KICK!" (spins across: roll through); he can HOLD a special to charge it (blue glow, rising hum; bigger move; open to hits while charging); he cancels punch strings into specials, fakes a charge into a dash (white flash), a cancel bar (3 a round; empty = guaranteed opening); full meter "SUPER!": a giant beam, hide behind one of 4 breakable pillars; phase two "ROUND 2 - FIGHT!": meter twice as fast, 2 specials chained, 5 cancels, tired longer when they run out.
 3. Floor 5: **Speedy Revvington** (Lightning McQueen) - "Drive-By Duel", like Elden Ring's Tree Sentinel at the start but a cartoon car: drive-by swipe, skid-turn window, wheelie slam, honk, exhaust backfire, straight charge lane; phase two TURBO.
 4. Floor 6 finale: the **Geometry Dash "Deadlocked" parody** (name not picked yet; suggested "Gridlock, the Final Beat") - fights with the arena like a GD level: cube/ship/UFO/wave forms, neon tiles on the beat, jump pads, a drop stun window; phase two faster switches and a gravity flip.
 Rough levels 45 / 60 / 75 / 90. Build one boss at a time, with its arena (arenas depend on the moves).

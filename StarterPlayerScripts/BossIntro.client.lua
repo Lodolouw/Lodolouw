@@ -173,6 +173,26 @@ local PORTRAITS = {
 		ink = { Y = RGB(254, 174, 52), O = RGB(247, 118, 34), B = RGB(0, 153, 219), L = RGB(44, 232, 245), D = RGB(18, 78, 137),
 			K = RGB(24, 20, 37), W = RGB(254, 231, 97), R = RGB(228, 59, 68) },
 	},
+	-- spiky hair, the red headband (its tails flying off to the side), stern
+	-- eyebrows, and the collar of his white gi
+	Kaze = {
+		rows = {
+			"...H.HH.H.H...",
+			"..HHHHHHHHHH..",
+			".HHHHHHHHHHHH.",
+			".RRRRRRRRRRRRR",
+			".SSSSSSSSSSSRr",
+			".SKKKSSSKKKS.r",
+			".SSWKSSSWKSS.R",
+			".SSSSSDSSSSS..",
+			".SSSSSSSSSSS..",
+			"..SSSKKKKSS...",
+			"...WWSSSSWW...",
+			".WWWWLSSLWWWW.",
+		},
+		ink = { H = RGB(62, 39, 49), R = RGB(228, 59, 68), r = RGB(162, 38, 51), S = RGB(232, 183, 150), K = RGB(24, 20, 37),
+			W = RGB(255, 255, 255), D = RGB(194, 133, 105), L = RGB(192, 203, 220) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -202,7 +222,7 @@ local function playIntro(def)
 		return
 	end
 	playing = true
-	local accent = def.Color or RGB(254, 174, 52)
+	local accent = def.Accent or def.Color or RGB(254, 174, 52) -- (Accent: a boss whose own colour is too pale for it)
 	local gui = new("ScreenGui", { Name = "BossIntro", IgnoreGuiInset = true, ResetOnSpawn = false, DisplayOrder = 1100 }, playerGui)
 	gui:SetAttribute("RetroSkip", true)
 	local root = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
@@ -411,6 +431,25 @@ local LINES = {
 		phase2 = { "* NO QUARTER! My armour cracks, but my spirit shines GOLD!", "* You fight with honour! Now face me at my FULLEST!" },
 		win = { "* Rest now, brave one. The dirt is soft here.", "* A worthy foe... buried with full honours." },
 		lose = { "* You dig... with honour... the treasure... is yours...", "* Well fought! A knight knows when he's been... outdug." },
+	},
+	-- a wandering fighter: calm, honourable, a little too serious about training
+	Kaze = {
+		wake = {
+			"* The answer lies in the heart of battle. Let us begin!",
+			"* I have waited on this mountain for a real challenger. Are you one?",
+		},
+		idle = {
+			"* Your stance is loose. Mine is not.",
+			"* Do not swing wildly. Every miss feeds my ki!",
+			"* I train at sunrise. I train at sunset. I train at lunch.",
+			"* Focus. Breathe. Punch. In that order.",
+			"* The wind carries my headband. My fists carry the rest.",
+			"* Every fight teaches something. What will this one teach you?",
+		},
+		hit = { "* Too slow! Read the wind!", "* A true fighter never drops their guard.", "* You must defeat my Rising Dragon to stand a chance!" },
+		phase2 = { "* ROUND 2! Now I fight with everything I have!", "* You are strong. Good. Now I will be stronger!" },
+		win = { "* Train hard, and come back. I will be here.", "* A good fight! Get up and try again." },
+		lose = { "* ...A fine match. The road is yours now.", "* You have beaten me... I must train even harder!" },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {

@@ -8,6 +8,9 @@ title card fills it.
     luau burrowmore_snaps.luau > burrowmore_snaps.txt
     python3 render_snaps.py burrowmore_snaps.txt ../../Docs/burrowmore_preview.png [--size 800,450]
 
+A snapshot file can carry its own captions ("CAPTION <name> <words>") and
+sky colours ("SKY r,g,b|r,g,b", top then bottom - kaze_snaps.luau's sunset).
+
 (render_intro.py is the intro's own version of this, with its words on screen.)
 """
 import json, math, argparse
@@ -30,7 +33,17 @@ SS = 2
 # ----------------------------------------------------------------------
 snaps = []
 cur = None
+file_captions = {}  # CAPTION <name> <words>: a snapshot script's own captions
+sky = None  # SKY r,g,b|r,g,b: the sky's top and bottom colours (a sunset, say)
 for line in open(args.snaps):
+    if line.startswith('CAPTION '):
+        bits = line.rstrip('\n').split(' ', 2)
+        file_captions[bits[1]] = bits[2] if len(bits) > 2 else ''
+        continue
+    if line.startswith('SKY '):
+        top, bottom = line[4:].strip().split('|')
+        sky = (np.array([float(v) for v in top.split(',')]), np.array([float(v) for v in bottom.split(',')]))
+        continue
     if line.startswith('SNAP '):
         bits = line.split()
         cur = {'name': bits[1], 'eye': np.array([float(v) for v in bits[2:5]]),
@@ -128,6 +141,7 @@ def pixel_text(d, s, x, y, px, color, shadow=None, outline=(24, 20, 37)):
 # ----------------------------------------------------------------------
 # drawing the world (the same as render_lobby.py)
 # ----------------------------------------------------------------------
+SKY = sky
 LIGHT = np.array([-0.45, 0.8, 0.35])
 LIGHT /= np.linalg.norm(LIGHT)
 NEAR = 0.5
@@ -144,7 +158,7 @@ def render(snap, sky, rng_limit):
     f = (h / 2) / math.tan(math.radians(args.fov) / 2)
     color = np.zeros((h, w, 3), dtype=np.float32)
     if sky:
-        top, bottom = np.array([110, 165, 255]), np.array([200, 225, 255])
+        top, bottom = (np.array([110, 165, 255]), np.array([200, 225, 255])) if SKY is None else SKY
         for y in range(h):
             k = min(1, y / (h * 0.6))
             color[y, :, :] = top * (1 - k) + bottom * k
@@ -380,7 +394,7 @@ panels = []
 for snap in snaps:
     name = snap['name']
     img, _ = render(snap, True, 700)
-    panels.append(overlay(img, snap, CAPTIONS.get(name, name.upper())))
+    panels.append(overlay(img, snap, file_captions.get(name, CAPTIONS.get(name, name.upper()))))
     print('drew', name, len(snap['parts']), 'parts')
 cols = args.cols
 if len(panels) % cols == cols - 1 and args.title:

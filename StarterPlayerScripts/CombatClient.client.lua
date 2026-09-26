@@ -2379,6 +2379,13 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
 		cameraKick(0.9)
 		fovPunch(4)
 		knockedBack(a, 0.22)
+	elseif kind == "Launch" then
+		-- flung up by a jump pad: a quick push, then you fly on in an arc
+		local _, hrp = charParts()
+		if hrp and typeof(a) == "Vector3" then
+			fovPunch(6)
+			push(hrp, a, 0.15, false)
+		end
 	elseif kind == "Dodged" then
 		flashMessage("Dodged!", RGB(150, 200, 255), 0.6)
 		cameraKick(0.2)

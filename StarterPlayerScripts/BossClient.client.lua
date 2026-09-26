@@ -356,7 +356,12 @@ local recentSplats = {}
 local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = "Wail", Devour = "Roar",
 	-- (Knight Burrowmore's: a jump sounds like a lunge, a landing like a slam...)
 	Jump = "Lunge", Land = "Slam", Swing = "Wave", Dig = "Spit", Clod = "Splat", Anchor = "Lunge",
-	AnchorLand = "Slam", Fire = "Spit", Dash = "Lunge", Taunt = "Wail", Gem = "Splat", Meteor = "Slam" }
+	AnchorLand = "Slam", Fire = "Spit", Dash = "Lunge", Taunt = "Wail", Gem = "Splat", Meteor = "Slam",
+	-- (Kaze's: a punch sounds like a slam, the Kaze-Blast like a spit, the
+	-- beam like a wave... The announcer's words have nothing to borrow.)
+	Punch = "Slam", Heavy = "Slam", Blast = "Spit", Dragon = "Lunge", Tornado = "Wave", Charge = "Wail",
+	Cancel = "Lunge", Focus = "Wail", Stagger = "Splat", Tired = "Wail", Super = "Wake", Beam = "Wave",
+	Pillar = "Erupt", KO = "Death" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]
@@ -543,6 +548,128 @@ local kit = {
 	-- warnings in the world, the arena, one-off moments
 	addTelegraph = addTelegraph, shockRing = shockRing, onStone = onStone, arenaOf = arenaOf, at = at,
 }
+
+-- Two more things any boss's body can use, only on your screen:
+--   kit.bigText(text, opts)  big pixel words across the middle of the screen
+--       (a boss's own moments: ROUND 2, K.O.!, TURBO!, LEVEL COMPLETE!).
+--       opts: color, sub (a smaller line under it), y (0-1, how far down),
+--       size (the biggest the letters get), hold (seconds before it fades)
+--   kit.shout(part, text, seconds, color)  a word bubble over a boss's head
+--       (a move's name shouted, a honk); returns the bubble's label so the
+--       words can be changed while it shows
+do
+	local pixelFace = nil
+	pcall(function()
+		pixelFace = Font.new("rbxasset://fonts/families/PressStart2P.json")
+	end)
+	local big = nil -- { gui, label, sub, scale }
+	local bigToken = 0
+	function kit.bigText(text, opts)
+		opts = opts or {}
+		if not big then
+			local gui = Instance.new("ScreenGui")
+			gui.Name = "BossBigText"
+			gui.ResetOnSpawn = false
+			gui.IgnoreGuiInset = true
+			gui.DisplayOrder = 26
+			gui:SetAttribute("RetroSkip", true) -- (it has its own look)
+			gui.Parent = playerGui
+			local holder = Instance.new("Frame")
+			holder.BackgroundTransparency = 1
+			holder.AnchorPoint = Vector2.new(0.5, 0.5)
+			holder.Size = UDim2.new(0.9, 0, 0, 130)
+			holder.Parent = gui
+			local scale = Instance.new("UIScale")
+			scale.Parent = holder
+			local function words(name, y, h, maxSize)
+				local l = Instance.new("TextLabel")
+				l.Name = name
+				l.BackgroundTransparency = 1
+				l.Position = UDim2.new(0, 0, 0, y)
+				l.Size = UDim2.new(1, 0, 0, h)
+				l.Font = Enum.Font.Arcade
+				if pixelFace then
+					l.FontFace = pixelFace
+				end
+				l.TextScaled = true
+				l.TextStrokeTransparency = 0
+				l.TextStrokeColor3 = RGB(24, 20, 37)
+				l.Text = ""
+				local limit = Instance.new("UITextSizeConstraint")
+				limit.MaxTextSize = maxSize
+				limit.Parent = l
+				l.Parent = holder
+				return l, limit
+			end
+			local label, limit = words("Big", 0, 86, 64)
+			local sub = words("Sub", 92, 34, 26)
+			big = { gui = gui, holder = holder, label = label, limit = limit, sub = sub, scale = scale }
+		end
+		bigToken = bigToken + 1
+		local mine = bigToken
+		big.holder.Position = UDim2.fromScale(0.5, opts.y or 0.36)
+		big.label.Text = tostring(text)
+		big.label.TextColor3 = opts.color or RGB(255, 255, 255)
+		big.limit.MaxTextSize = opts.size or 64
+		big.sub.Text = opts.sub or ""
+		big.sub.TextColor3 = opts.subColor or RGB(255, 255, 255)
+		big.label.TextTransparency, big.label.TextStrokeTransparency = 0, 0
+		big.sub.TextTransparency, big.sub.TextStrokeTransparency = 0, 0
+		big.gui.Enabled = true
+		big.scale.Scale = 1.8
+		tween(big.scale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back)
+		task.delay(opts.hold or 1.3, function()
+			if bigToken ~= mine then
+				return -- (newer words took its place)
+			end
+			tween(big.label, 0.3, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			tween(big.sub, 0.3, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			task.delay(0.35, function()
+				if bigToken == mine then
+					big.gui.Enabled = false
+				end
+			end)
+		end)
+	end
+
+	function kit.shout(part, text, seconds, color)
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "BossShout"
+		bb.Size = UDim2.fromOffset(240, 58)
+		bb.StudsOffsetWorldSpace = V3(0, 7, 0)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 220
+		bb.Adornee = part
+		local box = Instance.new("Frame")
+		box.AnchorPoint = Vector2.new(0.5, 0.5)
+		box.Position = UDim2.fromScale(0.5, 0.5)
+		box.Size = UDim2.fromScale(0.2, 0.2)
+		box.BackgroundColor3 = RGB(0, 0, 0)
+		box.BorderSizePixel = 0
+		box.Parent = bb
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = color or RGB(255, 255, 255)
+		stroke.Thickness = 3
+		stroke.Parent = box
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.TextScaled = true
+		label.Font = Enum.Font.Arcade
+		if pixelFace then
+			label.FontFace = pixelFace
+		end
+		label.TextColor3 = color or RGB(255, 255, 255)
+		label.Text = tostring(text)
+		label.Parent = box
+		bb.Parent = playerGui
+		tween(box, 0.12, { Size = UDim2.fromScale(1, 1) }, Enum.EasingStyle.Back)
+		task.delay(seconds or 1.2, function()
+			bb:Destroy()
+		end)
+		return label, bb
+	end
+end
 local bodyModules = {} -- [short name] = its body file, or false
 local bodyList = {} -- (in Config's order)
 local bodiesFolder = ReplicatedStorage:WaitForChild("BossBodies", 30)

@@ -31,9 +31,15 @@ for seed in 1 2 3; do run test_burrowmore.luau -a full $seed; done
 for sc in attacks reset duo timing; do run test_burrowmore.luau -a $sc 1; done
 run test_burrowmore.luau -a full 2 client
 run test_burrowmore.luau -a attacks 1 client
+# Kaze (floor 4): whole fights, every move, resets, two players, the dodge
+# windows, the ki rules, the beam and the pillars, and his body on screen
+for seed in 1 2 3; do run test_kaze.luau -a full $seed; done
+for sc in attacks reset duo timing rules super; do run test_kaze.luau -a $sc 1; done
+run test_kaze.luau -a full 2 client
+run test_kaze.luau -a attacks 1 client
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (20 boss traces)"
+	echo "pass  golden.sh check (24 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20

@@ -208,6 +208,57 @@ you learn him by losing to him. Recommended level 45.
 - Previews: `Docs/burrowmore_preview.png` (the fight) and
   `Docs/burrowmore_poses.png` (him, pose by pose).
 
+## The Spire's fourth floor: Kaze, the Headband Hero (the Rooftop Dojo)
+
+A wandering martial artist (a parody of a certain headband-wearing world
+warrior, with his own name, look and moves) meditates in a dojo on a
+mountain peak above the clouds, at sunset. Walk near and he opens his eyes,
+stands, bows, drops into his stance: **ROUND 1... FIGHT!** He fights like a
+**fighting-game character**. Recommended level 60.
+
+- **The KI METER** (three bars, under his boss bar): it fills when his hits
+  land on you, when you punch thin air near him (don't swing wildly - "+KI"),
+  a little all the time, and fast while he meditates. Every special costs a
+  bar. A full meter flashes **MAX** - his Super is coming. Once a round (at
+  70% health, then 25%) his ki flares straight to MAX.
+- **His moves:** a Punch String (jab, straight, heavy "HYAH!" - each with a
+  small red wedge), Dash In (a dash with afterimages into a string), and his
+  three SPECIALS, shouted in pixel letters: **KAZE-BLAST!** (a ball of ki
+  rolling along a red lane - jump it or roll; it bursts on a pillar),
+  **RISING DRAGON!** (a spinning uppercut straight up inside a red ring - back
+  off, then punish his landing; up high he's out of reach) and **TORNADO
+  KICK!** (he spins across the dojo along a red lane - roll through him).
+- **Charging and cancelling:** now and then he holds a special (a blue glow
+  and a rising hum) - the longer, the bigger. Punch him twice while he glows
+  (or while he meditates, "HAAAA...") and it breaks: he staggers. He can
+  CANCEL (a white flash): a string into a special, a fake charge into a dash,
+  a hop back out of a missed special. The diamonds under his meter are his
+  cancels for the round - when they run out he's **TIRED** (hands on knees,
+  panting, "TIRED! HIT HIM!" over his head): free hits.
+- **SUPER!:** at a full meter the screen flashes, he leaps to the middle of
+  the dojo, a red fan shows where his giant beam will sweep, and the four
+  stone pillars glow: **hide behind one** (the beam can't go through), get out
+  of the fan, or roll through the beam. Every pillar the beam hits crumbles.
+- **ROUND 2** (half health): down on one knee, a burst of ki throws everyone
+  back, his gi tears, he re-ties his headband. The pillars are back, his meter
+  fills twice as fast, he chains specials together and has more cancels.
+- **The end: K.O.!** He falls, his headband drifts away on the wind, and he
+  scatters into cherry blossom petals (**PERFECT!** if you never got hit).
+  Everyone gets Kaze's Chest (Windwalker and Ki Master's gear).
+- **Where things are:** every number in `Config.Bosses[4]`; the floor in
+  `Config.Spire.Floors[4]`; his brain and moves in `ServerScriptService/Bosses/Kaze.lua`;
+  his body, meter and screens in `ReplicatedStorage/BossBodies/Kaze.lua`; the
+  arena in `ServerScriptService/DojoBuilder.lua`; his portrait and lines in `BossIntro`.
+- **Music:** a Sound named `Kaze Song` in SoundService (Oozark's plays until
+  you add it). **Sounds** (all optional; missing ones borrow Oozark's): Kaze
+  Wake, Kaze Punch, Kaze Heavy, Kaze Blast, Kaze Dragon, Kaze Tornado, Kaze
+  Charge, Kaze Cancel, Kaze Dash, Kaze Land, Kaze Focus, Kaze Stagger, Kaze
+  Pant, Kaze Super, Kaze Beam, Pillar Crumble, Kaze Round Two, Kaze Death - and
+  the announcer (silent until you add them): Round One, Round Two, Fight, KO,
+  Perfect.
+- Previews: `Docs/kaze_preview.png` (the fight) and `Docs/kaze_poses.png` (him,
+  pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without
@@ -261,7 +312,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
   Health, Defense (both capped at 60%) and Training Power.
 - **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
   Oozark, Duneworn and Devourer's for Nahrzul, Spade Knight's and Relicbound
-  for Burrowmore) with bonuses for 2 and 4 pieces.
+  for Burrowmore, Windwalker and Ki Master's for Kaze) with bonuses for 2 and
+  4 pieces.
 - **Level:** each item needs a level: the highest you've ever reached, so
   prestiging never locks you out. Gear and chests stay through prestige.
 - **The bag:** your loadout and total stats on the left; your items, tabs,

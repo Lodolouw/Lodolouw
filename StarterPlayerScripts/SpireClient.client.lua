@@ -356,15 +356,22 @@ local closeBtn = create("TextButton", {
 	Parent = menu,
 }, { corner(10), stroke(2, C.rim, 0.4) })
 
--- floor list on the left
-local list = create("Frame", {
+-- floor list on the left (it scrolls: there are more floors than fit)
+local list = create("ScrollingFrame", {
 	Position = UDim2.fromOffset(24, 108),
 	Size = UDim2.fromOffset(250, 338),
 	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 6,
+	ScrollBarImageColor3 = C.rim,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	CanvasSize = UDim2.new(0, 0, 0, 0),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
 	ZIndex = 51,
 	Parent = menu,
 }, {
 	create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+	create("UIPadding", { PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 2) }),
 })
 
 -- details on the right
@@ -580,6 +587,14 @@ local function openMenu()
 	if travelling then
 		return
 	end
+	-- (it opens on the floor you're up to: the one after the last you've beaten,
+	-- scrolled into view)
+	local upTo = math.clamp((player:GetAttribute("SpireCleared") or 0) + 1, 1, #Config.Spire.Floors)
+	while upTo > 1 and not Config.Spire.Floors[upTo].open do
+		upTo = upTo - 1
+	end
+	selected = upTo
+	list.CanvasPosition = Vector2.new(0, math.max(0, (selected - 2) * 82))
 	renderDetail()
 	menu.Visible = true
 	menu.Size = UDim2.fromOffset(740, 440)
