@@ -707,11 +707,17 @@ local function restoreWalkSpeed(player, hum)
 end
 
 local function onFloorChanged(player)
-	if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") then
+	local fighting = player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum")
+	if fighting then
 		startFighting(player)
 	else
 		stopFighting(player)
 	end
+	-- Shift is the dodge roll in a fight, so Roblox's own Shift Lock is off
+	-- there (it's back in the lobby)
+	pcall(function()
+		player.DevEnableMouseLock = not fighting
+	end)
 	-- arriving in an arena slows you to its cap; leaving gives your boots back
 	local _, _, char = charParts(player)
 	local hum = char and char:FindFirstChildOfClass("Humanoid")

@@ -7,12 +7,16 @@
 	                         punching) - aim by turning towards the enemy. Each
 	                         punch commits you: you stand still until the swing
 	                         ends (you can roll out of the last part of it)
-	  * Q  (gamepad B)       dodge roll - a quick dash; you're invincible for a
+	  * Shift  (gamepad B)   dodge roll - a quick dash; you're invincible for a
 	                         moment at the start of it
 	  * R  (gamepad Y)       drink a healing flask
 	  * Tab / middle click   lock on to an enemy, like Elden Ring: the camera
 	    (right stick click)  frames it and you always face it; press again
 	                         to let go
+	  * Q / E                while locked on: switch to the next enemy to the
+	    (right stick flick,  left / right. When your target dies the lock jumps
+	     swipe LOCK on a     to the nearest enemy left; it lets go if you get
+	     phone)              too far away or lose sight of it for a moment
 	  * Phones get ROLL, FLASK and LOCK buttons next to the jump button.
 	  * A green stamina bar sits above your health: punching and rolling use
 	    it, and it refills when you stop.
@@ -167,7 +171,7 @@ local hints = create("TextLabel", {
 	Size = UDim2.fromOffset(720, 22),
 	BackgroundTransparency = 1,
 	Font = BOLD,
-	Text = "Click: punch     Q: dodge roll     Space: jump     R: flask     Tab / middle click: lock on",
+	Text = "Click: punch     Shift: dodge roll     Space: jump     R: flask     Tab: lock on     Q / E: switch target",
 	TextSize = 18,
 	TextColor3 = RGB(220, 225, 235),
 	TextTransparency = 0.15,
@@ -1644,35 +1648,87 @@ end
 --   * the camera sits behind you, framing you and the enemy together
 --   * your character always faces the enemy, so moving left/right circles it
 --     and every punch goes straight at it
---   * a white dot marks the target
--- Press it again to let go. It also lets go if the enemy dies, gets too far
--- away, or you leave the arena.
+--   * 8-bit corner brackets mark the target, and small Q / E tags mark the
+--     enemies those keys would switch to
+-- Press it again to let go. When the target dies the lock jumps to the
+-- nearest enemy left; it lets go if the enemy gets too far away, you lose
+-- sight of it for over a second, or you leave the arena.
 local LOCK_RANGE = 80 -- how far away you can lock on from
 local LOCK_BREAK = 110 -- the lock lets go past this distance
 
+-- The marker on your target: four 8-bit corner brackets that pulse in and
+-- out, with a little arrow bobbing over it. The enemies Q and E would jump
+-- to get small dim "Q" / "E" tags, so you can see where each key goes.
 local lockDot = create("BillboardGui", {
-	Name = "LockOnDot",
-	Size = UDim2.fromOffset(34, 34),
+	Name = "LockOnMarker",
+	Size = UDim2.fromOffset(64, 64),
 	AlwaysOnTop = true,
 	LightInfluence = 0,
 	Enabled = false,
 	Parent = gui,
-}, {
+})
+local brackets = {}
+for i, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
+	-- each bracket is an L made of two bars, white with a dark outline
+	local holder = create("Frame", {
+		AnchorPoint = Vector2.new(c[1], c[2]),
+		Position = UDim2.fromScale(c[1], c[2]),
+		Size = UDim2.fromOffset(16, 16),
+		BackgroundTransparency = 1,
+		Parent = lockDot,
+	})
 	create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(12, 12),
+		AnchorPoint = Vector2.new(c[1], c[2]),
+		Position = UDim2.fromScale(c[1], c[2]),
+		Size = UDim2.fromOffset(16, 4),
 		BackgroundColor3 = RGB(255, 255, 255),
 		BorderSizePixel = 0,
-	}, { create("UICorner", { CornerRadius = UDim.new(1, 0) }), stroke(2, RGB(0, 0, 0), 0.3) }),
+		Parent = holder,
+	}, { stroke(2, RGB(24, 20, 37), 0) })
 	create("Frame", {
-		Name = "Ring",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(30, 30),
-		BackgroundTransparency = 1,
-	}, { create("UICorner", { CornerRadius = UDim.new(1, 0) }), stroke(2, RGB(255, 255, 255), 0.35) }),
-})
+		AnchorPoint = Vector2.new(c[1], c[2]),
+		Position = UDim2.fromScale(c[1], c[2]),
+		Size = UDim2.fromOffset(4, 16),
+		BackgroundColor3 = RGB(255, 255, 255),
+		BorderSizePixel = 0,
+		Parent = holder,
+	}, { stroke(2, RGB(24, 20, 37), 0) })
+	brackets[i] = { frame = holder, c = c }
+end
+local lockArrow = create("TextLabel", {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 0, -4),
+	Size = UDim2.fromOffset(24, 18),
+	BackgroundTransparency = 1,
+	Font = Enum.Font.Arcade,
+	Text = "v",
+	TextScaled = true,
+	TextColor3 = RGB(254, 231, 97),
+	Parent = lockDot,
+}, { create("UIStroke", { Thickness = 2, Color = RGB(24, 20, 37) }) })
+
+local function switchTag(key)
+	return create("BillboardGui", {
+		Name = "LockSwitch" .. key,
+		Size = UDim2.fromOffset(26, 26),
+		AlwaysOnTop = true,
+		LightInfluence = 0,
+		Enabled = false,
+		Parent = gui,
+	}, {
+		create("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = RGB(24, 20, 37),
+			BackgroundTransparency = 0.35,
+			BorderSizePixel = 0,
+			Font = Enum.Font.Arcade,
+			Text = key,
+			TextScaled = true,
+			TextColor3 = RGB(192, 203, 220),
+		}, { stroke(2, RGB(139, 155, 180), 0.2) }),
+	})
+end
+local tagQ, tagE = switchTag("Q"), switchTag("E")
 
 local function targetPoint(model)
 	local ok, cf, size = pcall(function()
@@ -1693,25 +1749,98 @@ local function lockable(model)
 	return model and model.Parent and model:IsA("Model") and (model:GetAttribute("Health") or 0) > 0 and (owner == nil or owner == player.UserId)
 end
 
--- the enemy closest to the middle of the screen, within range
-local function pickTarget()
-	local _, hrp = charParts()
-	local cam = workspace.CurrentCamera
-	if not (hrp and cam) then
-		return nil
+-- can you actually see it? (a wall, a pillar or the stands in the way: no)
+local sightParams = RaycastParams.new()
+sightParams.FilterType = Enum.RaycastFilterType.Exclude
+sightParams.RespectCanCollide = true
+local function canSee(model, pos)
+	if model:GetAttribute("Boss") then
+		return true -- (a boss is never out of sight: the worm dives under the sand)
 	end
-	local best, bestScore = nil, math.huge
+	local cam = workspace.CurrentCamera
+	local _, hrp, char = charParts()
+	if not (cam and hrp) then
+		return false
+	end
+	sightParams.FilterDescendantsInstances = { char, model }
+	local from = hrp.Position + Vector3.new(0, 2, 0)
+	local hit = workspace:Raycast(from, pos - from, sightParams)
+	-- (hitting a player or another enemy on the way doesn't hide it)
+	return hit == nil or hit.Instance:FindFirstAncestorWhichIsA("Model") ~= nil
+		and (hit.Instance:FindFirstAncestorWhichIsA("Model"):FindFirstChildOfClass("Humanoid") ~= nil
+			or game:GetService("CollectionService"):HasTag(hit.Instance:FindFirstAncestorWhichIsA("Model"), "CombatTarget"))
+end
+
+-- every enemy you could lock on to right now: in range and in sight
+local function candidates()
+	local _, hrp = charParts()
+	local list = {}
+	if not hrp then
+		return list
+	end
 	for _, m in ipairs(game:GetService("CollectionService"):GetTagged("CombatTarget")) do
 		if lockable(m) then
 			local pos = targetPoint(m)
-			if pos then
-				local dist = (pos - hrp.Position).Magnitude
-				if dist <= LOCK_RANGE then
-					local toT = (pos - cam.CFrame.Position).Unit
-					local angle = math.acos(math.clamp(toT:Dot(cam.CFrame.LookVector), -1, 1))
-					local score = angle * 60 + dist -- mostly "nearest the middle of the screen"
-					if score < bestScore then
-						best, bestScore = m, score
+			if pos and (pos - hrp.Position).Magnitude <= LOCK_RANGE and canSee(m, pos) then
+				table.insert(list, { model = m, pos = pos, dist = (pos - hrp.Position).Magnitude })
+			end
+		end
+	end
+	return list
+end
+
+-- the enemy closest to the middle of the screen
+local function pickTarget()
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return nil
+	end
+	local best, bestScore = nil, math.huge
+	for _, c in ipairs(candidates()) do
+		local toT = (c.pos - cam.CFrame.Position).Unit
+		local angle = math.acos(math.clamp(toT:Dot(cam.CFrame.LookVector), -1, 1))
+		local score = angle * 60 + c.dist -- mostly "nearest the middle of the screen"
+		if score < bestScore then
+			best, bestScore = c.model, score
+		end
+	end
+	return best
+end
+
+-- the nearest enemy to YOU (who the lock jumps to when your target dies)
+local function nearestTarget(except)
+	local best, bestD = nil, math.huge
+	for _, c in ipairs(candidates()) do
+		if c.model ~= except and c.dist < bestD then
+			best, bestD = c.model, c.dist
+		end
+	end
+	return best
+end
+
+-- the next enemy to the left (side = -1) or right (side = 1) of your target,
+-- as you see them on screen: the nearest one that way wins
+local function neighbour(side)
+	local cam = workspace.CurrentCamera
+	if not (cam and lockTarget) then
+		return nil
+	end
+	local cur = targetPoint(lockTarget)
+	if not cur then
+		return nil
+	end
+	local cx = cam.CFrame:PointToObjectSpace(cur)
+	local curX = cx.X / math.max(-cx.Z, 0.1)
+	local best, bestD = nil, math.huge
+	for _, c in ipairs(candidates()) do
+		if c.model ~= lockTarget then
+			local o = cam.CFrame:PointToObjectSpace(c.pos)
+			if o.Z < 0 then -- (in front of the camera)
+				local dx = o.X / math.max(-o.Z, 0.1) - curX
+				if dx * side > 0.01 then
+					local d = math.abs(dx) + c.dist * 0.002
+					if d < bestD then
+						best, bestD = c.model, d
 					end
 				end
 			end
@@ -1720,14 +1849,26 @@ local function pickTarget()
 	return best
 end
 
+-- the target's own health bar stays in front of everything while it's locked
+local function highlightBar(model, on)
+	local bb = model and model:FindFirstChild("HealthBar", true)
+	if bb and bb:IsA("BillboardGui") then
+		bb.AlwaysOnTop = on
+	end
+end
+
 local savedCameraType = nil
+local lostSightAt = nil
 local function unlock()
 	if not lockTarget then
 		return
 	end
+	highlightBar(lockTarget, false)
 	lockTarget = nil
+	lostSightAt = nil
 	lockDot.Enabled = false
 	lockDot.Adornee = nil
+	tagQ.Enabled, tagE.Enabled = false, false
 	local cam = workspace.CurrentCamera
 	if cam and savedCameraType then
 		cam.CameraType = savedCameraType
@@ -1740,7 +1881,12 @@ local function lockOn(model)
 	if not (model and cam) then
 		return
 	end
+	if lockTarget and lockTarget ~= model then
+		highlightBar(lockTarget, false)
+	end
 	lockTarget = model
+	lostSightAt = nil
+	highlightBar(model, true)
 	local body = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
 	lockDot.Adornee = body
 	lockDot.Enabled = body ~= nil
@@ -1762,6 +1908,44 @@ local function toggleLock()
 	end
 end
 
+-- Q / E (or a swipe, or a flick of the right stick): the next enemy that way
+local function switchLock(side)
+	if not (active and lockTarget) then
+		return
+	end
+	local n = neighbour(side)
+	if n then
+		lockOn(n)
+	end
+end
+
+-- the markers: brackets pulse on your target, Q/E tags on where you'd jump
+local markerTick = 0
+local function stepMarkers(dt)
+	if not lockTarget then
+		return
+	end
+	-- (8-bit: the brackets breathe in chunky steps, and the arrow hops)
+	local k = math.floor(os.clock() * 4) % 2
+	local grow = 64 + k * 8
+	lockDot.Size = UDim2.fromOffset(grow, grow)
+	lockArrow.Position = UDim2.new(0.5, 0, 0, -4 - k * 4)
+	markerTick = markerTick + dt
+	if markerTick < 0.15 then
+		return
+	end
+	markerTick = 0
+	local q, e = neighbour(-1), neighbour(1)
+	local function place(tag, model)
+		local body = model and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart"))
+		tag.Adornee = body
+		tag.Enabled = body ~= nil
+		tag.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
+	end
+	place(tagQ, q)
+	place(tagE, e)
+end
+
 -- camera + facing while locked
 RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
 	if not lockTarget then
@@ -1769,15 +1953,36 @@ RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1
 	end
 	local hum, hrp, char = charParts()
 	local cam = workspace.CurrentCamera
-	if not (hum and hrp and cam) or not active or not lockable(lockTarget) then
+	if not (hum and hrp and cam) or not active then
 		unlock()
 		return
+	end
+	if not lockable(lockTarget) then
+		-- your target died: straight on to the nearest one left (or let go)
+		local nextOne = nearestTarget(lockTarget)
+		if nextOne then
+			lockOn(nextOne)
+		else
+			unlock()
+			return
+		end
 	end
 	local tpos, tsize = targetPoint(lockTarget)
 	if not tpos or (tpos - hrp.Position).Magnitude > LOCK_BREAK then
 		unlock()
 		return
 	end
+	-- out of sight for a moment lets go too (a pillar, the stands...)
+	if canSee(lockTarget, tpos) then
+		lostSightAt = nil
+	else
+		lostSightAt = lostSightAt or os.clock()
+		if os.clock() - lostSightAt > 1.2 then
+			unlock()
+			return
+		end
+	end
+	stepMarkers(dt)
 	local ppos = hrp.Position + Vector3.new(0, 1.5, 0)
 	local flat = Vector3.new(tpos.X - ppos.X, 0, tpos.Z - ppos.Z)
 	if flat.Magnitude < 0.5 then
@@ -1799,6 +2004,7 @@ RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1
 	-- made punching while locked on look like a spinning top)
 	local _ = char
 end)
+
 
 ----------------------------------------------------------------------
 -- Switching on and off
@@ -1885,7 +2091,15 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.ButtonB then
+	-- Q / E: switch to the next enemy left / right (while locked on)
+	if input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.E then
+		if not processed and lockTarget then
+			switchLock(input.KeyCode == Enum.KeyCode.Q and -1 or 1)
+		end
+		return
+	end
+	-- Shift (gamepad B): dodge roll
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.ButtonB then
 		if not processed or input.KeyCode == Enum.KeyCode.ButtonB then
 			tryRoll()
 		end
@@ -1913,8 +2127,41 @@ UserInputService.InputEnded:Connect(function(input)
 		holding = false
 	end
 end)
+-- gamepad: flick the right stick left or right to switch target
+local stickFlicked = false
+UserInputService.InputChanged:Connect(function(input)
+	if input.KeyCode ~= Enum.KeyCode.Thumbstick2 or not lockTarget then
+		return
+	end
+	local x = input.Position.X
+	if math.abs(x) > 0.75 and not stickFlicked then
+		stickFlicked = true
+		switchLock(x < 0 and -1 or 1)
+	elseif math.abs(x) < 0.3 then
+		stickFlicked = false
+	end
+end)
 rollBtn.Activated:Connect(tryRoll)
-lockBtn.Activated:Connect(toggleLock)
+do
+	local startX = nil
+	lockBtn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			startX = input.Position.X
+		end
+	end)
+	lockBtn.InputEnded:Connect(function(input)
+		if not startX then
+			return
+		end
+		local dx = input.Position.X - startX
+		startX = nil
+		if lockTarget and math.abs(dx) > 30 then
+			switchLock(dx < 0 and -1 or 1) -- a swipe: the next enemy that way
+		else
+			toggleLock() -- a tap
+		end
+	end)
+end
 flaskBtn.Activated:Connect(tryHeal)
 if devBtn then
 	devBtn.Activated:Connect(function()
