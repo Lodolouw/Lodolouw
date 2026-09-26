@@ -836,6 +836,31 @@ task.delay(2, function()
 			game:GetService("ContentProvider"):PreloadAsync(list)
 		end)
 	end
+
+	-- THE SOUND REPORT (in the Output window, F9 in game): for every sound
+	-- the Colosseum uses, which Sound it found in SoundService - or that none
+	-- is there, or that it's there but didn't load (usually a Toolbox sound
+	-- that's private to someone else: Roblox plays those silently)
+	local function report(label, names)
+		local snd = findNamedSound(names)
+		local wanted = table.concat(type(names) == "table" and names or { tostring(names) }, '" or "')
+		if not snd then
+			print("[Colosseum sounds] " .. label .. ': MISSING - add a Sound named "' .. wanted .. '" to SoundService')
+		elseif tostring(snd.SoundId or "") == "" then
+			warn("[Colosseum sounds] " .. label .. ': "' .. snd.Name .. '" has no SoundId - paste one in')
+		elseif not snd.IsLoaded or (tonumber(snd.TimeLength) or 0) <= 0 then
+			warn("[Colosseum sounds] " .. label .. ': "' .. snd.Name .. '" (' .. tostring(snd.SoundId) .. ") DIDN'T LOAD - probably private: pick a sound made by Roblox, or upload your own")
+		else
+			print("[Colosseum sounds] " .. label .. ': OK - "' .. snd.Name .. '" (' .. string.format("%.1f", tonumber(snd.TimeLength) or 0) .. "s)")
+		end
+	end
+	report("Pipe", Config.Colosseum.PipeSound)
+	if K then
+		for key, names in pairs(K.Sounds or {}) do
+			report("King " .. key, names)
+		end
+		report("King music", K.Music)
+	end
 end)
 
 local piping = false
