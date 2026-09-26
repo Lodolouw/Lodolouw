@@ -1162,10 +1162,16 @@ end
 
 local tags = {}
 local tagAdded, tagRemoved = {}, {}
+-- (the order things were tagged in: GetTagged lists them in that order, so a
+-- test comes out the same every run - a table keyed by instances has no fixed order)
+local tagOrder, tagCount = setmetatable({}, { __mode = "k" }), 0
 local CollectionService = {}
 function CollectionService:AddTag(inst, tag)
 	tags[tag] = tags[tag] or {}
 	if not tags[tag][inst] then
+		tagCount = tagCount + 1
+		tagOrder[inst] = tagOrder[inst] or {}
+		tagOrder[inst][tag] = tagCount
 		tags[tag][inst] = true
 		if tagAdded[tag] then
 			tagAdded[tag]:Fire(inst)
@@ -1190,6 +1196,9 @@ function CollectionService:GetTagged(tag)
 			table.insert(out, inst)
 		end
 	end
+	table.sort(out, function(a, b)
+		return (tagOrder[a] and tagOrder[a][tag] or 0) < (tagOrder[b] and tagOrder[b][tag] or 0)
+	end)
 	return out
 end
 function CollectionService:GetInstanceAddedSignal(tag)
