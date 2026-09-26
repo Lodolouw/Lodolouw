@@ -1116,6 +1116,14 @@ function methods.RequestStreamAroundAsync() end
 function methods.GetPlayers(self)
 	return table.clone(M.players)
 end
+function methods.GetPlayerFromCharacter(self, char)
+	for _, p in ipairs(M.players) do
+		if char ~= nil and p.Character == char then
+			return p
+		end
+	end
+	return nil
+end
 function methods.GetServerTimeNow()
 	return now
 end
