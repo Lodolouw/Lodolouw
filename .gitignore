@@ -1,0 +1,5 @@
+# made by Tools/HeadlessTests (not part of the game)
+Tools/HeadlessTests/sources.luau
+Tools/HeadlessTests/*.json
+Tools/HeadlessTests/*.png
+Tools/HeadlessTests/snaps.txt
