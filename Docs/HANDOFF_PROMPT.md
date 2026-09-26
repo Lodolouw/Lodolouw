@@ -149,7 +149,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 **StarterPlayerScripts/** (LocalScripts)
 - `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying.
   It has about **192 top-level locals** — same rule: use `do ... end` blocks.
-- `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the DIFFICULTY board's menu and plaques, the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
+- `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door, the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: boss visuals (8-bit PIXEL mode).
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`. (`RollDebug`, a temporary roll-debugging tool, was removed.)
 
@@ -202,7 +202,7 @@ A wave arena for farming XP and coins.
 
 ### Getting in and out
 - In the lobby there's a small sand-castle colosseum.
-- Press **E** at its little door and you shrink bit by bit, Mario-pipe style, and appear inside the real arena far away (centre `(-2600, 0, 0)`, radius 82, built at 2.6× scale by the same `sandColosseum` function).
+- Press **E** at its little door and the **difficulty pop-up** opens (see "Difficulty" below). Pick one, press **ENTER**, and you shrink bit by bit, Mario-pipe style, and appear inside the real arena far away (centre `(-2600, 0, 0)`, radius 82, built at 2.6× scale by the same `sandColosseum` function). The door's prompt (tag `ColosseumEntrance`) only opens the pop-up; the server sends you in only through the ENTER button's Action "ColosseumEnter".
 - The client does the teleport animation (`PipeIn`/`PipeOut` events). The server sets `MoveTo`/`MoveUntil` first.
 - Press **E** at the exit gate to leave (it heals you).
 - If you die in there, you respawn in the lobby.
@@ -265,8 +265,10 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
   - **Nightmare** (red): x2 health, x2 damage, +2 dummies per wave, 30% faster, **the King is angry from the start**, pays x3.5.
   - "Pays" multiplies everything the run pays: each kill, the quest and the first clear of the day.
 - **Unlocks:** Normal is always open; each one opens after clearing a run on the one before (`Config.colosseumUnlocked(data.Colosseum, id)`, used on both server and client). The CLEARED screen says "NIGHTMARE UNLOCKED!" when a clear opens one.
-- **Picking:** at the **DIFFICULTY board** beside the arena's exit gate (LobbyBuilder `buildDifficultyBoard`: a wooden board with a red roof, torches and a plaque per difficulty with its name, 1-3 pips and "x2 COINS & XP"; its ProximityPrompt is tagged `ColosseumDifficultyBoard`, its plaques `DifficultyPlaque` with a `Difficulty` attribute), or with the difficulty buttons on the CLEARED screen. Both call the Action "ColosseumDifficulty" (`PlayerService.SetColosseumPick` validates and saves `data.Colosseum.pick`). The pick is used from the next run; if the first wave isn't in yet it's used straight away, and if you're still on **wave 1** the run starts over on it (wave 1's dummies crumble paying nothing, no healing); from wave 2 on it waits for the next run. Previews: `Docs/difficulty_board.png`, `Docs/difficulty_menu.png`, `Docs/colosseum_cleared_hard.png`.
-- **Screen:** the menu (`ColosseumDifficulty`) has a card per difficulty: what it does, what it pays, your clears and best time on it, and PICK / PICKED / LOCKED ("Clear a HARD run first"). On your own screen the board's plaques say PICKED / LOCKED. The wave box shows the run's difficulty after the wave ("WAVE 3/5  HARD", RichText, in its colour, with a border in its colour), and a new run's banner says "HARD RUN BEGINS!".
+- **Picking, going in:** press E at the mini colosseum's little door in the lobby and a **pop-up** opens (LobbyActivities `DifficultyMenu`, ScreenGui `ColosseumDifficulty`): a card per difficulty with what it does, what it pays, your clears and best time on it, and PICK / PICKED / LOCKED ("Clear a HARD run first"). Clicking a card (or its button) only picks it on your screen; the one you went in on last time starts picked. The big **ENTER** button (in the picked one's colour) calls the Action **"ColosseumEnter"** with the pick: the server checks you can go in (`canEnter`: beside the door, not already in or on the way) and that the pick is open to you (`PlayerService.SetColosseumPick` validates and saves `data.Colosseum.pick`), then sends you down the pipe; if it refuses, the pop-up stays open and says why. It closes with the X, when you walk more than `EnterRange` + 4 studs from the door, or as you go in. Preview: `Docs/difficulty_menu.png`.
+- **Picking the next run:** the difficulty buttons on the CLEARED screen call the Action "ColosseumDifficulty" (saved the same way). A run keeps the difficulty it started on: a pick made mid-run (only a modded client could) waits for the next run. Preview: `Docs/colosseum_cleared_hard.png`.
+- **Screen:** the wave box shows the run's difficulty after the wave ("WAVE 3/5  HARD", RichText, in its colour, with a border in its colour), and a new run's banner says "HARD RUN BEGINS!".
+- (The DIFFICULTY board that stood beside the arena's exit gate is gone: the pop-up replaced it.)
 - **Server:** the session's `s.diff` is set when wave 1 comes in (a run keeps it). `spawnDummy` multiplies health, `dmg(s, share)` wraps every hit on the player, `spawnWave` adds `extra`, `e.slow` includes `pace` (not for the King), `OnKill`/`FinishRun`/`PayQuest` multiply the pay, and `kingBrain` calls `getAngry` right after his entrance when `angry`.
 
 ### Reward feel ✅ (no chests: they're being reworked later)
@@ -344,7 +346,7 @@ I asked for a full client-exploit audit: remote abuse, economy duplication, tele
 
 The Colosseum polish plan was:
 1. enemy types ✅
-2. difficulty board ✅
+2. difficulty ✅ (a pop-up at the Colosseum's door)
 3. boss wave ✅ (the Giant Straw King, see above)
 4. streaks ✅
 5. juice (skipped for now: I felt the Colosseum is polished enough)
@@ -354,7 +356,7 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
 1. ~~**Boss wave every 5 waves: the Giant Straw King.**~~ ✅ Done (see "The boss wave" above).
 2. ~~**Kill streaks and best wave:**~~ ✅ Done, as 5-wave runs with a best clear time, runs cleared, a daily first-clear bonus, and kill streaks (see "Runs" above).
-3. ~~**Difficulty board**~~ ✅ Done: Normal / Hard / Nightmare, by the exit gate and on the CLEARED screen (see "Difficulty" above). The quest became "Beat 5 Waves" at the same time.
+3. ~~**Difficulty board**~~ ✅ Done: Normal / Hard / Nightmare, picked in a pop-up at the Colosseum's door as you go in, and on the CLEARED screen for the next run (see "Difficulty" above). (It started as a board in the arena; I asked for a pop-up instead.) The quest became "Beat 5 Waves" at the same time.
 4. **Juice** (skipped for now, maybe later): the crowd cheering kills, throwing hearts (heal pickups) and coin bags onto the sand. (The wave horn already exists.)
 5. ~~**Reward feel**~~ ✅ Done: coins and XP fly from the dummy to you (see "Reward feel" above). **No chest drops**: chests are being reworked later.
 

@@ -44,21 +44,6 @@ local function part(parent, name, size, cf, color, material, extra)
 end
 '''
 out.append('\tDummyBuilder = %s,' % lit(prelude + block + '\n\treturn colosseumDummy\n'))
-# the Colosseum's DIFFICULTY board, cut out of LobbyBuilder the same way
-start = next(i for i, l in enumerate(lb) if l.startswith('\tlocal function buildDifficultyBoard('))
-end = next(i for i, l in enumerate(lb) if l.startswith('\t-- The real Colosseum, far from the lobby'))
-board = '\n'.join(lb[start:end])
-boardPrelude = prelude + '''local Config = ...
-local FONT = Enum.Font.FredokaOne
-local CollectionService = game:GetService("CollectionService")
-local GOLD, BANNER_RED, ROOF_RED = RGB(235, 190, 70), RGB(170, 45, 50), RGB(196, 58, 52)
-local function titleSign(parent, cf, title)
-	local a = part(parent, "SignAnchor", V3(1, 1, 1), cf, RGB(255, 255, 255), Mat.SmoothPlastic, { Transparency = 1 })
-	a:SetAttribute("Title", title)
-	return a
-end
-'''
-out.append('\tDifficultyBoard = %s,' % lit(boardPrelude + board + '\n\treturn buildDifficultyBoard\n'))
 out.append('}')
 open(os.path.join(HERE, 'sources.luau'), 'w').write('\n'.join(out) + '\n')
 print('ok', len(block.split('\n')), 'lines of dummy builder')

@@ -1,7 +1,7 @@
 --!nocheck
 -- Headless test of the Colosseum's screen side: LobbyActivities (boss bar,
 -- banners, shakes, sounds, music, the quest tab, the coins and XP flying into
--- you, the CLEARED screen, the DIFFICULTY board's menu and plaques) and
+-- you, the CLEARED screen, the difficulty pop-up at the Colosseum's door) and
 -- BossIntro (VS splash, talking), fed a fake King and fake server messages.
 local M = require("./rbxmock")
 local S = require("./sources")
@@ -503,49 +503,37 @@ fire("Left")
 step(0.1)
 assert(#fx:GetChildren() == 0, "leaving clears the shower")
 
--- THE DIFFICULTY BOARD: its menu, its plaques, choosing
+-- THE POP-UP AT THE DOOR: press E at the mini colosseum's little door, pick
+-- how hard, press ENTER
+local enterAnswer = { true, "In you go!" }
 M.onInvokeServer = function(remote, name, arg)
 	table.insert(asked, name .. ":" .. tostring(arg))
 	if name == "ColosseumDifficulty" then
 		return true, Config.colosseumDifficulty(arg).name .. " it is!"
+	elseif name == "ColosseumEnter" then
+		return enterAnswer[1], enterAnswer[2]
 	end
 	return true, "ok"
 end
 table.clear(asked)
-local board = Instance.new("Part")
-board.Name = "DifficultyFace"
-board.CFrame = CFrame.new(-2589, 7, -85)
-board.Parent = workspace
-local boardPrompt = Instance.new("ProximityPrompt")
-boardPrompt.Parent = board
-M.services.CollectionService:AddTag(boardPrompt, "ColosseumDifficultyBoard")
-local plaques = {}
-for _, def in ipairs(Config.Colosseum.Difficulties) do
-	local plaque = Instance.new("Part")
-	plaque.Name = "Plaque"
-	plaque:SetAttribute("Difficulty", def.id)
-	local sg = Instance.new("SurfaceGui")
-	sg.Name = "Face"
-	sg.Parent = plaque
-	local st = Instance.new("TextLabel")
-	st.Name = "Status"
-	st.Text = ""
-	st.Parent = sg
-	plaque.Parent = workspace
-	M.services.CollectionService:AddTag(plaque, "DifficultyPlaque")
-	plaques[def.id] = st
-end
-player:SetAttribute("Colosseum", true)
-fire("State", { wave = 1, of = 5, left = 3, quest = 0, goal = 5, diff = "Normal", pick = "Normal", questPower = 500, questCoins = 300 })
+player:SetAttribute("Colosseum", nil)
+local GATE = Config.Colosseum.GatePosition
+local door = Instance.new("Part")
+door.Name = "Doorway"
+door.CFrame = CFrame.new(GATE + Vector3.new(0, 3, 0))
+door.Parent = workspace
+local doorPrompt = Instance.new("ProximityPrompt")
+doorPrompt.Parent = door
+M.services.CollectionService:AddTag(doorPrompt, "ColosseumEntrance")
 remotes.StateUpdate.OnClientEvent:Fire({ Quests = { day = 0, list = {} }, Colosseum = { clears = 1, pick = "Normal", wins = { Normal = 1 }, bests = { Normal = 150.5 } } })
+root.CFrame = CFrame.new(GATE + Vector3.new(4, 3, 0))
 step(0.2)
-assert(plaques.Normal.Text == "PICKED" and plaques.Hard.Text == "" and plaques.Nightmare.Text == "LOCKED",
-	"the plaques show your pick and what's locked: " .. plaques.Normal.Text .. "/" .. plaques.Hard.Text .. "/" .. plaques.Nightmare.Text)
-root.CFrame = CFrame.new(-2590, 3, -80)
-boardPrompt.Triggered:Fire(player)
-step(0.1)
 local menu = playerGui:FindFirstChild("ColosseumDifficulty")
-assert(menu and menu.Enabled, "pressing E at the board opens the menu")
+assert(menu and not menu.Enabled, "the pop-up waits for the door")
+doorPrompt.Triggered:Fire(player)
+step(0.1)
+assert(menu.Enabled, "pressing E at the door pops up the difficulty menu")
+assert(#asked == 0, "opening it doesn't ask the server anything")
 local function cardText(id)
 	local card = find(menu, "Card" .. id)
 	local list = {}
@@ -556,33 +544,75 @@ local function cardText(id)
 	end
 	return table.concat(list, " | ")
 end
+local function menuSays(text)
+	for _, d in ipairs(menu:GetDescendants()) do
+		if d.ClassName == "TextLabel" and string.find(d.Text, text, 1, true) then
+			return true
+		end
+	end
+	return false
+end
 print("Normal card: " .. cardText("Normal"))
 print("Hard card: " .. cardText("Hard"))
 print("Nightmare card: " .. cardText("Nightmare"))
-assert(string.find(cardText("Normal"), "PICKED", 1, true) and string.find(cardText("Normal"), "BEST 2:30.5", 1, true), "Normal: picked, with its best time")
+assert(string.find(cardText("Normal"), "PICKED", 1, true) and string.find(cardText("Normal"), "BEST 2:30.5", 1, true), "Normal: picked (it's saved), with its best time")
 assert(string.find(cardText("Hard"), "PICK", 1, true) and string.find(cardText("Hard"), "PAYS x2", 1, true), "Hard: open to pick, pays x2")
 assert(string.find(cardText("Nightmare"), "LOCKED", 1, true), "Nightmare: locked")
+local enterButton = find(menu, "Enter")
+assert(enterButton and enterButton.Text == "ENTER", "a big ENTER button")
+assert(enterButton.BackgroundColor3 == Config.colosseumDifficulty("Normal").color, "ENTER is in the picked one's colour")
 -- a locked one says what opens it, without asking the server
 find(find(menu, "CardNightmare"), "Pick").Activated:Fire()
 step(0.1)
 assert(#asked == 0, "a locked pick doesn't ask the server")
-local says = nil
-for _, d in ipairs(menu:GetDescendants()) do
-	if d.ClassName == "TextLabel" and string.find(d.Text, "Clear a HARD run", 1, true) then
-		says = d.Text
-	end
-end
-assert(says, "a locked pick says what opens it")
--- picking Hard asks the server, and the menu and plaques follow
-find(find(menu, "CardHard"), "Pick").Activated:Fire()
+assert(menuSays("Clear a HARD run"), "a locked pick says what opens it")
+assert(not string.find(cardText("Nightmare"), "PICKED", 1, true), "a locked one can't be picked")
+-- clicking Hard's card picks it, here on the screen (nothing asked yet)
+find(find(menu, "CardHard"), "CardButton").Activated:Fire()
+step(0.1)
+assert(#asked == 0, "picking in the pop-up waits for ENTER")
+assert(string.find(cardText("Hard"), "PICKED", 1, true) and not string.find(cardText("Normal"), "PICKED", 1, true), "Hard shows PICKED, Normal doesn't")
+assert(enterButton.BackgroundColor3 == Config.colosseumDifficulty("Hard").color, "ENTER turns Hard's colour")
+-- the server says no: it stays open, with the reason
+enterAnswer = { false, "Walk up to the Colosseum's door first." }
+enterButton.Activated:Fire()
 step(0.2)
-assert(asked[1] == "ColosseumDifficulty:Hard", "picking asks the server: " .. tostring(asked[1]))
-assert(string.find(cardText("Hard"), "PICKED", 1, true), "Hard shows PICKED after picking")
-assert(plaques.Hard.Text == "PICKED" and plaques.Normal.Text == "", "the plaques follow the pick")
--- walking away closes it
-root.CFrame = CFrame.new(-2600, 3, 0)
+assert(asked[1] == "ColosseumEnter:Hard", "ENTER asks to go in on Hard: " .. tostring(asked[1]))
+assert(menu.Enabled and menuSays("Walk up to the Colosseum's door first."), "a refusal leaves it open, saying why")
+assert(enterButton.Text == "ENTER", "ENTER can be pressed again")
+-- the server says yes: it closes (the pipe does the rest)
+enterAnswer = { true, "In you go!" }
+enterButton.Activated:Fire()
+step(0.2)
+assert(asked[2] == "ColosseumEnter:Hard", "ENTER asks again: " .. tostring(asked[2]))
+assert(not menu.Enabled, "going in closes it")
+-- next time it opens on the one you went in on
+doorPrompt.Triggered:Fire(player)
+step(0.1)
+assert(menu.Enabled and string.find(cardText("Hard"), "PICKED", 1, true), "it opens on the one you went in on")
+-- the X closes it
+find(menu, "Close").Activated:Fire()
+step(0.1)
+assert(not menu.Enabled, "the X closes it")
+-- walking away from the door closes it
+doorPrompt.Triggered:Fire(player)
+step(0.1)
+assert(menu.Enabled, "it opens again")
+root.CFrame = CFrame.new(GATE + Vector3.new(40, 3, 0))
 step(0.5)
-assert(not menu.Enabled, "walking away from the board closes the menu")
+assert(not menu.Enabled, "walking away from the door closes it")
+-- arriving in the Colosseum closes it, and it doesn't open in there
+root.CFrame = CFrame.new(GATE + Vector3.new(4, 3, 0))
+doorPrompt.Triggered:Fire(player)
+step(0.1)
+assert(menu.Enabled, "open by the door")
+player:SetAttribute("Colosseum", true)
+step(0.1)
+assert(not menu.Enabled, "going in closes it")
+doorPrompt.Triggered:Fire(player)
+step(0.1)
+assert(not menu.Enabled, "it doesn't open from inside the Colosseum")
+root.CFrame = CFrame.new(-2600, 3, 0)
 
 -- THE CLEARED SCREEN on Hard: the quest's pay, a newly opened difficulty, and
 -- the difficulty buttons for the next run

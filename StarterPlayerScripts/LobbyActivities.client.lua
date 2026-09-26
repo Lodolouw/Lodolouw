@@ -24,9 +24,10 @@
 	    runs cleared, the quest's reward, the day's first-clear bonus, the
 	    difficulty for the next run, and RUN AGAIN / LEAVE.
 
-	  * DIFFICULTY - press E at the DIFFICULTY board by the Colosseum's exit
-	    gate to pick Normal, Hard or Nightmare (the board's plaques show,
-	    on your screen, which you've picked and which are still locked).
+	  * DIFFICULTY - press E at the mini colosseum's little door and a
+	    pop-up asks how hard: Normal, Hard or Nightmare (what each does and
+	    pays, your best time on it, which are still locked). Pick one and
+	    press ENTER to go in.
 
 	The server decides everything (PlayerService / CombatService); this only
 	shows it and asks.
@@ -671,10 +672,8 @@ local function isFirstDifficulty(id)
 end
 
 local runLength = nil -- (waves in a run, from the server)
-local runDiff = nil -- (this run's difficulty, from the server)
 local function renderTracker(st)
 	runLength = st.of
-	runDiff = st.diff
 	local n = tostring(math.max(1, st.wave or 0)) .. (st.of and ("/" .. tostring(st.of)) or "")
 	-- the difficulty, after the wave in its colour ("WAVE 3/5  HARD"), and
 	-- the box's border in its colour too (white on Normal)
@@ -1338,8 +1337,8 @@ end
 ----------------------------------------------------------------------
 -- What the server says about your Colosseum runs (data.Colosseum: the
 -- difficulty you've picked, and the runs you've cleared and your best time
--- on each one), and asking it to change the pick. The DIFFICULTY board's
--- menu, the board's plaques and the CLEARED screen all use these.
+-- on each one), and asking it to change the pick. The pop-up at the
+-- Colosseum's door and the CLEARED screen both use these.
 local colData = nil
 local Difficulty = { listeners = {} }
 do
@@ -1422,6 +1421,14 @@ do
 			task.spawn(fn)
 		end
 	end
+	-- the server has saved a new pick: show it straight away (its snapshot
+	-- follows a moment later)
+	function Difficulty.saved(id)
+		if colData then
+			colData.pick = id
+			changed()
+		end
+	end
 
 	-- asks the server to change the pick; `say(text, color)` shows its answer
 	local busy = false
@@ -1444,9 +1451,8 @@ do
 			return
 		end
 		say(tostring(msg or ""), done and GREEN or RED)
-		if done and colData then
-			colData.pick = def.id -- (right away: the server's snapshot follows)
-			changed()
+		if done then
+			Difficulty.saved(def.id)
 		end
 	end
 
@@ -1515,10 +1521,12 @@ do
 	end)
 end
 
--- THE DIFFICULTY BOARD'S MENU: press E at the board by the exit gate. A card
--- for each difficulty: what it does, what it pays, your best time and runs
--- cleared on it, and PICK (or PICKED, or LOCKED with what opens it). It
--- closes with the X, or when you walk away from the board.
+-- GOING IN: press E at the mini colosseum's little door and this pops up. A
+-- card for each difficulty: what it does, what it pays, your runs cleared
+-- and best time on it, and PICK (or PICKED, or LOCKED with what opens it).
+-- The one you went in on last time starts picked. Press ENTER and down the
+-- pipe you go, on the one you picked (the server checks it's open to you).
+-- It closes with the X, when you walk away from the door, or as you go in.
 local DifficultyMenu = {}
 do
 	local gui = Instance.new("ScreenGui")
@@ -1534,10 +1542,10 @@ do
 	panel.BorderSizePixel = 0
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromScale(0.64, 0.66)
+	panel.Size = UDim2.fromScale(0.64, 0.74)
 	panel.Parent = gui
 	local aspect = Instance.new("UIAspectRatioConstraint")
-	aspect.AspectRatio = 1.7
+	aspect.AspectRatio = 1.55
 	aspect.Parent = panel
 	local edge = Instance.new("UIStroke")
 	edge.Color = RGB(255, 255, 255)
@@ -1552,21 +1560,33 @@ do
 	close.TextColor3 = RGB(255, 255, 255)
 	close.BackgroundColor3 = RED
 	close.BorderSizePixel = 0
-	close.Size = UDim2.fromScale(0.06, 0.1)
+	close.Size = UDim2.fromScale(0.06, 0.09)
 	close.Position = UDim2.fromScale(0.925, 0.025)
 	close.Parent = panel
 	close.Activated:Connect(function()
 		gui.Enabled = false
 	end)
 
-	label(panel, "CHOOSE DIFFICULTY", UDim2.fromScale(0.8, 0.1), UDim2.fromScale(0.1, 0.03), GOLD)
-	local note = label(panel, "", UDim2.fromScale(0.9, 0.05), UDim2.fromScale(0.05, 0.135), GREY)
-	local menuStatus = label(panel, "", UDim2.fromScale(0.9, 0.05), UDim2.fromScale(0.05, 0.925), RGB(255, 255, 255))
+	label(panel, "CHOOSE DIFFICULTY", UDim2.fromScale(0.8, 0.09), UDim2.fromScale(0.1, 0.03), GOLD)
+	label(panel, "Pick how hard, then press ENTER.", UDim2.fromScale(0.9, 0.045), UDim2.fromScale(0.05, 0.13), GREY)
+	local menuStatus = label(panel, "", UDim2.fromScale(0.9, 0.045), UDim2.fromScale(0.05, 0.94), RGB(255, 255, 255))
 	local statusUntilD = 0
 	local function say(text, color)
 		menuStatus.Text = text
 		menuStatus.TextColor3 = color or RGB(255, 255, 255)
 		statusUntilD = os.clock() + 3.5
+	end
+
+	local selected = nil -- (the card picked in here: ENTER goes in on it)
+	local busy = false -- (waiting for the server's answer to ENTER)
+	local refresh -- (below)
+	local function pick(def)
+		if not Difficulty.unlocked(def.id) then
+			say(Difficulty.lockText(def), RED)
+			return
+		end
+		selected = def.id
+		refresh()
 	end
 
 	local cards = {}
@@ -1578,13 +1598,23 @@ do
 		card.Name = "Card" .. def.id
 		card.BackgroundColor3 = RGB(24, 20, 37)
 		card.BorderSizePixel = 0
-		card.Size = UDim2.fromScale(w, 0.7)
-		card.Position = UDim2.fromScale(0.04 + (i - 1) * (w + gap), 0.205)
+		card.Size = UDim2.fromScale(w, 0.6)
+		card.Position = UDim2.fromScale(0.04 + (i - 1) * (w + gap), 0.195)
 		card.Parent = panel
 		local ce = Instance.new("UIStroke")
 		ce.Color = def.color -- (coloured: RetroUI leaves it be)
 		ce.Thickness = 3
 		ce.Parent = card
+		-- (the whole card can be clicked, not just its button)
+		local hit = Instance.new("TextButton")
+		hit.Name = "CardButton"
+		hit.Text = ""
+		hit.BackgroundTransparency = 1
+		hit.Size = UDim2.fromScale(1, 1)
+		hit.Parent = card
+		hit.Activated:Connect(function()
+			pick(def)
+		end)
 		local c = { def = def, frame = card, edge = ce }
 		c.name = label(card, def.name, UDim2.fromScale(0.9, 0.12), UDim2.fromScale(0.05, 0.04), def.color)
 		-- 1, 2 or 3 chunky pips: how hard it is
@@ -1611,19 +1641,34 @@ do
 		b.Position = UDim2.fromScale(0.1, 0.83)
 		b.Parent = card
 		b.Activated:Connect(function()
-			Difficulty.choose(def.id, say)
+			pick(def)
 		end)
 		c.button = b
 		cards[i] = c
 	end
 
-	local function refresh()
-		local picked = Difficulty.picked()
-		local midRun = player:GetAttribute("Colosseum") == true and runDiff ~= nil and runDiff ~= picked
-		if midRun then
-			note.Text = "This run is on " .. Config.colosseumDifficulty(runDiff).name .. ". " .. Config.colosseumDifficulty(picked).name .. " starts on your next run."
-		else
-			note.Text = "Your pick is saved, and used from your next run (straight away on wave 1)."
+	-- the big ENTER button, in the colour of the one you've picked
+	local enter = Instance.new("TextButton")
+	enter.Name = "Enter"
+	enter.Font = FONT
+	enter.TextScaled = true
+	enter.BorderSizePixel = 0
+	enter.Size = UDim2.fromScale(0.36, 0.11)
+	enter.Position = UDim2.fromScale(0.32, 0.815)
+	enter.Parent = panel
+	local enterEdge = Instance.new("UIStroke")
+	enterEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	enterEdge.Color = RGB(255, 255, 255)
+	enterEdge.Thickness = 3
+	enterEdge.Parent = enter
+	local enterPad = Instance.new("UIPadding")
+	enterPad.PaddingTop = UDim.new(0.16, 0)
+	enterPad.PaddingBottom = UDim.new(0.16, 0)
+	enterPad.Parent = enter
+
+	refresh = function()
+		if not (selected and Difficulty.unlocked(selected)) then
+			selected = Difficulty.picked()
 		end
 		for _, c in ipairs(cards) do
 			local def = c.def
@@ -1637,6 +1682,7 @@ do
 				c.button.TextColor3 = GREY
 				c.button.AutoButtonColor = false
 				c.edge.Color = def.color -- (a coloured edge: RetroUI would turn a grey one white)
+				c.edge.Thickness = 3
 				c.name.TextColor3 = GREY
 			else
 				if (wins or 0) > 0 then
@@ -1644,14 +1690,18 @@ do
 				else
 					c.record.Text = "NOT CLEARED YET"
 				end
-				c.edge.Color = def.color
 				c.name.TextColor3 = def.color
-				if def.id == picked then
+				if def.id == selected then
+					-- (the picked card: a thick white edge round it)
+					c.edge.Color = RGB(255, 255, 255)
+					c.edge.Thickness = 5
 					c.button.Text = "PICKED"
 					c.button.BackgroundColor3 = def.color
 					c.button.TextColor3 = RGB(255, 255, 255)
 					c.button.AutoButtonColor = false
 				else
+					c.edge.Color = def.color
+					c.edge.Thickness = 3
 					c.button.Text = "PICK"
 					c.button.BackgroundColor3 = GOLD
 					c.button.TextColor3 = RGB(24, 20, 37)
@@ -1659,12 +1709,53 @@ do
 				end
 			end
 		end
+		local def = Config.colosseumDifficulty(selected)
+		enter.Text = busy and "..." or "ENTER"
+		enter.BackgroundColor3 = def.color
+		enter.TextColor3 = RGB(255, 255, 255)
+		enter.AutoButtonColor = not busy
 	end
-	Difficulty.onChange(refresh)
+	Difficulty.onChange(function()
+		if gui.Enabled then
+			refresh()
+		end
+	end)
 
-	function DifficultyMenu.open(board)
-		DifficultyMenu.board = board
+	-- ENTER: the server saves the pick and sends you down the pipe (or says
+	-- why not, and the menu stays open)
+	enter.Activated:Connect(function()
+		if busy then
+			return
+		end
+		local def = Config.colosseumDifficulty(selected)
+		if not Difficulty.unlocked(def.id) then
+			say(Difficulty.lockText(def), RED)
+			return
+		end
+		busy = true
+		refresh()
+		local ok, done, msg = pcall(function()
+			return Remotes.Action:InvokeServer("ColosseumEnter", def.id)
+		end)
+		busy = false
+		if not ok then
+			say("Couldn't reach the server.", RED)
+		elseif done then
+			Difficulty.saved(def.id)
+			gui.Enabled = false
+		else
+			say(tostring(msg or "Not right now!"), RED)
+		end
+		refresh()
+	end)
+
+	function DifficultyMenu.open()
+		if player:GetAttribute("Colosseum") then
+			return
+		end
+		selected = Difficulty.picked()
 		menuStatus.Text = ""
+		statusUntilD = 0
 		refresh()
 		gui.Enabled = true
 	end
@@ -1673,28 +1764,30 @@ do
 	end
 	DifficultyMenu.refresh = refresh
 
-	-- press E at the board: open the menu
-	local function hookBoard(pp)
+	-- press E at the little door: this pops up (the server doesn't send you
+	-- in until you press ENTER)
+	local function hookDoor(pp)
 		if pp:IsA("ProximityPrompt") then
 			pp.Triggered:Connect(function()
-				DifficultyMenu.open(pp.Parent)
+				DifficultyMenu.open()
 			end)
 		end
 	end
-	for _, pp in ipairs(CollectionService:GetTagged("ColosseumDifficultyBoard")) do
-		hookBoard(pp)
+	for _, pp in ipairs(CollectionService:GetTagged("ColosseumEntrance")) do
+		hookDoor(pp)
 	end
-	CollectionService:GetInstanceAddedSignal("ColosseumDifficultyBoard"):Connect(hookBoard)
+	CollectionService:GetInstanceAddedSignal("ColosseumEntrance"):Connect(hookDoor)
 
-	-- walk away from the board (or leave the Colosseum) and it closes
+	-- walk away from the door and it closes (a little before the server
+	-- would stop letting you in from there)
 	task.spawn(function()
+		local door = Config.Colosseum.GatePosition
+		local reach = (Config.Colosseum.EnterRange or 20) + 4
 		while true do
 			task.wait(0.3)
 			if gui.Enabled then
 				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				local board = DifficultyMenu.board
-				if not root or not (board and board:IsA("BasePart") and board.Parent)
-					or (Vector3.new(root.Position.X - board.Position.X, 0, root.Position.Z - board.Position.Z)).Magnitude > 26 then
+				if not root or (Vector3.new(root.Position.X - door.X, 0, root.Position.Z - door.Z)).Magnitude > reach then
 					gui.Enabled = false
 				end
 			end
@@ -1704,38 +1797,12 @@ do
 			end
 		end
 	end)
+	-- (and it's gone once you're in)
 	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
-		if not player:GetAttribute("Colosseum") then
+		if player:GetAttribute("Colosseum") then
 			gui.Enabled = false
 		end
 	end)
-
-	-- THE BOARD'S PLAQUES, on your screen only: the one you've picked says
-	-- PICKED, the locked ones say LOCKED (everyone else sees their own)
-	local function paintPlaques()
-		local picked = Difficulty.picked()
-		for _, plaque in ipairs(CollectionService:GetTagged("DifficultyPlaque")) do
-			local id = plaque:GetAttribute("Difficulty")
-			local face = plaque:FindFirstChild("Face")
-			local st = face and face:FindFirstChild("Status", true)
-			if id and st and st:IsA("TextLabel") then
-				if not Difficulty.unlocked(id) then
-					st.Text = "LOCKED"
-					st.TextColor3 = GREY
-				elseif id == picked then
-					st.Text = "PICKED"
-					st.TextColor3 = RGB(255, 255, 255)
-				else
-					st.Text = ""
-				end
-			end
-		end
-	end
-	Difficulty.onChange(paintPlaques)
-	CollectionService:GetInstanceAddedSignal("DifficultyPlaque"):Connect(function()
-		task.defer(paintPlaques)
-	end)
-	task.defer(paintPlaques)
 end
 
 -- COLOSSEUM CLEARED: the King fell on the last wave of a run. Your time,

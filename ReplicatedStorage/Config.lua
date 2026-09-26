@@ -45,8 +45,8 @@ Config.StationTurn = {
 -- whatever your level; the rewards grow as you do. A quest runs the whole
 -- time: BEAT 5 WAVES (a whole run, the King's wave last) for a big lump of
 -- Power (XP) and coins, and it starts over with the next run. Pick how hard
--- it is at the DIFFICULTY board by the exit gate (or on the CLEARED screen):
--- Normal, Hard or Nightmare.
+-- it is as you go in (a pop-up at the door) or on the CLEARED screen for the
+-- next run: Normal, Hard or Nightmare.
 Config.Colosseum = {
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 82, -- how far out dummies can go: right up to the foot of the stands, so nowhere is safe
@@ -235,8 +235,8 @@ Config.Colosseum = {
 	-- x10 = +20%... Getting hurt ends it. It carries on from run to run.
 	Streak = { Every = 5, Bonus = 0.1, Max = 0.5 },
 
-	-- DIFFICULTY: picked at the board by the exit gate, or on the CLEARED
-	-- screen, and used from the next run on (it's saved). The first is open to
+	-- DIFFICULTY: picked in the pop-up at the lobby's little door as you go
+	-- in, or on the CLEARED screen for the next run (it's saved). The first is open to
 	-- everyone; each one after it opens once you've cleared a run on the one
 	-- before it. For each:
 	--   health  dummies (and the King) take this many times the punches
@@ -247,7 +247,7 @@ Config.Colosseum = {
 	--   reward  EVERYTHING the run pays is multiplied by this: each kill, the
 	--           quest, and the first clear of the day
 	--   angry   the King is ANGRY from the start (faster, two shockwaves...)
-	--   color   the colour it shows in, on the board and the screen
+	--   color   the colour it shows in on the screen
 	Difficulties = {
 		{ id = "Normal", name = "NORMAL", health = 1, damage = 1, extra = 0, pace = 1, reward = 1, color = Color3.fromRGB(99, 199, 77) },
 		{ id = "Hard", name = "HARD", health = 1.4, damage = 1.5, extra = 1, pace = 0.85, reward = 2, color = Color3.fromRGB(247, 118, 34) },

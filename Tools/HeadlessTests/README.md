@@ -18,24 +18,23 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   Scenarios: `full`, `leave` (walks out mid-fight), `die` (dies mid-fight),
   `oldbuilder` (no King template), `kite` / `kitejump` (keeps away from
   him; never jumps / always jumps his shockwaves), `cursed`, `clearleave`,
-  `hard` / `nightmare` (a whole run on that difficulty: health, dummies per
-  wave, pay, the angry King, what the clear unlocks), `restart` (a new pick
-  on wave 1 starts the run over; on wave 2 it waits) and `locked` (picks
-  that aren't allowed).
+  `hard` / `nightmare` (a whole run on that difficulty, picked in the
+  pop-up at the door: health, dummies per wave, pay, the angry King, what
+  the clear unlocks), `nextrun` (a new pick mid-run waits for the next run)
+  and `locked` (going in on a locked difficulty or from too far away, and
+  picks that aren't allowed). Every scenario checks that the door's prompt
+  alone doesn't send you in: the pop-up's ENTER does.
 - `test_client.luau` - LobbyActivities and BossIntro: the boss bar, banners,
   camera shakes, sounds, music (and the lobby's stepping aside), the VS
   splash and his talking, the quest tab, the wave box's difficulty, the
-  coins and XP flying into you, the DIFFICULTY menu and plaques and the
-  CLEARED screen, fed a fake King and fake server messages.
+  coins and XP flying into you, the difficulty pop-up at the Colosseum's
+  door (picking, ENTER, refusals, closing) and the CLEARED screen, fed a
+  fake King and fake server messages.
 - `test_builder.luau` - every dummy template the real LobbyBuilder code
-  builds (the right pieces on the right kind), and the DIFFICULTY board: a
-  plaque per difficulty, its prompt, clear of the stands and of the way in,
-  facing where you arrive (`-a dump` prints its parts for the picture).
+  builds (the right pieces on the right kind).
 - `dump_dummies.luau` + `render.py`, and `render2.py` - the preview pictures
   in `Docs/`: the models, and snapshots of the fight (`test_colosseum.luau
   -a full 7 snap`) drawn inside a simple model of the arena.
-- `render_board.py` - the DIFFICULTY board beside the exit gate, from
-  `test_builder.luau -a dump`, with the words on its plaques.
 - `lobby_count.luau` - builds the whole lobby with the real LobbyBuilder and
   counts parts, shadow-casting parts, lights and Neon per piece (`-a client`
   also runs RetroWorld and counts its detail; `-a names` lists the island's

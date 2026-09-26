@@ -5,9 +5,10 @@
 --   luau test_colosseum.luau -a <scenario> <seed>
 -- scenarios: full (default), leave (walk out mid-King), die (die mid-King),
 -- oldbuilder (no King template), cursed, clearleave, kite, kitejump,
--- hard / nightmare (a whole run on that difficulty), restart (a new pick on
--- wave 1 starts the run over; on wave 2 it waits for the next run),
--- locked (picks that aren't allowed)
+-- hard / nightmare (a whole run on that difficulty, picked in the pop-up at
+-- the door), nextrun (a new pick mid-run waits for the next run), locked
+-- (going in on a locked difficulty or from too far away, and picks that
+-- aren't allowed)
 local M = require("./rbxmock")
 local S = require("./sources")
 local args = { ... }
@@ -188,14 +189,17 @@ local Players2 = {}
 -- (the real PlayerService's run records, pretend: what the difficulty
 -- scenarios have already cleared, and what they've picked)
 local colData = { clears = 0, best = nil, bonusDay = 0, pick = "Normal", wins = {}, bests = {} }
-if SCENARIO == "hard" or SCENARIO == "restart" then
+local ENTER_PICK = "Normal" -- (what the pop-up's ENTER button goes in on)
+if SCENARIO == "hard" or SCENARIO == "nextrun" then
 	colData.wins.Normal = 1
-	colData.pick = (SCENARIO == "hard") and "Hard" or "Normal"
+	-- (Hard: Normal is still saved from last time; Hard is picked at the door)
+	ENTER_PICK = (SCENARIO == "hard") and "Hard" or "Normal"
 elseif SCENARIO == "nightmare" then
 	colData.wins.Normal, colData.wins.Hard = 1, 1
 	colData.pick = "Nightmare"
+	ENTER_PICK = "Nightmare"
 end
-local RUN_DIFF = Config.colosseumDifficulty(colData.pick)
+local RUN_DIFF = Config.colosseumDifficulty(ENTER_PICK)
 function Players2.GetData()
 	return { Power = Config.powerForLevel(LEVEL), Colosseum = colData }
 end
@@ -412,8 +416,36 @@ enemyFolder.ChildAdded:Connect(function(m)
 	end
 end)
 
+-- Going in: the door's prompt only opens the pop-up on the player's screen
+-- (it mustn't send them in by itself); its ENTER button asks the server,
+-- with the difficulty picked in it.
 M.task.spawn(function()
 	enterPrompt.Triggered:Fire(player)
+	M.task.wait(1)
+	assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "the door's prompt alone mustn't send you in")
+	assert(actions.ColosseumEnter, "the ENTER button's action should be there")
+	if SCENARIO == "locked" then
+		-- a difficulty that isn't open to you (or isn't one at all): refused, and you stay out
+		for _, bad in ipairs({ "Nightmare", "Hard", "Bogus", 123, false }) do
+			local ok, msg = actions.ColosseumEnter(player, nil, bad)
+			assert(not ok, "going in on " .. tostring(bad) .. " should be refused")
+			assert(type(msg) == "string" and msg ~= "", "a refusal says why")
+		end
+		assert(colData.pick == "Normal", "a refused pick changes nothing")
+		-- and not from the other side of the lobby
+		local at = root.CFrame
+		root.CFrame = CFrame.new(C.GatePosition + Vector3.new(60, 3, 0))
+		local ok, msg = actions.ColosseumEnter(player, nil, "Normal")
+		assert(not ok and string.find(msg, "door", 1, true), "from far away: walk up to the door first (" .. tostring(msg) .. ")")
+		root.CFrame = at
+		M.task.wait(1)
+		assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "nobody went in")
+	end
+	local ok, msg = actions.ColosseumEnter(player, nil, ENTER_PICK)
+	assert(ok, "ENTER should send you in: " .. tostring(msg))
+	assert(colData.pick == ENTER_PICK, "going in saves the pick")
+	local twice = actions.ColosseumEnter(player, nil, ENTER_PICK)
+	assert(not twice, "pressing ENTER twice shouldn't send you in twice")
 end)
 
 ----------------------------------------------------------------------
@@ -746,16 +778,17 @@ while t < endAt do
 	if (SCENARIO == "kite" or SCENARIO == "kitejump") and kingSeenAt and t > kingSeenAt + 70 then
 		break
 	end
-	-- choosing the difficulty in the middle of a run
-	if SCENARIO == "restart" or SCENARIO == "locked" then
+	-- choosing the difficulty in the middle of a run (only the CLEARED
+	-- screen offers it, but the server mustn't trust that)
+	if SCENARIO == "nextrun" or SCENARIO == "locked" then
 		stats.picks = stats.picks or {}
 		if stats.maxWave >= 1 and not stats.picks.first and M.now() > (stats.firstWaveAt or math.huge) + 1.5 then
 			stats.picks.first = true
-			if SCENARIO == "restart" then
+			if SCENARIO == "nextrun" then
 				local ok, msg = actions.ColosseumDifficulty(player, nil, "Hard")
-				stats.picks.restartMsg = msg
-				assert(ok and string.find(msg, "over"), "a new pick on wave 1 should start the run over: " .. tostring(msg))
-				stats.picks.restartAt = M.now()
+				assert(ok and string.find(msg, "next run", 1, true), "a new pick mid-run waits for the next run: " .. tostring(msg))
+				assert(lastState.diff == "Normal" and lastState.pick == "Hard", "the run stays Normal, the next one will be Hard")
+				stats.picks.waitDone = true
 			else
 				for _, bad in ipairs({ "Nightmare", "Hard", "Bogus", 123, false }) do
 					local ok, msg = actions.ColosseumDifficulty(player, nil, bad)
@@ -764,17 +797,11 @@ while t < endAt do
 				end
 				assert(colData.pick == "Normal", "a refused pick changes nothing")
 				local ok, msg = actions.ColosseumDifficulty(player, nil, "Normal")
-				assert(ok and string.find(msg, "already"), "picking the one you're on: " .. tostring(msg))
+				assert(ok and string.find(msg, "it is", 1, true), "picking the one you're on: " .. tostring(msg))
+				local again = actions.ColosseumEnter(player, nil, "Normal")
+				assert(not again, "ENTER from inside the Colosseum is refused")
 				stats.picks.lockedDone = true
 			end
-		end
-		if SCENARIO == "restart" and stats.picks.restartAt and stats.maxWave >= 2 and not stats.picks.second then
-			stats.picks.second = true
-			assert(lastState.diff == "Hard", "after starting over, the run is on Hard (state says " .. tostring(lastState.diff) .. ")")
-			local ok, msg = actions.ColosseumDifficulty(player, nil, "Normal")
-			assert(ok and string.find(msg, "next run"), "a new pick on wave 2 waits for the next run: " .. tostring(msg))
-			assert(lastState.diff == "Hard" and lastState.pick == "Normal", "the run stays Hard, the next one will be Normal")
-			stats.picks.waitDone = true
 		end
 		if stats.picks.lockedDone or stats.picks.waitDone then
 			break
@@ -925,10 +952,10 @@ if SCENARIO == "full" or SCENARIO == "hard" or SCENARIO == "nightmare" then
 		"king reward " .. stats.kingReward[1] .. " should be " .. base .. " plus at most the streak bonus")
 	assert(stats.lastClear.bonusPower == math.max(1, math.floor(rewards.clearPower * D.reward)), "the first clear of the day pays a bonus (x the difficulty)")
 end
-if SCENARIO == "restart" then
-	assert(stats.picks and stats.picks.waitDone, "the restart checks should have run")
-	assert(stats.runStarts and stats.runStarts[1] == "Hard", "starting over sends RunStart with the new difficulty")
-	assert(colData.pick == "Normal", "the last pick is saved")
+if SCENARIO == "nextrun" then
+	assert(stats.picks and stats.picks.waitDone, "the next-run checks should have run")
+	assert(not stats.runStarts, "a pick mid-run doesn't start the run over")
+	assert(colData.pick == "Hard", "the pick is saved for the next run")
 end
 if SCENARIO == "locked" then
 	assert(stats.picks and stats.picks.lockedDone, "the locked checks should have run")

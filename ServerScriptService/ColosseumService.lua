@@ -3,9 +3,10 @@
 
 	The Colosseum: a wave arena for farming Power (XP) and coins.
 
-	  * Press E at the little door of the mini colosseum in the lobby and you
-	    shrink down into it, bit by bit, like going down a pipe - and you're
-	    in the Colosseum (far from the lobby), already small enough to fit.
+	  * Press E at the little door of the mini colosseum in the lobby: a
+	    pop-up asks how hard (LobbyActivities). Pick, press ENTER, and you
+	    shrink down into the door, bit by bit, like going down a pipe - and
+	    you're in the Colosseum (far from the lobby), already small enough.
 	    Press E at its EXIT gate and you pop out of the little door tiny and
 	    grow back. Die in there and you're simply back in the lobby.
 	  * Inside, dummies drop in wave after wave. They hop after you, and
@@ -47,14 +48,14 @@
 	  * KILL STREAKS: dummies beaten in a row without getting hurt. Every 5
 	    adds 10% to what each kill pays (up to +50%). It carries on from run
 	    to run, and ends the moment you're hurt (or when you leave).
-	  * DIFFICULTY: Normal, Hard or Nightmare, picked at the DIFFICULTY board
-	    by the exit gate or on the CLEARED screen (it's saved: PlayerService).
+	  * DIFFICULTY: Normal, Hard or Nightmare, picked in the pop-up at the
+	    door as you go in, or on the CLEARED screen for the next run (it's
+	    saved: PlayerService).
 	    Harder ones mean tougher dummies that hit harder, more of them, a bit
 	    faster - and everything the run pays is multiplied (Hard x2,
 	    Nightmare x3.5). On Nightmare the King is angry from the start. Hard
 	    opens once you've cleared a Normal run, Nightmare once you've cleared
-	    a Hard one. A new pick is used from the next run (straight away if
-	    you're still on wave 1: the run starts over on it).
+	    a Hard one. A run keeps the difficulty it started on.
 
 	All the numbers are in Config.Colosseum (the King's in Config.Colosseum.King).
 ]]
@@ -1587,30 +1588,6 @@ local function runAgain(player)
 	return true, "Here they come!"
 end
 
--- A new difficulty picked while you're still on wave 1: the run starts over
--- on it straight away. The wave's dummies crumble (paying nothing) and wave 1
--- comes in again a moment later. (No healing: it isn't a way out of a fight.)
-local function restartRun(s)
-	local player = s.player
-	for model, e in pairs(s.enemies) do
-		e.alive = false
-		crumble(model, e)
-	end
-	s.enemies = {}
-	s.alive = 0
-	s.wave = 0
-	s.questWaves = 0
-	s.bossWave = false
-	s.diff = pickedDifficulty(player)
-	send(player, "RunStart", s.diff.id)
-	pushState(player, s)
-	task.delay(2, function()
-		if sessions[player] == s and not s.cleared and s.wave == 0 then
-			spawnWave(s)
-		end
-	end)
-end
-
 ----------------------------------------------------------------------
 -- Going in and out
 ----------------------------------------------------------------------
@@ -1641,19 +1618,35 @@ local function pipeTime()
 	return (C.ShrinkSteps or 8) * 0.07 + 0.4
 end
 
+-- Can the player go in right now? (Beside the little door, not already in
+-- or on the way, not up the Spire.) Returns true, or false and why not.
+local function canEnter(player)
+	if sessions[player] then
+		return false, "You're already in the Colosseum!"
+	end
+	if going[player] then
+		return false, "Hold on, you're on your way!"
+	end
+	if player:GetAttribute("SpireFloor") then
+		return false, "Not from here!"
+	end
+	local root = rootOf(player)
+	if not (root and CollectionService:GetTagged("ColosseumSpawn")[1]) then
+		return false, "Not ready yet."
+	end
+	if (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
+		return false, "Walk up to the Colosseum's door first."
+	end
+	return true
+end
+
 local function enter(player)
-	if sessions[player] or going[player] or player:GetAttribute("SpireFloor") then
+	if not canEnter(player) then
 		return
 	end
 	local root, _, char = rootOf(player)
 	local spawnAt = CollectionService:GetTagged("ColosseumSpawn")[1]
 	local door = CollectionService:GetTagged("ColosseumDoor")[1]
-	if not (root and spawnAt) then
-		return
-	end
-	if (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
-		return
-	end
 	-- Your own screen shrinks you into the little door and moves you inside
 	-- (LobbyActivities). It has to be done there: your character is moved by
 	-- your computer, and when the server moves it too, the two fight (that's
@@ -1750,9 +1743,10 @@ local function leave(player)
 	end)
 end
 
--- Choosing the difficulty (at the board by the exit gate, or on the CLEARED
--- screen). It's saved, and used from the next run - or straight away if the
--- first wave isn't in yet, or you're still on wave 1 (the run starts over).
+-- Choosing the difficulty for the next run (the CLEARED screen's buttons;
+-- the first run's is picked in the pop-up at the door, as you go in). It's
+-- saved. A run keeps the difficulty it started on: a new pick mid-run waits
+-- for the next one.
 local function chooseDifficulty(player, id)
 	local ok, why = PlayerService.SetColosseumPick(player, id)
 	if not ok then
@@ -1760,27 +1754,17 @@ local function chooseDifficulty(player, id)
 	end
 	local def = Config.colosseumDifficulty(id)
 	local s = sessions[player]
-	if not s or going[player] or s.cleared then
-		if s then
-			pushState(player, s)
-		end
+	if not s then
 		return true, def.name .. " it is!"
 	end
-	if s.wave == 0 then
+	if s.wave == 0 and not s.cleared then
 		s.diff = def -- (the first wave isn't in yet: it'll be on this)
-		pushState(player, s)
-		return true, def.name .. " it is!"
-	end
-	if s.diff and s.diff.id == def.id then
-		pushState(player, s)
-		return true, "You're already on " .. def.name .. "."
-	end
-	if s.wave == 1 and not s.bossWave then
-		restartRun(s)
-		return true, "Starting over on " .. def.name .. "!"
 	end
 	pushState(player, s)
-	return true, def.name .. " starts on your next run!"
+	if not s.cleared and s.wave > 0 and not (s.diff and s.diff.id == def.id) then
+		return true, def.name .. " starts on your next run!"
+	end
+	return true, def.name .. " it is!"
 end
 
 ----------------------------------------------------------------------
@@ -1823,7 +1807,8 @@ function ColosseumService.Start(combatService, playerService)
 		end
 		CollectionService:GetInstanceAddedSignal(tag):Connect(one)
 	end
-	hook("ColosseumEntrance", enter)
+	-- (the little door's prompt only opens the difficulty pop-up on your
+	-- screen: going in is the "ColosseumEnter" action below)
 	hook("ColosseumExit", leave)
 
 	-- the RUN AGAIN / LEAVE buttons (asked through PlayerService's Action
@@ -1840,7 +1825,26 @@ function ColosseumService.Start(combatService, playerService)
 			task.spawn(leave, player)
 			return true, "See you soon!"
 		end)
-		-- and the difficulty buttons (the board by the exit gate, the CLEARED screen)
+		-- going in: the ENTER button of the pop-up at the little door, with
+		-- the difficulty picked there (checked: it must be open to you)
+		PlayerService.AddAction("ColosseumEnter", function(player, _, id)
+			local ok, why = canEnter(player)
+			if not ok then
+				return false, why
+			end
+			if id ~= nil then
+				if not PlayerService.SetColosseumPick then
+					return false, "Not ready yet."
+				end
+				local picked, reason = PlayerService.SetColosseumPick(player, id)
+				if not picked then
+					return false, reason or "Not ready yet."
+				end
+			end
+			task.spawn(enter, player)
+			return true, "In you go!"
+		end)
+		-- and the CLEARED screen's difficulty buttons (for the next run)
 		if PlayerService.SetColosseumPick then
 			PlayerService.AddAction("ColosseumDifficulty", function(player, _, id)
 				return chooseDifficulty(player, id)
