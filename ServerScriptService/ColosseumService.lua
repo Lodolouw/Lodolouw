@@ -233,6 +233,27 @@ strawPuff = function(into, at, color)
 	Debris:AddItem(puff, 1)
 end
 
+-- A knock-back that can't throw you into the stands: near the wall, the part
+-- of the push that points outwards is turned back towards the middle.
+local function safePush(player, vel)
+	local root = rootOf(player)
+	if not root then
+		return vel
+	end
+	local out = flat(root.Position - C.Center)
+	local edge = out.Magnitude - (C.Radius - 22)
+	if edge > 0 and out.Magnitude > 0.1 then
+		local n = out.Unit
+		local outward = vel.X * n.X + vel.Z * n.Z
+		if outward > 0 then
+			-- (the closer to the wall, the more of it bounces back inwards)
+			local k = math.min(1, edge / 12)
+			vel = vel - n * outward * (1 + k)
+		end
+	end
+	return vel
+end
+
 -- hurts the dummy's owner if they're within `radius` of `at` (and not
 -- rolling: CombatService decides that), throwing them away from it
 local function hurtNear(s, at, radius, share, push)
@@ -240,7 +261,7 @@ local function hurtNear(s, at, radius, share, push)
 	if root and sessions[s.player] == s and (flat(root.Position - at)).Magnitude <= radius then
 		local away = flat(root.Position - at)
 		away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
-		CombatService.DamagePlayer(s.player, hum.MaxHealth * share, at, away * (push or 40) + Vector3.new(0, 26, 0))
+		CombatService.DamagePlayer(s.player, hum.MaxHealth * share, at, safePush(s.player, away * (push or 40) + Vector3.new(0, 26, 0)))
 		return true
 	end
 	return false
@@ -359,7 +380,7 @@ local function charge(s, e, target)
 				local side = (rel - dir * along).Magnitude
 				if side <= CH.Width / 2 + 1.5 and along >= len * k - 3 and along <= len * k + 2 then
 					hit = true
-					CombatService.DamagePlayer(s.player, hum.MaxHealth * CH.Damage, p, dir * 60 + Vector3.new(0, 30, 0))
+					CombatService.DamagePlayer(s.player, hum.MaxHealth * CH.Damage, p, safePush(s.player, dir * 60 + Vector3.new(0, 30, 0)))
 				end
 			end
 		end
@@ -686,7 +707,7 @@ local function spawnWave(s)
 					lastBash = os.clock()
 					local away = flat(r.Position - feet(model).Position)
 					away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
-					CombatService.Shove(s.player, away * 45 + Vector3.new(0, 18, 0))
+					CombatService.Shove(s.player, safePush(s.player, away * 45 + Vector3.new(0, 18, 0)))
 				end
 			end)
 		end
