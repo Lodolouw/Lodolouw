@@ -809,9 +809,22 @@ end)
 -- Never stuck in the floor after respawning
 ----------------------------------------------------------------------
 -- If a new body turns up sunk into the ground (it happened after dying in
--- the Colosseum), lift it out and stand it on top. For the first 10 seconds
--- of every life we check where the body SHOULD be - its hip height above the
--- floor under it - and lift it if it's more than a stud too low.
+-- the Colosseum), lift it out and stand it on top. For the first 12 seconds
+-- of every life we compare where its FEET actually are (the bottom of its
+-- lowest body part) with the top of the floor under it, and lift it by the
+-- difference if the feet are even a little way under.
+local function lowestFoot(char)
+	local low = math.huge
+	for _, p in ipairs(char:GetChildren()) do
+		-- (body parts only: hats and hair are inside Accessories)
+		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+			local cf, half = p.CFrame, p.Size / 2
+			local reach = math.abs(cf.RightVector.Y) * half.X + math.abs(cf.UpVector.Y) * half.Y + math.abs(cf.LookVector.Y) * half.Z
+			low = math.min(low, cf.Position.Y - reach)
+		end
+	end
+	return low
+end
 player.CharacterAdded:Connect(function(char)
 	local hum = char:WaitForChild("Humanoid", 10)
 	local root = char:WaitForChild("HumanoidRootPart", 10)
@@ -821,21 +834,24 @@ player.CharacterAdded:Connect(function(char)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.RespectCanCollide = true
-	for _ = 1, 40 do
-		task.wait(0.25)
+	local started = os.clock()
+	while os.clock() - started < 12 do
+		task.wait(0.15)
 		if not char.Parent or hum.Health <= 0 then
 			return
 		end
-		params.FilterDescendantsInstances = { char }
-		-- the floor under us, looking down from well above our head
-		local hit = workspace:Raycast(root.Position + Vector3.new(0, 10, 0), Vector3.new(0, -16, 0), params)
-		if hit then
-			local hip = (hum.RigType == Enum.HumanoidRigType.R6) and 2 or math.max(hum.HipHeight, 0.5)
-			local want = hit.Position.Y + hip + root.Size.Y / 2
-			if root.Position.Y < want - 1 then
-				root.AssemblyLinearVelocity = Vector3.zero
-				char:PivotTo(char:GetPivot() + Vector3.new(0, want - root.Position.Y + 0.1, 0))
-				hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		if not root.Anchored then -- (not while going down the pipe)
+			params.FilterDescendantsInstances = { char }
+			-- the floor under us, looking down from above our head
+			local hit = workspace:Raycast(root.Position + Vector3.new(0, 6, 0), Vector3.new(0, -14, 0), params)
+			-- (only a floor below our middle: never a roof or a bridge overhead)
+			if hit and hit.Position.Y <= root.Position.Y + 1 then
+				local sunk = hit.Position.Y - lowestFoot(char)
+				if sunk > 0.35 and sunk < 6 then
+					root.AssemblyLinearVelocity = Vector3.zero
+					char:PivotTo(char:GetPivot() + Vector3.new(0, sunk + 0.1, 0))
+					hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+				end
 			end
 		end
 	end
