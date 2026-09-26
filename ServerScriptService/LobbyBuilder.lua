@@ -5918,6 +5918,13 @@ local Extras = (function()
 					P("FanHead", V3(0.7, 0.7, 0.7), at(r, h + 2.55), RGB(255, 214, 170), flat, { CanCollide = false })
 				end
 			end
+			-- no gap between the back row and the wall: fill it in solid, so nobody
+			-- can squeeze round behind the stands (a touch lower than the back row,
+			-- and every other one a hair lower again, so no faces flicker)
+			if not atGate then
+				local topY = 8.3 - odd * 0.06
+				P("StandFill", V3(arc * (R - 1.6) + 0.3, topY - 1.05, 1.5), at(R - 2.25, (topY + 1.05) / 2), SAND_DARK, flat)
+			end
 		end
 
 		-- bucket towers, each a different height, with flags; bunting between
