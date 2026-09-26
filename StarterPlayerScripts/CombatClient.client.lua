@@ -1746,7 +1746,9 @@ end
 local function lockable(model)
 	-- (someone else's Colosseum dummy isn't yours to fight)
 	local owner = model and model:GetAttribute("Owner")
+	-- (nor one that's teleporting: it can't be locked until it's back)
 	return model and model.Parent and model:IsA("Model") and (model:GetAttribute("Health") or 0) > 0 and (owner == nil or owner == player.UserId)
+		and not model:GetAttribute("Blinking")
 end
 
 -- can you actually see it? (a wall, a pillar or the stands in the way: no)
@@ -2023,6 +2025,12 @@ RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1
 	local hum, hrp, char = charParts()
 	local cam = workspace.CurrentCamera
 	if not (hum and hrp and cam) or not active then
+		unlock()
+		return
+	end
+	-- your target TELEPORTED (the Cursed Dummy's blink): the lock lets go of
+	-- everything, instead of whipping the camera round after it
+	if lockTarget:GetAttribute("Blinking") then
 		unlock()
 		return
 	end

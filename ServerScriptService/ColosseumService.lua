@@ -520,9 +520,13 @@ local function blink(s, e)
 	local BL = C.Blink
 	local model = e.model
 	local from = feet(model)
+	-- (while it blinks your lock-on lets go of it - CombatClient - so the
+	-- camera never whips round after it)
+	model:SetAttribute("Blinking", true)
 	local t0 = os.clock()
 	while os.clock() - t0 < BL.Tell do
 		if not e.alive then
+			model:SetAttribute("Blinking", nil)
 			return
 		end
 		place(model, from * CFrame.new((rng:NextNumber() - 0.5) * 0.8, 0, (rng:NextNumber() - 0.5) * 0.8))
@@ -537,6 +541,7 @@ local function blink(s, e)
 		if e.alive then
 			place(model, from)
 		end
+		model:SetAttribute("Blinking", nil)
 		return
 	end
 	local back = flat(root.CFrame.LookVector)
@@ -546,6 +551,7 @@ local function blink(s, e)
 	place(model, CFrame.lookAt(spot, spot + (look.Magnitude > 0.1 and look or back)))
 	strawPuff(e.fx, spot, e.puff)
 	sfx(s, "Blink", spot)
+	model:SetAttribute("Blinking", nil) -- (back: it can be locked onto again)
 	slam(s, e, BL.SlamTell)
 end
 

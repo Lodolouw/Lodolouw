@@ -89,7 +89,7 @@ enterPrompt.Parent = gateDoor
 CollectionService:AddTag(enterPrompt, "ColosseumEntrance")
 
 -- the player
-local LEVEL = 40
+local LEVEL = (SCENARIO == "cursed") and 55 or 40 -- (Cursed Dummies join at 50)
 local player = Instance.new("Player")
 player.Name = "Tester"
 player.UserId = 1001
@@ -271,6 +271,10 @@ end
 -- watch the King
 local king = nil
 M.onAttribute = function(inst, name, value)
+	if name == "Blinking" then
+		stats.blinkOn = (stats.blinkOn or 0) + (value and 1 or 0)
+		stats.blinkOff = (stats.blinkOff or 0) + (value and 0 or 1)
+	end
 	if inst:GetAttribute("Kind") == "King" then
 		if name == "Move" and value then
 			bump(stats.moves, value)
@@ -591,7 +595,7 @@ local function hasPart(pname, maxT)
 end
 local kingSeenAt = nil
 local t = 0
-local endAt = (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420 or 300
+local endAt = (SCENARIO == "cursed") and 900 or (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420 or 300
 while t < endAt do
 	t += 0.1
 	M.run(t)
@@ -669,6 +673,9 @@ while t < endAt do
 	if SCENARIO == "clearleave" and stats.pressed and M.now() > stats.clearAt + 12 then
 		break
 	end
+	if SCENARIO == "cursed" and (stats.blinkOn or 0) >= 3 and (stats.blinkOn or 0) == (stats.blinkOff or 0) then
+		break
+	end
 	if SCENARIO == "oldbuilder" and stats.maxWave >= 6 then
 		break
 	end
@@ -739,6 +746,12 @@ if SCENARIO == "full" then
 	assert(stats.kingReward[1] >= base and stats.kingReward[1] <= math.floor(base * (1 + C.Streak.Max)) + 1,
 		"king reward " .. stats.kingReward[1] .. " should be " .. base .. " plus at most the streak bonus")
 	assert(stats.lastClear.bonusPower, "the first clear of the day pays a bonus")
+end
+if SCENARIO == "cursed" then
+	print(string.format("blinks: on %s, off %s", tostring(stats.blinkOn), tostring(stats.blinkOff)))
+	assert((stats.blinkOn or 0) >= 1, "a Cursed Dummy should have blinked")
+	-- (every finished blink cleared it: at most the ones still mid-blink are on)
+	assert((stats.blinkOn or 0) - (stats.blinkOff or 0) <= 2, "Blinking should be cleared after each blink")
 end
 if SCENARIO == "clearleave" then
 	assert(stats.runClears == 1, "the run should be cleared")
