@@ -4,17 +4,14 @@
 	Builds the whole GUI from code (no assets needed):
 	  * left 2x2 buttons: Upgrades, Backpack, Armory (talismans), Prestige (with % badge)
 	  * bottom-left: backpack / coins / power
-	  * top hint banner, bottom goal bar, right-side AUTO TRAIN button
+	  * top hint banner, bottom goal bar
 	  * panels: Upgrade Shop, Sell Shop / Backpack, Talisman Workbench, Prestige
-	  * click-to-train on the dummy pads, with hit effects and floating numbers
-	  * live "UNLOCKED / needs X Power" text on the multiplier signs
 
 	The server owns all data; this script only displays it and sends requests.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local ContentProvider = game:GetService("ContentProvider")
 local TweenService = game:GetService("TweenService")
@@ -51,13 +48,6 @@ local HIT_SOUND = "rbxasset://sounds/snap.mp3" -- percussive "thump", used for i
 
 local state = nil -- latest snapshot from the server
 local stats = nil -- Config.stats(state)
-
--- Combo tracking (purely cosmetic - never changes Power, just makes hitting feel better)
--- Combo state. The server counts the combo (it boosts real Power, so it can't
--- be trusted to the client) and tells us the count + multiplier on every hit;
--- we just keep the latest values here for the sounds, popups and combo meter.
-local combo = { count = 0, mult = 1, resetAt = 0 }
-local COMBO_STEP = 10 -- a "milestone" popup fires every N consecutive hits
 
 ----------------------------------------------------------------------
 -- UI helpers
@@ -252,51 +242,19 @@ local function playActionChime(name)
 	playChime(ACTION_CHIMES[name] or { { speed = 1, volume = 0.45 } })
 end
 
--- The dummy-hit sound the developer dropped into SoundService. Just this one
--- sound plays on a hit now - it used to be layered with a second "ting" on
--- top, but that stayed audible alongside the punch sound, which wasn't
--- wanted.
-local DUMMY_PUNCH_SOUND = "dummy punch"
-
--- Pitch climbs a little with every hit in a combo, then drops back after the
--- 10-hit milestone and builds again - so a combo audibly "builds up" to its
--- payoff. It's the same sound played slightly faster, no extra asset needed.
-local COMBO_PITCH_STEP = 0.035 -- per hit, so +31.5% by the 10th hit
-
--- The ding the developer dropped into SoundService. Plays when you reach a
--- new combo tier (x1.1, x1.25, x1.5, x2), a little higher for each tier, so
--- climbing the tiers sounds like going up a scale. If you rename the sound in
--- SoundService, change the name here to match.
+-- The ding the developer dropped into SoundService. Plays when you level up.
+-- If you rename the sound in SoundService, change the name here to match.
 local COMBO_DING_SOUND = "Minecraft Sound Successful Bow Hit Ding"
-local COMBO_DING_PITCHES = { 1, 1.122, 1.26, 1.498 } -- tier 1-4: do, re, mi, sol
 
-local function playComboDing(tierIndex)
-	local pitch = COMBO_DING_PITCHES[math.min(tierIndex, #COMBO_DING_PITCHES)] or 1
-	playNamedSound(COMBO_DING_SOUND, 0.6, pitch)
-end
-
-local function playImpactSound(power, comboCount)
-	local jitter = (math.random() - 0.5)
-	local buildUp = ((comboCount or 1) - 1) % COMBO_STEP * COMBO_PITCH_STEP
-	local pitch = 0.85 + jitter * 0.06 + power * 0.03 + buildUp
-	playNamedSound(DUMMY_PUNCH_SOUND, 0.4 + math.random() * 0.08, pitch)
-end
-
--- Punch animation: alternates left/right each hit, like hitting a bag.
--- It plays the moment you click (not when the server replies), so the fist is
--- already swinging when the dummy reacts. If you're clicking faster than the
--- animation is long, it's sped up so one swing fits exactly between two hits
--- instead of being cut off halfway - that's what looked out of sync before.
+-- The punch animations (CombatClient swings them in a fight; the same two are
+-- warmed up here as soon as you spawn - see warmAnimations below).
 local PUNCH_ANIMATION_IDS = {
 	"140534557983022", -- Punch 1
 	"128188028965818", -- Punch 2
 }
-local MAX_PUNCH_SPEED = 4 -- never speed a swing up more than this
 
 local punchTracks = {} -- [animationId] = AnimationTrack, for the current Animator
 local punchAnimator = nil
-local punchIndex = 0
-local lastPunchAt = 0
 
 local function getPunchTrack(animationId)
 	local char = player.Character
@@ -370,80 +328,6 @@ local function warmSoon()
 end
 warmSoon()
 player.CharacterAdded:Connect(warmSoon)
-
-local function playPunch()
-	local now = os.clock()
-	local gap = now - lastPunchAt
-	lastPunchAt = now
-
-	punchIndex = punchIndex % #PUNCH_ANIMATION_IDS + 1
-	local track = getPunchTrack(PUNCH_ANIMATION_IDS[punchIndex])
-	if not track then
-		return
-	end
-
-	-- stop the other hand's swing so the two don't blend into mush
-	for _, other in pairs(punchTracks) do
-		if other ~= track and other.IsPlaying then
-			other:Stop(0.05)
-		end
-	end
-
-	local speed = 1
-	if track.Length > 0 and gap < track.Length then
-		speed = math.clamp(track.Length / gap, 1, MAX_PUNCH_SPEED)
-	end
-	track:Play(0.05, 1, speed)
-end
-
--- Face the dummy while punching. Your character is turned by a
--- ControllerManager, and the punch animations were making it spin in place.
--- So for a moment after each punch (only while you're not walking), point
--- it straight at the dummy on the pad you're standing on. Runs just after
--- Roblox's own movement controls each frame, so it gets the final say.
-local FACE_DUMMY_SECONDS = 0.6
-local DUMMY_OFFSET_Z = 6 -- dummies stand this far back on their pad (see LobbyBuilder)
-
-RunService:BindToRenderStep("FaceDummyWhilePunching", Enum.RenderPriority.Input.Value + 1, function()
-	if os.clock() - lastPunchAt > FACE_DUMMY_SECONDS then
-		return
-	end
-	local zi = player:GetAttribute("CurrentZone") or 0
-	if zi < 1 then
-		return
-	end
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local manager = char and char:FindFirstChildWhichIsA("ControllerManager", true)
-	if not (root and manager) then
-		return
-	end
-	if manager.MovingDirection.Magnitude > 0.1 then
-		return -- walking: let normal controls decide which way you face
-	end
-	local pad = Config.zonePosition(zi)
-	local toDummy = Vector3.new(pad.X - root.Position.X, 0, pad.Z + DUMMY_OFFSET_Z - root.Position.Z)
-	if toDummy.Magnitude < 0.5 then
-		return
-	end
-	manager.FacingDirection = toDummy.Unit
-end)
-
--- A tiny "camera punch" so a hit is felt, not just seen - a couple of studs of
--- kick that springs back out over a fraction of a second.
-local function cameraPunch(strength)
-	if player:GetAttribute("SpireFloor") then
-		return -- in an arena the combat script owns the camera; two of us shaking it fight
-	end
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not hum then
-		return
-	end
-	local kick = Vector3.new((math.random() - 0.5), math.random() * 0.6, 0) * strength
-	hum.CameraOffset = kick
-	tween(hum, 0.22, { CameraOffset = Vector3.new() }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-end
 
 ----------------------------------------------------------------------
 -- Root GUI (scales with screen height so it works on phones too)
@@ -1445,131 +1329,6 @@ local levelUpLabel = text({
 }, { stroke(5), create("UIScale", { Name = "Pop" }) })
 local levelUpToken = 0
 
-local rightCol = create("Frame", {
-	Name = "RightControls",
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -16, 0.5, 0),
-	Size = UDim2.fromOffset(200, 222),
-	BackgroundTransparency = 1,
-	Parent = root,
-}, {
-	create("UIListLayout", {
-		Padding = UDim.new(0, 10),
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}),
-})
-
-local autoBtn = create("TextButton", {
-	LayoutOrder = 2,
-	Visible = false, -- (auto-train went with the training pads)
-	Size = UDim2.fromOffset(200, 60),
-	BackgroundColor3 = C.red,
-	Text = "",
-	AutoButtonColor = true,
-	BorderSizePixel = 0,
-	Parent = rightCol,
-}, { corner(16), border(3.5) })
-
-local autoText = text({
-	Size = UDim2.fromScale(1, 1),
-	Text = "AUTO TRAIN: OFF",
-	TextSize = 21,
-	Parent = autoBtn,
-}, { stroke(2.5) })
-
-autoBtn.Activated:Connect(function()
-	if state then
-		doAction("SetAuto", not state.Auto)
-	end
-end)
-
--- Combo meter: only shows while a combo is running. Big hit count, the
--- current multiplier, what the next tier needs, and a bar that drains over
--- the combo window - if it empties before your next hit, the combo breaks.
-local comboBox = create("Frame", {
-	LayoutOrder = 3,
-	Size = UDim2.fromOffset(200, 98),
-	BackgroundColor3 = C.panelDark,
-	BackgroundTransparency = 0.15,
-	Visible = false,
-	Parent = rightCol,
-}, { corner(16), border(3, C.orange), create("UIScale", { Name = "Pop" }) })
-
-local comboCountText = text({
-	Position = UDim2.fromOffset(0, 4),
-	Size = UDim2.new(1, 0, 0, 34),
-	TextSize = 30,
-	TextColor3 = C.gold,
-	Parent = comboBox,
-}, { stroke(3) })
-
-local comboMultText = text({
-	Position = UDim2.fromOffset(0, 38),
-	Size = UDim2.new(1, 0, 0, 22),
-	TextSize = 19,
-	TextColor3 = C.orange,
-	Parent = comboBox,
-}, { stroke(2.5) })
-
-local comboNextText = text({
-	Position = UDim2.fromOffset(0, 60),
-	Size = UDim2.new(1, 0, 0, 16),
-	TextSize = 14,
-	TextColor3 = C.dim,
-	Parent = comboBox,
-})
-
-local comboBarBack = create("Frame", {
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -8),
-	Size = UDim2.new(1, -24, 0, 8),
-	BackgroundColor3 = C.ink,
-	BorderSizePixel = 0,
-	Parent = comboBox,
-}, { corner(4) })
-
-local comboBarFill = create("Frame", {
-	Size = UDim2.fromScale(1, 1),
-	BackgroundColor3 = C.orange,
-	BorderSizePixel = 0,
-	Parent = comboBarBack,
-}, { corner(4) })
-
-local function nextComboTier(count)
-	for _, tier in ipairs(Config.ComboTiers) do
-		if count < tier.hits then
-			return tier
-		end
-	end
-	return nil
-end
-
-local shownComboCount = 0
-RunService.RenderStepped:Connect(function()
-	local left = combo.resetAt - os.clock()
-	if combo.count <= 1 or left <= 0 then
-		comboBox.Visible = false
-		shownComboCount = 0
-		return
-	end
-	comboBox.Visible = true
-	comboBarFill.Size = UDim2.fromScale(math.clamp(left / Config.ComboWindow, 0, 1), 1)
-	if combo.count ~= shownComboCount then
-		shownComboCount = combo.count
-		comboCountText.Text = combo.count .. " COMBO"
-		comboMultText.Text = combo.mult > 1 and ("x" .. Config.formatMult(combo.mult) .. " Power") or "no bonus yet"
-		local nextTier = nextComboTier(combo.count)
-		comboNextText.Text = nextTier and ("x" .. Config.formatMult(nextTier.mult) .. " at " .. nextTier.hits .. " hits") or "MAX COMBO!"
-		-- little bump on every hit
-		local pop = comboBox:FindFirstChild("Pop")
-		if pop then
-			pop.Scale = 1.08
-			tween(pop, 0.12, { Scale = 1 })
-		end
-	end
-end)
-
 ----------------------------------------------------------------------
 -- Panel: Upgrade Shop
 ----------------------------------------------------------------------
@@ -1965,10 +1724,6 @@ end
 ----------------------------------------------------------------------
 -- Rendering
 ----------------------------------------------------------------------
-local function currentZone()
-	return player:GetAttribute("CurrentZone") or 0
-end
-
 local function renderHint()
 	-- in a Spire arena the lobby's advice is noise: the fight has the top of the
 	-- screen (the boss's name and health bar live there)
@@ -1977,22 +1732,13 @@ local function renderHint()
 		hint.Text = "Loading..."
 		return
 	end
-	local zi = currentZone()
 	local message
-	if zi > 0 then
-		local z = Config.Zones[zi]
-		if state.Power >= z.req then
-			local verb = UserInputService.TouchEnabled and "Tap" or "Click"
-			message = verb .. " to train!   x" .. Config.formatMult(z.mult) .. " Power"
-		else
-			message = "Locked! Reach Level " .. z.level .. " to use the " .. z.name
-		end
-	elseif Config.lootCount(state) > 0 then
+	if Config.lootCount(state) > 0 then
 		message = "You're carrying loot - sell it at the Sell Shop!"
 	elseif Config.statPointsLeft(state) > 0 then
 		message = "You have " .. Config.statPointsLeft(state) .. " stat points! Spend them in STATS."
 	else
-		-- (the training pads are gone: you grow by fighting in the Colosseum)
+		-- (you grow by fighting in the Colosseum)
 		message = "Enter the Colosseum and beat dummies to grow stronger!"
 	end
 	hint.Text = message
@@ -2021,25 +1767,6 @@ local function renderStats()
 	coinText.Text = Config.format(state.Coins)
 	powerText.Text = "Power: " .. Config.format(state.Power)
 	prestigeText.Text = "LV " .. Config.levelFromPower(state.Power)
-	autoText.Text = state.Auto and "AUTO TRAIN: ON" or "AUTO TRAIN: OFF"
-	autoBtn.BackgroundColor3 = state.Auto and C.green or C.red
-end
-
-local function renderZoneSigns()
-	for _, sign in ipairs(CollectionService:GetTagged("ZoneSign")) do
-		local zi = sign:GetAttribute("ZoneIndex")
-		local zone = zi and Config.Zones[zi]
-		local status = sign:FindFirstChild("Status")
-		if zone and status then
-			if state.Power >= zone.req then
-				status.Text = "UNLOCKED"
-				status.TextColor3 = RGB(120, 255, 160)
-			else
-				status.Text = "LOCKED - needs Level " .. zone.level
-				status.TextColor3 = RGB(255, 110, 120)
-			end
-		end
-	end
 end
 
 local function renderAll()
@@ -2050,231 +1777,12 @@ local function renderAll()
 	renderStats()
 	renderBars()
 	renderHint()
-	renderZoneSigns()
 	local p = currentKey and panels[currentKey]
 	if p and p.refresh then
 		p.refresh()
 	end
 end
 
-----------------------------------------------------------------------
--- Training: click input, dummy hit feedback
-----------------------------------------------------------------------
-local dummies = {} -- [zoneIndex] = { body, torso, head, orig }
-
-local function registerDummy(model)
-	local zi = model:GetAttribute("ZoneIndex")
-	if not zi then
-		return
-	end
-	local body = model:WaitForChild("Body", 10)
-	local torso = body and body:WaitForChild("Torso", 10)
-	local head = body and body:WaitForChild("Head", 10)
-	if not (body and torso and head) then
-		return
-	end
-	dummies[zi] = { body = body, torso = torso, head = head, orig = body:GetPivot() }
-end
-
-for _, m in ipairs(CollectionService:GetTagged("Dummy")) do
-	task.spawn(registerDummy, m)
-end
-CollectionService:GetInstanceAddedSignal("Dummy"):Connect(function(m)
-	task.spawn(registerDummy, m)
-end)
-
--- A "got punched" reaction: the dummy snaps back on a tilt, rebounds past
--- center with a squash/stretch, wobbles once, then settles. `power` (roughly
--- 0.4-2.2) scales how hard the hit reads, so bigger dummies/combos hit harder.
-local function impactAnim(info, power)
-	info.token = (info.token or 0) + 1
-	local mine = info.token
-	local keys = {
-		{ t = 0.00, tilt = 0, scale = 1.00 },
-		{ t = 0.05, tilt = 12 * power, scale = 1 - 0.09 * power },
-		{ t = 0.14, tilt = 6 * power, scale = 1 + 0.06 * power },
-		{ t = 0.24, tilt = -2.5 * power, scale = 1 - 0.02 * power },
-		{ t = 0.34, tilt = 0, scale = 1.00 },
-	}
-	task.spawn(function()
-		local start = os.clock()
-		while info.token == mine do
-			local elapsed = os.clock() - start
-			local last = keys[#keys]
-			if elapsed >= last.t then
-				info.body:PivotTo(info.orig)
-				pcall(function()
-					info.body:ScaleTo(1)
-				end)
-				return
-			end
-			for i = 1, #keys - 1 do
-				local a, b = keys[i], keys[i + 1]
-				if elapsed >= a.t and elapsed <= b.t then
-					local f = (elapsed - a.t) / (b.t - a.t)
-					local tilt = a.tilt + (b.tilt - a.tilt) * f
-					local scale = a.scale + (b.scale - a.scale) * f
-					info.body:PivotTo(info.orig * CFrame.Angles(math.rad(-tilt), 0, 0))
-					pcall(function()
-						info.body:ScaleTo(scale)
-					end)
-					break
-				end
-			end
-			task.wait()
-		end
-	end)
-end
-
-local function flash(info)
-	if not info.highlight then
-		info.highlight = create("Highlight", {
-			FillColor = Color3.new(1, 1, 1),
-			OutlineTransparency = 1,
-			FillTransparency = 1,
-			Adornee = info.body,
-			Parent = info.body,
-		})
-	end
-	info.highlight.FillTransparency = 0.45
-	tween(info.highlight, 0.15, { FillTransparency = 1 })
-end
-
-local function popText(adornee, message, color, big, riseY)
-	local w = big and 240 or 180
-	local bb = create("BillboardGui", {
-		Size = UDim2.fromOffset(w, w * 0.32),
-		StudsOffset = Vector3.new((math.random() - 0.5) * 3, riseY or 3, 0),
-		AlwaysOnTop = true,
-		Adornee = adornee,
-		Parent = playerGui,
-	})
-	local scaler = create("UIScale", { Scale = 0.35, Parent = bb })
-	local lbl = text({
-		Size = UDim2.fromScale(1, 1),
-		Text = message,
-		TextSize = big and 52 or 40,
-		TextColor3 = color,
-		Parent = bb,
-	}, { stroke(big and 5 or 4) })
-
-	-- pop in with a little overshoot, then relax to full size
-	tween(scaler, 0.16, { Scale = big and 1.3 or 1.08 }, Enum.EasingStyle.Back)
-	task.delay(0.16, function()
-		if scaler.Parent then
-			tween(scaler, 0.12, { Scale = 1 })
-		end
-	end)
-
-	tween(bb, 0.8, { StudsOffset = bb.StudsOffset + Vector3.new(0, big and 7 or 5, 0) })
-	task.delay(0.18, function()
-		tween(lbl, 0.62, { TextTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-		local s = lbl:FindFirstChildOfClass("UIStroke")
-		if s then
-			tween(s, 0.62, { Transparency = 1 })
-		end
-	end)
-	Debris:AddItem(bb, 1.1)
-end
-
-Remotes.TrainFeedback.OnClientEvent:Connect(function(gain, zi, comboCount, comboMult)
-	local info = dummies[zi]
-	local zone = Config.Zones[zi]
-	if not info or not zone then
-		return
-	end
-
-	-- comboCount is 0 for auto-train hits - those don't touch the combo.
-	comboCount = comboCount or 0
-	comboMult = comboMult or 1
-	local isCombo = comboCount > 0
-	local tierUp = false
-	if isCombo then
-		tierUp = comboMult > combo.mult
-		combo.count = comboCount
-		combo.mult = comboMult
-		combo.resetAt = os.clock() + Config.ComboWindow
-	end
-	local milestone = isCombo and comboCount % COMBO_STEP == 0
-
-	local power = math.clamp(zone.mult / 3, 0.4, 2.2)
-	local punch = milestone and power * 1.5 or power
-
-	impactAnim(info, punch)
-	flash(info)
-
-	local burst = info.torso:FindFirstChild("HitBurst")
-	if burst then
-		burst:Emit(milestone and 20 or 8)
-	end
-
-	popText(info.head, "+" .. Config.formatGain(gain), zone.color)
-	if tierUp then
-		popText(info.head, "COMBO x" .. Config.formatMult(comboMult) .. "!", C.orange, true, 6)
-		local tierIndex = 0
-		for i, tier in ipairs(Config.ComboTiers) do
-			if comboCount >= tier.hits then
-				tierIndex = i
-			end
-		end
-		playComboDing(tierIndex)
-	elseif milestone then
-		popText(info.head, comboCount .. " HIT COMBO!", C.gold, true, 6)
-	end
-
-	playImpactSound(punch, isCombo and comboCount or 1)
-	cameraPunch(milestone and 0.55 or 0.28)
-end)
-
-local holding = false
-local lastFire = 0
-
-local function tryTrain()
-	if not state or currentKey then
-		return
-	end
-	local zi = currentZone()
-	if zi < 1 then
-		return
-	end
-	if state.Power < Config.Zones[zi].req then
-		return
-	end
-	local now = os.clock()
-	if now - lastFire < Config.TrainClientInterval then
-		return
-	end
-	lastFire = now
-	Remotes.Train:FireServer()
-	playPunch()
-end
-
-local function isPointer(input)
-	local t = input.UserInputType
-	return t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch
-end
-
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed or not isPointer(input) then
-		return
-	end
-	holding = true
-	tryTrain()
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if isPointer(input) then
-		holding = false
-	end
-end)
-
-RunService.RenderStepped:Connect(function()
-	if holding then
-		tryTrain()
-	end
-end)
-
-player:GetAttributeChangedSignal("CurrentZone"):Connect(renderHint)
 player:GetAttributeChangedSignal("SpireFloor"):Connect(renderHint)
 player:GetAttributeChangedSignal("Colosseum"):Connect(renderHint)
 
@@ -2363,7 +1871,7 @@ end)
 ----------------------------------------------------------------------
 -- Remotes
 ----------------------------------------------------------------------
--- Big popup + ding when you level up, and a toast for every dummy it unlocks.
+-- Big popup + ding when you level up.
 -- Only fires going up - prestige drops your level, that's not a level up.
 local function onLevelUp(oldLevel, newLevel)
 	levelUpToken = levelUpToken + 1
@@ -2393,11 +1901,6 @@ local function onLevelUp(oldLevel, newLevel)
 			end
 		end)
 	end)
-	for _, z in ipairs(Config.Zones) do
-		if z.level > oldLevel and z.level <= newLevel then
-			toast(z.name .. " unlocked!  x" .. Config.formatMult(z.mult) .. " Power", "info")
-		end
-	end
 end
 
 Remotes.StateUpdate.OnClientEvent:Connect(function(data)

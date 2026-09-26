@@ -360,48 +360,9 @@ function Config.questText(q)
 end
 
 ----------------------------------------------------------------------
--- Training yard (the "treadmill": practice dummies with multipliers)
-----------------------------------------------------------------------
-Config.BaseTrainGain = 1 -- the "+1" per hit before any multiplier
-Config.TrainClientInterval = 0.18 -- seconds between clicks the client sends
-Config.TrainMinInterval = 0.12 -- server rejects hits faster than this
-Config.AutoInterval = 1 -- seconds between auto-train hits
-
--- Combo: keep hitting the same dummy (manually - auto-train doesn't count)
--- without pausing longer than ComboWindow and your Power gain is multiplied.
--- Each tier kicks in once your combo reaches `hits`.
-Config.ComboWindow = 1.1 -- seconds you can pause before the combo breaks
-Config.ComboTiers = {
-	{ hits = 10, mult = 1.1 },
-	{ hits = 25, mult = 1.25 },
-	{ hits = 50, mult = 1.5 },
-	{ hits = 100, mult = 2 },
-}
-
-function Config.comboMult(count)
-	local mult = 1
-	for _, tier in ipairs(Config.ComboTiers) do
-		if count >= tier.hits then
-			mult = tier.mult
-		end
-	end
-	return mult
-end
-
-Config.Yard = {
-	CenterX = -60, -- x of the middle of the pads (the south-west corner of the castle)
-	CenterZ = 62, -- z position of the first row of pads
-	Spacing = 25, -- distance between pad centres
-	PadSize = 20, -- pad is PadSize x PadSize studs
-	PerRow = 4, -- pads in a row; the next ones start a new row...
-	RowGap = 30, -- ...this much further back (south)...
-	TierHeight = 0, -- ...and this much higher (0 = all on the ground)
-}
-
-----------------------------------------------------------------------
 -- Levels (like Blox Fruits): your level is the number that matters. It
 -- comes from your total Power (your XP), which only ever goes up - from
--- training and beating bosses - up to MaxLevel. Every level gives you
+-- the Colosseum and beating bosses - up to MaxLevel. Every level gives you
 -- StatPoints.PerLevel points to spend on your stats (see Config.StatPoints).
 -- Total Power for a level = LevelScale x (level - 1) ^ LevelCurve
 -- (level 2 needs 18, level 44 about 1.4M, level 256 about 297M).
@@ -474,37 +435,6 @@ function Config.statBonus(d)
 		out[st.gives] = out[st.gives] + ((d and d.Stats and d.Stats[st.id]) or 0) * st.per
 	end
 	return out
-end
-
--- mult = Power multiplier for this dummy, level = level needed to use it.
--- (req, the Power that level needs, is filled in automatically below.)
-Config.Zones = {
-	{ id = "Straw", name = "Straw Dummy", mult = 1, level = 1, color = Color3.fromRGB(214, 168, 96) },
-	{ id = "Iron", name = "Iron Dummy", mult = 1.5, level = 5, color = Color3.fromRGB(150, 190, 235) },
-	{ id = "Frost", name = "Frost Dummy", mult = 3, level = 12, color = Color3.fromRGB(110, 225, 255) },
-	{ id = "Ember", name = "Ember Dummy", mult = 5, level = 20, color = Color3.fromRGB(255, 120, 45) },
-	{ id = "Void", name = "Void Dummy", mult = 8, level = 30, color = Color3.fromRGB(175, 95, 255) },
-	{ id = "Celestial", name = "Celestial Dummy", mult = 10, level = 45, color = Color3.fromRGB(255, 215, 70) },
-	-- the upper tier
-	{ id = "Ooze", name = "Ooze Dummy", mult = 14, level = 55, color = Color3.fromRGB(120, 255, 90) },
-	{ id = "Dune", name = "Dune Dummy", mult = 19, level = 64, color = Color3.fromRGB(240, 196, 120) },
-	{ id = "Crystal", name = "Crystal Dummy", mult = 25, level = 73, color = Color3.fromRGB(255, 120, 200) },
-	{ id = "Storm", name = "Storm Dummy", mult = 33, level = 82, color = Color3.fromRGB(120, 200, 255) },
-	{ id = "Dragon", name = "Dragon Dummy", mult = 44, level = 92, color = Color3.fromRGB(255, 70, 60) },
-	{ id = "Cosmic", name = "Cosmic Dummy", mult = 60, level = 105, color = Color3.fromRGB(150, 110, 255) },
-}
-for _, zone in ipairs(Config.Zones) do
-	zone.req = Config.powerForLevel(zone.level)
-end
-
--- World position of the centre of pad number `index` (Y is the ground it
--- stands on: 0 for the first row, TierHeight up for the terrace behind it)
-function Config.zonePosition(index)
-	local Y = Config.Yard
-	local row = math.floor((index - 1) / Y.PerRow)
-	local col = (index - 1) % Y.PerRow + 1
-	local x = (Y.CenterX or 0) + (col - (Y.PerRow + 1) / 2) * Y.Spacing
-	return Vector3.new(x, row * Y.TierHeight, Y.CenterZ + row * Y.RowGap)
 end
 
 ----------------------------------------------------------------------
@@ -869,14 +799,12 @@ Config.Retro = {
 		Flavour = true, -- a line of text typed out when you walk up to a shop, the shrine...
 		Repeat = 150, -- seconds before the same place talks again
 		Grade = true, -- a slightly warmer, punchier colour grade in the lobby
-		DummyTalk = true, -- the training dummies mock you (and tell jokes) while you train
 		-- Lines = { SellShop = "* your own line" }, -- (to change what a place says)
 		-- more to look at (all of it can't be touched or stood on)
 		Detail = {
 			On = true,
 			Walls = true, -- stone courses and chunky stones on the castle walls
 			Flames = true, -- pixel flames and smoke instead of the old fire effects
-			Pads = true, -- glowing pylons and rising sparks round the training pads
 			Shrine = true, -- sparks rising round the prestige shrine
 			Beacon = true, -- a pillar of light from the Spire's peak into the sky
 			Grass = 320, -- tufts of grass and flowers scattered on the lawns (0 = none)

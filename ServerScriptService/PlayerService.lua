@@ -3,7 +3,6 @@
 
 	Server-authoritative game logic for the lobby:
 	  * per-player data (Power = XP, Coins, Loot, Upgrades, Talismans, Stats, Gear) + DataStore saving
-	  * training on the dummy pads (manual clicks + auto-train)
 	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, stat points, gear
 	  * daily quests (the Quest Board)
 	  * remotes for the HUD
@@ -14,7 +13,7 @@
 	    PlayerService.AddCoins(player, 50)
 	    PlayerService.AddPower(player, 10)
 	    PlayerService.GetData(player)               --> the live data table (or nil)
-	    PlayerService.QuestProgress(player, "spar", 1) --> counts towards today's quests of that kind
+	    PlayerService.QuestProgress(player, "arena", 1) --> counts towards today's quests of that kind
 ]]
 
 local Players = game:GetService("Players")
@@ -33,8 +32,6 @@ local AUTOSAVE_SECONDS = 90
 
 local profiles = {} -- [player] = { data = {...}, canSave = bool, ... }
 local dirty = {} -- [player] = true when the client needs a fresh snapshot
-local lastHit = {} -- [player] = os.clock() of last accepted training hit
-local combos = {} -- [player] = { count, zone, lastAt } for manual training hits
 local started = {} -- [player] = true once onPlayerAdded ran
 local hookedPrompts = {}
 local allowRequest, saneArg -- (the request budget and argument checks, below)
@@ -67,7 +64,6 @@ local function defaultData()
 		Upgrades = ups,
 		Owned = {},
 		Equipped = {},
-		Auto = false,
 		Cleared = {}, -- ["1"] = how many times you've killed floor 1's boss
 		-- gear (see ReplicatedStorage.Items). Items: [uid] = { id, r = rolls,
 		-- t = when it dropped, lock = true if protected from salvaging}
@@ -133,7 +129,6 @@ local function mergeSaved(saved)
 			end
 		end
 	end
-	d.Auto = saved.Auto == true
 	if type(saved.Cleared) == "table" then
 		for floorId in pairs(Config.Bosses or {}) do
 			local n = saved.Cleared[tostring(floorId)]
@@ -431,52 +426,6 @@ local function nearStation(player, stationName)
 	return flat.Magnitude <= Config.StationRange
 end
 
--- Which training pad (if any) a world position is standing on
-local function zoneAt(position)
-	-- (the training pads are gone - the Colosseum stands where they were -
-	-- so nowhere counts as a pad any more)
-	if true then
-		return 0
-	end
-	local half = Config.Yard.PadSize / 2
-	for i = 1, #Config.Zones do
-		local c = Config.zonePosition(i)
-		-- (measured from the pad's own ground: the terrace's pads are a step up)
-		if math.abs(position.X - c.X) <= half and math.abs(position.Z - c.Z) <= half and position.Y > c.Y - 3 and position.Y < c.Y + 14 then
-			return i
-		end
-	end
-	return 0
-end
-
--- comboCount is nil for auto-train hits (they don't build or use the combo)
-local function giveTrainingPower(player, zoneIndex, comboCount)
-	local profile = profiles[player]
-	if not profile then
-		return
-	end
-	local d = profile.data
-	local comboMult = comboCount and Config.comboMult(comboCount) or 1
-	local gain = Config.BaseTrainGain * Config.Zones[zoneIndex].mult * Config.stats(d).powerMult * comboMult
-	d.Power = d.Power + gain
-	markDirty(player)
-	remotes.TrainFeedback:FireClient(player, gain, zoneIndex, comboCount or 0, comboMult)
-end
-
--- Counts consecutive manual hits on the same dummy. A pause longer than
--- Config.ComboWindow, or switching dummies, starts it over at 1.
-local function nextCombo(player, zoneIndex, now)
-	local c = combos[player]
-	if c and c.zone == zoneIndex and now - c.lastAt <= Config.ComboWindow then
-		c.count = c.count + 1
-	else
-		c = { count = 1, zone = zoneIndex }
-		combos[player] = c
-	end
-	c.lastAt = now
-	return c.count
-end
-
 ----------------------------------------------------------------------
 -- Daily quests
 ----------------------------------------------------------------------
@@ -495,7 +444,7 @@ local function ensureQuests(d)
 end
 
 -- Something happened that counts towards quests of this kind
--- ("train", "combo", "spar", "boss", "sell", "chest").
+-- ("arena", "boss", "sell", "chest").
 function PlayerService.QuestProgress(player, kind, amount)
 	local profile = profiles[player]
 	if not profile then
@@ -957,12 +906,6 @@ handlers.ClaimQuest = function(player, d)
 	return true, "+" .. Config.format(def.reward) .. " coins!"
 end
 
-handlers.SetAuto = function(player, d, on)
-	d.Auto = (on == true)
-	markDirty(player)
-	return true
-end
-
 -- Studio-only test helpers (the arena doesn't exist yet, so nothing drops loot)
 handlers.DevGive = function(player, d, kind)
 	if not RunService:IsStudio() then
@@ -1019,7 +962,6 @@ local function onPlayerAdded(player)
 		return
 	end
 	started[player] = true
-	player:SetAttribute("CurrentZone", 0)
 
 	local saved, ok, stillLocked = loadData(player)
 	if not player.Parent then
@@ -1069,8 +1011,6 @@ local function onPlayerRemoving(player)
 	saveProfile(player, true) -- (and let go of the lock)
 	profiles[player] = nil
 	dirty[player] = nil
-	lastHit[player] = nil
-	combos[player] = nil
 	started[player] = nil
 end
 
@@ -1141,8 +1081,6 @@ local function buildRemotes()
 
 	make("RemoteEvent", "RequestState") -- client -> server
 	make("RemoteEvent", "StateUpdate") -- server -> client: full snapshot
-	make("RemoteEvent", "Train") -- client -> server: one click
-	make("RemoteEvent", "TrainFeedback") -- server -> client: (gain, zoneIndex)
 	make("RemoteEvent", "Notify") -- server -> client: (text, kind)
 	make("RemoteEvent", "OpenPanel") -- server -> client: panel name
 	make("RemoteFunction", "Action") -- client -> server: (name, arg) -> ok, message
@@ -1152,31 +1090,6 @@ local function buildRemotes()
 	remotes.RequestState.OnServerEvent:Connect(function(player)
 		if profiles[player] and allowRequest(player) then
 			markDirty(player)
-		end
-	end)
-
-	remotes.Train.OnServerEvent:Connect(function(player)
-		local profile = profiles[player]
-		if not profile then
-			return
-		end
-		local now = os.clock()
-		if now - (lastHit[player] or 0) < Config.TrainMinInterval then
-			return
-		end
-		local zi = player:GetAttribute("CurrentZone")
-		if type(zi) ~= "number" or zi < 1 then
-			return
-		end
-		if profile.data.Power < Config.Zones[zi].req then
-			return -- pad still locked
-		end
-		lastHit[player] = now
-		local combo = nextCombo(player, zi, now)
-		giveTrainingPower(player, zi, combo)
-		PlayerService.QuestProgress(player, "train", 1)
-		if combo == 100 then
-			PlayerService.QuestProgress(player, "combo", 1)
 		end
 	end)
 
@@ -1357,36 +1270,6 @@ function PlayerService.Start()
 					profile.leaderLevel.Value = Config.levelFromPower(profile.data.Power)
 					profile.data.BestLevel = math.max(profile.data.BestLevel or 1, profile.leaderLevel.Value)
 					remotes.StateUpdate:FireClient(player, profile.data)
-				end
-			end
-		end
-	end)
-
-	-- Work out which pad each player is standing on
-	task.spawn(function()
-		while true do
-			task.wait(0.2)
-			for player in pairs(profiles) do
-				local char = player.Character
-				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local zi = root and zoneAt(root.Position) or 0
-				if player:GetAttribute("CurrentZone") ~= zi then
-					player:SetAttribute("CurrentZone", zi)
-				end
-			end
-		end
-	end)
-
-	-- Auto-train ticks
-	task.spawn(function()
-		while true do
-			task.wait(Config.AutoInterval)
-			for player, profile in pairs(profiles) do
-				if profile.data.Auto then
-					local zi = player:GetAttribute("CurrentZone")
-					if type(zi) == "number" and zi > 0 and profile.data.Power >= Config.Zones[zi].req then
-						giveTrainingPower(player, zi)
-					end
 				end
 			end
 		end

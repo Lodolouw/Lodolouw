@@ -15,24 +15,15 @@ arena will plug in later.
 - **Talisman Workbench** — craft 6 talismans from coins + materials, equip up
   to 3 at once for stat bonuses
 - **Prestige Shrine** — reset Power/Coins/Upgrades for permanent multipliers
-- **Training Yard** — 12 practice-dummy pads in two rows, entered through a
-  stone archway with a pixel sign. The first row (Straw → Iron → Frost →
-  Ember → Void → Celestial) is on the ground; the second (Ooze → Dune →
-  Crystal → Storm → Dragon → Cosmic, levels 55–105) stands a step up on a
-  raised stone terrace behind it, reached by a grand staircase. Each dummy
-  has its own look, effects and a Power multiplier sign; click/tap to train,
-  or toggle Auto Train. (Rows, spacing and the terrace's height are in
-  `Config.Yard`; the castle's south wall sits further out to hold it all.)
+- **The Colosseum** — walk through the mini colosseum's door (south-west of
+  the plaza) into your own wave arena: dummies hop in wave after wave, the
+  King last. This is where you level up. (The old training pads are gone.)
 - **Tall mossy castle walls** — a much taller stone perimeter wall than a
   typical starter lobby, with crenellated merlons on top, moss patches
   climbing the inner face, and ivy strands hanging down. All Parts, no
   imported meshes.
-- **Juicy hit feedback** — hitting a dummy plays a layered thump+ting sound
-  (randomized pitch so it never sounds robotic), a squash/stretch/tilt
-  "got punched" animation, and a small camera kick. A cosmetic combo counter
-  (never affects Power) makes every 10th hit in a row bigger and louder.
-  Buying, selling, crafting and prestiging each got their own short chime
-  instead of one generic ping.
+- **Chimes** — buying, selling, crafting and prestiging each got their own
+  short chime instead of one generic ping.
 - Full GUI built from code: left-side buttons, backpack/coins/power readout,
   hint banner, goal progress bar, floating "+N" numbers, toast notifications,
   and 4 popup panels
@@ -66,8 +57,8 @@ StarterPlayer/StarterPlayerScripts/
 
 ## How it fits together
 
-- **Config.lua** is the single source of truth for every number (zone
-  multipliers/costs, upgrade costs, talisman recipes, prestige formulas). Both
+- **Config.lua** is the single source of truth for every number (the
+  Colosseum, upgrade costs, talisman recipes, prestige formulas). Both
   the server and the client require it, so they always agree.
 - **LobbyBuilder.lua** runs once on the server at startup and builds every
   Part/Model/GUI-anchor in Workspace. Nothing here is a real asset — it's all
@@ -183,13 +174,12 @@ The lobby wears the same look (`RetroWorld`, `Config.Retro.World`): its
 colours snapped to the menus' palette, realistic textures turned to flat
 colour, pixel motes drifting around you, a spinning pixel save star over the
 spawn, and Undertale-style lines typed out when you walk up to a shop, the
-shrine, the yard or the Spire. It also dresses the lobby with detail: stone
+shrine or the Spire. It also dresses the lobby with detail: stone
 courses and chunky stones on the walls, pixel flames and smoke in place of
-the old fire effects, grass and flowers, pylons and sparks round the training
-pads, sparks at the shrine, voxel clouds, flocks of birds, and a beacon of
+the old fire effects, grass and flowers, sparks at the shrine, voxel clouds, flocks of birds, and a beacon of
 light from the Spire's peak. It only changes how things look, only on your
-screen: nothing is moved, nothing solid changes, and the people, the dummies
-and the boss arenas are left alone.
+screen: nothing is moved, nothing solid changes, and the people and the
+boss arenas are left alone.
 
 Your health is **the heart** (in `Hud`, tuned in `Config.Heart`): red liquid
 inside a pixel heart, measured by how much of it is full. A hit makes it

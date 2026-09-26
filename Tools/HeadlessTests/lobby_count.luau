@@ -118,7 +118,7 @@ if ({ ... })[1] == "names" then
 		print(string.format("  %-24s %d", list[i][1], list[i][2]))
 	end
 	local CS = M.services.CollectionService
-	for _, tag in ipairs({ "FX", "Dummy", "ZoneSign", "AutoOpenZone" }) do
+	for _, tag in ipairs({ "FX", "AutoOpenZone" }) do
 		print(tag .. ": " .. #CS:GetTagged(tag))
 	end
 end

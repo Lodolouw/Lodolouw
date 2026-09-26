@@ -11,21 +11,20 @@
 	  * PIXEL MOTES - little glowing cubes drifting up around you, moving in
 	    steps like a sprite would (Stardew Valley / Celeste)
 	  * THE SAVE STAR - a spinning pixel star over the spawn (Undertale)
-	  * FLAVOUR TEXT - walk up to a shop, the shrine, the yard or the Spire and
+	  * FLAVOUR TEXT - walk up to a shop, the shrine or the Spire and
 	    a black box types a line about it at the bottom of the screen, with
 	    a blip a letter (Undertale)
 	  * A WARMER, PUNCHIER GRADE - only while you're in the lobby
 	  * DETAIL - stone courses and chunky stones on the castle walls, pixel
 	    flames and smoke in place of the old fire effects, grass and flowers
-	    on the lawns, glowing pylons and sparks round the training pads,
-	    sparks at the shrine, voxel clouds and flocks of birds circling the
+	    on the lawns, sparks at the shrine, voxel clouds and flocks of birds circling the
 	    island, and a beacon of light rising from the Spire's peak
 
 	SAFE BY DESIGN: all of it happens on your own screen only, and it only ever
 	changes how things LOOK - colours and materials. Nothing is moved, nothing
 	is made solid or non-solid, no prompt or pad is touched, and everything it
 	adds can't be bumped into, clicked or stood on. The people (shopkeepers,
-	the blacksmith) and the training dummies are left exactly as they are, and
+	the blacksmith) are left exactly as they are, and
 	so are the boss arenas (they aren't part of the lobby). Config.Retro.World
 	switches each piece; On = false turns all of it off.
 ]]
@@ -35,7 +34,6 @@ local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
-local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -105,19 +103,16 @@ local FLATTEN = {
 }
 
 -- left exactly as they are: anything belonging to a person (a shopkeeper, the
--- blacksmith, a player) and the training dummies
+-- blacksmith, a player)
 local function leaveAlone(p)
 	local node = p.Parent
 	while node and node ~= Workspace do
 		if node:IsA("Model") and node:FindFirstChildOfClass("Humanoid") then
 			return true
 		end
-		if CollectionService:HasTag(node, "Dummy") then
-			return true
-		end
 		node = node.Parent
 	end
-	return CollectionService:HasTag(p, "Dummy")
+	return false
 end
 
 local function restyle(p)
@@ -244,7 +239,6 @@ local LINES = {
 	UpgradeShop = "* A cozy mushroom house. It smells like fresh bread... and ambition.",
 	CraftBench = "* The forge is warm. Somewhere, a hammer is waiting just for you.",
 	PrestigeShrine = "* The shrine hums softly. You feel your strength waiting to grow.",
-	TrainingYard = "* The dummies stand ready. They don't feel a thing. Probably.",
 	Spire = "* The Spire looms over the castle. Something at the top wants to be beaten.",
 	CastleGate = "* The old gate is shut tight. Not yet...",
 }
@@ -615,27 +609,6 @@ table.insert(steppers, function(_, step)
 	end
 end)
 
--- THE TRAINING PADS: a glowing pylon at each corner, and sparks in the pad's colour
-local pylons = {}
-local function dressPad(glow)
-	local c, color = glow.Position, snap(glow.Color)
-	local half = glow.Size.X / 2 + 3.2
-	local _, lightStone = shadesOf(RGB(90, 105, 136))
-	for _, k in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
-		local base = V3(c.X + k[1] * half, c.Y - 0.3, c.Z + k[2] * half)
-		block(V3(1.6, 3, 1.6), RGB(58, 68, 102)).CFrame = CFrame.new(base + V3(0, 1.5, 0))
-		block(V3(2, 0.5, 2), lightStone).CFrame = CFrame.new(base + V3(0, 3.2, 0))
-		table.insert(pylons, { part = block(V3(0.9, 0.9, 0.9), color, Enum.Material.Neon), at = base + V3(0, 4.4, 0), phase = rng:NextNumber() * 6 })
-	end
-	sparks(c, glow.Size.X / 2 - 1, 0.5, 9, { color, RGB(255, 255, 255) }, 6, 0.35)
-end
-table.insert(steppers, function(now)
-	for _, p in ipairs(pylons) do
-		local bob = math.floor((math.sin(now * 2.5 + p.phase) + 1) * 2) * 0.12
-		move(p.part, CFrame.new(p.at + V3(0, bob, 0)) * CFrame.Angles(0, math.floor(now * 4) * math.pi / 8, 0))
-	end
-end)
-
 -- GRASS AND FLOWERS: little pixel tufts across the lawns
 local PETALS = { RGB(246, 117, 122), RGB(254, 231, 97), RGB(255, 255, 255), RGB(44, 232, 245), RGB(181, 80, 136) }
 local function plantGrass(lobby)
@@ -978,14 +951,6 @@ local function dressLobby(lobby)
 			end
 		end
 	end
-	local yard = lobby:FindFirstChild("TrainingYard")
-	if yard and D.Pads ~= false then
-		for _, p in ipairs(yard:GetChildren()) do
-			if p:IsA("BasePart") and string.match(p.Name, "^PadGlow%d+$") then
-				pcall(dressPad, p)
-			end
-		end
-	end
 	-- (the shrine and its sparks are gone: the plaza is plain paving)
 	local center = V3(0, 0, -10)
 	makeClouds(center)
@@ -1001,136 +966,6 @@ local function dressLobby(lobby)
 end
 
 
-----------------------------------------------------------------------
--- THE DUMMIES TALK BACK (like Undertale's): stand on a pad and its dummy
--- mocks you in a little black speech box, typed out with a blip
-----------------------------------------------------------------------
-local TAUNTS = {
-	Straw = { "* Is that a punch or a gentle suggestion?", "* I'm made of straw and I'm STILL not scared.", "* Hit me harder. I dare you. Politely." },
-	Iron = { "* Clang. That's the sound of you trying.", "* I've been hit harder by a breeze.", "* Iron will. Iron body. Iron... bored." },
-	Frost = { "* Brr. Your punches give me chills. Of boredom.", "* Chill out. You'll hurt yourself.", "* Ice to meet you. Nice try though." },
-	Ember = { "* You're not so hot, are you?", "* Careful, you'll get burned. Mostly your pride.", "* I've seen bigger sparks from a birthday candle." },
-	Void = { "* ...", "* The void stares back. It's unimpressed.", "* Your hits echo into nothing. Like your jokes." },
-	Celestial = { "* The stars laugh at your technique.", "* Divine. Radiant. Not you, me.", "* Keep going. The heavens need a comedy show." },
-	Ooze = { "* Squish! Oh wait, that was you slipping.", "* I'm slime. I bounce back. Can you?", "* You'll never get this goo off your gloves." },
-	Dune = { "* You hit like sand. Scattered.", "* A worm told me about you. He wasn't impressed.", "* Time is running out. Like sand. Get it?" },
-	Crystal = { "* Crystal clear: you need more training.", "* Don't crack under pressure. I won't.", "* So shiny. So unbreakable. So ME." },
-	Storm = { "* Lightning never strikes twice. You barely struck once.", "* That's shocking. Shockingly weak.", "* Thunder! ...oh that was just your stomach." },
-	Dragon = { "* Rawr. That means 'try harder' in dragon.", "* I've had lunches tougher than you.", "* Kneel, snack. I mean, hero." },
-	Cosmic = { "* In the vastness of space... you're still small.", "* I've seen galaxies born. Your punch? Not so much.", "* The universe is infinite. So is my patience." },
-}
-local LOCKED = { "* Aww. Come back when you're bigger.", "* You need Level %d to touch me. Bye bye!", "* Too soon, tiny hero. Level %d first." }
-
-local function bubbleFor(head)
-	local bb = Instance.new("BillboardGui")
-	bb.Name = "DummyTalk"
-	bb.Size = UDim2.fromScale(15, 3.6)
-	-- (beside its head, not above it: above is where its multiplier sign hangs)
-	bb.StudsOffset = V3(9, 0.5, 0)
-	bb.MaxDistance = 70
-	bb.LightInfluence = 0
-	bb.Enabled = false
-	bb:SetAttribute("RetroSkip", true)
-	local box = Instance.new("Frame")
-	box.Size = UDim2.fromScale(1, 1)
-	box.BackgroundColor3 = RGB(0, 0, 0)
-	box.Parent = bb
-	local edge = Instance.new("UIStroke")
-	edge.Color = RGB(255, 255, 255)
-	edge.Thickness = 3
-	edge.Parent = box
-	local txt = Instance.new("TextLabel")
-	txt.BackgroundTransparency = 1
-	txt.Position = UDim2.fromScale(0.04, 0.1)
-	txt.Size = UDim2.fromScale(0.92, 0.8)
-	txt.Font = Enum.Font.Arcade
-	txt.TextScaled = true
-	txt.TextWrapped = true
-	txt.TextXAlignment = Enum.TextXAlignment.Left
-	txt.TextColor3 = RGB(255, 255, 255)
-	txt.Parent = box
-	bb.Adornee = head
-	bb.Parent = mine
-	return bb, txt
-end
-
-local talkers = {} -- zone index -> { bb, txt }
-local talking = nil -- { zi, text, start, letters, until }
-local nextTalk, lastZone = 0, 0
-local function speak(zi, text)
-	local t = talkers[zi]
-	if not t then
-		return
-	end
-	if talking and talking.zi ~= zi and talkers[talking.zi] then
-		talkers[talking.zi].bb.Enabled = false
-		if talkers[talking.zi].sign then
-			talkers[talking.zi].sign.Enabled = true
-		end
-	end
-	t.txt.Text = text
-	t.txt.MaxVisibleGraphemes = 0
-	t.bb.Enabled = true
-	if t.sign then
-		t.sign.Enabled = false -- (the sign steps aside while it talks; the banner shows its multiplier)
-	end
-	talking = { zi = zi, start = os.clock(), letters = utf8.len(text) or #text, shown = 0, hideAt = math.huge }
-end
-local function findTalkers(lobby)
-	local yard = lobby:FindFirstChild("TrainingYard")
-	for zi = 1, #Config.Zones do
-		local d = yard and yard:FindFirstChild("Dummy" .. zi)
-		local head = d and d:FindFirstChild("Head", true)
-		if head then
-			local bb, txt = bubbleFor(head)
-			local anchor = yard:FindFirstChild("SignAnchor" .. zi)
-			talkers[zi] = { bb = bb, txt = txt, sign = anchor and anchor:FindFirstChild("ZoneSign") }
-		end
-	end
-end
-local function stepTalk(now)
-	local zi = player:GetAttribute("CurrentZone") or 0
-	local zone = Config.Zones[zi]
-	if zi ~= lastZone then
-		lastZone = zi
-		nextTalk = now + 0.4 -- (it notices you almost at once)
-	end
-	if zone and talkers[zi] and now >= nextTalk and not (talking and now < talking.hideAt) then
-		local line
-		local stats = player:FindFirstChild("leaderstats")
-		local lv = stats and stats:FindFirstChild("Level")
-		if lv and lv.Value < zone.level then
-			line = string.format(LOCKED[math.random(#LOCKED)], zone.level)
-		else
-			local list = TAUNTS[zone.id] or TAUNTS.Straw
-			line = list[math.random(#list)]
-		end
-		speak(zi, line)
-		nextTalk = now + 9 + math.random() * 6
-	end
-	if talking then
-		local t = talkers[talking.zi]
-		local want = math.min(talking.letters, math.floor((now - talking.start) * 30))
-		if want > talking.shown then
-			talking.shown = want
-			t.txt.MaxVisibleGraphemes = want
-			if want % 2 == 0 then
-				blip()
-			end
-			if want >= talking.letters then
-				t.txt.MaxVisibleGraphemes = -1
-				talking.hideAt = now + 3.5
-			end
-		end
-		if now > talking.hideAt or (zi ~= talking.zi) then
-			t.bb.Enabled = false
-			if t.sign then
-				t.sign.Enabled = true
-			end
-			talking = nil
-		end
-	end
-end
 ----------------------------------------------------------------------
 -- Go
 ----------------------------------------------------------------------
@@ -1374,9 +1209,6 @@ Workspace.ChildAdded:Connect(function(c)
 		task.spawn(dressArena, c)
 	end
 end)
-if W.DummyTalk ~= false then
-	task.spawn(findTalkers, lobby)
-end
 local spawnPad = lobby:FindFirstChild("LobbySpawn", true)
 if W.SaveStar ~= false and spawnPad and spawnPad:IsA("BasePart") then
 	buildStar(spawnPad.Position + V3(0, 7.5, 0))
@@ -1476,7 +1308,6 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
-	stepTalk(now)
 	if saying then
 		local want = math.min(saying.letters, math.floor((now - saying.started) * (R.TypeSpeed or 40)))
 		if want > saying.shown then
