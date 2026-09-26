@@ -5697,12 +5697,16 @@ local Extras = (function()
 	--   Slinger  straw with a green bandana, a sling and a hay bale on its back
 	--   Knight   iron armour, a visored helmet with red eyes and a big shield
 	--   Cursed   purple rags, glowing eyes, no stand: it floats, trailing embers
+	--   King     THE BOSS WAVE: a giant straw dummy with a gold crown, a red
+	--            royal cape with a white fur collar, a big fluffy beard and a
+	--            golden pitchfork for a sceptre
 	local LOOKS = {
 		Straw = { body = STRAW, dark = STRAW_DARK, wood = SPAR_WOOD, band = ROPE, mat = Mat.Fabric },
 		Brute = { body = RGB(115, 62, 57), dark = RGB(62, 39, 49), wood = RGB(62, 39, 49), band = RGB(90, 105, 136), mat = Mat.SmoothPlastic },
 		Slinger = { body = STRAW, dark = STRAW_DARK, wood = SPAR_WOOD, band = ROPE, mat = Mat.Fabric },
 		Knight = { body = RGB(139, 155, 180), dark = RGB(90, 105, 136), wood = RGB(58, 68, 102), band = RGB(254, 174, 52), mat = Mat.SmoothPlastic },
 		Cursed = { body = RGB(104, 56, 108), dark = RGB(62, 39, 49), wood = RGB(38, 43, 68), band = RGB(181, 80, 136), mat = Mat.SmoothPlastic },
+		King = { body = STRAW, dark = STRAW_DARK, wood = SPAR_WOOD, band = RGB(254, 174, 52), mat = Mat.Fabric },
 	}
 	local INK = RGB(24, 20, 37)
 
@@ -5811,6 +5815,56 @@ local Extras = (function()
 			glow.Range = 12
 			glow.Brightness = 1.2
 			glow.Parent = torso
+		elseif kind == "King" then
+			local GOLD_K = RGB(254, 174, 52)
+			local ROYAL = RGB(162, 38, 51)
+			local CREAM = RGB(234, 212, 170)
+			for _, sx in ipairs({ -1, 1 }) do
+				b("Mitt", V3(1.4, 1.4, 1.4), sx * 4.4, 6.4, -0.1, L.dark)
+				-- angry button eyes (they glow red when he gets angry) and cross brows
+				b("Eye", V3(0.5, 0.5, 0.2), sx * 0.6, 9.3, 1.35, INK, Mat.SmoothPlastic)
+				b("Brow", V3(0.9, 0.25, 0.2), sx * 0.6, 9.9, 1.36, INK, Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(sx * -20)))
+				-- the droopy ends of a big royal moustache
+				b("Moustache", V3(0.5, 0.9, 0.5), sx * 1.25, 8.25, 1.45, CREAM, Mat.SmoothPlastic)
+			end
+			b("Nose", V3(0.5, 0.5, 0.4), 0, 8.95, 1.45, L.dark, Mat.SmoothPlastic)
+			b("Moustache", V3(2.3, 0.5, 0.5), 0, 8.55, 1.45, CREAM, Mat.SmoothPlastic)
+			-- a big fluffy beard hanging off his chin, with a ragged end
+			b("Beard", V3(1.8, 1.6, 0.7), 0, 7.5, 1.55, CREAM, Mat.SmoothPlastic)
+			for k = -1, 1 do
+				b("BeardTip", V3(0.55, (k == 0) and 0.9 or 0.6, 0.5), k * 0.6, (k == 0) and 6.35 or 6.5, 1.6, CREAM, Mat.SmoothPlastic)
+			end
+			-- the crown: a gold band with points, a red cushion and gems
+			b("Crown", V3(3, 0.8, 3), 0, 10.6, 0, GOLD_K, Mat.SmoothPlastic)
+			b("CrownVelvet", V3(2.2, 0.8, 2.2), 0, 11, 0, ROYAL, Mat.SmoothPlastic)
+			for _, c in ipairs({ { -1.2, -1.2 }, { 1.2, -1.2 }, { -1.2, 1.2 }, { 1.2, 1.2 } }) do
+				b("CrownPoint", V3(0.55, 0.9, 0.55), c[1], 11.4, c[2], GOLD_K, Mat.SmoothPlastic)
+			end
+			for _, c in ipairs({ { 0, -1.2 }, { 0, 1.2 }, { -1.2, 0 }, { 1.2, 0 } }) do
+				b("CrownPoint", V3(0.55, 1.3, 0.55), c[1], 11.6, c[2], GOLD_K, Mat.SmoothPlastic)
+			end
+			b("CrownGem", V3(0.7, 0.5, 0.2), 0, 10.6, 1.55, RGB(228, 59, 68), Mat.SmoothPlastic)
+			for _, sx in ipairs({ -1, 1 }) do
+				b("CrownGem", V3(0.2, 0.5, 0.7), sx * 1.55, 10.6, 0, RGB(0, 153, 219), Mat.SmoothPlastic)
+			end
+			-- a gold medal on his chest (a diamond, where the others have a target)
+			b("Medal", V3(1.5, 1.5, 0.15), 0, 5.4, 1.38, GOLD_K, Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(45)))
+			b("MedalGem", V3(0.7, 0.7, 0.15), 0, 5.4, 1.48, RGB(228, 59, 68), Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(45)))
+			-- a red royal cape down his back, and a white fur collar with black spots
+			b("Cape", V3(4.6, 6.2, 0.3), 0, 4.9, -1.55, ROYAL, Mat.SmoothPlastic)
+			b("CapeTrim", V3(4.7, 0.4, 0.4), 0, 1.95, -1.55, GOLD_K, Mat.SmoothPlastic)
+			b("Collar", V3(4.8, 0.9, 3.2), 0, 7.75, 0, RGB(255, 255, 255), Mat.SmoothPlastic)
+			for k, x in ipairs({ -1.9, -1, 1, 1.9 }) do
+				b("CollarSpot", V3(0.3, 0.4, 0.1), x, (k % 2 == 0) and 7.65 or 7.85, 1.62, INK, Mat.SmoothPlastic)
+			end
+			-- his sceptre: a golden pitchfork, held upright in his right mitt
+			b("Sceptre", V3(0.35, 8.4, 0.35), 4.4, 5.8, -0.1, RGB(115, 62, 57), Mat.SmoothPlastic)
+			b("SceptreCollar", V3(0.7, 0.5, 0.7), 4.4, 10.1, -0.1, GOLD_K, Mat.SmoothPlastic)
+			b("SceptreBar", V3(2, 0.35, 0.35), 4.4, 10.5, -0.1, GOLD_K, Mat.SmoothPlastic)
+			for _, dx in ipairs({ -0.82, 0.82 }) do
+				b("SceptreTine", V3(0.3, 1.3, 0.3), 4.4 + dx, 11.2, -0.1, GOLD_K, Mat.SmoothPlastic)
+			end
+			b("SceptreTine", V3(0.3, 1.6, 0.3), 4.4, 11.35, -0.1, GOLD_K, Mat.SmoothPlastic)
 		end
 		local _ = head
 
@@ -6040,6 +6094,15 @@ local Extras = (function()
 				old:Destroy()
 			end
 			colosseumDummy(t.id, t.scale).Parent = ServerStorage
+		end
+		-- and the boss wave's Giant Straw King
+		local king = Config.Colosseum and Config.Colosseum.King
+		if king then
+			local old = ServerStorage:FindFirstChild("ColosseumDummy_King")
+			if old then
+				old:Destroy()
+			end
+			colosseumDummy("King", king.scale).Parent = ServerStorage
 		end
 	end
 

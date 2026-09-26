@@ -13,6 +13,10 @@
 	    own), and shows the wave and the quest at the top of the screen, with
 	    the rewards popping up as you beat dummies.
 
+	  * THE BOSS WAVE - the Giant Straw King's boss bar across the top of the
+	    screen, the BOSS WAVE banner, the ground shaking when he lands, and
+	    his sounds and music (his introduction and talking are in BossIntro).
+
 	The server decides everything (PlayerService / CombatService); this only
 	shows it and asks.
 ]]
@@ -617,7 +621,8 @@ local function popReward(xp, coins, at)
 end
 
 local function renderTracker(st)
-	waveLabel.Text = "WAVE " .. tostring(math.max(1, st.wave or 0))
+	waveLabel.Text = st.boss and "BOSS WAVE" or ("WAVE " .. tostring(math.max(1, st.wave or 0)))
+	waveLabel.TextColor3 = st.boss and RED or RGB(255, 255, 255)
 	local q, goal = st.quest or 0, st.goal or 10
 	questLabel.Text = "Defeat " .. goal .. " Dummies"
 	countLabel.Text = "(" .. q .. "/" .. goal .. ")"
@@ -784,6 +789,291 @@ local function pipeOut(backCF, backGround)
 	piping = false
 end
 
+----------------------------------------------------------------------
+-- The boss wave: the Giant Straw King
+----------------------------------------------------------------------
+-- Every few waves the King drops in on his own. This is your screen's side:
+--   * his boss bar across the top: name, level and health in chunky 8-bit
+--     segments, with a pale chunk showing what your last hits knocked off
+--   * the ground shaking when he lands (through CombatClient's camera kick,
+--     so only one script ever moves the camera)
+--   * his sounds and his fight's music, played by name from SoundService
+--     (Config.Colosseum.King.Sounds and .Music) - the lobby's music steps
+--     aside while his plays
+-- (His introduction and his talking are in BossIntro.)
+local KingHud = {}
+do
+	local K = Config.Colosseum.King or {}
+	local SoundService = game:GetService("SoundService")
+	local TITLE_FACE = nil
+	pcall(function()
+		TITLE_FACE = Font.new("rbxasset://fonts/families/PressStart2P.json")
+	end)
+	local DARK = RGB(24, 20, 37)
+
+	-- a Sound in SoundService: the first on the list that's there (capitals
+	-- and spaces don't matter, so "Boss Slam" and "bossslam" are the same)
+	local function squash(name)
+		return string.lower((string.gsub(tostring(name), "%s+", "")))
+	end
+	local function findSound(names)
+		if type(names) == "string" then
+			names = { names }
+		end
+		for _, name in ipairs(names or {}) do
+			local key = squash(name)
+			for _, child in ipairs(SoundService:GetChildren()) do
+				if child:IsA("Sound") and squash(child.Name) == key then
+					return child
+				end
+			end
+		end
+		return nil
+	end
+	local function group(name, volume)
+		local g = SoundService:FindFirstChild(name)
+		if not (g and g:IsA("SoundGroup")) then
+			g = Instance.new("SoundGroup")
+			g.Name = name
+			g.Volume = volume or 1
+			g.Parent = SoundService
+		end
+		return g
+	end
+
+	-- one of his sounds, played flat (the same wherever you stand)
+	function KingHud.play(key, volume)
+		local template = findSound(K.Sounds and K.Sounds[key])
+		if not template then
+			return
+		end
+		local snd = template:Clone()
+		snd.Looped = false
+		snd.Volume = template.Volume * (volume or 1) * ((Config.Audio and Config.Audio.BossSounds) or 0.85)
+		snd.SoundGroup = group("Effects", (Config.Audio and Config.Audio.Effects) or 1)
+		snd.Parent = SoundService
+		snd:Play()
+		task.delay(8, function()
+			snd:Destroy()
+		end)
+	end
+
+	-- the ground shaking (smaller the further away it happens)
+	function KingHud.shake(strength, at)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root and typeof(at) == "Vector3" then
+			strength = strength * math.clamp(1.15 - (root.Position - at).Magnitude / 120, 0.25, 1)
+		end
+		local scripts = player:FindFirstChild("PlayerScripts")
+		local kick = scripts and scripts:FindFirstChild("CombatCameraKick")
+		if kick and kick:IsA("BindableEvent") then
+			kick:Fire(strength)
+		end
+	end
+
+	-- THE BOSS BAR (styled here in the game's 8-bit look, so RetroUI leaves it be)
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ColosseumBossBar"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 6
+	gui.Enabled = false
+	gui:SetAttribute("RetroSkip", true)
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local holder = Instance.new("Frame")
+	holder.AnchorPoint = Vector2.new(0.5, 0)
+	holder.Position = UDim2.new(0.5, 0, 0, 58)
+	holder.Size = UDim2.new(0.5, 0, 0, 46)
+	holder.BackgroundTransparency = 1
+	holder.Parent = gui
+	local limit = Instance.new("UISizeConstraint")
+	limit.MinSize = Vector2.new(300, 46)
+	limit.MaxSize = Vector2.new(720, 46)
+	limit.Parent = holder
+	local pop = Instance.new("UIScale")
+	pop.Parent = holder
+
+	local function pixelText(str, size, pos, color, align)
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Size = size
+		l.Position = pos
+		l.Font = Enum.Font.Arcade
+		if TITLE_FACE then
+			pcall(function()
+				l.FontFace = TITLE_FACE
+			end)
+		end
+		l.Text = str
+		l.TextColor3 = color
+		l.TextScaled = true
+		l.TextXAlignment = align or Enum.TextXAlignment.Left
+		l.TextStrokeColor3 = DARK
+		l.TextStrokeTransparency = 0
+		l.Parent = holder
+		return l
+	end
+	local nameLabel = pixelText(string.upper(K.name or "Giant Straw King"), UDim2.new(0.72, 0, 0, 17), UDim2.new(0, 0, 0, 0), GOLD)
+	local levelLabel = pixelText("", UDim2.new(0.28, 0, 0, 13), UDim2.new(0.72, 0, 0, 3), RGB(255, 255, 255), Enum.TextXAlignment.Right)
+
+	local back = Instance.new("Frame")
+	back.Position = UDim2.new(0, 0, 0, 24)
+	back.Size = UDim2.new(1, 0, 0, 18)
+	back.BackgroundColor3 = DARK
+	back.BorderSizePixel = 0
+	back.Parent = holder
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 3
+	edge.LineJoinMode = Enum.LineJoinMode.Miter
+	edge.Parent = back
+	local chip = Instance.new("Frame") -- (the pale chunk your last hits knocked off)
+	chip.BackgroundColor3 = RGB(254, 231, 97)
+	chip.BorderSizePixel = 0
+	chip.Size = UDim2.fromScale(1, 1)
+	chip.ZIndex = 1
+	chip.Parent = back
+	local fill = Instance.new("Frame")
+	fill.BackgroundColor3 = RED
+	fill.BorderSizePixel = 0
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.ZIndex = 2
+	fill.Parent = back
+	local shine = Instance.new("Frame") -- (a lighter stripe along the top: pixel shading)
+	shine.BackgroundColor3 = RGB(246, 117, 122)
+	shine.BorderSizePixel = 0
+	shine.Size = UDim2.new(1, 0, 0, 4)
+	shine.ZIndex = 2
+	shine.Parent = fill
+	for i = 1, 19 do -- (split into 20 chunky segments)
+		local tick = Instance.new("Frame")
+		tick.BackgroundColor3 = DARK
+		tick.BorderSizePixel = 0
+		tick.AnchorPoint = Vector2.new(0.5, 0)
+		tick.Position = UDim2.fromScale(i / 20, 0)
+		tick.Size = UDim2.new(0, 2, 1, 0)
+		tick.ZIndex = 3
+		tick.Parent = back
+	end
+
+	local king = nil -- your King, while he's on the sand
+	local shown, chipShare, chipHold = 1, 1, 0
+	local goneAt = nil
+	local function healthShare(m)
+		if not m.Parent then
+			return 0
+		end
+		return math.clamp((m:GetAttribute("Health") or 0) / math.max(m:GetAttribute("MaxHealth") or 1, 1), 0, 1)
+	end
+	local function track(m)
+		king = m
+		goneAt = nil
+		shown = healthShare(m)
+		chipShare = shown
+		levelLabel.Text = "LV " .. tostring(m:GetAttribute("Level") or "?")
+		nameLabel.TextColor3 = GOLD
+		gui.Enabled = true
+		-- (the bar pops in)
+		task.spawn(function()
+			for k = 0, 6 do
+				pop.Scale = 0.7 + 0.3 * (k / 6) + math.sin(k / 6 * math.pi) * 0.08
+				task.wait(1 / 30)
+			end
+			pop.Scale = 1
+		end)
+	end
+	local function consider(m)
+		if m:IsA("Model") and m:GetAttribute("Kind") == "King" and m:GetAttribute("Owner") == player.UserId then
+			track(m)
+		end
+	end
+	task.spawn(function()
+		local folder = workspace:WaitForChild("ColosseumEnemies", 60)
+		if folder then
+			for _, m in ipairs(folder:GetChildren()) do
+				consider(m)
+			end
+			folder.ChildAdded:Connect(consider)
+		end
+	end)
+
+	-- HIS MUSIC (a SoundGroup of its own, so turning the lobby's down leaves it be)
+	local music, musicLevel, ducked = nil, 0, false
+	local musicGroup = group("KingMusic", (Config.Audio and Config.Audio.Music) or 1)
+
+	RunService.RenderStepped:Connect(function(dt)
+		local now = os.clock()
+		local m = king
+		local fighting = false
+		if m then
+			local share = healthShare(m)
+			local state = m:GetAttribute("State")
+			fighting = m.Parent ~= nil and share > 0 and (state == "Waking" or state == "Fighting")
+			if share < shown - 1e-4 then
+				chipHold = now + 0.5 -- (the pale chunk waits a moment, then drains)
+			end
+			shown = share
+			if now > chipHold then
+				chipShare = math.max(share, chipShare - 0.8 * dt)
+			end
+			chipShare = math.max(chipShare, share)
+			fill.Size = UDim2.fromScale(shown, 1)
+			chip.Size = UDim2.fromScale(chipShare, 1)
+			-- angry: the bar throbs a deeper red, and his name turns red
+			if m:GetAttribute("Phase") == 2 then
+				local beat = (math.floor(now * 4) % 2 == 0)
+				fill.BackgroundColor3 = beat and RGB(255, 0, 68) or RGB(162, 38, 51)
+				nameLabel.TextColor3 = RED
+			else
+				fill.BackgroundColor3 = RED
+			end
+			-- beaten (or gone): the bar stays a moment, empty, then goes
+			if share <= 0 or not m.Parent then
+				goneAt = goneAt or now
+				if now - goneAt > 2 then
+					king = nil
+					gui.Enabled = false
+				end
+			end
+		end
+
+		-- the music: in over about a second, out over about two
+		if fighting and not music then
+			local template = findSound(K.Music)
+			if template then
+				music = template:Clone()
+				music.Name = "KingMusicPlaying"
+				music.Looped = true
+				music.Volume = 0
+				music.SoundGroup = musicGroup
+				music.Parent = SoundService
+				music:Play()
+			end
+		end
+		musicLevel = musicLevel + ((fighting and 1 or 0) - musicLevel) * math.min(1, dt * (fighting and 1.5 or 1.8))
+		if music then
+			music.Volume = (K.MusicVolume or 0.6) * musicLevel
+			if not fighting and musicLevel < 0.02 then
+				music:Destroy()
+				music = nil
+			end
+		end
+		-- the lobby's music (the "Music" SoundGroup) fades out under his
+		local lobby = SoundService:FindFirstChild("Music")
+		if lobby and lobby:IsA("SoundGroup") then
+			local full = (Config.Audio and Config.Audio.Music) or 1
+			if music then
+				lobby.Volume = full * (1 - musicLevel)
+				ducked = true
+			elseif ducked then
+				lobby.Volume = full
+				ducked = false
+			end
+		end
+	end)
+end
+
+local kingBannerUntil = 0 -- (while "THE STRAW KING FALLS!" is up, WAVE CLEARED waits its turn)
 ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b, c)
 	if kind == "PipeIn" then
 		task.spawn(pipeIn, a, b, c)
@@ -798,10 +1088,40 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 	elseif kind == "Kill" then
 		popReward(a, b, c)
 	elseif kind == "WaveClear" then
-		showBanner("WAVE " .. tostring(a) .. " CLEARED!", GOLD, 1.8)
-		task.spawn(confetti)
+		if os.clock() > kingBannerUntil then
+			showBanner("WAVE " .. tostring(a) .. " CLEARED!", GOLD, 1.8)
+			task.spawn(confetti)
+		end
 	elseif kind == "QuestDone" then
-		showBanner("QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins", GREEN, 2.6)
+		-- (if the King's banner is up, this one comes straight after it)
+		local text = "QUEST COMPLETE!  +" .. Config.format(a) .. " XP  +" .. Config.format(b) .. " coins"
+		local later = kingBannerUntil - os.clock()
+		if later > 0 then
+			task.delay(later, showBanner, text, GREEN, 2.6)
+		else
+			showBanner(text, GREEN, 2.6)
+		end
+	elseif kind == "BossWave" then
+		-- THE BOSS WAVE: a horn, and a big red banner
+		showBanner("BOSS WAVE!", RED, 1.8)
+		KingHud.play("Horn")
+	elseif kind == "KingFx" then
+		-- one of his sounds, and (for his landings and roars) the ground shaking
+		if a == "Step" then
+			KingHud.play("Land", 0.35)
+		else
+			KingHud.play(a)
+		end
+		if type(c) == "number" then
+			KingHud.shake(c * 1.6, b)
+		end
+	elseif kind == "KingRage" then
+		showBanner("THE KING IS FURIOUS!", RED, 2)
+	elseif kind == "KingDown" then
+		kingBannerUntil = os.clock() + 3
+		showBanner("THE STRAW KING FALLS!  +" .. Config.format(a or 0) .. " XP  +" .. Config.format(b or 0) .. " coins", GOLD, 3)
+		KingHud.play("Victory", 0.8)
+		task.spawn(confetti)
 	end
 end)
 

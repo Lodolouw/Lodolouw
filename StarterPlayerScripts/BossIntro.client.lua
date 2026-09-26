@@ -12,6 +12,10 @@
 	3) THE BOSSES TALK - an Undertale-style box under the boss bar with the
 	   boss's portrait: it greets you, mocks you, gloats, and has last words.
 
+	4) THE COLOSSEUM'S BOSS WAVE - the Giant Straw King gets the same VS
+	   splash (the first time you meet him each visit) and talks the same way
+	   (he also shouts for his minions when he summons them).
+
 	Only on your own screen. Config.Retro.Intro = false turns the splash off,
 	Config.Retro.BossTalk = false the talking.
 ]]
@@ -149,6 +153,24 @@ local PORTRAITS = {
 			"DSS.DDD..DDDDD",
 		},
 		ink = { S = RGB(228, 166, 114), D = RGB(184, 111, 80), K = RGB(62, 39, 49), W = RGB(255, 255, 255) },
+	},
+	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
+	["Straw King"] = {
+		rows = {
+			"..Y..Y..Y..Y..",
+			"..YYYYYYYYYY..",
+			"..YRYYYYYYRY..",
+			".SSSSSSSSSSSS.",
+			".SKKKSSSSKKKS.",
+			".SSKKSSSSKKSS.",
+			".SSSSSDDSSSSS.",
+			".SWWWWWWWWWWS.",
+			".SWWSSSSSSWWS.",
+			"..SWWWWWWWWS..",
+			"...WWWWWWWW...",
+			"....WW.WW.WW..",
+		},
+		ink = { Y = RGB(254, 174, 52), R = RGB(228, 59, 68), S = RGB(228, 166, 114), K = RGB(24, 20, 37), D = RGB(184, 111, 80), W = RGB(234, 212, 170) },
 	},
 }
 
@@ -352,6 +374,27 @@ local LINES = {
 		win = { "* Another bone for the dunes.", "* The sands keep you now." },
 		lose = { "* The dunes... fall... silent...", "* So even the desert... can be conquered..." },
 	},
+	-- the Giant Straw King: loud, vain and very proud of his beard
+	["Straw King"] = {
+		wake = {
+			"* HALT! You stand before the GIANT STRAW KING!",
+			"* You beat my subjects? Then face their KING!",
+			"* Kneel, little farmer. Your king has ARRIVED.",
+		},
+		idle = {
+			"* Behold my magnificent beard. Hand-stuffed.",
+			"* I was the scarecrow of this field. Now I RULE it.",
+			"* The crows fear me. The crowd ADORES me.",
+			"* My crown is solid gold. Well. Gold-coloured straw.",
+			"* Punch me all you like. I'm made of hay!",
+			"* Long live the Straw King! ...that's me, by the way.",
+		},
+		hit = { "* HA! Royal decree: OUCH, for you.", "* Bow! ...oh, you fell over. Close enough.", "* Did that sting? Kings hit HARD." },
+		summon = { "* RISE, my loyal minions!", "* Guards! GUARDS! Seize this peasant!", "* My subjects! Your king commands you!" },
+		phase2 = { "* You... you RUFFLED my STRAW?! Now I'm ANGRY!", "* ENOUGH! Feel the fury of the harvest!" },
+		win = { "* Another peasant for the compost heap!", "* Long live the King! Long live the HAY!" },
+		lose = { "* The King... falls... tell the crows... I was magnificent...", "* My kingdom... for a needle and thread..." },
+	},
 }
 
 local talkGui, talkBox, talkText, talkPortrait
@@ -492,3 +535,104 @@ if player.Character then
 	task.spawn(watchMyHealth, player.Character)
 end
 player.CharacterAdded:Connect(watchMyHealth)
+
+----------------------------------------------------------------------
+-- 4) THE COLOSSEUM'S BOSS WAVE: the Giant Straw King
+----------------------------------------------------------------------
+-- He isn't a Spire boss, so he's found differently: he's YOUR dummy
+-- (Owner) of Kind "King" in workspace.ColosseumEnemies. His State and Phase
+-- work like a Spire boss's, so the VS splash and the talking are the same.
+do
+	local KC = (Config.Colosseum and Config.Colosseum.King) or {}
+	-- the name of the first Sound on the list that's in SoundService
+	-- (capitals and spaces don't matter)
+	local function squash(name)
+		return string.lower((string.gsub(tostring(name), "%s+", "")))
+	end
+	local function firstSound(names)
+		for _, name in ipairs(names or {}) do
+			for _, sfx in ipairs(SoundService:GetChildren()) do
+				if sfx:IsA("Sound") and squash(sfx.Name) == squash(name) then
+					return sfx.Name
+				end
+			end
+		end
+		return nil
+	end
+	local kingDef = {
+		Name = (KC.name or "Giant Straw King") .. ", Lord of the Colosseum",
+		Short = "Straw King",
+		Color = RGB(254, 174, 52),
+		Sounds = {},
+	}
+	local metHim = false -- (the full splash only the first time each visit)
+	local function watchKing(model)
+		if not (model:IsA("Model") and model:GetAttribute("Kind") == "King" and model:GetAttribute("Owner") == player.UserId) then
+			return
+		end
+		model:GetAttributeChangedSignal("State"):Connect(function()
+			local st = model:GetAttribute("State")
+			if st == "Waking" then
+				current = { model = model, short = kingDef.Short }
+				nextIdle = os.clock() + 14
+				if not metHim then
+					metHim = true
+					kingDef.Sounds.Wake = firstSound(KC.Sounds and KC.Sounds.Roar) -- (his roar stamps the VS)
+					task.spawn(function()
+						local ok, err = pcall(playIntro, kingDef)
+						if not ok then
+							-- (never leave the screen dimmed if something went wrong)
+							warn("[BossIntro] " .. tostring(err))
+							local left = playerGui:FindFirstChild("BossIntro")
+							if left then
+								left:Destroy()
+							end
+							playing = false
+						end
+					end)
+					task.delay(2.6, say, kingDef.Short, "wake") -- (just after the VS splash)
+				else
+					task.delay(0.4, say, kingDef.Short, "wake")
+				end
+			elseif st == "Dead" then
+				say(kingDef.Short, "lose")
+				if current and current.model == model then
+					current = nil
+				end
+			end
+		end)
+		model:GetAttributeChangedSignal("Phase"):Connect(function()
+			if model:GetAttribute("Phase") == 2 then
+				say(kingDef.Short, "phase2")
+				nextIdle = os.clock() + 12
+			end
+		end)
+		model:GetAttributeChangedSignal("Move"):Connect(function()
+			if model:GetAttribute("Move") == "Summon" and not speaking then
+				say(kingDef.Short, "summon")
+				nextIdle = os.clock() + 10
+			end
+		end)
+		-- gone (you left, or fell): he stops talking
+		model.AncestryChanged:Connect(function()
+			if not model:IsDescendantOf(workspace) and current and current.model == model then
+				current = nil
+			end
+		end)
+	end
+	-- (a new visit to the Colosseum: he gets his big entrance again)
+	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
+		if not player:GetAttribute("Colosseum") then
+			metHim = false
+		end
+	end)
+	task.spawn(function()
+		local folder = workspace:WaitForChild("ColosseumEnemies", 60)
+		if folder then
+			for _, m in ipairs(folder:GetChildren()) do
+				watchKing(m)
+			end
+			folder.ChildAdded:Connect(watchKing)
+		end
+	end)
+end

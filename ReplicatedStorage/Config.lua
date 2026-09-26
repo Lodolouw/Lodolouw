@@ -99,6 +99,91 @@ Config.Colosseum = {
 	-- and slams after a shorter wind-up than usual
 	Blink = { Tell = 0.5, Behind = 6, SlamTell = 0.45 },
 
+	-- THE BOSS WAVE: every `Every` waves (5, 10, 15...) the GIANT STRAW KING
+	-- drops in on his own, with a boss bar across the top of the screen. He
+	-- can't be hurt while he makes his entrance (IntroTime). Every attack
+	-- shows a red warning first, so a careful player can dodge them all.
+	-- `health` and `reward` multiply a straw dummy's, like the kinds above.
+	King = {
+		Every = 5,
+		name = "Giant Straw King",
+		health = 10, -- about 40 punches at your level (without gear)
+		reward = 15, -- pays as much as 15 straw dummies (and counts as 1 for the quest)
+		scale = 2.3, -- how big he's built (a straw dummy is 1)
+		IntroTime = 2.8, -- seconds he stands and shows off before the fight starts
+		Rest = { 0.45, 1 }, -- the pause between his moves
+		HopReach = 18, -- his hops are long...
+		HopTime = 0.8, -- ...slow...
+		HopHeight = 9, -- ...and high
+		SlamRange = 11, -- when you're this close he slams: a red ring this wide round him...
+		SlamTell = 0.8, -- ...that shows for this long before he comes down...
+		SlamDamage = 0.18, -- ...and takes this share of your max health if you're in it
+		-- GROUND POUND: a red ring marks where you're standing, he crouches
+		-- (Tell), leaps (Air seconds) and crashes down in it. A SHOCKWAVE then
+		-- rolls out across the sand: jump over it or roll through it.
+		Pound = {
+			Range = { 0, 90 }, -- used when you're between these distances from him
+			Tell = 0.6,
+			Air = 0.95,
+			Height = 34, -- how high he leaps
+			Radius = 9, -- the ring he lands in
+			Damage = 0.2,
+			Stuck = 0.8, -- he's stuck a moment after landing: hit him!
+			WaveDelay = 0.35, -- a beat after he lands, the shockwave bursts out...
+			WaveSpeed = 24, -- ...and rolls out this many studs a second
+			WaveReach = 70, -- how far it goes
+			WaveHeight = 2.2, -- how tall it is (jump higher than this)
+			WaveDamage = 0.14,
+			Cooldown = { 5, 8 },
+		},
+		-- SUMMON: he raises his arms and calls straw minions down from the
+		-- sky round you. He always does it when his health drops past each
+		-- share in `At`, and every so often (Cooldown) as well.
+		Summon = {
+			Count = 3, -- minions each time...
+			Max = 4, -- ...but never more than this on the sand at once
+			Tell = 1.1,
+			At = { 0.75, 0.4 },
+			Cooldown = { 16, 22 },
+			health = 0.5, -- a minion takes half a straw dummy's punches...
+			reward = 0.4, -- ...and pays a little less than one
+		},
+		-- WHIRLWIND: a red circle shows round him (Tell), then he spins and
+		-- straw whips round the whole circle for `Time` seconds. Get out -
+		-- or roll out - before it starts. When he's angry it chases you.
+		Spin = {
+			Range = 15, -- used when you're this close
+			Radius = 14, -- the circle
+			Tell = 1,
+			Time = 1.4,
+			Turns = 4,
+			Damage = 0.16,
+			Chase = 11, -- studs a second it follows you (only when he's angry)
+			Dizzy = 0.8, -- he wobbles, dizzy, afterwards: hit him!
+			Cooldown = { 4, 7 },
+		},
+		Rage = 0.5, -- below this share of his health he gets ANGRY:
+		RageSpeed = 0.75, -- he moves faster (his waits and hops take this much time)...
+		RageWaves = 2, -- ...his ground pound sends this many shockwaves, and his whirlwind chases you
+		RageGap = 0.5, -- (seconds between the shockwaves)
+		WaveBreak = 4.5, -- after he falls, a longer pause before the next wave
+
+		-- His sounds and music: names of Sounds in SoundService (capitals and
+		-- spaces don't matter). He uses the first one on each list that's
+		-- there, so he borrows the Spire bosses' sounds until you add his own.
+		Sounds = {
+			Horn = { "Boss Wave Horn" }, -- when the BOSS WAVE banner comes up
+			Land = { "Straw King Land", "Boss Slam" }, -- landing from a leap
+			Roar = { "Straw King Roar", "Boss Wake" }, -- his entrance, and when he gets angry
+			Spin = { "Straw King Spin", "Boss Wave" }, -- the whirlwind
+			Summon = { "Straw King Summon", "Boss Wail" }, -- calling his minions
+			Death = { "Straw King Death", "Boss Death" },
+			Victory = { "Victory Is Ours (a) Sting" }, -- you beat him
+		},
+		Music = { "Straw King Song", "Slime boss song" }, -- plays during his fight
+		MusicVolume = 0.6,
+	},
+
 	-- rewards, worked out from how much Power your level needs to reach the next
 	KillPower = 0.012, -- each dummy: this share of the Power between your level and the next
 	KillCoins = { 4, 1 }, -- each dummy: 4 coins + 1 per level

@@ -122,7 +122,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 ## The repository
 
 - **Repo:** `https://github.com/Lodolouw/Lodolouw`
-- **Branch:** `claude/nice-cori-7kss8b`. Keep working on this branch and push to it.
+- **Branch:** `claude/funny-mccarthy-s0do05` (it carries on from the older `claude/nice-cori-7kss8b`). Keep working on this branch and push to it.
 - **Do NOT open pull requests.**
 - **Every commit message ends with these two lines:**
   ```
@@ -154,6 +154,8 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`, `RollDebug`.
 
 **Docs/**: preview images.
+
+**Tools/HeadlessTests/**: NOT for Studio. A pretend Roblox (`rbxmock.luau`) that runs the real scripts headlessly: a full Colosseum run with the King fight, the King's screen side, and the dummy builder. Run `./run_all.sh` (needs the Luau tools). See its README.
 
 ### How I install your changes (important — I'm not a programmer)
 
@@ -231,6 +233,18 @@ Defined in `Config.Colosseum.Types`. Templates are built by LobbyBuilder into Se
 - **Health bars:** `BarHeight` is set per dummy from its bounding box. CombatClient shows the full name and numbers only for the focused target (locked on, or nearest the screen centre); others show a small bar.
 - **Spacing:** push-apart spacing scales with dummy size.
 
+### The boss wave: the Giant Straw King ✅
+Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his numbers are in `Config.Colosseum.King`.
+- **The look:** LobbyBuilder builds `ColosseumDummy_King` (scale 2.3): a giant straw dummy with a gold crown, a red cape with a white fur collar, a big cream beard and moustache, a gold medal and a golden pitchfork. Preview: `Docs/straw_king.png`.
+- **His entrance:** a huge shadow, he crashes down away from you (a harmless show shockwave), then stands roaring for `IntroTime` (Invulnerable, State "Waking") while BossIntro plays the VS splash (first meeting each visit) and he talks. Then State "Fighting".
+- **His moves** (`kingBrain` in ColosseumService, each with a red warning): big hops; a royal slam (red ring, `SlamRange`); the **ground pound** (red ring where you stand, he leaps and lands in it, then after `WaveDelay` a **shockwave** of red/gold blocks rolls out at `WaveSpeed`: the server hurts you only if your root is less than 60% of its height above your standing height, so jumping clears it; rolling works too; anyone inside the landing ring isn't hit twice); the **whirlwind** (red disc, then straw whips round it; get out); **summon** (3 "Straw Minion" straw dummies, max 4, at 75%/40% health and on a cooldown). Preview: `Docs/straw_king_moves.png`.
+- **Rage** at 50%: Phase 2, red glowing eyes, faster, 2 shockwaves per pound, the whirlwind chases you.
+- **Reward:** 15× a straw dummy's Power and coins; counts as 1 quest kill. His minions crumble when he dies (no reward). A longer break (`WaveBreak` 4.5s) follows.
+- **Code:** `spawnDummy(s, kind, spot, level, opts)` now makes EVERY dummy (waves, the King, minions). The King has attributes Kind="King", NoBar, Boss (never out of sight for lock-on), State, Phase, Move. His hit shape (`CombatService.SetTargetShape`) makes him punchable from the sand up to his head; it's cleared when he dies or the session ends.
+- **Screen:** LobbyActivities has the King's boss bar (`ColosseumBossBar`, 8-bit, RetroSkip), the BOSS WAVE / THE KING IS FURIOUS! / THE STRAW KING FALLS! banners, camera shakes through CombatClient's `CombatCameraKick` BindableEvent, his sounds and music (the "Music" SoundGroup is faded down while his plays, in its own "KingMusic" group). BossIntro has his portrait and lines. Preview: `Docs/straw_king_screen.png`.
+- **Sounds (by name in SoundService, first one found is used):** Horn "Boss Wave Horn"; Land "Straw King Land" or "Boss Slam"; Roar "Straw King Roar" or "Boss Wake"; Spin "Straw King Spin" or "Boss Wave"; Summon "Straw King Summon" or "Boss Wail"; Death "Straw King Death" or "Boss Death"; Victory "Victory Is Ours (a) Sting"; Music "Straw King Song" or "Slime boss song".
+- In the headless tests a fight takes about 50-65 seconds for a player at his level with no gear.
+
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
 - The gap behind the stands is filled (`StandFill` parts).
@@ -289,14 +303,14 @@ I asked for a full client-exploit audit: remote abuse, economy duplication, tele
 The Colosseum polish plan was:
 1. enemy types ✅
 2. difficulty board
-3. boss wave
+3. boss wave ✅ (the Giant Straw King, see above)
 4. streaks
 5. juice
 6. reward feel
 
 The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
-1. **Boss wave every 5 waves: the Giant Straw King.** A big straw dummy with a crown, a boss HP bar, and a few telegraphed attacks (for example a ground-pound shockwave ring, summoning straw minions, a spinning sweep). It gives a big reward.
+1. ~~**Boss wave every 5 waves: the Giant Straw King.**~~ ✅ Done (see "The boss wave" above).
 2. **Kill streaks and best wave:**
    - A streak counter for kills without getting hit ("x5 STREAK!") with a reward multiplier.
    - Save each player's best wave in their data, and show it in the HUD.
@@ -318,7 +332,7 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 ## Testing tips
 
 - Before pushing, compile-check every changed file with a Luau compiler (`luau-compile`) and run `luau-analyze`.
-- Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before.
+- Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before. They're now in `Tools/HeadlessTests/` (`./run_all.sh`); add new tests there.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`, then continue with step 1 of "What to do next".
+Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`, then continue with step 2 of "What to do next" (kill streaks and best wave).
