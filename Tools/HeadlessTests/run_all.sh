@@ -16,7 +16,7 @@ run() {
 	fi
 }
 for seed in 1 2 3 4 5 6; do run test_colosseum.luau -a full $seed; done
-for sc in leave die oldbuilder kite kitejump; do run test_colosseum.luau -a $sc 3; done
+for sc in clearleave leave die oldbuilder kite kitejump; do run test_colosseum.luau -a $sc 3; done
 run test_client.luau
 run test_builder.luau
 echo "$fails failed"

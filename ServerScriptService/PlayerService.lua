@@ -81,6 +81,10 @@ local function defaultData()
 		-- each one how far along you are and whether you've handed it in
 		-- (three are offered each day; `pick` is the one you chose, 1-3)
 		Quests = { day = 0, list = {}, pick = nil },
+		-- the Colosseum's 5-wave runs: how many you've cleared, your fastest
+		-- clear (seconds; nil until you've cleared one), and the day you last
+		-- got the first-clear-of-the-day bonus
+		Colosseum = { clears = 0, best = nil, bonusDay = 0 },
 	}
 end
 
@@ -189,6 +193,19 @@ local function mergeSaved(saved)
 	end
 	if oldPrestige > 0 then
 		d.Chests["1"] = (d.Chests["1"] or 0) + math.min(oldPrestige, 100)
+	end
+	-- the Colosseum's runs: only sensible numbers
+	if type(saved.Colosseum) == "table" then
+		local c = saved.Colosseum
+		if type(c.clears) == "number" and c.clears > 0 then
+			d.Colosseum.clears = math.floor(c.clears)
+		end
+		if type(c.best) == "number" and c.best > 0 then
+			d.Colosseum.best = c.best
+		end
+		if type(c.bonusDay) == "number" then
+			d.Colosseum.bonusDay = math.floor(c.bonusDay)
+		end
 	end
 	-- stat points: only real stats, and never more than you've earned
 	if type(saved.Stats) == "table" then
@@ -537,6 +554,39 @@ function PlayerService.AddChest(player, floorId, count)
 	local key = tostring(floorId)
 	d.Chests[key] = (d.Chests[key] or 0) + (count or 1)
 	markDirty(player)
+end
+
+-- A Colosseum run was cleared in `seconds` (worked out by the server).
+-- Counts it, keeps the fastest time, and says whether it was the first clear
+-- today (ColosseumService pays a bonus for that). Returns
+-- { clears, best, newBest, firstToday }, or nil if the player has no data.
+function PlayerService.RecordColosseumClear(player, seconds)
+	local profile = profiles[player]
+	if not profile then
+		return nil
+	end
+	local c = profile.data.Colosseum
+	c.clears = c.clears + 1
+	local newBest = seconds > 0 and (c.best == nil or seconds < c.best)
+	if newBest then
+		c.best = seconds
+	end
+	local today = Config.questDay()
+	local firstToday = c.bonusDay ~= today
+	if firstToday then
+		c.bonusDay = today
+	end
+	markDirty(player)
+	return { clears = c.clears, best = c.best, newBest = newBest, firstToday = firstToday }
+end
+
+-- Lets another service add an action the client can ask for through the
+-- Action RemoteFunction (so it gets the same request budget and argument
+-- checks as everything else). handler(player, data, arg) -> ok, message
+function PlayerService.AddAction(name, handler)
+	if type(name) == "string" and type(handler) == "function" then
+		handlers[name] = handler
+	end
 end
 
 function PlayerService.AddPower(player, amount)

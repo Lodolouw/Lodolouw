@@ -282,6 +282,15 @@ function CombatService.Shove(player, velocity)
 	end
 end
 
+-- Fills a fighter's flasks back up (a Colosseum run starting over: a fresh start)
+function CombatService.RefillFlasks(player)
+	local st = fighters[player]
+	if st then
+		st.flasks = CC.Flasks
+		pushState(player, st)
+	end
+end
+
 -- Whether this player is in an arena, alive, and able to be hit right now.
 function CombatService.IsFighting(player)
 	return fighters[player] ~= nil and charParts(player) ~= nil

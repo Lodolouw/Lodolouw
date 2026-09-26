@@ -177,7 +177,7 @@ end
 -- PlayerService, pretend
 local Players2 = {}
 function Players2.GetData()
-	return { Power = Config.powerForLevel(LEVEL) }
+	return { Power = Config.powerForLevel(LEVEL), Colosseum = colData }
 end
 function Players2.AddPower(_, n)
 	assert(n == n and n > 0, "bad power " .. tostring(n))
@@ -188,6 +188,22 @@ function Players2.AddCoins(_, n)
 	stats.coins += n
 end
 function Players2.QuestProgress() end
+-- (the real PlayerService's run records and actions, pretend)
+local colData = { clears = 0, best = nil, bonusDay = 0 }
+local actions = {}
+function Players2.AddAction(name, fn)
+	actions[name] = fn
+end
+function Players2.RecordColosseumClear(_, seconds)
+	assert(type(seconds) == "number" and seconds > 0 and seconds == seconds, "bad clear time " .. tostring(seconds))
+	colData.clears += 1
+	local newBest = colData.best == nil or seconds < colData.best
+	if newBest then
+		colData.best = seconds
+	end
+	local first = colData.clears == 1
+	return { clears = colData.clears, best = colData.best, newBest = newBest, firstToday = first }
+end
 
 -- what the server tells the player's screen
 local lastState = nil
@@ -207,6 +223,10 @@ M.onFireClient = function(remote, p, kind, a, b, c)
 		end)
 	elseif kind == "Wave" or kind == "BossWave" then
 		stats.maxWave = math.max(stats.maxWave, a)
+		stats.waveEvents = (stats.waveEvents or 0) + 1
+		if stats.runClears and a == 1 then
+			stats.secondRun = true
+		end
 		if kind == "BossWave" then
 			table.insert(stats.bossWaves, a)
 		end
@@ -223,6 +243,19 @@ M.onFireClient = function(remote, p, kind, a, b, c)
 		stats.kingReward = { a, b }
 	elseif kind == "WaveClear" then
 		stats.waveClears += 1
+	elseif kind == "RunClear" then
+		stats.runClears = (stats.runClears or 0) + 1
+		stats.lastClear = a
+		assert(type(a) == "table" and a.time > 0, "RunClear needs its time")
+		stats.clearAt = M.now()
+		stats.wavesAtClear = stats.waveEvents or 0
+	elseif kind == "Streak" then
+		stats.streaks = (stats.streaks or 0) + 1
+		local ST = C.Streak
+		assert(math.abs(b - math.min(ST.Max, math.floor(a / ST.Every) * ST.Bonus)) < 1e-9, "streak bonus maths")
+		stats.bestStreak = math.max(stats.bestStreak or 0, a)
+	elseif kind == "StreakLost" then
+		stats.streakLost = (stats.streakLost or 0) + 1
 	end
 end
 
@@ -543,7 +576,7 @@ local function hasPart(pname, maxT)
 end
 local kingSeenAt = nil
 local t = 0
-local endAt = (SCENARIO == "full" or SCENARIO == "oldbuilder") and 420 or 300
+local endAt = (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420 or 300
 while t < endAt do
 	t += 0.1
 	M.run(t)
@@ -599,7 +632,26 @@ while t < endAt do
 	if (SCENARIO == "kite" or SCENARIO == "kitejump") and kingSeenAt and t > kingSeenAt + 70 then
 		break
 	end
-	if SCENARIO == "full" and stats.kingKills >= 1 and stats.maxWave >= 7 then
+	if stats.clearAt and not stats.pressed and M.now() > stats.clearAt + 6 then
+		stats.pressed = true
+		assert((stats.waveEvents or 0) == stats.wavesAtClear, "no new wave should start until you choose")
+		local okBad = actions.ColosseumAgain and select(1, actions.ColosseumAgain(Instance.new("Player")))
+		assert(not okBad, "someone not in the Colosseum can't start a run")
+		if SCENARIO == "clearleave" then
+			local ok = actions.ColosseumLeave(player)
+			assert(ok, "LEAVE should work once the run is cleared")
+		else
+			local ok, msg = actions.ColosseumAgain(player)
+			assert(ok, "RUN AGAIN should work once the run is cleared: " .. tostring(msg))
+			local again = actions.ColosseumAgain(player)
+			assert(not again, "pressing RUN AGAIN twice shouldn't start two runs")
+			assert(hum.Health == hum.MaxHealth, "RUN AGAIN heals you")
+		end
+	end
+	if SCENARIO == "full" and stats.secondRun and stats.waveEvents >= stats.wavesAtClear + 2 then
+		break
+	end
+	if SCENARIO == "clearleave" and stats.pressed and M.now() > stats.clearAt + 12 then
 		break
 	end
 	if SCENARIO == "oldbuilder" and stats.maxWave >= 6 then
@@ -639,6 +691,9 @@ if stats.byKind then
 end
 print(string.format("hurt %d times, dodged %d (rolling), jumps %s, rolls %s, flasks %s, punches %d (on the King %d), minions %d",
 	stats.hurtCount, stats.dodged, tostring(stats.jumps), tostring(stats.rolls), tostring(stats.flasks), punches, kingHits, stats.minionsSpawned))
+print(string.format("runs cleared %s (time %s, bonus %s)  streak banners %s (best x%s)  streaks lost %s",
+	tostring(stats.runClears), stats.lastClear and tostring(stats.lastClear.time) or "-", stats.lastClear and tostring(stats.lastClear.bonusPower) or "-",
+	tostring(stats.streaks), tostring(stats.bestStreak), tostring(stats.streakLost)))
 print(string.format("power %d  coins %d  king reward %s", stats.power, stats.coins, stats.kingReward and (stats.kingReward[1] .. " power / " .. stats.kingReward[2] .. " coins") or "-"))
 local rewards = Config.colosseumRewards(LEVEL)
 print(string.format("(a straw dummy at Lv%d pays %d power / %d coins)", LEVEL, rewards.killPower, rewards.killCoins))
@@ -657,9 +712,19 @@ if SCENARIO == "full" then
 	assert((stats.moves.Summon or 0) >= 1, "the King should summon")
 	assert((stats.moves.Pound or 0) >= 1, "the King should pound")
 	assert((stats.moves.Spin or 0) >= 1, "the King should spin")
-	assert(stats.maxWave >= 7, "waves should carry on after the King")
-	local want = math.floor(rewards.killPower * K.reward)
-	assert(stats.kingReward[1] == want, "king reward " .. stats.kingReward[1] .. " should be " .. want)
+	assert(stats.runClears == 1, "beating the King should clear the run")
+	assert(stats.secondRun, "RUN AGAIN should start a new run at wave 1")
+	-- (the pretend player gets hit a lot, so a x5 streak isn't certain - but
+	-- streaks must be counted, and broken by hits)
+	assert((stats.streaks or 0) >= 1 or (stats.streakLost or 0) >= 1, "kill streaks should be counted")
+	local base = math.floor(rewards.killPower * K.reward)
+	assert(stats.kingReward[1] >= base and stats.kingReward[1] <= math.floor(base * (1 + C.Streak.Max)) + 1,
+		"king reward " .. stats.kingReward[1] .. " should be " .. base .. " plus at most the streak bonus")
+	assert(stats.lastClear.bonusPower, "the first clear of the day pays a bonus")
+end
+if SCENARIO == "clearleave" then
+	assert(stats.runClears == 1, "the run should be cleared")
+	assert(left == 0 and not player:GetAttribute("Colosseum"), "LEAVE should take you out")
 end
 if SCENARIO == "leave" or SCENARIO == "die" then
 	assert(left == 0, "everything should be cleared away when you leave or die")

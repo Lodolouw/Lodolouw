@@ -105,7 +105,15 @@ Config.Colosseum = {
 	-- shows a red warning first, so a careful player can dodge them all.
 	-- `health` and `reward` multiply a straw dummy's, like the kinds above.
 	King = {
+		-- A RUN is `Every` waves, the last one his. Beat him and the Colosseum is
+		-- CLEARED, like a mini dungeon: your time is saved, you choose RUN AGAIN
+		-- (healed, flasks full, back to wave 1) or LEAVE. (EndsRun = false: no
+		-- runs - he just comes back every `Every` waves and the waves go on.)
 		Every = 5,
+		EndsRun = true,
+		-- the first clear of each day pays a bonus: this share of the Power
+		-- between your level and the next, and coins + coins per level
+		ClearBonus = { Power = 0.5, Coins = { 150, 15 } },
 		name = "Giant Straw King",
 		health = 10, -- about 40 punches at your level (without gear)
 		reward = 15, -- pays as much as 15 straw dummies (and counts as 1 for the quest)
@@ -169,7 +177,7 @@ Config.Colosseum = {
 		RageSpeed = 0.75, -- he moves faster (his waits and hops take this much time)...
 		RageWaves = 2, -- ...his ground pound sends this many shockwaves, and his whirlwind is faster
 		RageGap = 0.5, -- (seconds between the shockwaves)
-		WaveBreak = 4.5, -- after he falls, a longer pause before the next wave
+		WaveBreak = 4.5, -- (EndsRun = false only) after he falls, a longer pause before the next wave
 
 		-- His sounds and music: names of Sounds in SoundService (capitals and
 		-- spaces don't matter). He uses the first one on each list that's
@@ -186,6 +194,11 @@ Config.Colosseum = {
 		Music = { "Straw King Song", "Slime boss song" }, -- plays during his fight
 		MusicVolume = 0.6,
 	},
+
+	-- KILL STREAKS: dummies beaten in a row without getting hit. Every `Every`
+	-- kills adds `Bonus` to what each kill pays (up to `Max`): x5 = +10%,
+	-- x10 = +20%... Getting hurt ends it. It carries on from run to run.
+	Streak = { Every = 5, Bonus = 0.1, Max = 0.5 },
 
 	-- rewards, worked out from how much Power your level needs to reach the next
 	KillPower = 0.012, -- each dummy: this share of the Power between your level and the next
@@ -204,6 +217,9 @@ function Config.colosseumRewards(level)
 		killCoins = C.KillCoins[1] + C.KillCoins[2] * level,
 		questPower = math.max(1, math.floor(gap * C.QuestPower)),
 		questCoins = C.QuestCoins[1] + C.QuestCoins[2] * level,
+		-- the first Colosseum clear of the day
+		clearPower = math.max(1, math.floor(gap * ((C.King and C.King.ClearBonus and C.King.ClearBonus.Power) or 0.5))),
+		clearCoins = (C.King and C.King.ClearBonus and (C.King.ClearBonus.Coins[1] + C.King.ClearBonus.Coins[2] * level)) or 0,
 	}
 end
 

@@ -17,6 +17,10 @@
 	    screen, the BOSS WAVE banner, the ground shaking when he lands, and
 	    his sounds and music (his introduction and talking are in BossIntro).
 
+	  * RUNS AND STREAKS - "WAVE 3/5", your kill streak beside it, and when
+	    the King falls the COLOSSEUM CLEARED screen: your time, your best,
+	    runs cleared, the day's first-clear bonus, and RUN AGAIN / LEAVE.
+
 	The server decides everything (PlayerService / CombatService); this only
 	shows it and asks.
 ]]
@@ -620,9 +624,40 @@ local function popReward(xp, coins, at)
 	end)
 end
 
+-- your kill streak, beside the wave box (hidden until you have one)
+local streakBox = Instance.new("Frame")
+streakBox.Name = "StreakBox"
+streakBox.BackgroundColor3 = RGB(12, 10, 20)
+streakBox.BackgroundTransparency = 0.1
+streakBox.BorderSizePixel = 0
+streakBox.AnchorPoint = Vector2.new(0, 0)
+streakBox.Position = UDim2.new(0.5, 112, 0, 12)
+streakBox.Size = UDim2.fromOffset(150, 34)
+streakBox.Visible = false
+streakBox.Parent = tracker
+local streakEdge = Instance.new("UIStroke")
+streakEdge.Color = GOLD
+streakEdge.Thickness = 3
+streakEdge.Parent = streakBox
+local streakLabel = label(streakBox, "", UDim2.new(1, -12, 1, -8), UDim2.fromOffset(6, 4), GOLD)
+
+local runLength = nil -- (waves in a run, from the server)
 local function renderTracker(st)
-	waveLabel.Text = st.boss and "BOSS WAVE" or ("WAVE " .. tostring(math.max(1, st.wave or 0)))
-	waveLabel.TextColor3 = st.boss and RED or RGB(255, 255, 255)
+	runLength = st.of
+	local n = tostring(math.max(1, st.wave or 0)) .. (st.of and ("/" .. tostring(st.of)) or "")
+	if st.cleared then
+		waveLabel.Text = "CLEARED!"
+		waveLabel.TextColor3 = GOLD
+	else
+		waveLabel.Text = st.boss and "BOSS WAVE" or ("WAVE " .. n)
+		waveLabel.TextColor3 = st.boss and RED or RGB(255, 255, 255)
+	end
+	local streak = st.streak or 0
+	streakBox.Visible = streak > 0
+	if streak > 0 then
+		local bonus = math.floor((st.streakBonus or 0) * 100 + 0.5)
+		streakLabel.Text = "x" .. streak .. " STREAK" .. (bonus > 0 and ("  +" .. bonus .. "%") or "")
+	end
 	local q, goal = st.quest or 0, st.goal or 10
 	questLabel.Text = "Defeat " .. goal .. " Dummies"
 	countLabel.Text = "(" .. q .. "/" .. goal .. ")"
@@ -1073,6 +1108,136 @@ do
 	end)
 end
 
+-- COLOSSEUM CLEARED: the King fell on the last wave of a run. Your time,
+-- your best, how many runs you've cleared, the day's first-clear bonus - and
+-- a choice: RUN AGAIN (healed, flasks refilled, back to wave 1) or LEAVE.
+-- (Styled by RetroUI like the quest menu: a black box with a white border.)
+local ClearScreen = {}
+do
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ColosseumClear"
+	gui.ResetOnSpawn = false
+	gui.Enabled = false
+	gui.DisplayOrder = 7
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local panel = Instance.new("Frame")
+	panel.Name = "ClearPanel"
+	panel.BackgroundColor3 = RGB(24, 20, 37)
+	panel.BorderSizePixel = 0
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
+	panel.Position = UDim2.fromScale(0.5, 0.5)
+	panel.Size = UDim2.fromScale(0.42, 0.5)
+	panel.Parent = gui
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1.45
+	aspect.Parent = panel
+	local edge = Instance.new("UIStroke")
+	edge.Color = RGB(255, 255, 255)
+	edge.Thickness = 4
+	edge.Parent = panel
+
+	local title = label(panel, "COLOSSEUM CLEARED!", UDim2.fromScale(0.9, 0.15), UDim2.fromScale(0.05, 0.05), GOLD)
+	local timeLabel = label(panel, "", UDim2.fromScale(0.8, 0.09), UDim2.fromScale(0.1, 0.25), RGB(255, 255, 255))
+	local bestLabel = label(panel, "", UDim2.fromScale(0.8, 0.09), UDim2.fromScale(0.1, 0.36), GREY)
+	local clearsLabel = label(panel, "", UDim2.fromScale(0.8, 0.07), UDim2.fromScale(0.1, 0.47), GREY)
+	local bonusLabel = label(panel, "", UDim2.fromScale(0.9, 0.08), UDim2.fromScale(0.05, 0.57), GREEN)
+	local statusLine = label(panel, "", UDim2.fromScale(0.9, 0.06), UDim2.fromScale(0.05, 0.67), RGB(255, 255, 255))
+	local _ = title
+
+	local busy = false
+	local function button(text, color, x, action)
+		local b = Instance.new("TextButton")
+		b.Name = action
+		b.Text = text
+		b.Font = FONT
+		b.TextScaled = true
+		b.TextColor3 = RGB(255, 255, 255)
+		b.BackgroundColor3 = color
+		b.BorderSizePixel = 0
+		b.AutoButtonColor = true
+		b.Size = UDim2.fromScale(0.38, 0.14)
+		b.Position = UDim2.fromScale(x, 0.78)
+		b.Parent = panel
+		b.Activated:Connect(function()
+			if busy then
+				return
+			end
+			busy = true
+			statusLine.Text = ""
+			local ok, done, msg = pcall(function()
+				return Remotes.Action:InvokeServer(action)
+			end)
+			busy = false
+			if not ok then
+				statusLine.Text = "Couldn't reach the server."
+				statusLine.TextColor3 = RED
+			elseif done then
+				gui.Enabled = false
+			else
+				statusLine.Text = tostring(msg or "")
+				statusLine.TextColor3 = RED
+			end
+		end)
+		return b
+	end
+	button("RUN AGAIN", RGB(62, 137, 72), 0.07, "ColosseumAgain")
+	button("LEAVE", RGB(162, 38, 51), 0.55, "ColosseumLeave")
+
+	local function clock(seconds)
+		seconds = tonumber(seconds) or 0
+		local m = math.floor(seconds / 60)
+		return string.format("%d:%04.1f", m, seconds - m * 60)
+	end
+
+	local showing = 0
+	function ClearScreen.show(info)
+		if type(info) ~= "table" then
+			return
+		end
+		timeLabel.Text = "TIME  " .. clock(info.time)
+		if info.newBest then
+			bestLabel.Text = "NEW BEST TIME!"
+			bestLabel.TextColor3 = GOLD
+		elseif info.best then
+			bestLabel.Text = "BEST  " .. clock(info.best)
+			bestLabel.TextColor3 = GREY
+		else
+			bestLabel.Text = ""
+		end
+		clearsLabel.Text = info.clears and ("RUNS CLEARED: " .. Config.format(info.clears)) or ""
+		if info.bonusPower then
+			bonusLabel.Text = "FIRST CLEAR TODAY!  +" .. Config.format(info.bonusPower) .. " XP  +" .. Config.format(info.bonusCoins or 0) .. " coins"
+		else
+			bonusLabel.Text = ""
+		end
+		statusLine.Text = ""
+		busy = false
+		showing = showing + 1
+		local mine = showing
+		-- (a moment after he falls, so his banner and confetti get their turn)
+		task.delay(3.2, function()
+			if showing == mine and player:GetAttribute("Colosseum") then
+				gui.Enabled = true
+				-- a new best time flashes
+				while info.newBest and gui.Enabled and showing == mine do
+					bestLabel.TextColor3 = (bestLabel.TextColor3 == GOLD) and RGB(255, 255, 255) or GOLD
+					task.wait(0.35)
+				end
+			end
+		end)
+	end
+	function ClearScreen.hide()
+		showing = showing + 1
+		gui.Enabled = false
+	end
+	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
+		if not player:GetAttribute("Colosseum") then
+			ClearScreen.hide()
+		end
+	end)
+end
+
 local kingBannerUntil = 0 -- (while "THE STRAW KING FALLS!" is up, WAVE CLEARED waits its turn)
 ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b, c)
 	if kind == "PipeIn" then
@@ -1084,7 +1249,7 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 	elseif kind == "Arrived" then
 		showBanner("THE COLOSSEUM", GOLD, 1.8)
 	elseif kind == "Wave" then
-		showBanner("WAVE " .. tostring(a), RGB(255, 255, 255), 1.4)
+		showBanner("WAVE " .. tostring(a) .. (runLength and ("/" .. runLength) or ""), RGB(255, 255, 255), 1.4)
 	elseif kind == "Kill" then
 		popReward(a, b, c)
 	elseif kind == "WaveClear" then
@@ -1114,6 +1279,23 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		end
 		if type(c) == "number" then
 			KingHud.shake(c * 1.6, b)
+		end
+	elseif kind == "RunClear" then
+		ClearScreen.show(a)
+	elseif kind == "RunStart" then
+		ClearScreen.hide()
+		showBanner("A NEW RUN BEGINS!", GOLD, 1.6)
+	elseif kind == "Left" then
+		ClearScreen.hide()
+	elseif kind == "Streak" then
+		-- every 5 kills in a row
+		local bonus = math.floor((tonumber(b) or 0) * 100 + 0.5)
+		if os.clock() > kingBannerUntil then
+			showBanner("x" .. tostring(a) .. " STREAK!" .. (bonus > 0 and ("  +" .. bonus .. "% rewards") or ""), GOLD, 1.3)
+		end
+	elseif kind == "StreakLost" then
+		if (tonumber(a) or 0) >= ((Config.Colosseum.Streak and Config.Colosseum.Streak.Every) or 5) then
+			showBanner("STREAK LOST (x" .. tostring(a) .. ")", RED, 1.2)
 		end
 	elseif kind == "KingRage" then
 		showBanner("THE KING IS FURIOUS!", RED, 2)

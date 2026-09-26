@@ -51,7 +51,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - I **declined** unidentified items and sockets.
   - Still to build: **pets**, **fishing**, **trading**, then the **Auction House**. See "The world and its places" above.
 - **Other ideas I liked, for later:**
-  - A **first-time tutorial**: an arrow to the Colosseum, "Beat 5 dummies", "Spend your stat points", "Open your chest".
+  - A **first-time tutorial**: an arrow to the Colosseum, "Beat 5 dummies", "Spend your stat points", "Open your chest". **I decided the tutorial is built LAST, after everything else.** The King is NOT part of it (he's the early-game boss test); at most one step like "Survive to wave 5!".
   - **Pets** from eggs: the Pet Sanctuary tower is already built and empty.
   - **Gear upgrading** from +1 to +10.
   - **Cosmetics** such as auras and titles.
@@ -246,6 +246,11 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - **Sounds (by name in SoundService, first one found is used):** Horn "Boss Wave Horn"; Land "Straw King Land" or "Boss Slam"; Roar "Straw King Roar" or "Boss Wake"; Spin "Straw King Spin" or "Boss Wave"; Summon "Straw King Summon" or "Boss Wail"; Death "Straw King Death" or "Boss Death"; Victory "Victory Is Ours (a) Sting"; Music "Straw King Song" or "Slime boss song".
 - In the headless tests a fight takes about 50-65 seconds for a player at his level with no gear.
 
+### Runs (a mini dungeon) and kill streaks ✅
+- **Runs:** a run is 5 waves (`Config.Colosseum.King.Every`, `EndsRun = true`); wave 5 is the King. When he falls the run is **CLEARED**: the server times it (from wave 1 arriving), `PlayerService.RecordColosseumClear` saves `data.Colosseum = { clears, best, bonusDay }` (best = fastest clear in seconds), and the **first clear of each day** pays `ClearBonus` (0.5 of the level gap in Power, 150 + 15/level coins; `Config.colosseumRewards().clearPower/clearCoins`). Then nothing happens until the player chooses on the COLOSSEUM CLEARED screen (LobbyActivities `ClearScreen`, preview `Docs/colosseum_cleared.png`): **RUN AGAIN** (healed, flasks refilled via `CombatService.RefillFlasks`, wave 1 two seconds later) or **LEAVE** (the normal pipe-out, allowed from anywhere only while the run is cleared). The buttons go through PlayerService's `Action` RemoteFunction: ColosseumService registers "ColosseumAgain" and "ColosseumLeave" with `PlayerService.AddAction`. Dying mid-run still sends you to the lobby.
+- **Kill streaks** (`Config.Colosseum.Streak`): kills in a row without losing health (ColosseumService watches the Humanoid's HealthChanged). Every 5 kills adds +10% to each kill's pay, up to +50%. It carries on between runs and ends when you're hurt or leave. The screen shows "x12 STREAK +20%" beside the wave box ("WAVE 3/5"), a banner every 5, and "STREAK LOST" if a streak of 5+ breaks.
+- "Best wave" was dropped (runs always end at 5): the best clear time replaces it.
+
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
 - The gap behind the stands is filled (`StandFill` parts).
@@ -312,9 +317,7 @@ The Colosseum polish plan was:
 The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
 1. ~~**Boss wave every 5 waves: the Giant Straw King.**~~ ✅ Done (see "The boss wave" above).
-2. **Kill streaks and best wave:**
-   - A streak counter for kills without getting hit ("x5 STREAK!") with a reward multiplier.
-   - Save each player's best wave in their data, and show it in the HUD.
+2. ~~**Kill streaks and best wave:**~~ ✅ Done, as 5-wave runs with a best clear time, runs cleared, a daily first-clear bonus, and kill streaks (see "Runs" above).
 3. **Difficulty board** at the entrance, pick one:
    - **Normal**
    - **Hard:** 1.5× dummy health and damage, better rewards
@@ -336,4 +339,4 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 - Headless tests of the server logic with a mock Roblox are very useful: they caught NaN and positioning bugs before. They're now in `Tools/HeadlessTests/` (`./run_all.sh`); add new tests there.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`, then continue with step 2 of "What to do next" (kill streaks and best wave).
+Start by reading `ReplicatedStorage/Config.lua` (the `Colosseum` section) and `ServerScriptService/ColosseumService.lua`, then continue with step 3 of "What to do next" (the difficulty board: Normal / Hard / Nightmare, picked before each run).

@@ -247,6 +247,73 @@ step(4)
 assert(not bar.Enabled, "the bar should go when you leave")
 assert(math.abs(lobbyGroup.Volume - 1) < 1e-6, "the lobby music should be back")
 
+-- RUNS AND STREAKS: the streak box, and the COLOSSEUM CLEARED screen
+player:SetAttribute("Colosseum", true)
+fire("State", { wave = 3, of = 5, streak = 12, streakBonus = 0.2, left = 3, quest = 3, goal = 10, questPower = 100, questCoins = 50 })
+step(0.1)
+local streakText, waveNow = nil, nil
+for _, d in ipairs(hud:GetDescendants()) do
+	if d.ClassName == "TextLabel" and type(d.Text) == "string" then
+		if string.find(d.Text, "STREAK") then
+			streakText = d.Text
+		elseif string.find(d.Text, "^WAVE") then
+			waveNow = d.Text
+		end
+	end
+end
+assert(streakText == "x12 STREAK  +20%", "streak box: " .. tostring(streakText))
+assert(waveNow == "WAVE 3/5", "wave box: " .. tostring(waveNow))
+fire("Streak", 15, 0.3)
+fire("StreakLost", 15)
+step(0.2)
+local asked = {}
+M.onInvokeServer = function(remote, name)
+	table.insert(asked, name)
+	return true, "ok"
+end
+fire("RunClear", { time = 146.2, best = 140.5, newBest = false, clears = 3, bonusPower = 4000, bonusCoins = 750 })
+step(1)
+local clear = playerGui:FindFirstChild("ColosseumClear")
+assert(clear and not clear.Enabled, "the clear screen waits a moment (the King's banner first)")
+step(3)
+assert(clear.Enabled, "the clear screen should open")
+local texts = {}
+for _, d in ipairs(clear:GetDescendants()) do
+	if d.ClassName == "TextLabel" then
+		texts[#texts + 1] = d.Text
+	end
+end
+local all = table.concat(texts, " | ")
+print("clear screen: " .. all)
+assert(string.find(all, "TIME  2:26.2", 1, true), "time shown")
+assert(string.find(all, "BEST  2:20.5", 1, true), "best shown")
+assert(string.find(all, "RUNS CLEARED: 3", 1, true), "clears shown")
+assert(string.find(all, "FIRST CLEAR TODAY", 1, true), "bonus shown")
+local again = find(clear, "ColosseumAgain")
+again.Activated:Fire()
+step(0.2)
+assert(asked[1] == "ColosseumAgain" and not clear.Enabled, "RUN AGAIN asks the server and closes")
+fire("RunStart")
+-- a new best, then LEAVE
+fire("RunClear", { time = 120, best = 120, newBest = true, clears = 4 })
+step(4)
+assert(clear.Enabled, "opens again")
+find(clear, "ColosseumLeave").Activated:Fire()
+step(0.2)
+assert(asked[2] == "ColosseumLeave" and not clear.Enabled, "LEAVE asks the server and closes")
+-- the server says no: it stays open with the reason
+M.onInvokeServer = function()
+	return false, "Walk out through the exit gate."
+end
+fire("RunClear", { time = 99, clears = 5 })
+step(4)
+find(clear, "ColosseumAgain").Activated:Fire()
+step(0.2)
+assert(clear.Enabled, "stays open if the server says no")
+player:SetAttribute("Colosseum", nil)
+step(0.1)
+assert(not clear.Enabled, "closes when you leave")
+
 print(string.format("camera kicks %d (total %.2f)", kicks, kickTotal))
 local counts = {}
 for _, n in ipairs(played) do

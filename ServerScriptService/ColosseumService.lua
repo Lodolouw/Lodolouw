@@ -37,7 +37,15 @@
 	      Whirlwind       - a red circle round him, then straw whips round it
 	      Summon          - straw minions drop in round you
 	    At half health he gets ANGRY: faster, two shockwaves per pound, and
-	    his whirlwind chases you. He pays like 15 straw dummies.
+	    a faster whirlwind. He pays like 15 straw dummies.
+	  * RUNS: the King's wave is the last of a RUN (5 waves), like a mini
+	    dungeon. Beat him and the Colosseum is CLEARED: your time is saved
+	    (PlayerService keeps your best time and how many runs you've
+	    cleared), the first clear of the day pays a bonus, and you choose
+	    RUN AGAIN (healed, flasks refilled, back to wave 1) or LEAVE.
+	  * KILL STREAKS: dummies beaten in a row without getting hurt. Every 5
+	    adds 10% to what each kill pays (up to +50%). It carries on from run
+	    to run, and ends the moment you're hurt (or when you leave).
 
 	All the numbers are in Config.Colosseum (the King's in Config.Colosseum.King).
 ]]
@@ -126,12 +134,35 @@ local function playerLevel(player)
 	return Config.levelFromPower(d and d.Power or 0)
 end
 
+-- RUNS: the King's wave ends a run (unless Config says the waves go on)
+local function runLength()
+	local K = C.King
+	return (K and K.EndsRun ~= false and K.Every) or nil
+end
+
+-- what a kill streak of `n` adds to each kill's pay (0.1 = +10%)
+local function streakBonus(n)
+	local ST = C.Streak
+	if not ST or (n or 0) <= 0 then
+		return 0
+	end
+	return math.min(ST.Max, math.floor(n / ST.Every) * ST.Bonus)
+end
+
 -- the state the player's screen shows (wave, quest progress, what it pays)
 local function pushState(player, s)
 	local rewards = Config.colosseumRewards(playerLevel(player))
+	local d = PlayerService.GetData(player)
+	local col = d and d.Colosseum
 	send(player, "State", {
 		wave = s.wave,
+		of = runLength(), -- (waves in a run: "WAVE 3/5")
 		boss = s.bossWave == true, -- (the King's wave)
+		cleared = s.cleared == true, -- (between runs)
+		streak = s.streak or 0,
+		streakBonus = streakBonus(s.streak),
+		best = col and col.best,
+		clears = col and col.clears,
 		left = s.alive,
 		quest = s.questKills,
 		goal = C.QuestKills,
@@ -1271,6 +1302,9 @@ local function spawnWave(s)
 		return
 	end
 	s.wave = s.wave + 1
+	if s.wave == 1 then
+		s.runStart = os.clock() -- (a run's clock starts as its first wave comes in)
+	end
 	local level = math.max(2, playerLevel(s.player))
 	-- every few waves, THE BOSS WAVE
 	local K = C.King
@@ -1332,8 +1366,10 @@ function ColosseumService.OnKill(s, model, e)
 	crumble(model, e)
 
 	local rewards = Config.colosseumRewards(playerLevel(player))
-	-- (tougher kinds pay more: a Knight is worth 2.2 straw dummies)
-	local mult = (e and e.reward) or 1
+	-- (tougher kinds pay more: a Knight is worth 2.2 straw dummies; and a
+	-- kill streak adds its bonus on top)
+	s.streak = (s.streak or 0) + 1
+	local mult = ((e and e.reward) or 1) * (1 + streakBonus(s.streak))
 	local killPower = math.max(1, math.floor(rewards.killPower * mult))
 	local killCoins = math.max(1, math.floor(rewards.killCoins * mult))
 	PlayerService.AddPower(player, killPower)
@@ -1342,6 +1378,9 @@ function ColosseumService.OnKill(s, model, e)
 		PlayerService.QuestProgress(player, "arena", 1)
 	end
 	send(player, "Kill", killPower, killCoins, feet(model).Position + Vector3.new(0, 11 * ((e and e.scale) or 1), 0))
+	if C.Streak and s.streak % C.Streak.Every == 0 then
+		send(player, "Streak", s.streak, streakBonus(s.streak)) -- ("x10 STREAK! +20%")
+	end
 	if e and e.king then
 		-- THE KING FALLS: his minions crumble with him (they pay nothing),
 		-- and your screen celebrates
@@ -1367,6 +1406,11 @@ function ColosseumService.OnKill(s, model, e)
 	end
 	pushState(player, s)
 
+	-- the King fell on the last wave: the run is CLEARED
+	if s.alive <= 0 and sessions[player] == s and e and e.king and runLength() then
+		ColosseumService.FinishRun(s)
+		return
+	end
 	if s.alive <= 0 and sessions[player] == s then
 		send(player, "WaveClear", s.wave) -- (the crowd throws confetti)
 		-- (after the King, a longer pause to enjoy it)
@@ -1378,6 +1422,55 @@ function ColosseumService.OnKill(s, model, e)
 	end
 end
 
+-- THE COLOSSEUM IS CLEARED: the run's time is saved (your best time and how
+-- many runs you've cleared - PlayerService), the first clear of the day pays
+-- a bonus, and your screen asks: RUN AGAIN or LEAVE? Nothing more happens
+-- until you choose (or walk out through the exit gate).
+function ColosseumService.FinishRun(s)
+	local player = s.player
+	s.cleared = true
+	local seconds = math.floor(math.max(0, os.clock() - (s.runStart or os.clock())) * 10 + 0.5) / 10
+	local info = { time = seconds }
+	local rec = PlayerService.RecordColosseumClear and PlayerService.RecordColosseumClear(player, seconds)
+	if rec then
+		info.best, info.newBest, info.clears = rec.best, rec.newBest, rec.clears
+		if rec.firstToday then
+			local rewards = Config.colosseumRewards(playerLevel(player))
+			PlayerService.AddPower(player, rewards.clearPower)
+			PlayerService.AddCoins(player, rewards.clearCoins)
+			info.bonusPower, info.bonusCoins = rewards.clearPower, rewards.clearCoins
+		end
+	end
+	send(player, "RunClear", info)
+	pushState(player, s)
+end
+
+-- RUN AGAIN: healed, flasks refilled, and wave 1 comes in a moment later
+-- (only between runs)
+local function runAgain(player)
+	local s = sessions[player]
+	if not (s and s.cleared) then
+		return false, "Finish the run first!"
+	end
+	s.cleared = false
+	s.wave = 0
+	local _, hum = rootOf(player)
+	if hum then
+		hum.Health = hum.MaxHealth
+	end
+	if CombatService.RefillFlasks then
+		CombatService.RefillFlasks(player)
+	end
+	send(player, "RunStart")
+	pushState(player, s)
+	task.delay(2, function()
+		if sessions[player] == s and not s.cleared and s.wave == 0 then
+			spawnWave(s)
+		end
+	end)
+	return true, "Here they come!"
+end
+
 ----------------------------------------------------------------------
 -- Going in and out
 ----------------------------------------------------------------------
@@ -1386,6 +1479,9 @@ local function endSession(player)
 	sessions[player] = nil
 	if not s then
 		return
+	end
+	if s.hurtConn then
+		s.hurtConn:Disconnect()
 	end
 	for model, e in pairs(s.enemies) do
 		e.alive = false
@@ -1441,8 +1537,22 @@ local function enter(player)
 			ensureAt(player, spawnAt.CFrame, C.Radius + 20)
 		end
 	end)
-	local s = { player = player, wave = 0, alive = 0, questKills = 0, enemies = {} }
+	local s = { player = player, wave = 0, alive = 0, questKills = 0, enemies = {}, streak = 0 }
 	sessions[player] = s
+	-- getting hurt (by anything) ends your kill streak
+	local _, hum = rootOf(player)
+	if hum then
+		local last = hum.Health
+		s.hurtConn = hum.HealthChanged:Connect(function(h)
+			if h < last - 0.01 and sessions[player] == s and (s.streak or 0) > 0 then
+				local lost = s.streak
+				s.streak = 0
+				send(player, "StreakLost", lost)
+				pushState(player, s)
+			end
+			last = h
+		end)
+	end
 	player:SetAttribute("Colosseum", true)
 	send(player, "Arrived")
 	pushState(player, s)
@@ -1454,15 +1564,20 @@ local function enter(player)
 end
 
 local function leave(player)
-	if not sessions[player] or going[player] then
+	local s = sessions[player]
+	if not s or going[player] then
 		return
 	end
 	-- (only from the exit door: leaving heals you to full, so it mustn't work
-	-- from the middle of a fight by firing the prompt from anywhere)
+	-- from the middle of a fight by firing the prompt from anywhere. Once a
+	-- run is cleared there's no fight, so the LEAVE button works anywhere.)
 	local exitPrompt = CollectionService:GetTagged("ColosseumExit")[1]
 	local exitDoor = exitPrompt and exitPrompt.Parent
 	local root = rootOf(player)
-	if not root or (exitDoor and exitDoor:IsA("BasePart") and (root.Position - exitDoor.Position).Magnitude > 32) then
+	if not root then
+		return
+	end
+	if not s.cleared and exitDoor and exitDoor:IsA("BasePart") and (root.Position - exitDoor.Position).Magnitude > 32 then
 		return
 	end
 	endSession(player)
@@ -1508,7 +1623,8 @@ function ColosseumService.Start(combatService, playerService)
 	end
 	remote = Instance.new("RemoteEvent")
 	-- server -> client: "PipeIn", "PipeOut", "Arrived", "Left", "State", "Wave", "Kill", "QuestDone",
-	-- and for the boss wave "BossWave", "KingFx" (a sound and a shake), "KingRage", "KingDown"
+	-- for the boss wave "BossWave", "KingFx" (a sound and a shake), "KingRage", "KingDown",
+	-- and for runs and streaks "RunClear", "RunStart", "Streak", "StreakLost"
 	remote.Name = "ColosseumEvent"
 	remote.Parent = ReplicatedStorage
 
@@ -1535,6 +1651,22 @@ function ColosseumService.Start(combatService, playerService)
 	end
 	hook("ColosseumEntrance", enter)
 	hook("ColosseumExit", leave)
+
+	-- the RUN AGAIN / LEAVE buttons (asked through PlayerService's Action
+	-- remote, so they get its request budget and checks too)
+	if PlayerService.AddAction then
+		PlayerService.AddAction("ColosseumAgain", function(player)
+			return runAgain(player)
+		end)
+		PlayerService.AddAction("ColosseumLeave", function(player)
+			local s = sessions[player]
+			if not (s and s.cleared) or going[player] then
+				return false, "Walk out through the exit gate."
+			end
+			task.spawn(leave, player)
+			return true, "See you soon!"
+		end)
+	end
 
 	local function watch(player)
 		-- dying in there: the fight ends, and your new body appears in the lobby
