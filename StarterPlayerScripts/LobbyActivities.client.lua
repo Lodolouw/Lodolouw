@@ -519,7 +519,7 @@ head.BorderSizePixel = 0
 head.Size = UDim2.new(1, 0, 0, 30)
 head.Parent = box
 label(head, "QUEST", UDim2.new(1, -16, 1, -6), UDim2.fromOffset(8, 3), RGB(24, 20, 37), Enum.TextXAlignment.Left)
-local questLabel = label(box, "Defeat 10 Straw Dummies", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 38), RGB(255, 255, 255), Enum.TextXAlignment.Left)
+local questLabel = label(box, "Defeat 10 Dummies", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 38), RGB(255, 255, 255), Enum.TextXAlignment.Left)
 local countLabel = label(box, "(0/10)", UDim2.new(1, -20, 0, 26), UDim2.fromOffset(10, 62), GOLD, Enum.TextXAlignment.Left)
 local qbar = Instance.new("Frame")
 qbar.BackgroundColor3 = RGB(38, 43, 68)
@@ -619,7 +619,7 @@ end
 local function renderTracker(st)
 	waveLabel.Text = "WAVE " .. tostring(math.max(1, st.wave or 0))
 	local q, goal = st.quest or 0, st.goal or 10
-	questLabel.Text = "Defeat " .. goal .. " Straw Dummies"
+	questLabel.Text = "Defeat " .. goal .. " Dummies"
 	countLabel.Text = "(" .. q .. "/" .. goal .. ")"
 	local filled = math.floor(q / goal * 10 + 1e-6)
 	for b, blk in ipairs(qblocks) do

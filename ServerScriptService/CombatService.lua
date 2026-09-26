@@ -636,6 +636,26 @@ local function hitTarget(player, model, damage, weight)
 			model:SetAttribute("IFramesUntil", t + iframes)
 		end
 	end
+	-- A shield (the Colosseum's Iron Knight): a punch from in front of it -
+	-- within ShieldArc degrees of the way it faces (FrontDir) - bounces off.
+	local arc = tonumber(model:GetAttribute("ShieldArc"))
+	local front = model:GetAttribute("FrontDir")
+	if arc and typeof(front) == "Vector3" and front.Magnitude > 0.01 and damage > 0 then
+		local _, rootS = charParts(player)
+		local pivot = model:GetPivot().Position
+		local toPlayer = rootS and Vector3.new(rootS.Position.X - pivot.X, 0, rootS.Position.Z - pivot.Z)
+		if toPlayer and toPlayer.Magnitude > 0.01 then
+			local cosA = toPlayer.Unit:Dot(Vector3.new(front.X, 0, front.Z).Unit)
+			if cosA >= math.cos(math.rad(arc / 2)) then
+				send(player, "Blocked", pivot + Vector3.new(0, 2, 0))
+				local onBlock = model:FindFirstChild("OnBlock")
+				if onBlock and onBlock:IsA("BindableEvent") then
+					onBlock:Fire(player)
+				end
+				return
+			end
+		end
+	end
 	local floorHp = model:GetAttribute("MinHealth") or 0
 	local before = model:GetAttribute("Health") or 0
 	local hp = math.max(math.min(before, floorHp), before - damage)

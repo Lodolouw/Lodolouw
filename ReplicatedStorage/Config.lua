@@ -72,6 +72,33 @@ Config.Colosseum = {
 	SlamTell = 0.7, -- ...shows a red ring for this long...
 	SlamDamage = 0.12, -- ...and takes this much of your max health if you're in it
 
+	-- THE DUMMIES. More kinds join the waves as you level up; each wave is a
+	-- random mix of the kinds you've unlocked. `health` and `reward` multiply a
+	-- straw dummy's (so a Brute takes 1.6x the punches and pays 1.5x). `max` =
+	-- the most of that kind in one wave. `scale` = how big it's built.
+	Types = {
+		{ id = "Straw", name = "Straw Dummy", level = 1, health = 1.0, reward = 1.0, weight = 4, scale = 1 },
+		-- charges at you in a straight line (the red strip shows where)
+		{ id = "Brute", name = "Wooden Brute", level = 10, health = 1.6, reward = 1.5, weight = 3, max = 3, scale = 1.3 },
+		-- keeps its distance and lobs hay bales where you're standing
+		{ id = "Slinger", name = "Hay Slinger", level = 20, health = 0.8, reward = 1.4, weight = 3, max = 2, scale = 0.95 },
+		-- its shield blocks punches from the front: get round the back
+		{ id = "Knight", name = "Iron Knight", level = 35, health = 2.0, reward = 2.2, weight = 2, max = 2, scale = 1.15 },
+		-- vanishes and reappears right behind you, then slams
+		{ id = "Cursed", name = "Cursed Dummy", level = 50, health = 1.3, reward = 2.5, weight = 2, max = 2, scale = 1.05 },
+	},
+	-- the Brute's charge: from Range[1] to Range[2] studs away it lowers its
+	-- head (Tell), then runs Length studs straight at where you were
+	Charge = { Range = { 12, 42 }, Tell = 0.7, Speed = 62, Length = 36, Width = 4.5, Damage = 0.15 },
+	-- the Slinger's hay bale: it stays Keep[1]-Keep[2] studs away, winds up
+	-- (Tell) and throws; the bale lands after Flight, hurting within Radius
+	Throw = { Keep = { 16, 32 }, Tell = 0.55, Flight = 0.95, Radius = 5, Damage = 0.1 },
+	-- the Knight's shield: punches from within this many degrees of its front bounce off
+	ShieldArc = 110,
+	-- the Cursed Dummy: fades out (Tell), reappears Behind studs behind you,
+	-- and slams after a shorter wind-up than usual
+	Blink = { Tell = 0.5, Behind = 6, SlamTell = 0.45 },
+
 	-- rewards, worked out from how much Power your level needs to reach the next
 	KillPower = 0.012, -- each dummy: this share of the Power between your level and the next
 	KillCoins = { 4, 1 }, -- each dummy: 4 coins + 1 per level

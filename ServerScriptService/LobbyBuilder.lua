@@ -5690,35 +5690,130 @@ local Extras = (function()
 	local ROPE = RGB(116, 63, 57)
 	local SPAR_WOOD = RGB(158, 104, 66)
 
-	local function colosseumDummy()
+	-- Every kind of Colosseum dummy is built on the same skeleton (stand,
+	-- post, fat body, arms, head), `scale` times as big, and then dressed:
+	--   Straw    the plain straw dummy with a target on its chest
+	--   Brute    dark wood with iron bands, horns and big iron fists
+	--   Slinger  straw with a green bandana, a sling and a hay bale on its back
+	--   Knight   iron armour, a visored helmet with red eyes and a big shield
+	--   Cursed   purple rags, glowing eyes, no stand: it floats, trailing embers
+	local LOOKS = {
+		Straw = { body = STRAW, dark = STRAW_DARK, wood = SPAR_WOOD, band = ROPE, mat = Mat.Fabric },
+		Brute = { body = RGB(115, 62, 57), dark = RGB(62, 39, 49), wood = RGB(62, 39, 49), band = RGB(90, 105, 136), mat = Mat.SmoothPlastic },
+		Slinger = { body = STRAW, dark = STRAW_DARK, wood = SPAR_WOOD, band = ROPE, mat = Mat.Fabric },
+		Knight = { body = RGB(139, 155, 180), dark = RGB(90, 105, 136), wood = RGB(58, 68, 102), band = RGB(254, 174, 52), mat = Mat.SmoothPlastic },
+		Cursed = { body = RGB(104, 56, 108), dark = RGB(62, 39, 49), wood = RGB(38, 43, 68), band = RGB(181, 80, 136), mat = Mat.SmoothPlastic },
+	}
+	local INK = RGB(24, 20, 37)
+
+	local function colosseumDummy(kind, scale)
+		kind = LOOKS[kind] and kind or "Straw"
+		local L = LOOKS[kind]
+		local s = scale or 1
 		local m = Instance.new("Model")
-		m.Name = "ColosseumDummy"
-		-- built round the origin, facing -Z (the way a Model "looks")
+		m.Name = (kind == "Straw") and "ColosseumDummy" or ("ColosseumDummy_" .. kind)
+		-- built round the origin, facing -Z (the way a Model "looks"); every
+		-- size and position is `s` times the straw dummy's
 		local O = CFrame.Angles(0, math.pi, 0)
-		part(m, "Stand", V3(3.4, 0.8, 3.4), O * CFrame.new(0, 0.4, 0), RGB(96, 64, 48), Mat.Wood)
-		part(m, "Post", V3(1.2, 3.4, 1.2), O * CFrame.new(0, 2.2, 0), SPAR_WOOD, Mat.Wood)
-		local torso = part(m, "Torso", V3(4, 4.4, 2.6), O * CFrame.new(0, 5.4, 0), STRAW, Mat.Fabric)
-		part(m, "RopeTop", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 6.9, 0), ROPE, Mat.Fabric)
-		part(m, "RopeLow", V3(4.1, 0.35, 2.7), O * CFrame.new(0, 3.9, 0), ROPE, Mat.Fabric)
-		part(m, "Arms", V3(8.4, 1, 1), O * CFrame.new(0, 6.4, -0.1), SPAR_WOOD, Mat.Wood)
-		for _, sx in ipairs({ -1, 1 }) do
-			part(m, "Mitt", V3(1.4, 1.4, 1.4), O * CFrame.new(sx * 4.4, 6.4, -0.1), STRAW_DARK, Mat.Fabric)
+		local function b(name, size, x, y, z, color, material, rot)
+			local cf = O * CFrame.new(x * s, y * s, z * s)
+			if rot then
+				cf = cf * rot
+			end
+			return part(m, name, size * s, cf, color, material or L.mat)
 		end
-		part(m, "Head", V3(2.6, 2.6, 2.6), O * CFrame.new(0, 9.1, 0), STRAW, Mat.Fabric)
-		-- straw sticking out of the top of its head
-		for k = -1, 1 do
-			part(m, "Tuft", V3(0.4, 0.8, 0.4), O * CFrame.new(k * 0.7, 10.7, k * 0.3), STRAW_DARK, Mat.Fabric)
+		if kind ~= "Cursed" then
+			b("Stand", V3(3.4, 0.8, 3.4), 0, 0.4, 0, RGB(96, 64, 48), Mat.Wood)
+			b("Post", V3(1.2, 3.4, 1.2), 0, 2.2, 0, L.wood, Mat.Wood)
 		end
-		-- angry button eyes, cross brows and a stitched mouth (it wants a fight)
-		for _, sx in ipairs({ -1, 1 }) do
-			part(m, "Eye", V3(0.5, 0.5, 0.2), O * CFrame.new(sx * 0.6, 9.4, 1.35), RGB(24, 20, 37), Mat.SmoothPlastic)
-			part(m, "Brow", V3(0.8, 0.22, 0.2), O * CFrame.new(sx * 0.6, 9.95, 1.36) * CFrame.Angles(0, 0, math.rad(sx * -18)), RGB(24, 20, 37), Mat.SmoothPlastic)
+		local torso = b("Torso", V3(4, 4.4, 2.6), 0, 5.4, 0, L.body)
+		b("BandTop", V3(4.1, 0.35, 2.7), 0, 6.9, 0, L.band)
+		b("BandLow", V3(4.1, 0.35, 2.7), 0, 3.9, 0, L.band)
+		b("Arms", V3(8.4, 1, 1), 0, 6.4, -0.1, L.wood, Mat.Wood)
+		local head = b("Head", V3(2.6, 2.6, 2.6), 0, 9.1, 0, L.body)
+
+		if kind == "Straw" or kind == "Slinger" then
+			for _, sx in ipairs({ -1, 1 }) do
+				b("Mitt", V3(1.4, 1.4, 1.4), sx * 4.4, 6.4, -0.1, L.dark)
+			end
+			for k = -1, 1 do
+				b("Tuft", V3(0.4, 0.8, 0.4), k * 0.7, 10.7, k * 0.3, L.dark)
+			end
+			-- angry button eyes, cross brows and a stitched mouth
+			for _, sx in ipairs({ -1, 1 }) do
+				b("Eye", V3(0.5, 0.5, 0.2), sx * 0.6, 9.4, 1.35, INK, Mat.SmoothPlastic)
+				b("Brow", V3(0.8, 0.22, 0.2), sx * 0.6, 9.95, 1.36, INK, Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(sx * -18)))
+			end
+			b("Stitch", V3(1.2, 0.2, 0.2), 0, 8.5, 1.35, ROPE, Mat.SmoothPlastic)
+			b("Target", V3(2.2, 2.2, 0.1), 0, 5.4, 1.33, RGB(228, 59, 68), Mat.SmoothPlastic)
+			b("TargetMid", V3(1.4, 1.4, 0.1), 0, 5.4, 1.38, RGB(255, 255, 255), Mat.SmoothPlastic)
+			b("TargetCore", V3(0.6, 0.6, 0.1), 0, 5.4, 1.43, RGB(228, 59, 68), Mat.SmoothPlastic)
 		end
-		part(m, "Stitch", V3(1.2, 0.2, 0.2), O * CFrame.new(0, 8.5, 1.35), ROPE, Mat.SmoothPlastic)
-		-- a painted target on its chest (square rings: it's 8-bit)
-		part(m, "Target", V3(2.2, 2.2, 0.1), O * CFrame.new(0, 5.4, 1.33), RGB(228, 59, 68), Mat.SmoothPlastic)
-		part(m, "TargetMid", V3(1.4, 1.4, 0.1), O * CFrame.new(0, 5.4, 1.38), RGB(255, 255, 255), Mat.SmoothPlastic)
-		part(m, "TargetCore", V3(0.6, 0.6, 0.1), O * CFrame.new(0, 5.4, 1.43), RGB(228, 59, 68), Mat.SmoothPlastic)
+		if kind == "Slinger" then
+			-- a green bandana, a sling hanging from its right hand, a bale on its back
+			b("Bandana", V3(2.7, 0.6, 2.7), 0, 9.8, 0, RGB(62, 137, 72), Mat.SmoothPlastic)
+			b("BandanaTail", V3(0.5, 1.2, 0.3), 0.6, 9.3, -1.45, RGB(62, 137, 72), Mat.SmoothPlastic)
+			b("Sling", V3(0.25, 2.6, 0.25), 4.4, 4.9, -0.1, ROPE, Mat.SmoothPlastic)
+			b("SlingPouch", V3(0.9, 0.6, 0.9), 4.4, 3.5, -0.1, ROPE, Mat.SmoothPlastic)
+			b("BackBale", V3(3, 2.2, 1.6), 0, 6.2, -2.2, RGB(254, 231, 97), Mat.SmoothPlastic)
+			b("BackBaleBand", V3(3.1, 0.3, 1.7), 0, 6.2, -2.2, ROPE, Mat.SmoothPlastic)
+		elseif kind == "Brute" then
+			-- iron bands round the belly, big iron fists, horns, and small red eyes
+			b("BandMid", V3(4.1, 0.35, 2.7), 0, 5.4, 0, L.band)
+			for _, sx in ipairs({ -1, 1 }) do
+				b("Fist", V3(1.9, 1.9, 1.9), sx * 4.6, 6.4, -0.1, RGB(90, 105, 136), Mat.SmoothPlastic)
+				b("Horn", V3(0.6, 1.4, 0.6), sx * 1.2, 10.7, 0, RGB(234, 212, 170), Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(sx * -30)))
+				b("Eye", V3(0.5, 0.35, 0.2), sx * 0.6, 9.4, 1.35, RGB(255, 0, 68), Mat.Neon)
+				b("Brow", V3(0.9, 0.3, 0.2), sx * 0.6, 9.85, 1.36, INK, Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(sx * -22)))
+			end
+			b("Snout", V3(1.2, 0.7, 0.4), 0, 8.6, 1.45, L.dark)
+		elseif kind == "Knight" then
+			-- a helmet with a visor slit (red eyes glowing in it) and a plume
+			b("Helm", V3(2.9, 2.9, 2.9), 0, 9.1, 0, L.body)
+			b("Visor", V3(2.2, 0.45, 0.2), 0, 9.3, 1.5, INK, Mat.SmoothPlastic)
+			for _, sx in ipairs({ -1, 1 }) do
+				b("Eye", V3(0.4, 0.25, 0.2), sx * 0.55, 9.3, 1.55, RGB(255, 0, 68), Mat.Neon)
+				b("Pauldron", V3(1.8, 1, 2.2), sx * 2.5, 7.6, 0, L.dark)
+				b("Gauntlet", V3(1.5, 1.5, 1.5), sx * 4.4, 6.4, -0.1, L.dark)
+			end
+			b("Plume", V3(0.6, 1.6, 1.8), 0, 11.1, -0.2, RGB(228, 59, 68), Mat.SmoothPlastic)
+			-- the shield, held out in front: gold rim, red field, a gold diamond
+			b("Shield", V3(3.6, 4.6, 0.5), -0.6, 5.8, 2.1, RGB(162, 38, 51), Mat.SmoothPlastic)
+			b("ShieldRim", V3(4, 5, 0.3), -0.6, 5.8, 1.95, L.band, Mat.SmoothPlastic)
+			b("ShieldEmblem", V3(1.5, 1.5, 0.2), -0.6, 5.8, 2.45, L.band, Mat.SmoothPlastic, CFrame.Angles(0, 0, math.rad(45)))
+			b("ShieldBoss", V3(0.6, 0.6, 0.2), -0.6, 5.8, 2.6, RGB(255, 255, 255), Mat.SmoothPlastic)
+		elseif kind == "Cursed" then
+			-- glowing eyes and a jagged grin, rags hanging where its stand should be
+			for _, sx in ipairs({ -1, 1 }) do
+				b("Eye", V3(0.6, 0.6, 0.2), sx * 0.6, 9.4, 1.35, RGB(255, 0, 68), Mat.Neon)
+				b("Claw", V3(1.3, 1.3, 1.3), sx * 4.4, 6.4, -0.1, L.dark)
+			end
+			for k = -2, 2 do
+				b("Grin", V3(0.3, 0.3, 0.2), k * 0.35, 8.5 + ((math.abs(k) == 2) and 0.2 or 0), 1.35, RGB(255, 0, 68), Mat.Neon)
+			end
+			for k = -1, 1 do
+				b("Rag", V3(1.1, 2.2 + math.abs(k) * 0.6, 0.3), k * 1.3, 2.3 - math.abs(k) * 0.3, 1.1, L.dark)
+				b("Rag", V3(1.1, 1.8, 0.3), k * 1.3, 2.5, -1.1, L.dark)
+			end
+			b("Crack", V3(0.3, 2.4, 0.15), 0.8, 5.8, 1.34, RGB(255, 0, 68), Mat.Neon, CFrame.Angles(0, 0, math.rad(20)))
+			local embers = Instance.new("ParticleEmitter")
+			embers.Name = "Embers"
+			embers.Color = ColorSequence.new(RGB(181, 80, 136), RGB(255, 0, 68))
+			embers.LightEmission = 1
+			embers.Size = NumberSequence.new(0.5 * s, 0)
+			embers.Lifetime = NumberRange.new(0.6, 1.1)
+			embers.Speed = NumberRange.new(1, 3)
+			embers.Acceleration = V3(0, 4, 0)
+			embers.Rate = 8
+			embers.Parent = torso
+			local glow = Instance.new("PointLight")
+			glow.Color = RGB(181, 80, 136)
+			glow.Range = 12
+			glow.Brightness = 1.2
+			glow.Parent = torso
+		end
+		local _ = head
+
 		for _, p in ipairs(m:GetDescendants()) do
 			if p:IsA("BasePart") then
 				-- you walk through them (they only hurt you by landing on you), and
@@ -5731,9 +5826,12 @@ local Extras = (function()
 		pcall(function()
 			m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 		end)
-		-- the model's pivot IS its body (ColosseumService places dummies by it)
+		-- the model's pivot IS its body (ColosseumService places dummies by it),
+		-- which is `Foot` studs above its feet
 		m.PrimaryPart = torso
 		torso.PivotOffset = CFrame.new()
+		m:SetAttribute("Foot", 5.4 * s)
+		m:SetAttribute("Scale", s)
 		return m
 	end
 
@@ -5927,12 +6025,15 @@ local Extras = (function()
 		local back = anchorPart(f, "ColosseumReturn", doorCF * CFrame.new(0, 3, 5) * CFrame.Angles(0, math.pi, 0))
 		CollectionService:AddTag(back, "ColosseumReturn")
 
-		-- the dummy template ColosseumService copies
-		local old = ServerStorage:FindFirstChild("ColosseumDummy")
-		if old then
-			old:Destroy()
+		-- the dummy templates ColosseumService copies, one for each kind
+		for _, t in ipairs((Config.Colosseum and Config.Colosseum.Types) or { { id = "Straw", scale = 1 } }) do
+			local name = (t.id == "Straw") and "ColosseumDummy" or ("ColosseumDummy_" .. t.id)
+			local old = ServerStorage:FindFirstChild(name)
+			if old then
+				old:Destroy()
+			end
+			colosseumDummy(t.id, t.scale).Parent = ServerStorage
 		end
-		colosseumDummy().Parent = ServerStorage
 	end
 
 	-- The real Colosseum, far from the lobby: the same sand castle, 2.6 times

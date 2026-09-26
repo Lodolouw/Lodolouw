@@ -1585,7 +1585,7 @@ local function stepScreenEffects(dt)
 	end
 end
 
-local function damageNumber(pos, amount, killed)
+local function damageNumber(pos, amount, killed, label)
 	local anchor = Instance.new("Part")
 	anchor.Anchored = true
 	anchor.CanCollide = false
@@ -1606,7 +1606,7 @@ local function damageNumber(pos, amount, killed)
 	t.BackgroundTransparency = 1
 	t.Font = BOLD
 	local immune = (tonumber(amount) or 0) <= 0
-	t.Text = immune and "IMMUNE" or Config.format(amount)
+	t.Text = label or (immune and "IMMUNE" or Config.format(amount))
 	t.TextSize = killed and 44 or (immune and 24 or 34)
 	t.TextColor3 = killed and RGB(255, 210, 80) or (immune and RGB(170, 175, 185) or RGB(255, 255, 255))
 	t.TextStrokeTransparency = 0.2
@@ -2255,6 +2255,10 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
 		maxStamina = b
 		flasks = c
 		renderStats()
+	elseif kind == "Blocked" then
+		-- a punch off a shield: "BLOCKED!" and a small jolt (go round the back)
+		damageNumber(a, 0, false, "BLOCKED!")
+		cameraKick(0.35)
 	elseif kind == "Hit" then
 		damageNumber(a, b, c)
 		-- d is which swing of the string landed: the finisher hits hardest
