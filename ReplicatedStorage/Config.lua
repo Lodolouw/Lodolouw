@@ -195,7 +195,7 @@ Config.Colosseum = {
 			Death = { "Straw King Death", "Boss Death" },
 			Victory = { "Victory Is Ours (a) Sting" }, -- you beat him
 		},
-		Music = { "Straw King Song", "Slime boss song" }, -- plays during his fight
+		Music = { "Straw King Song", "Straw King Music", "Straw King Theme", "Slime boss song" }, -- plays during his fight
 		MusicVolume = 0.6,
 	},
 

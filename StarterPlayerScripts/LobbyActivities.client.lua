@@ -786,10 +786,29 @@ local function findNamedSound(names)
 	end
 	return nil
 end
+-- Fades a playing sound out and stops it (so a long sound always fits the
+-- moment it's for: the pipe, the whirlwind...)
+local function fadeOutSound(snd, after, seconds)
+	if not snd then
+		return
+	end
+	task.delay(after or 0, function()
+		if not snd.Parent or not snd.IsPlaying then
+			return
+		end
+		local start = snd.Volume
+		local steps = 8
+		for k = 1, steps do
+			snd.Volume = start * (1 - k / steps)
+			task.wait((seconds or 0.25) / steps)
+		end
+		snd:Stop()
+	end)
+end
 local function playNamedSound(names, volume)
 	local template = findNamedSound(names)
 	if not template then
-		return
+		return nil
 	end
 	local snd = template:Clone()
 	snd.Looped = false
@@ -803,6 +822,7 @@ local function playNamedSound(names, volume)
 	task.delay(6, function()
 		snd:Destroy()
 	end)
+	return snd
 end
 
 -- WARMING UP: the Colosseum's sounds (the pipe, the King's sounds and his
@@ -872,7 +892,7 @@ local function pipeIn(doorGround, destCF, destGround)
 	end
 	piping = true
 	root.Anchored = true
-	playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound)
+	local pipeSound = playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound)
 	local from = groundUnder(root.Position, char)
 	local look = doorGround - from
 	local steps = CC.ShrinkSteps or 8
@@ -892,6 +912,7 @@ local function pipeIn(doorGround, destCF, destGround)
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.Anchored = false
 	end
+	fadeOutSound(pipeSound, 0, 0.25) -- (the sound ends as you arrive, however long it is)
 	piping = false
 end
 
@@ -903,7 +924,7 @@ local function pipeOut(backCF, backGround)
 	end
 	piping = true
 	root.Anchored = true
-	playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound, popping out)
+	local pipeSound = playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound, popping out)
 	local steps = CC.ShrinkSteps or 8
 	local small = CC.ShrinkTo or 0.3
 	for k = 0, steps do
@@ -920,6 +941,7 @@ local function pipeOut(backCF, backGround)
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.Anchored = false
 	end
+	fadeOutSound(pipeSound, 0, 0.25) -- (the sound ends as you arrive, however long it is)
 	piping = false
 end
 
@@ -990,6 +1012,7 @@ do
 		task.delay(8, function()
 			snd:Destroy()
 		end)
+		return snd
 	end
 
 	-- the ground shaking (smaller the further away it happens)
@@ -1373,6 +1396,10 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 		-- one of his sounds, and (for his landings and roars) the ground shaking
 		if a == "Step" then
 			KingHud.play("Land", 0.35)
+		elseif a == "Spin" then
+			-- (it stops when his whirlwind does, however long the sound is)
+			local K = Config.Colosseum.King
+			fadeOutSound(KingHud.play(a), (K and K.Spin and K.Spin.Time) or 2.4, 0.3)
 		else
 			KingHud.play(a)
 		end
