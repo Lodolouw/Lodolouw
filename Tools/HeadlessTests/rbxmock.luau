@@ -1219,6 +1219,14 @@ M.services.TweenService = {
 		}
 	end,
 }
+M.preloaded = {}
+M.services.ContentProvider = {
+	PreloadAsync = function(_, list)
+		for _, a in ipairs(list) do
+			table.insert(M.preloaded, a)
+		end
+	end,
+}
 M.RaycastParams = {
 	new = function()
 		return { FilterType = nil, FilterDescendantsInstances = {}, RespectCanCollide = false }

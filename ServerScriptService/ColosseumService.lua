@@ -180,6 +180,7 @@ end
 -- are worked out from that.
 local FOOT = 5.4 -- a straw dummy's body is this far above its feet
 local TURN = CFrame.Angles(0, math.pi, 0)
+local PARKED = 200 -- how high up a new dummy waits, out of sight, before it drops in
 local function footOf(model)
 	return model:GetAttribute("Foot") or FOOT
 end
@@ -884,10 +885,9 @@ local function kingBrain(s, e)
 	-- 1) THE ENTRANCE: a huge shadow grows on the sand, he crashes down out
 	-- of the sky, and stands roaring while your screen introduces him (he
 	-- can't be hurt until the fight starts).
-	local start = feet(model)
+	local start = e.land or feet(model)
 	local land = start.Position
 	local turn = start - start.Position
-	place(model, CFrame.new(land + Vector3.new(0, 140, 0)) * turn) -- (up out of sight)
 	local shadow = marker(e, "ring", Vector3.new(0.1, 1, 1), CFrame.new(land), INK)
 	shadow.Material = Enum.Material.SmoothPlastic
 	for k = 1, 12 do -- (grows in chunky 8-bit steps)
@@ -1010,10 +1010,10 @@ end
 local function brain(s, e)
 	-- Spawning in: a shadow grows on the sand where it'll land, then it
 	-- drops out of the sky, lands with a puff and bounces.
-	local start = feet(e.model)
+	local start = e.land or feet(e.model)
 	local land = start.Position
 	local turn = start - start.Position
-	place(e.model, CFrame.new(land + Vector3.new(0, 80, 0)) * turn) -- (up out of sight)
+	place(e.model, CFrame.new(land + Vector3.new(0, PARKED, 0)) * turn) -- (still up out of sight)
 	local shadow = marker(e, "ring", Vector3.new(0.1, 1, 1), CFrame.new(land), Color3.fromRGB(24, 20, 37))
 	shadow.Material = Enum.Material.SmoothPlastic
 	for k = 1, 8 do -- (grows in chunky 8-bit steps)
@@ -1196,8 +1196,12 @@ spawnDummy = function(s, kind, spot, level, opts)
 	local onHit = Instance.new("BindableEvent")
 	onHit.Name = "OnHit"
 	onHit.Parent = model
+	-- it starts hidden high up in the sky (too high for its health bar to
+	-- show, or to be punched) and only appears when it drops in: it must
+	-- never stand on the sand first and then vanish (see brain / kingBrain)
 	local look = flat(root.Position - spot)
-	place(model, CFrame.lookAt(spot, spot + (look.Magnitude > 0.1 and look or Vector3.new(0, 0, 1))))
+	local land = CFrame.lookAt(spot, spot + (look.Magnitude > 0.1 and look or Vector3.new(0, 0, 1)))
+	place(model, land + Vector3.new(0, PARKED, 0))
 	model.Parent = enemyFolder
 	CollectionService:AddTag(model, "CombatTarget")
 	-- its warning rings, puffs and hay bales go in here (see marker)
@@ -1209,6 +1213,7 @@ spawnDummy = function(s, kind, spot, level, opts)
 	local K = KIND[kind] or {}
 	local e = {
 		model = model, fx = fx, alive = true, kind = kind, scale = scale, reward = opts.reward or T.reward or 1,
+		land = land, -- (where it'll land when it drops in)
 		slow = K.slow, reach = K.reach, puff = K.puff,
 		slot = opts.slot or rng:NextNumber() * math.pi * 2,
 		minion = opts.minion,

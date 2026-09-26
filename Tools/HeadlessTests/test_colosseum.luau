@@ -112,6 +112,10 @@ end
 local char, hum, root = makeCharacter()
 M.players = { player }
 
+local function feetOf(model)
+	return model:GetPivot() * CFrame.Angles(0, math.pi, 0) * CFrame.new(0, -(model:GetAttribute("Foot") or 5.4), 0)
+end
+
 -- the log
 local stats = {
 	events = {}, damage = {}, hurtCount = 0, dodged = 0, moves = {}, states = {}, power = 0, coins = 0,
@@ -287,6 +291,15 @@ Colosseum.Start(Combat, Players2)
 local enemyFolder = workspace:FindFirstChild("ColosseumEnemies")
 assert(enemyFolder, "no enemy folder")
 enemyFolder.ChildAdded:Connect(function(m)
+	-- a new dummy must arrive hidden up in the sky (it drops in; it never
+	-- stands on the sand first and then vanishes)
+	if m:IsA("Model") then
+		local fy = feetOf(m).Position.Y
+		if fy < 100 then
+			stats.positionsBad += 1
+			print(string.format("!! %s arrived on the sand (feet at %.1f) instead of hidden in the sky", m.Name, fy))
+		end
+	end
 	if m:GetAttribute("Kind") == "King" then
 		king = m
 		stats.kingSpawns += 1
@@ -312,9 +325,6 @@ local skill = 0.7 -- how often it dodges in time
 local dodgePlan = {} -- [warning part] = decided?
 local punches, kingHits = 0, 0
 
-local function feetOf(model)
-	return model:GetPivot() * CFrame.Angles(0, math.pi, 0) * CFrame.new(0, -(model:GetAttribute("Foot") or 5.4), 0)
-end
 local function flat(v)
 	return Vector3.new(v.X, 0, v.Z)
 end

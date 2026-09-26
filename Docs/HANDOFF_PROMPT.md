@@ -172,6 +172,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - Keep the plain-English comments in the code; they're how I understand it.
 - Show me **preview renders/pictures** of anything visual before or after you build it.
 - Just go ahead and do things when the direction is clear. Ask only if it's really my decision.
+- **Always warm up assets** so nothing stalls or plays silent the first time: preload new sounds, music, animations and textures with `ContentProvider:PreloadAsync` (like BossClient's `warmSounds`, CombatClient's `warmAnimations` and LobbyActivities' Colosseum warm-up).
 - Sounds: you can't upload audio. The code plays Sounds **by name from SoundService** (for example "UI Blip", "Punch 1".."Punch 4", "Roll", "Hurt 8-Bit"). I add sounds from the Toolbox and rename them. When you add sound hooks, tell me the exact names.
 - **Bosses come last**, after the Colosseum polish.
 
@@ -250,6 +251,8 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - **Runs:** a run is 5 waves (`Config.Colosseum.King.Every`, `EndsRun = true`); wave 5 is the King. When he falls the run is **CLEARED**: the server times it (from wave 1 arriving), `PlayerService.RecordColosseumClear` saves `data.Colosseum = { clears, best, bonusDay }` (best = fastest clear in seconds), and the **first clear of each day** pays `ClearBonus` (0.5 of the level gap in Power, 150 + 15/level coins; `Config.colosseumRewards().clearPower/clearCoins`). Then nothing happens until the player chooses on the COLOSSEUM CLEARED screen (LobbyActivities `ClearScreen`, preview `Docs/colosseum_cleared.png`): **RUN AGAIN** (healed, flasks refilled via `CombatService.RefillFlasks`, wave 1 two seconds later) or **LEAVE** (the normal pipe-out, allowed from anywhere only while the run is cleared). The buttons go through PlayerService's `Action` RemoteFunction: ColosseumService registers "ColosseumAgain" and "ColosseumLeave" with `PlayerService.AddAction`. Dying mid-run still sends you to the lobby.
 - **Kill streaks** (`Config.Colosseum.Streak`): kills in a row without losing health (ColosseumService watches the Humanoid's HealthChanged). Every 5 kills adds +10% to each kill's pay, up to +50%. It carries on between runs and ends when you're hurt or leave. The screen shows "x12 STREAK +20%" beside the wave box ("WAVE 3/5"), a banner every 5, and "STREAK LOST" if a streak of 5+ breaks.
 - "Best wave" was dropped (runs always end at 5): the best clear time replaces it.
+- **Spawning:** a new dummy (and the King) is parked out of sight 200 studs up (`PARKED`) until its turn to drop in, and lands at `e.land`. It must never stand on the sand first and then vanish (that was a bug).
+- **The pipe sound:** LobbyActivities plays `Config.Colosseum.PipeSound` ("Pipe" / "Mario Pipe" / "Warp Pipe") going in and popping out.
 
 ### Recent fixes (please verify in play)
 - Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.

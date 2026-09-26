@@ -77,7 +77,7 @@ local function addSound(name)
 	snd.Volume = 0.5
 	snd.Parent = SoundService
 end
-for _, n in ipairs({ "Boss Slam", "Boss Wake", "Boss Wail", "Boss Wave", "Boss Death", "Slime boss song", "Victory Is Ours (a) Sting", "UI Blip" }) do
+for _, n in ipairs({ "Boss Slam", "Boss Wake", "Boss Wail", "Boss Wave", "Boss Death", "Slime boss song", "Victory Is Ours (a) Sting", "UI Blip", "mario pipe" }) do
 	addSound(n)
 end
 local lobbyGroup = Instance.new("SoundGroup")
@@ -246,6 +246,29 @@ player:SetAttribute("Colosseum", nil)
 step(4)
 assert(not bar.Enabled, "the bar should go when you leave")
 assert(math.abs(lobbyGroup.Volume - 1) < 1e-6, "the lobby music should be back")
+
+-- WARMING UP: the Colosseum's sounds were preloaded after joining
+local warmed = {}
+for _, a in ipairs(M.preloaded) do
+	if M.typeof(a) == "Instance" then
+		warmed[a.Name] = true
+	end
+end
+assert(warmed["mario pipe"] and warmed["Boss Slam"] and warmed["Slime boss song"] and warmed["UI Blip"], "the Colosseum's sounds should be warmed up")
+-- THE PIPE: the Mario pipe sound going in and coming out
+local before = #played
+player:SetAttribute("Colosseum", nil)
+fire("PipeIn", Vector3.new(-14.6, 0, 90), CFrame.new(-2600, 3, -60), Vector3.new(-2600, 0, -60))
+step(1.5)
+fire("PipeOut", CFrame.new(-14.6, 3, 95), Vector3.new(-14.6, 0, 95))
+step(1.5)
+local pipes = 0
+for i = before + 1, #played do
+	if played[i] == "mario pipe" then
+		pipes += 1
+	end
+end
+assert(pipes == 2, "the pipe sound should play going in and coming out: " .. pipes)
 
 -- RUNS AND STREAKS: the streak box, and the COLOSSEUM CLEARED screen
 player:SetAttribute("Colosseum", true)

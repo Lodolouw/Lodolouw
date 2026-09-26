@@ -57,6 +57,10 @@ Config.Colosseum = {
 	GatePosition = Vector3.new(-14.6, 0, 90), -- the door (you shrink into it here)
 	ShrinkTo = 0.3, -- how small you get going through the door (like a pipe)
 	ShrinkSteps = 8, -- in this many 8-bit steps
+	-- the Mario pipe sound, going in and popping out: the first Sound on this
+	-- list that's in SoundService (capitals and spaces don't matter)
+	PipeSound = { "Pipe", "Mario Pipe", "Warp Pipe" },
+	PipeVolume = 0.7,
 	EnterRange = 20,
 
 	HitsToKill = 4, -- punches a dummy takes from a player at its level (no gear)

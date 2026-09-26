@@ -766,6 +766,78 @@ local function groundUnder(pos, char)
 	return hit and hit.Position or pos
 end
 
+-- A Sound from SoundService, played flat on your screen: the first on the
+-- list that's there (capitals and spaces don't matter, so "Mario Pipe" and
+-- "mariopipe" are the same). Nothing plays if none of them are there.
+local function squashName(name)
+	return string.lower((string.gsub(tostring(name), "%s+", "")))
+end
+local function findNamedSound(names)
+	if type(names) == "string" then
+		names = { names }
+	end
+	local SoundService = game:GetService("SoundService")
+	for _, name in ipairs(names or {}) do
+		for _, child in ipairs(SoundService:GetChildren()) do
+			if child:IsA("Sound") and squashName(child.Name) == squashName(name) then
+				return child
+			end
+		end
+	end
+	return nil
+end
+local function playNamedSound(names, volume)
+	local template = findNamedSound(names)
+	if not template then
+		return
+	end
+	local snd = template:Clone()
+	snd.Looped = false
+	snd.Volume = template.Volume * (volume or 1)
+	local effects = game:GetService("SoundService"):FindFirstChild("Effects")
+	if effects and effects:IsA("SoundGroup") then
+		snd.SoundGroup = effects
+	end
+	snd.Parent = game:GetService("SoundService")
+	snd:Play()
+	task.delay(6, function()
+		snd:Destroy()
+	end)
+end
+
+-- WARMING UP: the Colosseum's sounds (the pipe, the King's sounds and his
+-- music) are loaded a couple of seconds after you join, in the background,
+-- so none of them stalls or plays silent the first time it's needed.
+task.delay(2, function()
+	local list, seen = {}, {}
+	local function add(names)
+		if type(names) == "string" then
+			names = { names }
+		end
+		for _, name in ipairs(names or {}) do
+			local snd = findNamedSound(name)
+			if snd and not seen[snd] then
+				seen[snd] = true
+				list[#list + 1] = snd
+			end
+		end
+	end
+	add(Config.Colosseum.PipeSound)
+	local K = Config.Colosseum.King
+	if K then
+		for _, names in pairs(K.Sounds or {}) do
+			add(names)
+		end
+		add(K.Music)
+	end
+	add((Config.Retro and Config.Retro.TypeBlip) or "UI Blip") -- (his talking)
+	if #list > 0 then
+		pcall(function()
+			game:GetService("ContentProvider"):PreloadAsync(list)
+		end)
+	end
+end)
+
 local piping = false
 local function pipeIn(doorGround, destCF, destGround)
 	local char = player.Character
@@ -775,6 +847,7 @@ local function pipeIn(doorGround, destCF, destGround)
 	end
 	piping = true
 	root.Anchored = true
+	playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound)
 	local from = groundUnder(root.Position, char)
 	local look = doorGround - from
 	local steps = CC.ShrinkSteps or 8
@@ -805,6 +878,7 @@ local function pipeOut(backCF, backGround)
 	end
 	piping = true
 	root.Anchored = true
+	playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound, popping out)
 	local steps = CC.ShrinkSteps or 8
 	local small = CC.ShrinkTo or 0.3
 	for k = 0, steps do
