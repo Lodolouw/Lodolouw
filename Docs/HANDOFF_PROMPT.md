@@ -159,6 +159,9 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 
 ### How I install your changes (important — I'm not a programmer)
 
+**Rojo is set up** (`default.project.json`, `StartRojo.bat`, guide in `Docs/ROJO_SETUP.md`): once I've set it up, I pull your push in GitHub Desktop and Studio updates itself. It maps ReplicatedStorage/, ServerScriptService/ and StarterPlayerScripts/ (`.server.lua` = Script, `.client.lua` = LocalScript, `.lua` = ModuleScript) with `$ignoreUnknownInstances` so nothing else in my place is touched. A new script file in those folders appears in Studio automatically. Until I say Rojo works for me, still send the changed files as below.
+
+
 - I copy each changed file into Studio by hand: open the script, Ctrl+A, delete, paste.
 - So after every change:
   1. **commit and push**, and

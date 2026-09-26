@@ -3,3 +3,6 @@ Tools/HeadlessTests/sources.luau
 Tools/HeadlessTests/*.json
 Tools/HeadlessTests/*.png
 Tools/HeadlessTests/snaps.txt
+
+# Rojo itself (downloaded, not part of the project)
+rojo.exe
