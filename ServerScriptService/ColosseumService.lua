@@ -525,10 +525,13 @@ local function heightAboveSand(root)
 end
 
 -- THE SHOCKWAVE: a ring of chunky red and gold blocks rolling out across the
--- sand from `at`, starting `from` studs out, until it's W.WaveReach wide. It
--- hurts you once if it reaches you with your feet on the sand: jump over it
--- (or roll through it). harmless = true: just for show (his entrance).
-local function shockwave(s, e, at, from, W, harmless)
+-- sand from `at`, starting `from` studs out, until it's W.WaveReach wide.
+-- It's a real wall: touch it with your feet on the sand - from the front, or
+-- backing into it - and it hurts (again, if you touch it again after
+-- W.ReHit seconds). Jump over it, or roll through it. `spareUntil`: until
+-- then it leaves you alone (you were just squashed by his landing).
+-- harmless = true: just for show (his entrance).
+local function shockwave(s, e, at, from, W, harmless, spareUntil)
 	local N = 24
 	local H = W.WaveHeight
 	local blocks = {}
@@ -548,15 +551,7 @@ local function shockwave(s, e, at, from, W, harmless)
 		b.Parent = e.fx
 		blocks[i] = b
 	end
-	local passed = harmless == true
-	if not passed then
-		-- (anyone inside where it starts was under him when he landed: that
-		-- already hurt, so the wave doesn't hit them again on its way out)
-		local root = rootOf(s.player)
-		if root and flat(root.Position - at).Magnitude <= from + 2.2 then
-			passed = true
-		end
-	end
+	local lastHit, lastDodge = -math.huge, -math.huge
 	local t0 = os.clock()
 	while e.fx.Parent and sessions[s.player] == s do
 		local r = from + (os.clock() - t0) * W.WaveSpeed
@@ -572,16 +567,24 @@ local function shockwave(s, e, at, from, W, harmless)
 			b.Size = Vector3.new(width, H, 1.4)
 			b.CFrame = CFrame.lookAt(top, Vector3.new(at.X, top.Y, at.Z))
 		end
-		if not passed and e.alive then
+		local now = os.clock()
+		if not harmless and e.alive and now >= (spareUntil or 0) and now - lastHit >= (W.ReHit or 1) then
 			local root, hum = rootOf(s.player)
-			if root and math.abs(flat(root.Position - at).Magnitude - r) <= 2.2 then
-				passed = true
-				-- (in the air, higher than most of it? then it goes under you)
-				local up = heightAboveSand(root) - (e.standHeight or 3)
-				if up < H * 0.6 then
-					local away = flat(root.Position - at)
-					away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
-					CombatService.DamagePlayer(s.player, hum.MaxHealth * W.WaveDamage, at, safePush(s.player, away * 35 + Vector3.new(0, 28, 0)))
+			-- touching it, and not in the air higher than most of it?
+			if root and math.abs(flat(root.Position - at).Magnitude - r) <= 2.2
+				and heightAboveSand(root) - (e.standHeight or 3) < H * 0.6 then
+				if CombatService.IsInvulnerable(s.player) then
+					-- (rolling through it: "Dodged!", once)
+					if now - lastDodge > 0.6 then
+						lastDodge = now
+						CombatService.DamagePlayer(s.player, hum.MaxHealth * W.WaveDamage, at)
+					end
+				else
+					lastHit = now
+					-- (it tumbles you back over itself, so it doesn't carry you along)
+					local toward = flat(at - root.Position)
+					toward = toward.Magnitude > 0.1 and toward.Unit or Vector3.new(0, 0, 1)
+					CombatService.DamagePlayer(s.player, hum.MaxHealth * W.WaveDamage, at, safePush(s.player, toward * 18 + Vector3.new(0, 34, 0)))
 				end
 			end
 		end
@@ -643,7 +646,8 @@ local function pound(s, e, target)
 	end
 	-- THOOM
 	place(model, CFrame.lookAt(at, at + dir))
-	hurtNear(s, at, R + 1, P.Damage, 55)
+	local squashed = hurtNear(s, at, R + 1, P.Damage, 55)
+	local spareUntil = squashed and os.clock() + 1 or 0 -- (one hit at a time)
 	strawPuff(e.fx, at, nil, 50)
 	send(s.player, "KingFx", "Land", at, 1.3)
 	-- a beat later the shockwave bursts out (two of them when he's angry):
@@ -654,7 +658,7 @@ local function pound(s, e, target)
 			if not e.alive or sessions[s.player] ~= s then
 				break
 			end
-			task.spawn(shockwave, s, e, at, R, P)
+			task.spawn(shockwave, s, e, at, R, P, false, spareUntil)
 			if w < waves then
 				task.wait(K.RageGap or 0.5)
 			end
@@ -666,8 +670,9 @@ local function pound(s, e, target)
 end
 
 -- THE WHIRLWIND: a red circle shows round him while he winds up... then he
--- spins like a top and straw whips round the whole circle. Get out (or roll
--- out) before it starts. When he's angry it chases you. He's dizzy after.
+-- spins like a top and comes AFTER you (like the Valkyrie in Clash Royale),
+-- straw whipping round the whole circle. Stay in it and it hits you again.
+-- Run, or roll out of it. When he's angry it's faster. He's dizzy after.
 local function whirlwind(s, e)
 	local W = C.King.Spin
 	local model = e.model
@@ -714,7 +719,7 @@ local function whirlwind(s, e)
 		b.Parent = e.fx
 		bits[i] = b
 	end
-	local hit = false
+	local lastHit = -math.huge
 	local t1 = os.clock()
 	local last = t1
 	while e.alive and sessions[s.player] == s do
@@ -726,10 +731,11 @@ local function whirlwind(s, e)
 		end
 		angle = angle + dt * W.Turns * math.pi * 2 / W.Time
 		local root, hum = rootOf(s.player)
-		if e.rage and root then
+		if root then
 			local go = flat(root.Position - pos)
+			local speed = e.rage and (W.RageChase or W.Chase) or W.Chase
 			if go.Magnitude > 1 then
-				pos = inArena(pos + go.Unit * math.min(go.Magnitude, W.Chase * dt), 8)
+				pos = inArena(pos + go.Unit * math.min(go.Magnitude, speed * dt), 8)
 			end
 		end
 		place(model, CFrame.new(pos) * turn * CFrame.Angles(0, angle, 0))
@@ -739,9 +745,11 @@ local function whirlwind(s, e)
 			local r = R * (0.35 + 0.6 * ((i % 4) / 3))
 			b.CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r, 0.8 + (i % 3) * 1.1, math.sin(a) * r)) * CFrame.Angles(0, -a, 0.3)
 		end
-		-- anyone in the circle gets whipped (once) - unless they're rolling
-		if not hit and root and flat(root.Position - pos).Magnitude <= R + 0.5 and not CombatService.IsInvulnerable(s.player) then
-			hit = true
+		-- anyone in the circle gets whipped (again every ReHit seconds they
+		-- stay in it) - unless they're rolling
+		if root and t - lastHit >= (W.ReHit or 1) and flat(root.Position - pos).Magnitude <= R + 0.5
+			and not CombatService.IsInvulnerable(s.player) then
+			lastHit = t
 			local away = flat(root.Position - pos)
 			away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
 			CombatService.DamagePlayer(s.player, hum.MaxHealth * W.Damage, pos, safePush(s.player, away * 50 + Vector3.new(0, 24, 0)))

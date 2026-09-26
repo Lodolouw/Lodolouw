@@ -2036,6 +2036,9 @@ end
 -- The wave is a ring growing outward. A player is caught if the ring's band
 -- passed over them this frame and they weren't high enough to clear it - so
 -- a jump at the right moment beats it, and so does a roll's invincibility.
+-- It's a wall, not a one-time thing: touch it again later (say, backing
+-- into it) and it hurts again - just not twice within WAVE_REHIT seconds.
+local WAVE_REHIT = 1
 local function stepWaves(E)
 	if #E.waves == 0 then
 		return
@@ -2051,15 +2054,18 @@ local function stepWaves(E)
 			local r = w.start + w.speed * age
 			local half = w.thickness / 2
 			for _, p in ipairs(list) do
-				if not w.hit[p] then
+				if t - (w.hit[p] or -math.huge) >= WAVE_REHIT then
 					local root = rootOf(p)
 					if root then
 						local d = flatDistance(root.Position, w.origin)
 						if d >= w.lastR - half - PLAYER_RADIUS and d <= r + half + PLAYER_RADIUS then
 							local above = root.Position.Y - (E.floorY + STAND_HEIGHT)
-							if above < w.height * 0.8 then
-								w.hit[p] = true
+							if above < w.height * 0.8 and not CombatService.IsInvulnerable(p) then
+								w.hit[p] = t
 								CombatService.DamagePlayer(p, w.damage, w.origin, knockbackFrom(w.origin, root, w.knockback))
+							elseif above < w.height * 0.8 and not w.dodged then
+								w.dodged = true -- ("Dodged!" once for a roll through it)
+								CombatService.DamagePlayer(p, w.damage, w.origin)
 							end
 						end
 					end

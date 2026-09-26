@@ -133,7 +133,8 @@ Config.Colosseum = {
 			WaveSpeed = 24, -- ...and rolls out this many studs a second
 			WaveReach = 70, -- how far it goes
 			WaveHeight = 2.2, -- how tall it is (jump higher than this)
-			WaveDamage = 0.14,
+			WaveDamage = 0.14, -- every time it hits you...
+			ReHit = 1, -- ...but not again for this many seconds
 			Cooldown = { 5, 8 },
 		},
 		-- SUMMON: he raises his arms and calls straw minions down from the
@@ -148,23 +149,25 @@ Config.Colosseum = {
 			health = 0.5, -- a minion takes half a straw dummy's punches...
 			reward = 0.4, -- ...and pays a little less than one
 		},
-		-- WHIRLWIND: a red circle shows round him (Tell), then he spins and
-		-- straw whips round the whole circle for `Time` seconds. Get out -
-		-- or roll out - before it starts. When he's angry it chases you.
+		-- WHIRLWIND: a red circle shows round him (Tell), then he spins for
+		-- `Time` seconds and comes after you (like the Valkyrie in Clash
+		-- Royale), straw whipping round the whole circle. Run, or roll out.
 		Spin = {
 			Range = 15, -- used when you're this close
 			Radius = 14, -- the circle
 			Tell = 1,
-			Time = 1.4,
-			Turns = 4,
-			Damage = 0.16,
-			Chase = 11, -- studs a second it follows you (only when he's angry)
+			Time = 2.4,
+			Turns = 7,
+			Damage = 0.16, -- every time it hits you...
+			ReHit = 0.9, -- ...and again every this many seconds you stay in it
+			Chase = 11, -- studs a second it comes after you (you walk at 16)...
+			RageChase = 14, -- ...and when he's angry
 			Dizzy = 0.8, -- he wobbles, dizzy, afterwards: hit him!
 			Cooldown = { 4, 7 },
 		},
 		Rage = 0.5, -- below this share of his health he gets ANGRY:
 		RageSpeed = 0.75, -- he moves faster (his waits and hops take this much time)...
-		RageWaves = 2, -- ...his ground pound sends this many shockwaves, and his whirlwind chases you
+		RageWaves = 2, -- ...his ground pound sends this many shockwaves, and his whirlwind is faster
 		RageGap = 0.5, -- (seconds between the shockwaves)
 		WaveBreak = 4.5, -- after he falls, a longer pause before the next wave
 
