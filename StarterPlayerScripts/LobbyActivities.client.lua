@@ -808,24 +808,33 @@ end)
 ----------------------------------------------------------------------
 -- Never stuck in the floor after respawning
 ----------------------------------------------------------------------
--- If a new body turns up sunk into the ground (it happened after dying in
--- the Colosseum), lift it out and stand it on top. For the first 12 seconds
--- of every life we compare where its FEET actually are (the bottom of its
--- lowest body part) with the top of the floor under it, and lift it by the
--- difference if the feet are even a little way under.
-local function lowestFoot(char)
-	local low = math.huge
+-- A body must never stand sunk into the floor (it kept happening after a
+-- reset or dying in the Colosseum). Your character is held up by Roblox's
+-- ControllerManager: it keeps the body a set height above the floor, and the
+-- legs themselves pass through floors. If that height comes out too low for
+-- your avatar (say, the body was set up before your avatar finished loading),
+-- the body settles with its legs in the ground.
+--
+-- So, the whole time you're alive: if your lowest foot is under the top of
+-- the floor right beneath it, twice in a row while you're standing still
+-- (not jumping, falling or rolling), we raise the height the controller
+-- holds you at by exactly that much, and lift you out. It learns the right
+-- height from where your feet really are, so it works for any avatar size.
+local function lowestFootPart(char)
+	local best, low = nil, math.huge
 	for _, p in ipairs(char:GetChildren()) do
 		-- (body parts only: hats and hair are inside Accessories)
 		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
 			local cf, half = p.CFrame, p.Size / 2
 			local reach = math.abs(cf.RightVector.Y) * half.X + math.abs(cf.UpVector.Y) * half.Y + math.abs(cf.LookVector.Y) * half.Z
-			low = math.min(low, cf.Position.Y - reach)
+			if cf.Position.Y - reach < low then
+				best, low = p, cf.Position.Y - reach
+			end
 		end
 	end
-	return low
+	return best, low
 end
-player.CharacterAdded:Connect(function(char)
+local function keepFeetUp(char)
 	local hum = char:WaitForChild("Humanoid", 10)
 	local root = char:WaitForChild("HumanoidRootPart", 10)
 	if not (hum and root) then
@@ -834,25 +843,54 @@ player.CharacterAdded:Connect(function(char)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.RespectCanCollide = true
-	local started = os.clock()
-	while os.clock() - started < 12 do
-		task.wait(0.15)
-		if not char.Parent or hum.Health <= 0 then
-			return
-		end
-		if not root.Anchored then -- (not while going down the pipe)
+	local strikes = 0
+	while char.Parent and hum.Health > 0 do
+		task.wait(0.2)
+		local foot, footY = lowestFootPart(char)
+		local sunk = 0
+		if foot and not root.Anchored and math.abs(root.AssemblyLinearVelocity.Y) < 3 then
 			params.FilterDescendantsInstances = { char }
-			-- the floor under us, looking down from above our head
-			local hit = workspace:Raycast(root.Position + Vector3.new(0, 6, 0), Vector3.new(0, -14, 0), params)
-			-- (only a floor below our middle: never a roof or a bridge overhead)
-			if hit and hit.Position.Y <= root.Position.Y + 1 then
-				local sunk = hit.Position.Y - lowestFoot(char)
-				if sunk > 0.35 and sunk < 6 then
-					root.AssemblyLinearVelocity = Vector3.zero
-					char:PivotTo(char:GetPivot() + Vector3.new(0, sunk + 0.1, 0))
-					hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-				end
+			-- the top of the floor straight under that foot (from above, so a foot
+			-- stuck inside the floor still finds its top)
+			local p = foot.Position
+			local hit = workspace:Raycast(Vector3.new(p.X, root.Position.Y + 2, p.Z), Vector3.new(0, footY - root.Position.Y - 8, 0), params)
+			if hit then
+				sunk = hit.Position.Y - footY
 			end
 		end
+		if sunk > 0.35 and sunk < 6 then
+			strikes = strikes + 1
+		else
+			strikes = 0
+		end
+		if strikes >= 2 then
+			strikes = 0
+			-- hold the body higher from now on...
+			local cm = char:FindFirstChildWhichIsA("ControllerManager", true)
+			if cm then
+				for _, c in ipairs(cm.Parent:GetDescendants()) do
+					if c:IsA("GroundController") then
+						pcall(function()
+							c.GroundOffset = c.GroundOffset + sunk
+						end)
+					end
+				end
+				pcall(function()
+					local sensor = cm.GroundSensor
+					if sensor and sensor.SearchDistance > 0 then
+						sensor.SearchDistance = sensor.SearchDistance + sunk
+					end
+				end)
+			elseif hum.RigType == Enum.HumanoidRigType.R15 then
+				hum.HipHeight = hum.HipHeight + sunk
+			end
+			-- ...and lift it out now
+			root.AssemblyLinearVelocity = Vector3.zero
+			char:PivotTo(char:GetPivot() + Vector3.new(0, sunk + 0.1, 0))
+		end
 	end
-end)
+end
+player.CharacterAdded:Connect(keepFeetUp)
+if player.Character then
+	task.spawn(keepFeetUp, player.Character)
+end
