@@ -807,6 +807,21 @@ function IntroService.Start(combatService, playerService)
 		end
 		return true
 	end)
+	-- STUDIO ONLY: play it again from the start (the HUD's "DEV: Replay Intro")
+	PlayerService.AddAction("DevReplayIntro", function(player)
+		if not RunService:IsStudio() then
+			return false, "Studio only."
+		end
+		local S = sessions[player]
+		if S and not S.over then
+			return false, "You're already in the intro."
+		end
+		if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") then
+			return false, "Go back to the lobby first."
+		end
+		start(player)
+		return true
+	end)
 	-- their screen couldn't show it (something broke there): they play on
 	-- normally - no reward, and the intro again next time (all a player
 	-- gains by sending this is skipping the intro and its reward)

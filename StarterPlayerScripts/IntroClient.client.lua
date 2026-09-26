@@ -289,6 +289,14 @@ do
 	function Music.stop()
 		want = false
 	end
+	-- (gone at once: the intro's over and nothing is left to fade it)
+	function Music.kill()
+		want, level = false, 0
+		if song then
+			song:Destroy()
+			song = nil
+		end
+	end
 	function Music.step(dt)
 		if not song then
 			return
@@ -1141,6 +1149,7 @@ do
 	local GLYPHS = { "#", "%", "&", "@", "$", "?", "*", "+", "=", "<", ">", "/" }
 
 	function Words.init()
+		cells, subText, style, jolt, shaking = {}, nil, nil, 0, 0
 		holder = Instance.new("Frame")
 		holder.Name = "Words"
 		holder.BackgroundTransparency = 1
@@ -1406,6 +1415,7 @@ do
 	local frame, fill, chip, name = nil, nil, nil, nil
 	local shown, frac, chipFrac, flash, shake = false, 1, 1, 0, 0
 	function Bar.init()
+		shown, frac, chipFrac, flash, shake = false, 1, 1, 0, 0
 		frame = Instance.new("Frame")
 		frame.Name = "OozletBar"
 		frame.AnchorPoint = Vector2.new(0.5, 0)
@@ -2032,7 +2042,13 @@ do
 	end
 
 	function Oz.start(m)
+		-- (a fresh start, even if it's been played before: DEV: Replay Intro)
 		model = m
+		hop, landed, lastLandAt = nil, true, -math.huge
+		action = { name = "", at = -math.huge, pos = CENTER, r = 0, tell = 0 }
+		mood, hp, maxHp, hitAt = "Happy", O.Health or 12, O.Health or 12, -math.huge
+		popped, burstDone, cracked, stars, tele = false, false, false, nil, nil
+		facing = V3(0, 0, 1)
 		build()
 		read()
 		nextBlink = os.clock() + 2
@@ -2404,6 +2420,7 @@ end
 
 -- Everything back to normal (at the very end - or right away, if the intro
 -- was cut short)
+local startIntroLater -- (below)
 local function restoreAll()
 	if finished then
 		return
@@ -2433,6 +2450,7 @@ local function restoreAll()
 			frameConn:Disconnect()
 			frameConn = nil
 		end
+		Music.kill()
 		if gui then
 			gui:Destroy()
 			gui = nil
@@ -2440,6 +2458,11 @@ local function restoreAll()
 		if world then
 			world:Destroy()
 			world = nil
+		end
+		-- ready to play again (Studio's DEV: Replay Intro) - straight away if asked already
+		running, finished = false, false
+		if stage() == "Void" then
+			task.spawn(startIntroLater)
 		end
 	end)
 	dropCover(0.3)
@@ -2790,6 +2813,9 @@ local function safely(fn, failNote)
 	end
 end
 local startIntro = safely(runIntro, "IntroFailed")
+startIntroLater = function()
+	startIntro()
+end
 local startReveal = safely(reveal, "IntroDone")
 
 -- the server moves us on: the reveal, or it's over

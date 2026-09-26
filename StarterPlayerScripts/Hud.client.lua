@@ -2024,12 +2024,24 @@ if RunService:IsStudio() then
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -16),
-		Size = UDim2.fromOffset(150, 164),
+		Size = UDim2.fromOffset(150, 206),
 		BackgroundTransparency = 1,
 		Parent = root,
 	}, {
 		create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
+	-- play the intro (Oozlet) again, from the start
+	local replay = button({
+		LayoutOrder = 5,
+		Size = UDim2.fromOffset(150, 36),
+		Text = "DEV: Replay Intro",
+		TextSize = 16,
+		BackgroundColor3 = RGB(62, 137, 72),
+		Parent = devCol,
+	})
+	replay.Activated:Connect(function()
+		doAction("DevReplayIntro")
+	end)
 	local DEV_LABELS = { Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power", MaxUpgrades = "DEV: Max Upgrades" }
 	for i, kind in ipairs({ "Loot", "Coins", "Power", "MaxUpgrades" }) do
 		local b = button({

@@ -13,6 +13,7 @@
 --   luau test_intro.luau -a full detail   ...printing every change of words and move
 --   luau test_intro.luau -a skip      a returning player: no intro at all
 --   luau test_intro.luau -a fail      their screen breaks mid-intro: back to normal, no reward
+--   luau test_intro.luau -a replay    the whole intro, then Studio's DEV: Replay Intro
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -528,6 +529,33 @@ d = PS.GetData(me)
 assert(d.Power >= Config.powerForLevel(Config.Intro.Reward.Level), "at least level " .. Config.Intro.Reward.Level .. " now")
 assert(myHum.Health == myHum.MaxHealth, "full health again")
 assert(kicks > 5, "slams and pops shake the camera")
+
+if MODE == "replay" then
+	-- the DEV button: only in Studio...
+	local ok = ReplicatedStorage.Remotes.Action:InvokeServer("DevReplayIntro")
+	assert(ok == false and me:GetAttribute("Intro") == nil, "no replaying outside Studio")
+	RunService.IsStudio = function()
+		return true
+	end
+	ok = ReplicatedStorage.Remotes.Action:InvokeServer("DevReplayIntro")
+	assert(ok == true, "it replays in Studio")
+	waitFor(function()
+		return gui:FindFirstChild("IntroGui") ~= nil and workspace:FindFirstChild("IntroWorld") ~= nil
+	end, 5, "the intro to start again")
+	local again = workspace.IntroOozlets:FindFirstChild("Oozlet_1001")
+	assert(again and again ~= model, "a new Oozlet")
+	assert(again:GetAttribute("Health") == 12 and again:GetAttribute("Mood") == "Happy", "fresh and happy")
+	waitFor(function()
+		return words() == "HIT THE SLIME!"
+	end, 12, "the words to build up again")
+	assert(ltm(island) == 1 and ltm(tree) == 1 and hud.Enabled == false, "it's dark again")
+	assert(gui.IntroGui.OozletBar.Position.Y.Offset < 0, "its bar waits off-screen again")
+	-- (cut it short: everything comes back again)
+	ReplicatedStorage.Remotes.Action:InvokeServer("IntroFailed")
+	step(2.5)
+	assert(me:GetAttribute("Intro") == nil and ltm(island) == 0 and hud.Enabled, "and back to normal")
+	assert(not SoundService:FindFirstChild("IntroMusicPlaying"), "no music left playing")
+end
 
 print(string.format("t %.1f  hops %d  events %s  health low %.0f  kicks %d  power %d", T, hops, table.concat(introEvents, " "), minHealth, kicks, d.Power))
 for _, e in ipairs(M.errors) do
