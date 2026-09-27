@@ -438,6 +438,9 @@ local function buildFloor()
 	-- Ripples blown into the sand: rows of long low streaks lying across the wind,
 	-- each row wandering a little, so the floor reads as sand rather than a plate.
 	-- They reach right in toward the middle, but stop short of Tuber's garden.
+	-- (Everything flat on the floor is thick and mostly buried: a paper-thin
+	-- part lying on Terrain sand disappears into its bumps. These poke out a
+	-- quarter of a stud.)
 	local across = V3(-WIND.Z, 0, WIND.X)
 	for row = -12, 12 do
 		for seg = -8, 8 do
@@ -452,7 +455,7 @@ local function buildFloor()
 			local nearest = (off + dir * math.clamp(-off:Dot(dir), -9, 9)).Magnitude
 			if d < FIGHT_R - 5 and nearest > GARDEN_R and rnd() > 0.12 then
 				local shade = SAND_DARK:Lerp(SAND, 0.25 + rnd() * 0.35)
-				part("SandRipple", V3(0.9 + rnd() * 0.6, 0.12, 15 + rnd() * 3), CFrame.lookAt(p + V3(0, 0.03, 0), p + V3(0, 0.03, 0) + dir),
+				part("SandRipple", V3(0.9 + rnd() * 0.6, 0.7, 15 + rnd() * 3), CFrame.lookAt(p + V3(0, -0.1, 0), p + V3(0, -0.1, 0) + dir),
 					shade, Mat.Sand, DECOR)
 			end
 		end
@@ -462,8 +465,8 @@ local function buildFloor()
 	-- biggest is 24 long, so none starts nearer the middle than the garden)
 	for _ = 1, 18 do
 		local a, r = rnd() * math.pi * 2, 26 + rnd() * 114
-		local p = onRing(r, a, 0.04)
-		ellipsoid("SandScour", V3(10 + rnd() * 14, 0.1, 4 + rnd() * 5), CFrame.lookAt(p, p + WIND) * CFrame.Angles(0, math.pi / 2, 0),
+		local p = onRing(r, a, 0)
+		ellipsoid("SandScour", V3(10 + rnd() * 14, 0.6, 4 + rnd() * 5), CFrame.lookAt(p, p + WIND) * CFrame.Angles(0, math.pi / 2, 0),
 			SAND:Lerp(SAND_LIGHT, 0.6), Mat.Sand, DECOR)
 	end
 end
@@ -1339,18 +1342,18 @@ end
 -- flowers, all lying flat (lower than a stud), so nothing hides Tuber himself
 -- sitting in the middle. (BossService builds him on BossHome, right here.)
 local function buildGarden()
-	cylinder("GardenPatch", 0.1, 8.4, CFrame.new(at(0, 0.05, 0)), TILLED, Mat.Sand, DECOR)
+	cylinder("GardenPatch", 0.6, 8.4, CFrame.new(at(0, 0, 0)), TILLED, Mat.Sand, DECOR)
 	-- furrows raked across it
-	local rake = CFrame.new(at(0, 0.1, 0)) * CFrame.Angles(0, 0.4, 0)
+	local rake = CFrame.new(at(0, 0.15, 0)) * CFrame.Angles(0, 0.4, 0)
 	for _, x in ipairs({ -2.85, -0.95, 0.95, 2.85 }) do
 		local len = 2 * math.sqrt(4.2 * 4.2 - x * x) - 1
-		part("GardenFurrow", V3(0.5, 0.12, len), rake * CFrame.new(x, 0, 0), TILLED_DARK, Mat.Sand, DECOR)
+		part("GardenFurrow", V3(0.5, 0.5, len), rake * CFrame.new(x, 0, 0), TILLED_DARK, Mat.Sand, DECOR)
 	end
 	-- a ring of little pebbles round it
 	for k = 0, 9 do
 		local a = (k + between(-0.2, 0.2)) / 10 * math.pi * 2
 		local h = between(0.3, 0.45)
-		local p = onRing(5.4 + between(-0.25, 0.25), a, h / 2 - 0.06)
+		local p = onRing(5.4 + between(-0.25, 0.25), a, h / 2 + 0.14)
 		part("GardenPebble", V3(between(0.5, 0.8), h, between(0.5, 0.8)), CFrame.new(p) * CFrame.Angles(0, rnd() * math.pi, 0),
 			PEBBLES[1 + math.floor(rnd() * #PEBBLES)], Mat.Slate, DECOR)
 	end
