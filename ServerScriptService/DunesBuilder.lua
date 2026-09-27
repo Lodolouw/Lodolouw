@@ -1557,8 +1557,19 @@ function DunesBuilder.Build()
 		terrain = Workspace.Terrain
 	end)
 	if terrain then
+		-- (in pieces: one giant clear can fail, and any sand already saved in
+		-- the place would then stay - burying the whole arena)
+		for x = -300, 300, 120 do
+			for z = -300, 300, 120 do
+				local ok = pcall(function()
+					terrain:FillBlock(CFrame.new(at(x, 70, z)), V3(120, 220, 120), Mat.Air)
+				end)
+				if not ok then
+					warn("[DunesBuilder] couldn't clear the old sand at " .. tostring(at(x, 0, z)))
+				end
+			end
+		end
 		pcall(function()
-			terrain:FillBlock(CFrame.new(at(0, 70, 0)), V3(720, 220, 720), Mat.Air)
 			terrain:SetMaterialColor(Mat.Sand, SAND)
 		end)
 	end
@@ -1606,6 +1617,26 @@ function DunesBuilder.Build()
 	m.Parent = Workspace
 	if failed == 0 then
 		print("[DunesBuilder] The Sunken Dunes built OK")
+	end
+	-- Everything here stands on y = 0. If the sand you walk on ends up higher
+	-- (old Terrain in the place the clear couldn't reach), say so in the Output.
+	if terrain then
+		task.delay(1, function()
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Include
+			params.FilterDescendantsInstances = { terrain }
+			local highest = -math.huge
+			for _, off in ipairs({ V3(0, 0, 0), V3(40, 0, 0), V3(-40, 0, 0), V3(0, 0, 40), V3(0, 0, -40) }) do
+				local hit = Workspace:Raycast(at(off.X, 150, off.Z), V3(0, -200, 0), params)
+				if hit then
+					highest = math.max(highest, hit.Position.Y - CENTER.Y)
+				end
+			end
+			if highest > 0.75 then
+				warn(string.format("[DunesBuilder] the sand floor is %.1f studs too high: everything will look sunk in it."
+					.. " Is there old Terrain saved in the place round %s?", highest, tostring(CENTER)))
+			end
+		end)
 	end
 	return m
 end
