@@ -22,8 +22,9 @@ run test_client.luau
 run test_builder.luau
 run test_arenas_apart.luau
 run test_boss_template.luau
-# the heart, the potion and the bolt at the bottom of the screen
+# the heart, the potion and the bolt at the bottom of the screen, and the drink
 run test_vitals.luau
+run test_drink.luau
 run test_intro.luau
 run test_intro.luau -a skip
 run test_intro.luau -a fail

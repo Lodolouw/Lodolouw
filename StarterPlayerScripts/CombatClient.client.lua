@@ -1453,6 +1453,158 @@ local function drinkEffect(seconds)
 	end)
 end
 
+-- The drink, as everyone sees it: whoever drinks a flask brings a little red
+-- potion up to their chin, tips it back with their head back and a couple of
+-- gulps, then lowers it again. CombatService puts "Drinking" (seconds) on
+-- their character while they drink, and every screen animates it itself (so
+-- it's smooth for everyone, you and the people watching). It's made in code
+-- on the R6 joints - the right arm and the neck - no uploaded animation.
+do
+	local HOLD = CFrame.Angles(0, math.rad(50), math.rad(110)) -- the arm across the chest, potion at the chin
+	local TIP = CFrame.Angles(0, math.rad(45), math.rad(138)) -- ...lifted higher: bottoms up
+	local HEAD_BACK = math.rad(-18) -- the head tips back as you drink
+	local MOUTH = Vector3.new(0, 1.3, -0.62) -- (in the torso's space: just below the middle of the face)
+	local RED = RGB(228, 59, 68)
+	local drinks = {} -- [character] = one drink being shown
+
+	local function smooth(t)
+		t = math.clamp(t, 0, 1)
+		return t * t * (3 - 2 * t)
+	end
+
+	-- the little potion in their right hand (only on this screen: every screen makes its own)
+	local function makePotion(arm, grip)
+		local model = Instance.new("Model")
+		model.Name = "DrinkPotion"
+		local function bit(name, size, offset, color, material, see)
+			local p = Instance.new("Part")
+			p.Name = name
+			p.Size = size
+			p.Color = color
+			p.Material = material
+			p.Transparency = see or 0
+			p.CanCollide, p.CanTouch, p.CanQuery, p.CastShadow = false, false, false, false
+			p.Massless = true
+			p.CFrame = arm.CFrame * grip * offset
+			local weld = Instance.new("Weld")
+			weld.Part0, weld.Part1 = arm, p
+			weld.C0 = grip * offset
+			weld.Parent = p
+			p.Parent = model
+		end
+		bit("Bottle", Vector3.new(0.5, 0.55, 0.5), CFrame.new(), RED, Enum.Material.SmoothPlastic)
+		bit("Neck", Vector3.new(0.22, 0.3, 0.22), CFrame.new(0, 0.42, 0), RGB(192, 203, 220), Enum.Material.Glass, 0.3)
+		bit("Cork", Vector3.new(0.26, 0.12, 0.26), CFrame.new(0, 0.62, 0), RGB(184, 111, 80), Enum.Material.SmoothPlastic)
+		model.Parent = arm.Parent
+		return model
+	end
+
+	local function start(char, seconds)
+		local torso = char:FindFirstChild("Torso")
+		local arm = char:FindFirstChild("Right Arm")
+		local shoulder = torso and torso:FindFirstChild("Right Shoulder")
+		local neck = torso and torso:FindFirstChild("Neck")
+		if not (arm and shoulder and neck and shoulder:IsA("Motor6D") and neck:IsA("Motor6D")) then
+			return -- (not an R6 body: no drink to show)
+		end
+		-- the potion points from the hand at the mouth while it's held at the chin
+		local armHold = shoulder.C0 * HOLD * shoulder.C1:Inverse()
+		local hand = armHold * Vector3.new(0, -1, 0)
+		local up = armHold:VectorToObjectSpace((MOUTH - hand).Unit)
+		local side = up:Cross(Vector3.new(0, 0, 1))
+		if side.Magnitude < 0.01 then
+			side = Vector3.new(1, 0, 0)
+		end
+		local grip = CFrame.fromMatrix(Vector3.new(0, -1.15, 0), side.Unit, up) * CFrame.new(0, 0.1, 0)
+		drinks[char] = {
+			t = 0,
+			seconds = math.max(0.3, seconds),
+			on = true, -- still drinking (the server clears "Drinking" when it's done)
+			out = 0, -- lowering it again afterwards
+			shoulder = shoulder,
+			neck = neck,
+			mem = { [shoulder] = { rest = shoulder.Transform }, [neck] = { rest = neck.Transform } },
+			potion = makePotion(arm, grip),
+		}
+	end
+
+	-- moves a joint `weight` of the way to `target`. Walking and idling move
+	-- the joints first each frame (and this starts from their pose); if
+	-- nothing did this frame, it starts from where the joint rests instead,
+	-- so a pose can never pile up on itself.
+	local function blend(d, joint, target, weight)
+		local mem = d.mem[joint]
+		local now = joint.Transform
+		if mem.wrote and now == mem.wrote then
+			now = mem.rest
+		else
+			mem.rest = now
+		end
+		local out = now:Lerp(target, weight)
+		joint.Transform = out
+		mem.wrote = out
+	end
+
+	local function stop(char)
+		local d = drinks[char]
+		if d then
+			if d.potion then
+				d.potion:Destroy()
+			end
+			-- (and nothing left tilted: each joint back where it rests)
+			for joint, mem in pairs(d.mem) do
+				if joint.Parent and mem.wrote and joint.Transform == mem.wrote then
+					joint.Transform = mem.rest
+				end
+			end
+			drinks[char] = nil
+		end
+	end
+
+	-- (after the animations have moved the joints this frame, so this wins)
+	RunService.Stepped:Connect(function(_, dt)
+		dt = math.min(dt or 1 / 60, 0.1)
+		for _, plr in ipairs(Players:GetPlayers()) do
+			local char = plr.Character
+			if char then
+				local want = char:GetAttribute("Drinking")
+				local d = drinks[char]
+				if want and not d then
+					start(char, tonumber(want) or CC.FlaskDrinkTime or 0.9)
+				elseif d then
+					d.on = want ~= nil
+				end
+			end
+		end
+		for char, d in pairs(drinks) do
+			if not char.Parent or not d.shoulder.Parent or not d.neck.Parent then
+				stop(char)
+			else
+				d.t = d.t + dt
+				if not d.on then
+					d.out = d.out + dt
+				end
+				local u = d.t / d.seconds
+				-- up to the chin, then bottoms up with the head back
+				local lift = smooth(u / 0.25) -- (from whatever the arm was doing)
+				local tip = smooth((u - 0.25) / 0.45)
+				local down = smooth(d.out / 0.25)
+				local weight = lift * (1 - down)
+				local gulp = u > 0.45 and math.sin((d.t - 0.45 * d.seconds) * 18) * math.rad(4) * (1 - down) or 0
+				local armPose = HOLD:Lerp(TIP, tip) * CFrame.Angles(0, 0, gulp * 0.5)
+				blend(d, d.shoulder, armPose, weight)
+				blend(d, d.neck, CFrame.Angles(HEAD_BACK * tip + gulp, 0, 0), weight)
+				if d.out >= 0.25 then
+					stop(char) -- lowered: back to normal
+				elseif down > 0.5 and d.potion then
+					d.potion:Destroy() -- (put away as the arm comes down)
+					d.potion = nil
+				end
+			end
+		end
+	end)
+end
+
 ----------------------------------------------------------------------
 -- Damage numbers
 ----------------------------------------------------------------------

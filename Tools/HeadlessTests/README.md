@@ -244,6 +244,18 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   (every state); `-a pour` and `--cols 4 --tight --title "DRINKING A FLASK"`
   (`Docs/vitals_drink.png`: a drink, moment by moment). It lays out the real
   frames (anchor points, UIScale, rotation) the way Roblox does.
+- `test_drink.luau` - THE DRINK (CombatClient's "The drink, as everyone
+  sees it"): the real code cut out of CombatClient, run on a pretend R6
+  character with Roblox's own shoulder and neck joints. With "Drinking" on
+  the character, a potion (bottle, neck, cork, welded to the right arm, and
+  unable to bump into anything) appears, the hand comes up to the chin and
+  lifts to tip it back, the head tips back; afterwards the potion's gone and
+  both joints are exactly where they were. Also: nothing piles up when no
+  animation moves the joints, the drink starts from a walking arm without a
+  snap, a character that disappears mid-drink is tidied up, another player's
+  drink shows too, and a non-R6 body is left alone. `-a poses` prints the
+  joints over a drink for `render_drink.py` (`python3 render_drink.py d.txt
+  ../../Docs/drink_preview.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

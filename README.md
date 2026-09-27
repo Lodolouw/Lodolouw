@@ -554,6 +554,10 @@ previews `Docs/vitals_preview.png` and `Docs/vitals_drink.png`):
   beside it (x3). Drink one (R) and the cork pops off, the bottle tips over
   and pours into the heart in an arc of red drops, and the heart fills as
   they land. None left: empty grey glass, x0, and it shakes if you try.
+  Your character drinks too, and everyone sees it: a little red potion comes
+  up to the chin, gets tipped back with the head back and a gulp, then is
+  put away (`Docs/drink_preview.png`; CombatService puts "Drinking" on the
+  character, and every screen animates it on the R6 arm and neck).
 - **The lightning bolt** on its right is your stamina: yellow electric liquid
   that drains as you punch, roll and jump and refills from the bottom when
   you stop. Full, it crackles with sparks; try something with too little

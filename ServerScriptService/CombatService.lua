@@ -877,7 +877,16 @@ local function onAction(player, action, arg, swing)
 		hum.WalkSpeed = CC.FlaskWalkSpeed
 		send(player, "Drinking", CC.FlaskDrinkTime)
 		pushState(player, st)
+		-- everyone sees you drink: every screen animates a character with this
+		-- set (CombatClient's "The drink, as everyone sees it")
+		local drinker = player.Character
+		if drinker then
+			drinker:SetAttribute("Drinking", CC.FlaskDrinkTime)
+		end
 		task.delay(CC.FlaskDrinkTime, function()
+			if drinker then
+				drinker:SetAttribute("Drinking", nil)
+			end
 			st.drinking = false
 			local h = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 			if h and h.Health > 0 and fighters[player] == st then
