@@ -664,7 +664,7 @@ function Config.formatMult(m)
 end
 
 ----------------------------------------------------------------------
--- The Spire (boss floors). Floors 1-7 have arenas and bosses; any more
+-- The Spire (boss floors). Floors 1-8 have arenas and bosses; any more
 -- would show as sealed in the Spire menu.
 ----------------------------------------------------------------------
 Config.Spire = {
@@ -875,6 +875,37 @@ Config.Spire = {
 				Clouds = false,
 				Wind = Vector3.new(0.6, 0, 1),
 				Sound = "Jungle Ambience", -- birds and the waterfall, looping, if you add one
+				Volume = 0.35,
+			},
+		},
+		{
+			id = 8,
+			boss = "Petalina, the Blooming Terror",
+			area = "The Glasshouse Garden",
+			level = 120,
+			blurb = "A giant glass greenhouse full of sunlight and flower beds. In the middle grows a flower taller than a house, with the sweetest smile you've ever seen. Don't trust the smile.",
+			color = Color3.fromRGB(246, 117, 122),
+			open = true,
+			-- a bright midday under glass: warm sunlight, a soft golden haze,
+			-- and pollen drifting in the air
+			ambience = {
+				ClockTime = 12.6,
+				Atmosphere = {
+					Density = 0.26,
+					Offset = 0.1,
+					Color = Color3.fromRGB(240, 244, 214),
+					Decay = Color3.fromRGB(184, 206, 150),
+					Glare = 0.35,
+					Haze = 1.2,
+				},
+				Tint = Color3.fromRGB(255, 250, 236),
+				Saturation = 0.16,
+				Contrast = 0.04,
+				Sand = Color3.fromRGB(255, 236, 140), -- (the "dust" here is pollen)
+				Grains = 0.14,
+				Clouds = false,
+				Wind = Vector3.new(0.2, 0, 0.4),
+				Sound = "Greenhouse Ambience", -- birdsong and dripping water, looping, if you add one
 				Volume = 0.35,
 			},
 		},
@@ -2097,6 +2128,158 @@ Config.Bosses = {
 			Hoot = "Kongo Hoot", -- "OOH OOH!"
 			Break = "Kongo Rage", -- round 2: the angry roar
 			Death = "Kongo Death", -- his last groan
+		},
+	},
+
+	[8] = {
+		Name = "Petalina, the Blooming Terror",
+		Short = "Petalina",
+		-- A giant cartoon flower (a parody of a certain famous flower boss from
+		-- a certain old-cartoon-style run-and-gun game - with her own name and
+		-- look), planted in the middle of her greenhouse. She never moves from
+		-- her spot, so you have to work your way in: seeds that sprout into
+		-- biting flytraps, petals that fly out and back like boomerangs, vines
+		-- bursting out of the ground, clouds of pollen, and her head stretching
+		-- out to chomp you. In round 2 thorns cover every flower bed, so you can
+		-- only fight on the paths. The shared brain runs her (she just never
+		-- walks); her moves: ServerScriptService/Bosses/Petalina.lua. Her body:
+		-- ReplicatedStorage/BossBodies/Petalina.lua. Her arena: GreenhouseBuilder
+		-- (the garden's shape: ReplicatedStorage/GardenPlan).
+		Color = Color3.fromRGB(246, 117, 122), -- her petals
+		TipColor = Color3.fromRGB(232, 183, 150), -- the petals' pale tips
+		DeepColor = Color3.fromRGB(181, 80, 136), -- the petals' dark middles
+		FaceColor = Color3.fromRGB(254, 231, 97), -- her face, in the middle of the petals
+		StemColor = Color3.fromRGB(99, 199, 77), -- her stem and leaves
+		StemDeep = Color3.fromRGB(62, 137, 72), -- the stem in shadow, the leaf veins
+		CheekColor = Color3.fromRGB(228, 59, 68), -- rosy cheeks
+		CoreColor = Color3.fromRGB(24, 20, 37), -- her pupils and mouth
+		EyeColor = Color3.fromRGB(255, 255, 255), -- the whites of her eyes
+		EvilColor = Color3.fromRGB(162, 38, 51), -- round 2: her petals go dark and wicked
+		EvilTip = Color3.fromRGB(255, 0, 68), -- round 2: the petals' tips
+		ThornColor = Color3.fromRGB(104, 56, 108), -- the brambles
+		ThornTip = Color3.fromRGB(228, 59, 68), -- their sharp red tips
+		Accent = Color3.fromRGB(246, 117, 122), -- the VS splash's colour
+
+		HealthPunches = 44,
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 12, -- the size of her body (her stem and roots; her head sits HeadHeight up)
+		HeadHeight = 26, -- how high her face is when she stands tall (you're about 5)
+		StemRadius = 3, -- how thick her stem is, for your punches
+		HeadRadius = 4.5, -- and her head, when it's down where you can reach it
+		WakeRange = 44, -- walk this close and she wakes up
+		WakeTime = 3.6, -- the bud opens, she stretches her leaves and smiles
+		WakeSoundLead = 0.3,
+		Leash = 0, -- she never leaves her spot
+		MoveSpeed = { 0, 0 },
+		TurnSpeed = { 200, 260 }, -- her face turning to follow you, degrees a second
+		Breather = { { 0.7, 1.2 }, { 0.45, 0.85 } }, -- the pause between moves, per round
+
+		PhaseAt = 0.5, -- ROUND 2 at half health
+		BreakTime = 3.6, -- her face twists into an evil grin and thorns spread over the beds
+		BreakShove = 50,
+		BreakReach = 22,
+		Phase2Recovery = 0.8,
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.7,
+
+		-- ROUND 2's THORNS: from Grace seconds after she turns evil, standing on
+		-- a flower bed hurts - Damage every Tick seconds. Stay on the paths!
+		Thorns = { Tick = 0.5, Damage = 6, Grace = 1.2 },
+
+		-- THE FLYTRAPS her seeds sprout into: each grows for Grow seconds, then
+		-- turns to face whoever comes within Sense and bites - its jaws gape
+		-- for Tell seconds (get back, or roll), then it lunges Lunge studs and
+		-- snaps shut on anyone within Reach. Rest between bites. One punch
+		-- pops it; left alone it wilts after Life seconds. Max = how many at
+		-- once, per round.
+		Flytrap = { Grow = 0.8, Life = 12, Sense = 14, Tell = 0.65, Lunge = 2.5, Reach = 4, Rest = 1.3, Damage = 16,
+			Knockback = 28, Punches = 1, Max = { 5, 7 } },
+
+		-- Her moves. Tell = the wind-up you see before it hits (every one is at
+		-- least your roll's half a second). Recovery = how long she's open after
+		-- it. Range = { closest, furthest } she uses it from; Weight = how often;
+		-- Phase 2 = only in round 2. A pair like { 3, 4 } means { round 1, round 2 }.
+		Attacks = {
+			-- SEED SPIT: her cheeks puff up, then she spits seeds high into the
+			-- air, one every Gap seconds; each lands Flight later on a red circle
+			-- near you (Spread studs round you). Sprout of them grow into flytraps
+			-- where they land.
+			SeedSpit = { Tell = 0.7, Seeds = { 3, 4 }, Gap = 0.2, Flight = 0.95, Spread = 10, Radius = 3.2, Damage = 14, Knockback = 20,
+				Sprout = { 2, 2 }, Recovery = 0.8, Phase = 1, Range = { 10, 200 }, Weight = 2.5 },
+			-- PETAL BOOMERANG: she plucks petals off her head and flings them,
+			-- one every Gap seconds. Each flies out in a loop past you (a dotted
+			-- line on the floor shows its whole path) and comes back to her. It
+			-- flies low: jump it, roll through it, or stay inside the loop.
+			Petals = { Tell = 0.8, Count = { 2, 3 }, Gap = 0.35, Speed = 46, Width = 10, Past = 8, Radius = 2.6, Height = 3.2,
+				Damage = 16, Knockback = 30, Recovery = 0.6, Phase = 1, Range = { 10, 200 }, Weight = 2.5 },
+			-- VINE WHIP: she slaps her leaves down, and red lines run out from her
+			-- across the floor - one at you, the others fanned Spread degrees
+			-- apart. Then vines burst up along them, racing outward (Speed studs
+			-- a second). You can't jump them: step off the line, or roll.
+			VineWhip = { Tell = 0.9, Lines = { 3, 5 }, Spread = 28, Length = 66, Width = 3.4, Speed = 90, Up = 0.9, Damage = 18,
+				Knockback = 40, Recovery = 0.7, Phase = 1, Range = { 0, 200 }, Weight = 3 },
+			-- POLLEN CLOUD: she shakes her head and puffs out pollen: clouds drift
+			-- down onto red circles near you and hang there for Life seconds.
+			-- Standing in one stings (Damage every Tick seconds). Get out of it!
+			Pollen = { Tell = 0.8, Clouds = { 2, 3 }, Drift = 1.1, Spread = 9, Radius = 7, Height = 9, Life = 6, Tick = 0.5, Damage = 5,
+				Recovery = 0.6, Phase = 1, Range = { 8, 200 }, Weight = 2 },
+			-- FACE STRETCH: she pulls her head back (the red lane follows you
+			-- until Commit of the way through, then locks), then her neck
+			-- stretches and her head shoots down the lane to CHOMP at the end.
+			-- Get out of the lane! Then her head lies there, dizzy, for Droop
+			-- seconds - it's right there on the floor: HIT HER!
+			FaceStretch = { Tell = 0.85, Commit = 0.7, Reach = { 10, 34 }, Time = 0.32, Width = 4.5, Damage = 20, Chomp = 5,
+				ChompDamage = 26, Knockback = 50, Droop = 2.4, Back = 0.5, Phase = 1, Range = { 6, 36 }, Weight = 3 },
+			-- ROOT RING: you're right up against her - her roots wriggle, the soil
+			-- round her cracks in a circle, and roots burst up out of it. Get out
+			-- of the circle, or roll.
+			RootRing = { Tell = 0.8, Radius = 13, Damage = 20, Knockback = 55, Recovery = 0.6, Phase = 1, Range = { 0, 13 }, Weight = 3.5 },
+			-- SUNBATHE: she turns her face up to the sun and hums ("La la la~").
+			-- Nothing hurts: run in and hit her!
+			Sunbathe = { Time = 1.8, Phase = 1, Range = { 26, 200 }, Weight = 1 },
+			-- THORN RING (round 2): she spins her head and flings a ring of thorns
+			-- that spreads out across the whole garden - then another, and
+			-- another. JUMP each one (or roll through it).
+			ThornRing = { Tell = 0.7, Rings = 3, Gap = 0.8, Speed = 26, Reach = 66, Thickness = 2.6, Height = 3, Damage = 16,
+				Knockback = 30, Recovery = 0.7, Phase = 2, Range = { 0, 200 }, Weight = 3 },
+			-- SEED RAIN (round 2): she shrieks at the glass roof and seeds rain
+			-- down onto red circles all over the paths near you. Sprout of them
+			-- grow into flytraps.
+			SeedRain = { Tell = 1.0, Drops = 10, Spread = 16, Fall = 1.1, Stagger = 0.7, Radius = 3.4, Damage = 16, Knockback = 25,
+				Sprout = 2, Recovery = 0.7, Phase = 2, Range = { 0, 200 }, Weight = 2.5 },
+		},
+
+		Reward = { Power = 3.2, FirstClear = 8 },
+
+		-- the fight's music: add a Sound named "Petalina Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Petalina Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear",
+
+		-- Her sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient).
+		Sounds = {
+			Wake = "Petalina Hum", -- waking up: a sweet little "la la la"
+			Spit = "Seed Spit", -- each seed spat out
+			Land = "Seed Land", -- a seed thumping down
+			Sprout = "Flytrap Sprout", -- a flytrap popping up out of the soil
+			Chomp = "Flytrap Chomp", -- a flytrap snapping shut
+			Petal = "Petal Throw", -- a petal boomerang thrown
+			Whip = "Vine Burst", -- vines bursting up along a line
+			Pollen = "Pollen Puff", -- a puff of pollen
+			Stretch = "Petalina Stretch", -- her neck stretching out
+			Bite = "Petalina Chomp", -- her big chomp at the end of it
+			Root = "Root Burst", -- roots bursting up round her
+			Giggle = "Petalina Giggle", -- a giggle (sunbathing, and when she hits you)
+			Thorn = "Thorn Ring", -- a ring of thorns flung out
+			Rain = "Seed Rain", -- the shriek before the seed rain
+			Spread = "Thorns Spread", -- round 2: the thorns creeping over the beds
+			Break = "Petalina Evil Laugh", -- round 2: her evil laugh
+			Death = "Petalina Wilt", -- wilting away at the end
 		},
 	},
 }

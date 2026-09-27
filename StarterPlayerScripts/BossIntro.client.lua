@@ -274,6 +274,26 @@ local PORTRAITS = {
 		ink = { F = RGB(115, 62, 57), D = RGB(62, 39, 49), S = RGB(232, 183, 150), W = RGB(255, 255, 255), K = RGB(24, 20, 37),
 			R = RGB(228, 59, 68) },
 	},
+	-- a flower: pink petals round a big yellow face, long-lashed eyes, rosy
+	-- cheeks and a sweet little smile
+	Petalina = {
+		rows = {
+			"....P..P..P...",
+			"..PPPPPPPPPP..",
+			".PPYYYYYYYYPP.",
+			"PPYYYYYYYYYYPP",
+			".PYKWYYYYKWYP.",
+			"PPYKKYYYYKKYPP",
+			".PYYYYYYYYYYP.",
+			"PPRYYYYYYYYRPP",
+			".PYYKYYYYKYYP.",
+			"..PYYKKKKYYP..",
+			"...PPPPPPPP...",
+			"......GG......",
+		},
+		ink = { P = RGB(246, 117, 122), Y = RGB(254, 231, 97), K = RGB(24, 20, 37), W = RGB(255, 255, 255), R = RGB(228, 59, 68),
+			G = RGB(99, 199, 77) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -607,6 +627,26 @@ local LINES = {
 		phase2 = { "* GRRRR... NOW you've made me go BANANAS!", "* Nobody knocks the King off his feet! NOBODY!" },
 		win = { "* OOH OOH! Another win for the King! The village goes wild!", "* Come back when you've had more bananas!" },
 		lose = { "* Ooh... ooh... my tie... is all crooked...", "* Okay, okay! You win! ...Want a banana?" },
+	},
+	-- a flower: sugary sweet (to your face), very proud of her garden, and
+	-- never, ever to be trusted
+	Petalina = {
+		wake = {
+			"* Oh! A visitor! Come closer, sweetie~ I don't bite! ...Much.",
+			"* *yawn* ...What a lovely morning to squash a little pest~!",
+		},
+		idle = {
+			"* Isn't my garden PRETTY? Please don't step on the tulips~",
+			"* I just LOVE the sunshine. And fertilizer. You'd make lovely fertilizer!",
+			"* Stop and smell the roses! ...Closer. CLOSER.",
+			"* My flytraps are SO hungry today. Aren't they cute?",
+			"* A little pollen never hurt anyone! ...Achoo!",
+			"* Petals, vines, seeds... I've got a whole bouquet for you!",
+		},
+		hit = { "* Oopsie! Did my petal cut you? Tee-hee!", "* CHOMP! ...Sorry, sweetie, you looked like a snack!", "* Aww, you've got dirt on you. Your own!" },
+		phase2 = { "* You... TRAMPLED... my FLOWERS! Now you'll sleep in the THORNS!", "* No more Miss Nice Flower! Let the weeds grow!" },
+		win = { "* Tee-hee! Another little pest in the compost!", "* Come back soon, sweetie! My flytraps miss you already~" },
+		lose = { "* My... my petals... I'm... wilting...", "* Water... I need... water... and a little sunshine..." },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {

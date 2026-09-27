@@ -53,7 +53,8 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `knight_full` and `knight_attacks`, server and client - 4 for Kaze,
   `kaze_full` and `kaze_attacks`, 4 for Revvington, `car_full` and
   `car_attacks`, 4 for Gridlock, `grid_full` and `grid_attacks`, and 4
-  for Kongo, `kongo_full` and `kongo_attacks`: 36 in all);
+  for Kongo, `kongo_full` and `kongo_attacks`, and 4 for Petalina,
+  `petal_full` and `petal_attacks`: 40 in all);
   `./golden.sh check`
   replays them and fails on any difference - the proof that a change to the
   boss code (like splitting it into one file per boss) changed nothing
@@ -205,6 +206,22 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `python3 render_snaps.py s.txt ../../Docs/kongo_preview.png --cols 3 --title "KONGO|FLOOR 7  -  KONGO'S JUNGLE VILLAGE|RECOMMENDED LV 105"`
   (the fight: eleven moments and a title card); `-a poses` with
   `--cols 3 --title ""` the pose sheet (`Docs/kongo_poses.png`).
+- `test_petalina.luau` - PETALINA (floor 8) in the real Glasshouse Garden
+  (GreenhouseBuilder, GardenPlan) with the real BossService and her own moves
+  (and, with `client` at the end, the real BossClient drawing her, her
+  flytraps, the brambles and the butterflies). Its pretend players circle her
+  (keeping to the paths in round 2), roll, jump and punch her stem - or her
+  head when it's down. `-a full`, `attacks`, `reset`, `duo` and `timing` as
+  for the others; `droop` checks punches on her drooping head land (and don't
+  once it's back up), `traps` that flytraps sprout, bite, pop in one punch
+  and wilt, and `thorns` that in round 2 a bed stings and a path doesn't. It
+  also checks she never moves, floor 8 has no loot, and (client) that every
+  part of her, every warning and her words get drawn, the butterflies fly,
+  every bramble grows in round 2 and sinks again after.
+- `petalina_snaps.luau` + `render_snaps.py` - Petalina's preview pictures:
+  `luau petalina_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/petalina_preview.png --cols 3 --title "PETALINA|FLOOR 8  -  THE GLASSHOUSE GARDEN|RECOMMENDED LV 120"`;
+  `-a poses` with `--cols 3 --title ""` the pose sheet (`Docs/petalina_poses.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

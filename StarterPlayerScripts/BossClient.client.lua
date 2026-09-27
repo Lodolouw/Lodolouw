@@ -377,7 +377,11 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- (Kongo's: a chest pound or a ground slap sounds like a slam, a barrel
 	-- like a lunge, the TNT like an eruption, a hoot like a wail...)
 	Pound = "Slam", Wind = "Wail", Slap = "Slam", Spin = "Wave", Headbutt = "Lunge", Barrel = "Lunge",
-	BarrelBreak = "Splat", TNT = "Erupt", Grab = "Lunge", Hoot = "Wail" }
+	BarrelBreak = "Splat", TNT = "Erupt", Grab = "Lunge", Hoot = "Wail",
+	-- (Petalina's: a flytrap sprouting like an eruption, its chomp like a
+	-- lunge, a petal like a wave, pollen like a spit, a giggle like a wail...)
+	Sprout = "Erupt", Chomp = "Lunge", Petal = "Wave", Pollen = "Spit", Stretch = "Lunge", Bite = "Slam",
+	Root = "Erupt", Giggle = "Wail", Thorn = "Wave", Rain = "Splat", Spread = "Erupt" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]

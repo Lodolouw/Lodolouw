@@ -455,6 +455,58 @@ from his games. Recommended level 105.
 - Previews: `Docs/kongo_preview.png` (the fight) and `Docs/kongo_poses.png`
   (him, pose by pose).
 
+## The Spire's eighth floor: Petalina, the Blooming Terror (The Glasshouse Garden)
+
+A giant cartoon flower (a parody of a certain famous flower boss from a
+certain old-cartoon-style run-and-gun game, with her own name and look),
+taller than a house, planted in the middle of a huge old glass greenhouse:
+a round garden of paved paths - a ring round her, four straight paths and a
+ring round the outside - with raised flower beds full of tulips and daisies
+between them, potted palms in the corners, baskets of flowers hanging from
+the glass roof, butterflies and sunbeams. She sleeps as a closed bud; walk up
+and she blooms: "HELLO, SWEETIE~!". She NEVER MOVES from her spot - she fills
+the garden with things to dodge and you weave in to hit her stem.
+Recommended level 120.
+
+- **Her moves:** SEED SPIT (seeds fly onto red circles near you, and some
+  sprout into FLYTRAPS: they gape at anyone who comes close, then snap - one
+  punch pops one, and left alone they wilt), PETAL BOOMERANG (petals fly out
+  in a loop through where you're standing and come back - a dotted line shows
+  each loop; they fly low: jump them, roll, or stay inside the loop), VINE
+  WHIP (red lines run out from her, then vines burst up along them racing
+  outward - step off the lines, you can't jump them), POLLEN CLOUD (clouds
+  drift onto circles near you and sting anyone standing in them), FACE
+  STRETCH (a red lane follows you and locks, then her neck stretches and her
+  head shoots down it to CHOMP at the end - get out of the lane; then her head
+  lies on the floor, dizzy: "HIT HER!" - you can punch her head), ROOT RING
+  (right up close: roots burst up in a circle round her - get out, or roll)
+  and SUNBATHE (she hums in the sun: free hits).
+- **ROUND 2 ("YOU TRAMPLED MY FLOWERS!")** at half health: her petals go dark
+  red, her smile turns into a fanged grin, thorns sprout on her stem - and
+  thorny brambles grow over every flower bed. From then on standing on a bed
+  stings, so fight on the paths. She adds THORN RING (rings of thorns spread
+  across the garden - jump them) and SEED RAIN (seeds rain from the glass roof
+  onto the paths near you, sprouting more flytraps).
+- **The end: she wilts.** Her petals drop off one by one, her head bows to the
+  floor, and she pops into pixels; the brambles sink back into the soil. She
+  pays Power only for now: her chest and gear are coming with the loot rework
+  (`Items.ByFloor[8]` is empty on purpose, so no chest is given).
+- **Where things are:** every number in `Config.Bosses[8]`; the floor in
+  `Config.Spire.Floors[8]`; her moves in `ServerScriptService/Bosses/Petalina.lua`;
+  her body, warnings, flytraps, the brambles and butterflies in
+  `ReplicatedStorage/BossBodies/Petalina.lua`; the garden's shape (where the
+  paths and beds are, the petals' loop, her head's path) in
+  `ReplicatedStorage/GardenPlan.lua`; the arena in
+  `ServerScriptService/GreenhouseBuilder.lua`; her portrait and lines in `BossIntro`.
+- **Music:** a Sound named `Petalina Song` in SoundService (Oozark's plays until
+  you add it), and `Greenhouse Ambience` for the arena's background loop.
+  **Sounds** (all optional; missing ones borrow Oozark's): Petalina Hum, Seed
+  Spit, Seed Land, Flytrap Sprout, Flytrap Chomp, Petal Throw, Vine Burst,
+  Pollen Puff, Petalina Stretch, Petalina Chomp, Root Burst, Petalina Giggle,
+  Thorn Ring, Seed Rain, Thorns Spread, Petalina Evil Laugh, Petalina Wilt.
+- Previews: `Docs/petalina_preview.png` (the fight) and `Docs/petalina_poses.png`
+  (her, pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without
@@ -511,8 +563,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
   is going to be reworked for Tuber), Spade Knight's and Relicbound
   for Burrowmore, Windwalker and Ki Master's for Kaze, Speedster and
   Turbocharged for Revvington, Beatbound and Demon Geometry for Gridlock)
-  with bonuses for 2 and 4 pieces. Kongo (floor 7) has no chest yet: his
-  loot comes with the rework.
+  with bonuses for 2 and 4 pieces. Kongo (floor 7) and Petalina (floor 8)
+  have no chests yet: their loot comes with the rework.
 - **Level:** each item needs a level: the highest you've ever reached, so
   prestiging never locks you out. Gear and chests stay through prestige.
 - **The bag:** your loadout and total stats on the left; your items, tabs,

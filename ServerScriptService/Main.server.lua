@@ -105,6 +105,10 @@ start("GridBuilder", GridBuilder and GridBuilder.Build)
 local JungleBuilder = load("JungleBuilder", 3)
 start("JungleBuilder", JungleBuilder and JungleBuilder.Build)
 
+-- The Spire's eighth floor, the Glasshouse Garden (Petalina's arena): the same way
+local GreenhouseBuilder = load("GreenhouseBuilder", 3)
+start("GreenhouseBuilder", GreenhouseBuilder and GreenhouseBuilder.Build)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

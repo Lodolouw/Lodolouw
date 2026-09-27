@@ -66,9 +66,16 @@ for seed in 1 2 3; do run test_kongo.luau -a full $seed; done
 for sc in attacks reset duo timing tired; do run test_kongo.luau -a $sc 1; done
 run test_kongo.luau -a full 2 client
 run test_kongo.luau -a attacks 1 client
+# Petalina (floor 8): whole fights, every move, resets, two players, the dodge
+# windows, her drooping head, the flytraps, round 2's thorns, and her on screen
+for seed in 1 2 3; do run test_petalina.luau -a full $seed; done
+for sc in attacks reset duo timing droop traps thorns; do run test_petalina.luau -a $sc 1; done
+run test_petalina.luau -a full 2 client
+run test_petalina.luau -a attacks 1 client
+run test_petalina.luau -a thorns 1 client
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (36 boss traces)"
+	echo "pass  golden.sh check (40 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20
