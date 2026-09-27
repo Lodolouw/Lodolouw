@@ -49,12 +49,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
   - Client: `BossClient` keeps the shared visuals; each boss's body has its own ModuleScript in `ReplicatedStorage/BossBodies/` (`Oozark.lua`, `Tuber.lua`...).
   - "How to add a boss": `Bosses/_Template.lua` + `BossBodies/_Template.lua` (a tiny working boss with one attack, STOMP; `test_boss_template.luau` fights it). See "Adding a boss" below.
   - Proven identical by golden traces: `Tools/HeadlessTests/golden.sh check` (16 recorded fights, server and screen, byte-identical before and after; Burrowmore added 4 more of his own, Kaze 4 more, Revvington 4 more, Gridlock 4 more, Kongo 4 more and Petalina 4 more: 40 now - and floor 2's 7 were re-recorded when Tuber replaced the worm).
-- **The MMO direction** (Hypixel Skyblock / Wynncraft / Blox Fruits) is what keeps the game alive long-term:
-  - Every boss drops a **treasure chest**, a "gamble crate", with gear in rarities: Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret. This is **done**.
-  - Gear goes in your inventory and drives a player **market**.
-  - Gear and pets are permanent.
-  - I **declined** unidentified items and sockets.
-  - Still to build: **pets**, **fishing**, **trading**, then the **Auction House**. See "The world and its places" above.
+- **THE NEW DIRECTION (decided, replaces the old chest/gear/market plan): simple like Blox Fruits.** See "The new direction: weapons, packs, pets and Arcade Tokens" below. (The old boss chests with armour gear were built, and will be removed by it.)
 - **Other ideas I liked, for later:**
   - A **first-time tutorial**: an arrow to the Colosseum, "Beat 5 dummies", "Spend your stat points", "Open your chest". **I decided the tutorial is built LAST, after everything else.** The King is NOT part of it (he's the early-game boss test); at most one step like "Survive to wave 5!".
   - **Pets** from eggs: the Pet Sanctuary tower is already built and empty.
@@ -118,10 +113,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
   - Each gives a perk: more Power, more coins, fishing luck, or boss damage.
   - They drop from boss chests and fishing, and hatch from eggs bought with coins.
   - They level up, and rarer pets have stronger perks.
-- **The market:**
-  - First **trading**: a two-player trade window where both confirm and the server swaps the items.
-  - Later an **Auction House / Bazaar** in the Grand Keep's great hall, working across servers.
-  - It must be exploit-proof, with everything done on the server. The saves are already session-locked, which was a prerequisite.
+- **Trading** (only weapons and pets): a two-player trade window where both confirm and the server swaps the items - exploit-proof, everything on the server (the saves are already session-locked). **No Auction House, no market** (decided).
 - **Gear Hall:** an armoury display, and a place where you open chests in public to show off rare pulls.
 - **Hall of Champions** in the Grand Keep: live statues of the top players (by Power and fastest boss kill) and a trophy wall of the bosses you've beaten.
 - **PvP duels** in an arena courtyard, reusing the combat system and the VS splash.
@@ -129,7 +121,26 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - **The Vault** under the keep: a daily chest, and a secret room that opens after beating a certain boss.
 - **A codes board** at the gatehouse for promo codes.
 
-**Robux rule we agreed:** never sell gear directly, because that ruins the market. Cosmetics, extra slots and similar are fine.
+**Robux rule (updated):** the old rule "never sell gear for Robux" was only there to protect a player market - there's no market now, so Arcade Tokens (which roll weapons) CAN be bought with Robux. See the new direction below.
+
+## The new direction: weapons, packs, pets and Arcade Tokens (DECIDED - not built yet)
+
+I decided to make the game **simple, like Blox Fruits**: few things to understand, and Robux has two clear jobs - **go faster**, or **look cooler / get the fun power**.
+
+- **The loop:** fight in the Colosseum → level up → beat Spire bosses → earn **Arcade Tokens** → roll **weapons** → get stronger → next boss.
+- **A player has only 4 things:** their **Level** (Power), a **Weapon** (like a fruit: it changes how you fight), a **Pet** (a helper with a bonus), and two currencies: **Coins** (free, from fighting) and **Arcade Tokens** (for rolls).
+- **Weapons come from ARCADE MACHINES, one per boss** - a row of cabinets in the lobby, each painted like its boss. A boss's pack **unlocks when you beat that boss**. Each pack has its own weapons themed on that boss (e.g. Slime: Goo Gloves, Slime Whip, Gelatin Hammer; Jungle: Banana Boomerang, Barrel Bomb, Giant Fist; Garden: Thorn Whip, Petal Blades, Flytrap Gauntlet), one Mythic each, and a tiny shared chance at a Secret. Higher-floor packs cost more but are stronger. It's a real choice: each pack really has different weapons. A "pack of the week" with boosted odds.
+- **Every weapon plays differently:** its own model (chunky 8-bit parts), look, combo, reach, timing and special move, animated in code (the character's arms and body moved by script, like the bosses) with trails, bursts, camera shake and sounds. If I later make polished animations in Studio's Animation Editor, I give the IDs and they get swapped in.
+- **Rarities:** Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret. **Odds are shown** on every machine (a Roblox rule for paid random items). A **pity counter** per pack (e.g. a guaranteed Legendary every 40 rolls), shown on screen. Duplicates turn into tokens or upgrade that weapon.
+- **Arcade Tokens are earned by playing, in small amounts:** 1 from the daily quest (a reason to log in daily), a daily login streak (bonus on day 7), first boss clears (3-5), sometimes from repeat boss kills, a Colosseum run, every 10 levels, codes, badges. About 10-15 a week free. **Or bought with Robux** (packs of tokens). In countries where Roblox doesn't allow paid random items (PolicyService says so), buying tokens with Robux is switched off - free tokens still work.
+- **Pets:** hatched from eggs bought with Coins (and rare boss eggs); a bonus like +XP, +coins or +damage; 1 equipped at first, more slots later.
+- **Trading:** only weapons and pets. No market / Auction House.
+- **What Robux buys:** go faster (2x XP, 2x Coins, token packs, an extra pet slot, lucky hatching) and look cool (weapon skins, auras, victory dances, a VIP tag), plus private servers.
+- **What gets CUT:** armour gear (helmet, chest, boots and their sets), boss chests (bosses give Tokens, Power and sometimes a rare egg instead), talismans and the upgrade shop. The screen shrinks to **4 buttons: Roll, Inventory, Shop, Quests**, with Level, Coins and Tokens at the top. Existing players' gear is turned into Arcade Tokens once, so nobody loses out.
+- **What stays the same:** the bosses, the Colosseum, the intro, combat and the daily quests.
+- **No "evil" tricks:** no fake timers, no fake free-Robux, no misleading thumbnails, no fake near-misses. Fair and exciting, within Roblox's rules.
+- **Build order:** 1) Arcade Tokens + the Arcade Machine system + the first two packs (Slime and Cactus), starting with ONE test weapon I playtest first; then the other packs one at a time. 2) The cuts (armour, chests, talismans, upgrade shop, the simpler screen). 3) Pets and eggs. 4) Trading. 5) The Robux shop.
+- **Growing the game (agreed ideas):** update tags in the title, bosses on the thumbnails (test a few), a daily login streak, codes on update days and like milestones, a group-join reward, leaderboards (fastest boss kill) and a badge per boss, clips for TikTok/Shorts, and Roblox ads only once players stay.
 
 ## The repository
 
@@ -537,4 +548,4 @@ A small red **DEV** button bottom-right (Hud) opens the dev console: +Loot, +Coi
 - `mount.luau` loads the game's scripts into the mock the way Rojo lays them out (folders and all), so scripts that require each other by their place in the game work in tests.
 - Remember `Random:NextNumber(a, b)` takes a range. `Vector3.zero` exists in Roblox.
 
-Start by reading `ReplicatedStorage/Config.lua` (the `Intro`, `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files (and `Bosses/Burrowmore.lua` + `BossBodies/Burrowmore.lua`: the newest, most complete example of a surface boss). The Colosseum polish plan is done, the boss code is split, the intro (Oozlet) is in, floors 3 to 8 (Knight Burrowmore, Kaze, Speedy Revvington, Gridlock, Kongo, Petalina) are in, and floor 2 is now Tuber (the worm is gone). Next: step 2 of the growth plan (the gap between the intro and Oozark - ask me), and floor 9's boss (Scribble - ask me before building it). Other ideas for later: the chest rework (I have a plan for the loot: floor 2's chest still drops the old worm's Duneworn/Devourer's gear until then, and Kongo (floor 7) and Petalina (floor 8) have no loot at all yet - don't add or change loot without asking), pets, a settings menu.
+Start by reading `ReplicatedStorage/Config.lua` (the `Intro`, `Bosses` and `Colosseum` sections), `ServerScriptService/BossService.lua` and the two `_Template.lua` boss files (and `Bosses/Burrowmore.lua` + `BossBodies/Burrowmore.lua`: the newest, most complete example of a surface boss). The Colosseum polish plan is done, the boss code is split, the intro (Oozlet) is in, floors 3 to 8 (Knight Burrowmore, Kaze, Speedy Revvington, Gridlock, Kongo, Petalina) are in, and floor 2 is now Tuber (the worm is gone). Next: step 2 of the growth plan (the gap between the intro and Oozark - ask me), and floor 9's boss (Scribble - ask me before building it). **The big next job is the new direction** (see "The new direction: weapons, packs, pets and Arcade Tokens"): it replaces the old chest/gear loot plan - start with its step 1 (the test weapon first). Other ideas for later: a settings menu.
