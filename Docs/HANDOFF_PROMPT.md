@@ -155,6 +155,20 @@ I decided to make the game **simple, like Blox Fruits**: few things to understan
 - **Honest:** the server rolls the result BEFORE the spin, the animation only shows it (also exploit-proof). The strip is filled using the real odds. **No fake near-misses** (never slowing past a Legendary on purpose). The odds button is always on the machine.
 - **Mobile and respectful of time:** a spin takes ~3-4 seconds, **tap to skip**, a **Roll x10** button shows a grid of 10 results, and the **pity bar** ("Epic guaranteed in 12 rolls") is on the machine.
 
+### Weapon types and abilities (decided)
+
+- **6 weapon types, all melee** (nothing reaches past sword length, so no boss can be cheesed from safety - that's why spears and staffs were cut):
+  1. **Fists / Gauntlets** - fast, short reach (the starter).
+  2. **Sword** - balanced, easy.
+  3. **Hammer** - slow, heavy, a ground slam.
+  4. **Daggers** - fast stabs, a dash.
+  5. **Scythe** - wide sweeping arcs, slow swing.
+  6. **Katana** - fast light slashes; its thing is the quick-draw (hold to sheathe, release for a lightning dash-slash).
+- **Normal attacks come from the TYPE** (every sword swings like a sword - learn a type once, use any weapon of it).
+- **One ability per WEAPON** (its own, e.g. the Barrel Hammer rolls a barrel), on a cooldown of about 8-12 s, close range too. **It upgrades with that weapon's mastery**, e.g. Barrel Hammer: mastery 1 one barrel, 25 bigger and faster, 50 two barrels, 75 they explode, 100 (awakened) a new look + a giant golden barrel finale. Rarer weapons get flashier abilities.
+- On phones: one attack button, one ability button.
+- Each boss pack has about 4 weapons (3 + a Mythic), each a different type in that boss's theme; 15 bosses = about 60 weapons from 6 movesets, plus the event weapons. New types (a 7th, 8th) can be big update headlines later.
+
 ### Weapons: small differences at first, true ceiling with mastery (decided)
 
 Every weapon has **mastery** (levels up by using it, up to 100). At the start the rarities are close; at high mastery the rare ones pull away. Damage vs a basic weapon:
