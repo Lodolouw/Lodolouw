@@ -101,6 +101,10 @@ start("SpeedwayBuilder", SpeedwayBuilder and SpeedwayBuilder.Build)
 local GridBuilder = load("GridBuilder", 3)
 start("GridBuilder", GridBuilder and GridBuilder.Build)
 
+-- The Spire's seventh floor, Kongo's Jungle Village (Kongo's arena): the same way
+local JungleBuilder = load("JungleBuilder", 3)
+start("JungleBuilder", JungleBuilder and JungleBuilder.Build)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

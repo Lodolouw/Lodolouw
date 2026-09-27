@@ -664,8 +664,8 @@ function Config.formatMult(m)
 end
 
 ----------------------------------------------------------------------
--- The Spire (boss floors). Floors 1-3 have arenas and bosses; the rest
--- show as sealed in the Spire menu.
+-- The Spire (boss floors). Floors 1-7 have arenas and bosses; any more
+-- would show as sealed in the Spire menu.
 ----------------------------------------------------------------------
 Config.Spire = {
 	EnterRange = 38, -- how close to the Spire's doors you must be to enter
@@ -847,7 +847,37 @@ Config.Spire = {
 				Wind = Vector3.new(0.3, 0, 1),
 			},
 		},
-		{ id = 7, boss = "???", area = "???", level = 105, blurb = "Sealed.", color = Color3.fromRGB(99, 199, 77), open = false },
+		{
+			id = 7,
+			boss = "Kongo, the Jungle Brawler",
+			area = "Kongo's Jungle Village",
+			level = 105,
+			blurb = "A village of huts on stilts in a jungle clearing, a waterfall thundering behind it. Its king is a huge gorilla in a red tie, and he has never lost a fight in his clearing. The whole village comes to watch.",
+			color = Color3.fromRGB(115, 62, 57),
+			open = true,
+			-- a warm afternoon in the jungle: sun through the leaves, a green
+			-- haze, and leaves drifting past on the breeze
+			ambience = {
+				ClockTime = 15.8,
+				Atmosphere = {
+					Density = 0.3,
+					Offset = 0.12,
+					Color = Color3.fromRGB(206, 232, 186),
+					Decay = Color3.fromRGB(120, 164, 110),
+					Glare = 0.25,
+					Haze = 1.4,
+				},
+				Tint = Color3.fromRGB(255, 246, 226),
+				Saturation = 0.14,
+				Contrast = 0.05,
+				Sand = Color3.fromRGB(99, 199, 77), -- (the "dust" here is leaves)
+				Grains = 0.18,
+				Clouds = false,
+				Wind = Vector3.new(0.6, 0, 1),
+				Sound = "Jungle Ambience", -- birds and the waterfall, looping, if you add one
+				Volume = 0.35,
+			},
+		},
 	},
 }
 
@@ -1937,6 +1967,136 @@ Config.Bosses = {
 			Death = "Gridlock Shatter", -- he shatters into cubes
 			Attempt = "Attempt Start", -- "ATTEMPT 1"
 			Complete = "Level Complete", -- LEVEL COMPLETE!
+		},
+	},
+
+	[7] = {
+		Name = "Kongo, the Jungle Brawler",
+		Short = "Kongo",
+		-- A big, cocky gorilla in a red tie (a parody of a certain famous
+		-- barrel-throwing ape - with his own name and look) who fights up close
+		-- with moves from his games: a Giant Punch he winds up like a windmill,
+		-- ground slaps, a rolling attack, a helicopter spin, barrels and TNT.
+		-- A brawl on flat ground: read his wind-ups, dodge at the right moment,
+		-- and punish him when he's tired. He fights on the surface, so the shared
+		-- brain runs him; his moves: ServerScriptService/Bosses/Kongo.lua. His
+		-- body: ReplicatedStorage/BossBodies/Kongo.lua. His arena: JungleBuilder.
+		Color = Color3.fromRGB(115, 62, 57), -- his brown fur
+		DeepColor = Color3.fromRGB(62, 39, 49), -- the fur in shadow, his brow
+		SkinColor = Color3.fromRGB(232, 183, 150), -- his face, chest, hands and feet
+		CoreColor = Color3.fromRGB(24, 20, 37), -- his pupils, nostrils, mouth
+		EyeColor = Color3.fromRGB(255, 255, 255), -- the whites of his eyes
+		TieColor = Color3.fromRGB(228, 59, 68), -- his red tie
+		LetterColor = Color3.fromRGB(254, 231, 97), -- the big K on his tie
+		RageColor = Color3.fromRGB(255, 0, 68), -- round 2: his face and eyes, angry red
+		Accent = Color3.fromRGB(228, 59, 68), -- the VS splash's colour
+
+		HealthPunches = 42,
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 11, -- how wide he is for hits (he stands nearly three times your height)
+		WakeRange = 46, -- walk this close and he wakes up
+		WakeTime = 3.4, -- he yawns, jumps up, pounds his chest and roars
+		WakeSoundLead = 0.3,
+		Leash = 62, -- he can go anywhere in the clearing (its wall is 70 out)
+		MoveSpeed = { 15, 18 }, -- knuckle-walking after you between moves, per round (you run 16-24)
+		TurnSpeed = { 320, 420 }, -- degrees a second
+		Breather = { { 0.6, 1.1 }, { 0.3, 0.6 } }, -- the pause between moves, per round
+
+		PhaseAt = 0.5, -- ROUND 2 at half health
+		BreakTime = 3.2, -- he pounds his chest, roars, and his face goes red (everyone near is thrown back)
+		BreakShove = 52,
+		BreakReach = 26,
+		Phase2Recovery = 0.8,
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.7,
+
+		-- His moves. Tell = the wind-up you see before it hits (every one is at
+		-- least your roll's half a second). Recovery = how long he's open after
+		-- it. Range = { closest, furthest } he uses it from; Weight = how often;
+		-- Phase 2 = only in round 2. A pair like { 3, 4 } means { round 1, round 2 }.
+		Attacks = {
+			-- GIANT PUNCH: he winds his arm round like a windmill - the red lane in
+			-- front of him grows the longer he winds (anywhere from Wind[1] to
+			-- Wind[2] seconds) and follows you until Commit of the way through,
+			-- then locks. Then he throws himself down it fist-first. Step out of
+			-- the lane! If he MISSES he's tired - hands on his knees, panting - for
+			-- Tired seconds: your big chance. In round 2 a fully wound punch
+			-- (past Big seconds) shakes the ground where it lands: a shockwave ring.
+			GiantPunch = { Wind = { 0.9, 1.6 }, Commit = 0.75, Reach = { 12, 30 }, Speed = 62, Width = 5, Damage = { 22, 34 },
+				Knockback = { 50, 80 }, Recovery = 0.8, Tired = 2.4, Big = 1.35, WaveSpeed = 34, WaveReach = 30,
+				WaveHeight = 2.6, WaveThickness = 2.4, WaveDamage = 14, Phase = 1, Range = { 6, 34 }, Weight = 3 },
+			-- HAND SLAP: both arms up, then he slaps the ground again and again -
+			-- each slap sends a shockwave rolling out along the floor. JUMP each one
+			-- (or roll through it). Slaps = how many, per round.
+			HandSlap = { Tell = 0.6, Slaps = { 3, 4 }, Gap = 0.5, Speed = 32, Reach = 34, Thickness = 2.4, Height = 2.6, Damage = 14,
+				Knockback = 28, Recovery = 0.9, Phase = 1, Range = { 0, 30 }, Weight = 3 },
+			-- ROLLING ATTACK: he curls up into a ball and revs (the red lane locks
+			-- at Commit of the way through), then rolls at you - bouncing once off
+			-- the edge of the clearing if he gets there. Roll through him, or get
+			-- out of the lane. He's dizzy after (a chance to hit him).
+			Roll = { Tell = 0.75, Commit = 0.75, Speed = 46, Distance = 72, Width = 5.5, Damage = 20, Knockback = 45,
+				Recovery = 1.3, Phase = 1, Range = { 12, 60 }, Weight = 2.5 },
+			-- SPINNING KONG: arms out like a helicopter, he spins and drifts after
+			-- you for Time seconds - anyone inside the red ring gets clobbered
+			-- (again every Rehit seconds). Back off! He's dizzy after.
+			Spin = { Tell = 0.6, Time = 2.4, Speed = 11, Radius = 8.5, Damage = 12, Knockback = 34, Rehit = 0.6, Recovery = 1.4,
+				Phase = 1, Range = { 0, 22 }, Weight = 2 },
+			-- HEADBUTT: a quick, short lunge head-first. Tiny wind-up - watch his head go back.
+			Headbutt = { Tell = 0.5, Distance = 10, Time = 0.22, Width = 4.5, Damage = 16, Knockback = 40, Recovery = 0.6,
+				Phase = 1, Range = { 0, 12 }, Weight = 2 },
+			-- BARREL THROW: he heaves a barrel over his head and throws it - it
+			-- rolls along the floor at you. Jump it or roll through it. Barrels =
+			-- how many, one after another (each aimed at you), per round.
+			Barrel = { Tell = 0.8, Barrels = { 2, 3 }, Gap = 0.65, Speed = 36, Reach = 80, Radius = 2.6, Height = 3.2, Damage = 16,
+				Knockback = 30, Recovery = 0.7, Phase = 1, Range = { 14, 200 }, Weight = 2.5 },
+			-- TNT: he lobs a TNT barrel high - a red circle marks where it lands -
+			-- and it explodes. Get out of the circle! Count = how many, per round
+			-- (the second one lands where you ran to).
+			TNT = { Tell = 0.9, Count = { 1, 2 }, Gap = 0.55, Flight = 1.1, Radius = 9, Damage = 26, Knockback = 55, Recovery = 0.8,
+				Phase = 1, Range = { 18, 200 }, Weight = 1.5 },
+			-- CHEST POUND: he pounds his chest and hoots at you ("OOH OOH!") - showing
+			-- off. Nothing hurts: run in and hit him!
+			Pound = { Time = 1.6, Phase = 1, Range = { 26, 200 }, Weight = 1 },
+			-- CARGO THROW (round 2): arms wide, he lunges and GRABS - anyone in
+			-- front of him (Reach, Arc degrees wide) is scooped up and hurled far
+			-- across the clearing. Dodge sideways or roll.
+			CargoThrow = { Tell = 0.55, Reach = 10, Arc = 110, Damage = 22, Throw = 90, Lift = 45, Recovery = 0.8,
+				Phase = 2, Range = { 0, 11 }, Weight = 2.5 },
+			-- COMBO (round 2): no breathers - a couple of slaps, straight into a
+			-- roll, straight into a quick Giant Punch.
+			Combo = { Slaps = 2, Wind = 0.85, Phase = 2, Range = { 0, 30 }, Weight = 2.5 },
+		},
+
+		Reward = { Power = 2.8, FirstClear = 7 },
+
+		-- the fight's music: add a Sound named "Kongo Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Kongo Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear",
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient).
+		Sounds = {
+			Wake = "Kongo Roar", -- waking up: a big roar
+			Pound = "Kongo Chest Pound", -- pounding his chest
+			Wind = "Kongo Wind Up", -- the Giant Punch winding up
+			Punch = "Kongo Giant Punch", -- the Giant Punch landing
+			Slap = "Kongo Slap", -- each ground slap
+			Roll = "Kongo Roll", -- rolling
+			Spin = "Kongo Spin", -- Spinning Kong
+			Headbutt = "Kongo Headbutt", -- the headbutt
+			Barrel = "Barrel Throw", -- a barrel thrown
+			BarrelBreak = "Barrel Break", -- a barrel smashing at the end of its roll
+			TNT = "TNT Boom", -- the TNT going off
+			Grab = "Kongo Grab", -- Cargo Throw: the grab and the throw
+			Tired = "Kongo Pant", -- tired after a missed punch
+			Hoot = "Kongo Hoot", -- "OOH OOH!"
+			Break = "Kongo Rage", -- round 2: the angry roar
+			Death = "Kongo Death", -- his last groan
 		},
 	},
 }

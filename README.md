@@ -403,6 +403,58 @@ of the music. Recommended level 90.
 - Previews: `Docs/gridlock_preview.png` (the fight) and
   `Docs/gridlock_poses.png` (him, pose by pose).
 
+## The Spire's seventh floor: Kongo, the Jungle Brawler (Kongo's Jungle Village)
+
+A huge gorilla in a red tie with a big K on it (a parody of a certain famous
+barrel-throwing ape, with his own name and look) naps in the middle of a flat
+jungle clearing. Round it: a village of huts on stilts joined by rope bridges,
+two giant trees with treehouses, tiki torches, banana stalls and barrel piles,
+and behind it all a waterfall thundering down a cliff into a river, with a
+rainbow in the spray. Little monkey villagers watch from the huts. Walk up and
+he wakes: *YAWN*... then a chest pound and "OOH OOH!". He fights with the moves
+from his games. Recommended level 105.
+
+- **His moves:** GIANT PUNCH (he windmills his arm: the longer he winds up,
+  the bigger the punch, and a red lane grows toward you and blinks when it
+  locks - step out of the lane. If he misses he's **TIRED**, hands on his
+  knees, panting: "HIT HIM!"), HAND SLAP (he slaps the ground 3 or 4 times, a
+  shockwave rolling out from each slap - jump them or roll through), ROLLING
+  ATTACK (he curls into a ball and rolls down a red lane at you; if it reaches
+  the edge of the clearing he bounces off and rolls back down a second lane -
+  and he's **DIZZY** afterwards: "DIZZY! HIT HIM!"), SPINNING KONG (arms out,
+  he spins like a helicopter inside a red ring, drifting after you - back off;
+  dizzy afterwards too), HEADBUTT (close up: a quick lunge, head first),
+  BARREL THROW (he heaves barrels over his head and rolls them down red lanes
+  at you - jump them), TNT (he lobs TNT barrels with fizzing fuses; a red
+  circle shows where each one lands - the second one lands where you're
+  running to) and CHEST POUND ("OOH OOH!" - showing off when you're far away:
+  free hits).
+- **GOING BANANAS!** (half health): he shoves everyone near him back, his face
+  goes red, his eyes turn red and the torches flare up. Now he chains moves
+  together (COMBO: hand slaps, then a roll, then a giant punch), adds CARGO
+  THROW (close up: a red wedge fills in front of him - get out of it, or he
+  grabs you, "YOINK!", and hurls you across the clearing), and a long wind-up
+  on his giant punch shakes the ground with a shockwave you have to jump.
+- **The villagers:** they bob along to the fight, cheer and wave their arms
+  when he wakes, pounds his chest or goes bananas, and cover their eyes when
+  he loses.
+- **The end: KONGO VANQUISHED!** He wobbles, falls flat on his back and pops
+  into pixels in a burst of bananas. He pays Power only for now: his chest and
+  gear are coming with the loot rework (`Items.ByFloor[7]` is empty on purpose,
+  so no chest is given).
+- **Where things are:** every number in `Config.Bosses[7]`; the floor in
+  `Config.Spire.Floors[7]`; his brain and moves in `ServerScriptService/Bosses/Kongo.lua`;
+  his body, warnings, the villagers and the torches in `ReplicatedStorage/BossBodies/Kongo.lua`;
+  the arena in `ServerScriptService/JungleBuilder.lua`; his portrait and lines in `BossIntro`.
+- **Music:** a Sound named `Kongo Song` in SoundService (Oozark's plays until
+  you add it), and `Jungle Ambience` for the arena's background loop.
+  **Sounds** (all optional; missing ones borrow Oozark's): Kongo Roar, Kongo
+  Chest Pound, Kongo Wind Up, Kongo Giant Punch, Kongo Slap, Kongo Roll, Kongo
+  Spin, Kongo Headbutt, Barrel Throw, Barrel Break, TNT Boom, Kongo Grab,
+  Kongo Pant, Kongo Hoot, Kongo Rage, Kongo Death.
+- Previews: `Docs/kongo_preview.png` (the fight) and `Docs/kongo_poses.png`
+  (him, pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without
@@ -459,7 +511,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
   is going to be reworked for Tuber), Spade Knight's and Relicbound
   for Burrowmore, Windwalker and Ki Master's for Kaze, Speedster and
   Turbocharged for Revvington, Beatbound and Demon Geometry for Gridlock)
-  with bonuses for 2 and 4 pieces.
+  with bonuses for 2 and 4 pieces. Kongo (floor 7) has no chest yet: his
+  loot comes with the rework.
 - **Level:** each item needs a level: the highest you've ever reached, so
   prestiging never locks you out. Gear and chests stay through prestige.
 - **The bag:** your loadout and total stats on the left; your items, tabs,

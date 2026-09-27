@@ -373,7 +373,11 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- (Tuber's: a bonk sounds like a slam, a sneeze like a spit, a cactus
 	-- ball rolling like a lunge, a wall bursting up like an eruption...)
 	Bonk = "Slam", Sneeze = "Spit", Split = "Erupt", Roll = "Lunge", Stack = "Slam", Rip = "Erupt",
-	Form = "Wail", Needle = "Spit", Lance = "Lunge", Wall = "Erupt", Pop = "Splat" }
+	Form = "Wail", Needle = "Spit", Lance = "Lunge", Wall = "Erupt", Pop = "Splat",
+	-- (Kongo's: a chest pound or a ground slap sounds like a slam, a barrel
+	-- like a lunge, the TNT like an eruption, a hoot like a wail...)
+	Pound = "Slam", Wind = "Wail", Slap = "Slam", Spin = "Wave", Headbutt = "Lunge", Barrel = "Lunge",
+	BarrelBreak = "Splat", TNT = "Erupt", Grab = "Lunge", Hoot = "Wail" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]

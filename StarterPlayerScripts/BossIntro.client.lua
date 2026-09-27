@@ -254,6 +254,26 @@ local PORTRAITS = {
 		ink = { H = RGB(255, 0, 68), R = RGB(255, 0, 68), K = RGB(24, 20, 37), Y = RGB(254, 231, 97), W = RGB(255, 255, 255),
 			M = RGB(162, 38, 51) },
 	},
+	-- a gorilla: a tuft of brown fur, a heavy brow, a big tan muzzle with a
+	-- cocky grin, and the knot of his red tie
+	Kongo = {
+		rows = {
+			".....FFF......",
+			"...FFFFFFFF...",
+			"..FFFFFFFFFF..",
+			".FDDDDDDDDDDF.",
+			".FSWKSSSSWKSF.",
+			"FFSSSSSSSSSSFF",
+			"FSSSSKSSKSSSSF",
+			"FSSSSSSSSSSSSF",
+			".FSKWWWWWWKSF.",
+			"..FSKKKKKKSF..",
+			"...FFRRRRFF...",
+			"....FFRRFF....",
+		},
+		ink = { F = RGB(115, 62, 57), D = RGB(62, 39, 49), S = RGB(232, 183, 150), W = RGB(255, 255, 255), K = RGB(24, 20, 37),
+			R = RGB(228, 59, 68) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -567,6 +587,26 @@ local LINES = {
 		phase2 = { "* GRAVITY FLIP! Up is down now. Keep up!", "* Halfway? Then let's turn this level UPSIDE DOWN!" },
 		win = { "* ATTEMPT FAILED. Press any key to try again!", "* So close! ...Nah. Not even close." },
 		lose = { "* LEVEL... COMPLETE...? But I'm the LAST level...", "* 100%... Nobody gets 100%... GG." },
+	},
+	-- a gorilla: loud, cocky, loves showing off to his village, and very,
+	-- very proud of his tie
+	Kongo = {
+		wake = {
+			"* OOH OOH! Somebody wants to fight the KING OF THE JUNGLE?!",
+			"* *YAWN* ...A challenger? In MY clearing? Let's GO!",
+		},
+		idle = {
+			"* Nice tie? Thanks. I've never lost a fight in it.",
+			"* The whole village is watching. Don't embarrass yourself!",
+			"* Bananas for breakfast, bananas for lunch, YOU for dinner!",
+			"* My Giant Punch is winding up... and up... and UP!",
+			"* Hear that waterfall? That's the sound of you losing.",
+			"* I throw barrels for FUN. Imagine when I'm serious.",
+		},
+		hit = { "* BONK! Right on the noggin!", "* Ooh ooh! Did that hurt? It looked like it hurt!", "* That's what you get in MY jungle!" },
+		phase2 = { "* GRRRR... NOW you've made me go BANANAS!", "* Nobody knocks the King off his feet! NOBODY!" },
+		win = { "* OOH OOH! Another win for the King! The village goes wild!", "* Come back when you've had more bananas!" },
+		lose = { "* Ooh... ooh... my tie... is all crooked...", "* Okay, okay! You win! ...Want a banana?" },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {

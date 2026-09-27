@@ -34,6 +34,8 @@
 --   grid_full     Gridlock (floor 6) fought to the death by one player
 --   grid_attacks  every one of his moves forced in turn (each in its own form),
 --                 before and after the gravity flip
+--   kongo_full    Kongo (floor 7) fought to the death by one player
+--   kongo_attacks every one of his moves forced in turn, in both rounds
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -49,7 +51,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
-local FLOOR = string.find(SCENARIO, "^tuber") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or 1))))
+local FLOOR = string.find(SCENARIO, "^tuber") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or (string.find(SCENARIO, "^kongo") and 7 or 1)))))
 
 ----------------------------------------------------------------------
 -- the log: numbers rounded so tiny float noise can't differ, -0 written as 0
@@ -120,6 +122,8 @@ elseif FLOOR == 5 then
 	mount.require(mount.module("ServerScriptService/SpeedwayBuilder.lua")).Build()
 elseif FLOOR == 6 then
 	mount.require(mount.module("ServerScriptService/GridBuilder.lua")).Build()
+elseif FLOOR == 7 then
+	mount.require(mount.module("ServerScriptService/JungleBuilder.lua")).Build()
 end
 M.run(1)
 -- (one boss per run: two would take turns in an order that isn't fixed)
@@ -751,7 +755,7 @@ local function forcedAttacks(tableOf)
 	end
 end
 
-if SCENARIO == "slime_full" or SCENARIO == "tuber_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" then
+if SCENARIO == "slime_full" or SCENARIO == "tuber_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" or SCENARIO == "kongo_full" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -809,7 +813,7 @@ elseif SCENARIO == "slime_die" or SCENARIO == "tuber_reset" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" or SCENARIO == "tuber_attacks" then
+elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" or SCENARIO == "tuber_attacks" or SCENARIO == "kongo_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)

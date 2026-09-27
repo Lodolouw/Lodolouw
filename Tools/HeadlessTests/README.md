@@ -52,7 +52,8 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `tuber_attacks`, which replaced the old worm's - 4 for Knight Burrowmore -
   `knight_full` and `knight_attacks`, server and client - 4 for Kaze,
   `kaze_full` and `kaze_attacks`, 4 for Revvington, `car_full` and
-  `car_attacks`, and 4 for Gridlock, `grid_full` and `grid_attacks`);
+  `car_attacks`, 4 for Gridlock, `grid_full` and `grid_attacks`, and 4
+  for Kongo, `kongo_full` and `kongo_attacks`: 36 in all);
   `./golden.sh check`
   replays them and fails on any difference - the proof that a change to the
   boss code (like splitting it into one file per boss) changed nothing
@@ -177,6 +178,27 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `python3 render_snaps.py s.txt ../../Docs/gridlock_preview.png --cols 3 --title "GRIDLOCK, THE FINAL BEAT|FLOOR 6  -  THE FINAL BEAT|RECOMMENDED LV 90"`
   (the fight: eleven moments and a title card); `-a poses` with
   `--cols 3 --title ""` the pose sheet (`Docs/gridlock_poses.png`).
+- `test_kongo.luau` - KONGO (floor 7) in the real Jungle Village
+  (JungleBuilder) with the real BossService and his own moves (and, with
+  `client` at the end, the real BossClient drawing him, his warnings, the
+  monkey villagers and the torches). Its pretend players circle him, roll
+  and jump now and then, and punch him when he's in reach. `-a full` fights
+  him to the death (both rounds, the reward), `attacks` forces every move in
+  both rounds on a player standing where it reaches (each must land) and on
+  one rolling (each must be dodged), `reset` leaves mid-fight and comes back,
+  `duo` is two players, `timing` checks the dodge windows (a roll just before
+  a hit dodges it, one far too early doesn't) and `tired` checks a Giant
+  Punch that misses leaves him wide open (punches land) and one that hits
+  doesn't. It also checks he never leaves the clearing, round 2 comes at half
+  health, floor 7 still has no loot (it's waiting for the loot rework), and
+  (client) that every part of him, every warning and every one of his screen
+  words (GIANT PUNCH!, SPINNING KONG!, YOINK!, GOING BANANAS!, DIZZY! HIT
+  HIM!...) gets drawn, and that the villagers and the torches move.
+- `kongo_snaps.luau` + `render_snaps.py` - Kongo's preview pictures (the
+  jungle village): `luau kongo_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/kongo_preview.png --cols 3 --title "KONGO|FLOOR 7  -  KONGO'S JUNGLE VILLAGE|RECOMMENDED LV 105"`
+  (the fight: eleven moments and a title card); `-a poses` with
+  `--cols 3 --title ""` the pose sheet (`Docs/kongo_poses.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,
