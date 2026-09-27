@@ -43,7 +43,7 @@
 	    the ArenaAmbience script on each player's screen)
 
 	Main calls DunesBuilder.Build() once at startup, right after the lobby.
-	The dunes and the floor you fight on are smooth Terrain sand; everything
+	The dunes are smooth Terrain sand; the floor you fight on and everything
 	else is ordinary Parts. Every "random" choice comes from our own dice,
 	which roll the same numbers every time, so every server builds the very
 	same arena.
@@ -421,28 +421,18 @@ end
 -- The floor you fight on
 ----------------------------------------------------------------------
 local function buildFloor()
-	-- One great disc of sand, top at y = 0, reaching under the dunes and cliffs.
-	-- It's Terrain, like the dunes, so the two meet without a seam. 16 studs
-	-- thick.
-	-- (If Terrain isn't available, a plain Part instead.)
-	local made = false
-	if terrain then
-		made = pcall(function()
-			-- (Terrain draws its surface 2 studs above where a fill ends - measured
-			-- in the game - so the fill stops 2 below the floor)
-			terrain:FillCylinder(CFrame.new(at(0, -10, 0)), 16, 280, Mat.Sand)
-		end)
-	end
-	if not made then
-		cylinder("SandFloor", 12, 560, CFrame.new(at(0, -6, 0)), SAND, Mat.Sand)
-	end
+	-- One great disc of sand, top at exactly y = 0 (where Tuber, the cacti, the
+	-- rocks and everything else stand), reaching under the dunes and cliffs.
+	-- It's a Part, not Terrain: Terrain rounds its surface to its own grid, and
+	-- in the game a Terrain floor came out 2 studs too high - everything looked
+	-- sunk in it. (The dunes are still Terrain: their feet dip under this.)
+	cylinder("SandFloor", 12, 560, CFrame.new(at(0, -6, 0)), SAND, Mat.Sand)
 
 	-- Ripples blown into the sand: rows of long low streaks lying across the wind,
 	-- each row wandering a little, so the floor reads as sand rather than a plate.
 	-- They reach right in toward the middle, but stop short of Tuber's garden.
-	-- (Everything flat on the floor is thick and mostly buried: a paper-thin
-	-- part lying on Terrain sand disappears into its bumps. These poke out a
-	-- quarter of a stud.)
+	-- (Everything flat on the floor is thick and mostly buried, poking out a
+	-- quarter of a stud: paper-thin parts flicker against the floor.)
 	local across = V3(-WIND.Z, 0, WIND.X)
 	for row = -12, 12 do
 		for seg = -8, 8 do
@@ -1620,9 +1610,9 @@ function DunesBuilder.Build()
 	if failed == 0 then
 		print("[DunesBuilder] The Sunken Dunes built OK")
 	end
-	-- Everything here stands on y = 0. If the sand you walk on ends up higher
-	-- (Terrain changing how it draws, or old sand the clear couldn't reach),
-	-- say so in the Output.
+	-- Everything here stands on y = 0. If Terrain sand ends up over the floor
+	-- (old sand saved in the place that the clear couldn't reach), say so in
+	-- the Output.
 	if terrain then
 		task.delay(1, function()
 			local params = RaycastParams.new()
@@ -1635,8 +1625,8 @@ function DunesBuilder.Build()
 					highest = math.max(highest, hit.Position.Y - CENTER.Y)
 				end
 			end
-			if highest > 0.75 then
-				warn(string.format("[DunesBuilder] the sand floor is %.1f studs too high: everything will look sunk in it."
+			if highest > 0.25 then
+				warn(string.format("[DunesBuilder] there's Terrain sand %.1f studs above the floor: everything will look sunk in it."
 					.. " Is there old Terrain saved in the place round %s?", highest, tostring(CENTER)))
 			end
 		end)
