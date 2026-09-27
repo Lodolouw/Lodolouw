@@ -12,7 +12,7 @@ local Config = {}
 ----------------------------------------------------------------------
 Config.GameName = "Boss Grow" -- working title, rename freely
 Config.BaseHealth = 100
-Config.BaseWalkSpeed = 16
+Config.BaseWalkSpeed = 24 -- your speed outside a fight (the lobby is big: quicker than Roblox's 16)
 Config.BaseCapacity = 20 -- backpack slots before upgrades
 Config.RequireProximity = true -- shops only work when you stand near them
 Config.StationRange = 34 -- studs
@@ -471,7 +471,7 @@ Config.Upgrades = {
 	},
 	{
 		id = "WalkSpeed", name = "Swift Boots", icon = "👟", color = Color3.fromRGB(70, 150, 240),
-		desc = "+1 walk speed per level",
+		desc = "+1 walk speed per level (outside fights)",
 		-- Raised from 15: at the old cap (16+15=31 studs/sec) it was a bit low
 		-- to clearly see the run animation blend in. Cost still grows the
 		-- same way per level, so this doesn't make it free - just reachable.
@@ -580,14 +580,19 @@ function Config.lootCount(data)
 	return n
 end
 
--- How fast a player moves: their full speed in the lobby, capped inside a Spire
--- arena. Every place that sets walk speed asks this, so the two can't disagree.
+-- How fast a player moves. In a FIGHT (a Spire arena, the Colosseum, the
+-- intro's fight) everyone moves at the same speed, Config.Combat.ArenaWalkSpeed
+-- - no upgrades or talismans: the fights are about dodging, not outrunning.
+-- Outside a fight: BaseWalkSpeed plus Swift Boots and talismans. Every place
+-- that sets walk speed asks this, so they can't disagree.
 function Config.walkSpeedFor(player, d)
-	local speed = d and Config.stats(d).walkSpeed or Config.BaseWalkSpeed
-	if player and player:GetAttribute("SpireFloor") then
-		speed = math.min(speed, (Config.Combat and Config.Combat.ArenaWalkSpeed) or speed)
+	if player then
+		local intro = player:GetAttribute("Intro")
+		if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") or intro == "Void" or intro == "Fight" then
+			return (Config.Combat and Config.Combat.ArenaWalkSpeed) or 20
+		end
 	end
-	return speed
+	return d and Config.stats(d).walkSpeed or Config.BaseWalkSpeed
 end
 
 function Config.stats(d)
@@ -1129,7 +1134,7 @@ Config.Bosses = {
 		WakeTime = 2.6, -- rising out of the pool (it can't be hurt while it does)
 		WakeSoundLead = 0.5, -- the roar's sound starts this much before the roar
 		Leash = 95, -- it never strays further than this from the middle of the arena
-		MoveSpeed = { 24, 32 }, -- surging after you between attacks, per phase (you walk 16, more with Swift Boots)
+		MoveSpeed = { 24, 32 }, -- surging after you between attacks, per phase (everyone walks 20 in a fight)
 		TurnSpeed = { 320, 460 }, -- degrees a second while it lines up, per phase
 		Breather = { { 0.25, 0.5 }, { 0.12, 0.35 } }, -- the pause between attacks, per phase
 
@@ -1946,8 +1951,8 @@ Config.Combat = {
 		Drink = { Name = "Drinking Potion", Volume = 0.6 },
 		Death = { Name = "8bit death sound", Volume = 0.85 },
 	},
-	ArenaWalkSpeed = 24, -- the fastest anyone moves inside a Spire arena, however good their boots:
-	-- a boss can only press you if you can't simply outrun it (the lobby is unaffected)
+	ArenaWalkSpeed = 20, -- everyone's speed in a fight (Spire, Colosseum, the intro), whatever
+	-- their boots or talismans: a boss can only press you if you can't simply outrun it
 	-- your punch damage = the floor's recommended Power, times
 	-- (your Power / recommended Power) ^ DamageCurve, kept between Min and Max
 	DamageCurve = 0.5,
