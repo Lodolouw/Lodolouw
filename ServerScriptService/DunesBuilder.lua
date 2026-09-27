@@ -343,7 +343,7 @@ local function sandBall(pos, radius)
 	dunes[#dunes + 1] = { pos, radius }
 	if terrain then
 		pcall(function()
-			terrain:FillBall(pos, radius, Mat.Sand)
+			terrain:FillBall(pos, radius - 2, Mat.Sand) -- (its surface shows 2 studs further out)
 		end)
 	end
 end
@@ -423,12 +423,14 @@ end
 local function buildFloor()
 	-- One great disc of sand, top at y = 0, reaching under the dunes and cliffs.
 	-- It's Terrain, like the dunes, so the two meet without a seam. 16 studs
-	-- thick, lined up with Terrain's 4-stud grid so the top is perfectly flat.
+	-- thick.
 	-- (If Terrain isn't available, a plain Part instead.)
 	local made = false
 	if terrain then
 		made = pcall(function()
-			terrain:FillCylinder(CFrame.new(at(0, -8, 0)), 16, 280, Mat.Sand)
+			-- (Terrain draws its surface 2 studs above where a fill ends - measured
+			-- in the game - so the fill stops 2 below the floor)
+			terrain:FillCylinder(CFrame.new(at(0, -10, 0)), 16, 280, Mat.Sand)
 		end)
 	end
 	if not made then
@@ -1619,7 +1621,8 @@ function DunesBuilder.Build()
 		print("[DunesBuilder] The Sunken Dunes built OK")
 	end
 	-- Everything here stands on y = 0. If the sand you walk on ends up higher
-	-- (old Terrain in the place the clear couldn't reach), say so in the Output.
+	-- (Terrain changing how it draws, or old sand the clear couldn't reach),
+	-- say so in the Output.
 	if terrain then
 		task.delay(1, function()
 			local params = RaycastParams.new()
