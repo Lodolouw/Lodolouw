@@ -1,33 +1,52 @@
 --[[
 	WeaponFX  (ModuleScript, parent: ReplicatedStorage, name: "WeaponFX")
 
-	How weapons look, on every screen - anime style. The weapon in each
-	fighter's hand, their stance, their swings and their ability, all made in
-	code on the R6 joints (both arms, both legs, the neck and the body), with
-	no uploaded animations.
+	How weapons look, on every screen. The feel we're after: swings with the
+	weight of Elden Ring, hits that pop like Hades, and Deepwoken as the proof
+	it can be done on a Roblox character. All of it is made in code on the R6
+	joints (both arms, both legs, the neck, the whole body) - no uploaded
+	animations.
 
+	WHAT MAKES IT MOVE WELL (and not like a fencing dummy):
+	  * SPRINGS: no joint ever jumps to a pose. Each one is pulled towards
+	    where it should be by a spring, so everything moves smoothly, eases in
+	    and out, and settles with a tiny natural overshoot.
+	  * OVERLAP: in a swing the body starts first, the arm follows, and the
+	    blade comes last, like a whip - the way a real swing travels up
+	    through the body.
+	  * WEIGHT: every swing winds up, holds for a heartbeat (you can see it
+	    coming), then SNAPS through the cut - the blade is at its fastest the
+	    moment it lands - and rips on through past it. The dash forward
+	    happens with the cut, not on the press.
+	  * FLOW: a swing hangs in its follow-through until it lets you go, and
+	    the next swing of the string winds up from right there - so a combo
+	    is one flowing movement, never a reset to the stance between cuts.
+	  * FEET ON THE FLOOR: whatever the body does, it's lowered or raised so
+	    a foot stays on the ground - lunges really sink down into them.
+
+	THE PIECES:
 	  * THE WEAPON: anyone holding one in a fight (the "Weapon" attribute
 	    CombatService sets) has it in their right hand - a chunky 8-bit sword
 	    with a glowing edge, built on this screen only. Out of a fight it's
-	    put away.
-	  * THE STANCE: holding it, you stand ready - blade low and angled back
-	    behind you, left foot forward, the free hand up, breathing. (Walking,
-	    your legs walk; the arms keep the stance.)
-	  * A SWING puts the whole body into it, the way anime fights do:
-	      anticipation - a quick coil back (the body turns, the weight goes
-	                     onto the back foot, the free arm reaches out),
-	      the snap     - the cut itself is almost instant, lunging forward,
-	      follow-through - the blade flies on PAST where it stops and the
-	                     body twists after it, then settles back into the
-	                     stance.
-	    The string: a slash right to left, a backhand left to right, and an
-	    overhead chop that brings the body down with it. A bold glowing
-	    smear follows the blade through every cut.
-	  * THE ABILITY (the Iron Sword's Whirlwind): arms out, and the whole
-	    body spins round - once, twice or three times, by mastery.
-	  * HITS: a moment of hit-stop (your swing freezes for a blink as the
-	    blade bites - WeaponFX.hitStop) and a slash mark ripping across
-	    whatever you hit, with sparks (WeaponFX.slashMark).
+	    put away; while you drink a flask it's tucked away too.
+	  * THE STANCE (Elden Ring's one-handed idle): relaxed, a little
+	    side-on, the blade held low and forward, breathing, the weight
+	    shifting now and then. Walking, your legs and free arm walk and the
+	    sword arm keeps the blade steady.
+	  * THE STRING: a diagonal slash from high right to low left, a rising
+	    backhand from low left to high right, and a leaping overhead
+	    finisher that slams down (with a shockwave on the ground). A bold
+	    glowing smear follows the blade through each cut.
+	  * THE ABILITY (the Iron Sword's Whirlwind): a coil, then the body spins
+	    round with the arms out - once, twice or three times, by mastery.
+	  * HITS (CombatClient calls these): hit-stop - the whole body stops dead
+	    for a blink and shudders as the blade bites (WeaponFX.hitStop) - and
+	    a slash mark tearing across whatever you hit, with sparks
+	    (WeaponFX.slashMark).
+	  * Rolling, jumping and drinking always win: the moment one of Roblox's
+	    action animations plays (the roll), the sword code lets go of your
+	    body; in the air your legs are left alone; while you drink, your arm
+	    and head belong to the drink.
 	  * AWAKENED (mastery 100): the blade turns glowing gold.
 
 	Your own swings start the moment you press (CombatClient calls
@@ -35,8 +54,8 @@
 	/ AbilityN attribute changes (CombatService sets those).
 
 	Sounds (in SoundService, by name - capitals and spaces don't matter):
-	each type's Sounds.Swing ("Sword Swing") and each ability's Sound
-	("Whirlwind"). Missing ones are just silent.
+	each type's Sounds.Swing ("Sword Swing", played as the cut starts) and
+	each ability's Sound ("Whirlwind"). Missing ones are just silent.
 ]]
 
 local Players = game:GetService("Players")
@@ -58,46 +77,67 @@ local rad = math.rad
 --   Root  the whole body: x leans it forward, z turns it (+ = the chest
 --         turns left, the right shoulder comes forward)
 --   RS/LS the right / left arm at the shoulder: RS z swings the right arm
---         forward and up, y sweeps it across the body (+ = further left);
---         LS is the mirror (its z the other way: - is forward)
+--         forward and up, y sweeps it across the body (+ = further left), x
+--         (-) lifts it out to the side; LS is the mirror (- z is forward)
 --   RH/LH the right / left leg at the hip: RH z + swings the right leg
 --         forward, LH z - the left one forward
 --   Neck  the head: x + looks down, z + turns it left
 --   Grip  the sword in the hand: { tilt, roll } (0 tilt: the blade points
---         straight out the front of the fist)
--- The legs keep their feet on the floor by themselves: whatever the body
--- leans or turns is taken back off at the hips (except in the spin).
+--         straight out the front of the fist; -90: in line with the arm)
+--   Hop   how far the body lifts off the ground (studs) - the finisher's leap
+-- The legs keep their feet planted by themselves: whatever the body leans or
+-- turns is taken back off at the hips (except in the spin), and the body is
+-- raised or lowered so a foot stays on the floor.
 WeaponFX.STANCE = {
-	Root = { 5, 0, -15 },
-	RS = { -15, 0, -25 },
-	LS = { -10, 20, -20 },
-	RH = { 0, 0, -12 },
-	LH = { 0, 0, -18 },
-	Neck = { 0, 0, 15 },
-	Grip = { -150, 0 }, -- the blade low and angled back behind you
+	Root = { 4, 0, -12 },
+	RS = { -10, -5, 25 },
+	LS = { -8, 10, -12 },
+	RH = { 0, 0, -6 },
+	LH = { 0, 0, -12 },
+	Neck = { 0, 0, 10 },
+	Grip = { -35, -10 }, -- the blade held low and forward
+	Hop = { 0 },
 }
 WeaponFX.POSES = {
 	Sword = {
-		{ -- a slash, right to left
-			wind = { Root = { -5, 0, -45 }, RS = { 0, -85, 100 }, LS = { 20, 0, -60 }, RH = { 0, 0, -20 }, LH = { 0, 0, -25 }, Neck = { 0, 0, 40 }, Grip = { -70, 0 } },
-			cut = { Root = { 15, 0, 10 }, RS = { 0, 10, 95 }, LS = { -20, 0, 50 }, RH = { 0, 0, -35 }, LH = { 0, 0, -45 }, Neck = { 0, 0, -10 }, Grip = { -70, 0 } },
-			follow = { Root = { 20, 0, 55 }, RS = { 0, 95, 80 }, LS = { -10, 0, 70 }, RH = { 0, 0, -35 }, LH = { 0, 0, -45 }, Neck = { 0, 0, -45 }, Grip = { -70, 30 } },
+		{ -- a diagonal slash: from high over the right shoulder down to the low left
+			coil = { Root = { -8, 0, -45 }, RS = { -45, -60, 140 }, LS = { -30, 0, -60 }, RH = { 0, 0, -20 }, LH = { 0, 0, -25 }, Neck = { 0, 0, 35 }, Grip = { -115, 0 }, Hop = { 0 } },
+			cut = { Root = { 15, 0, 10 }, RS = { 0, 15, 95 }, LS = { -15, 0, 40 }, RH = { 0, 0, -35 }, LH = { 0, 0, -45 }, Neck = { 0, 0, -5 }, Grip = { -75, 0 }, Hop = { 0 } },
+			follow = { Root = { 25, 0, 45 }, RS = { 10, 60, 55 }, LS = { -20, 0, 60 }, RH = { 0, 0, -35 }, LH = { 0, 0, -45 }, Neck = { 0, 0, -35 }, Grip = { -75, 20 }, Hop = { 0 } },
 		},
-		{ -- a backhand, left to right
-			wind = { Root = { -5, 0, 50 }, RS = { 0, 95, 100 }, LS = { -10, 0, 50 }, RH = { 0, 0, 10 }, LH = { 0, 0, -15 }, Neck = { 0, 0, -45 }, Grip = { -70, 30 } },
-			cut = { Root = { 15, 0, -10 }, RS = { 0, 0, 95 }, LS = { 20, 0, -40 }, RH = { 0, 0, 40 }, LH = { 0, 0, 30 }, Neck = { 0, 0, 10 }, Grip = { -70, 0 } },
-			follow = { Root = { 15, 0, -55 }, RS = { 0, -80, 90 }, LS = { 20, 0, -70 }, RH = { 0, 0, 40 }, LH = { 0, 0, 30 }, Neck = { 0, 0, 45 }, Grip = { -70, -20 } },
+		{ -- a rising backhand: from the low left up to high on the right
+			coil = { Root = { 15, 0, 40 }, RS = { 15, 70, 45 }, LS = { -15, 0, 30 }, RH = { 0, 0, 5 }, LH = { 0, 0, -20 }, Neck = { 0, 0, -35 }, Grip = { -70, 30 }, Hop = { 0 } },
+			cut = { Root = { 10, 0, -5 }, RS = { -10, -10, 105 }, LS = { -20, 0, -40 }, RH = { 0, 0, 35 }, LH = { 0, 0, 25 }, Neck = { 0, 0, 5 }, Grip = { -75, 0 }, Hop = { 0 } },
+			follow = { Root = { -5, 0, -50 }, RS = { -5, -20, 120 }, LS = { -25, 0, -70 }, RH = { 0, 0, 35 }, LH = { 0, 0, 25 }, Neck = { -10, 0, 40 }, Grip = { -60, -10 }, Hop = { 0 } },
 		},
-		{ -- an overhead chop: up high, then everything comes down with it
-			wind = { Root = { -15, 0, -15 }, RS = { 0, 5, 190 }, LS = { 20, 0, -160 }, RH = { 0, 0, -15 }, LH = { 0, 0, -20 }, Neck = { -15, 0, 15 }, Grip = { -60, 0 } },
-			cut = { Root = { 35, 0, 0 }, RS = { 0, 5, 85 }, LS = { 20, 0, -80 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 10, 0, 0 }, Grip = { -75, 0 } },
-			follow = { Root = { 30, 0, 0 }, RS = { 0, 5, 78 }, LS = { 10, 0, -45 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 15, 0, 0 }, Grip = { -58, 0 } },
+		{ -- the finisher: a leap with the blade high behind you, and everything comes down with it
+			coil = { Root = { -18, 0, -20 }, RS = { -10, 0, 200 }, LS = { 15, 0, -170 }, RH = { 0, 0, -10 }, LH = { 0, 0, -30 }, Neck = { -20, 0, 15 }, Grip = { -60, 0 }, Hop = { 0.8 } },
+			cut = { Root = { 38, 0, 0 }, RS = { 0, 5, 95 }, LS = { 15, 0, -95 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 15, 0, 0 }, Grip = { -75, 0 }, Hop = { 0 } },
+			follow = { Root = { 32, 0, 0 }, RS = { 0, 5, 78 }, LS = { 10, 0, -60 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 20, 0, 0 }, Grip = { -60, 0 }, Hop = { 0 } },
 		},
 	},
 }
--- the Whirlwind: arms out, a little lean, feet wide (the body turns round on top)
-WeaponFX.SPIN = { Root = { 10, 0, 0 }, RS = { 0, -85, 95 }, LS = { -80, 0, 0 }, RH = { -10, 0, 0 }, LH = { -10, 0, 0 }, Neck = { 0, 0, 0 }, Grip = { -70, 0 } }
+-- the Whirlwind: a coil back, then arms out and the body turns round on top of wide feet
+WeaponFX.SPIN_COIL = { Root = { 10, 0, -60 }, RS = { -10, -90, 70 }, LS = { -60, 0, -20 }, RH = { -10, 0, -10 }, LH = { -10, 0, -20 }, Neck = { 0, 0, 40 }, Grip = { -85, 0 }, Hop = { 0 } }
+WeaponFX.SPIN = { Root = { 12, 0, 0 }, RS = { -10, -85, 95 }, LS = { -80, 0, 0 }, RH = { -12, 0, 0 }, LH = { -12, 0, 0 }, Neck = { 0, 0, 0 }, Grip = { -85, 0 }, Hop = { 0 } }
 WeaponFX.JOINTS = { "Root", "RS", "LS", "RH", "LH", "Neck" }
+-- the springs: how quickly each part follows (the first number) and how much
+-- it's allowed to overshoot (the second: 1 = none, lower = more bounce)
+WeaponFX.SPRINGS = {
+	idle = { Root = { 10, 1 }, RS = { 11, 1 }, LS = { 9, 1 }, RH = { 12, 1 }, LH = { 12, 1 }, Neck = { 9, 1 }, Grip = { 12, 1 }, Hop = { 14, 1 } },
+	swing = { Root = { 26, 0.8 }, RS = { 42, 0.72 }, LS = { 18, 0.6 }, RH = { 30, 0.9 }, LH = { 30, 0.9 }, Neck = { 20, 0.85 }, Grip = { 52, 0.6 }, Hop = { 26, 0.8 } },
+}
+-- overlap: in a swing the body moves first, then the arm, and the blade comes
+-- last, like a whip (seconds ahead of the arm; - is behind it)
+WeaponFX.OVERLAP = { Root = 0.03, RH = 0.025, LH = 0.025, Hop = 0.025, Neck = 0.02, RS = 0, LS = -0.015, Grip = -0.025 }
+-- (a spring always trails what it chases by about 2 x bounce / speed seconds,
+-- so each part aims that much further ahead to arrive when it should)
+WeaponFX.LEAD = {}
+for key, k in pairs(WeaponFX.SPRINGS.swing) do
+	WeaponFX.LEAD[key] = (WeaponFX.OVERLAP[key] or 0) + 2 * k[2] / k[1]
+end
+WeaponFX.SETTLE = 0.3 -- after a swing lets you go: the time it takes to drift back into the stance
+WeaponFX.GROUND = -3 -- where the floor is, below the middle of the body (R6: the feet at rest)
 
 local function smooth(t)
 	t = math.clamp(t, 0, 1)
@@ -113,8 +153,15 @@ local function snap(t) -- slow to start, then all at once (the cut)
 end
 local function overshoot(t) -- flies past the end and comes back (the follow-through)
 	t = math.clamp(t, 0, 1) - 1
-	local s = 1.6
+	local s = 1.4
 	return 1 + (s + 1) * t * t * t + s * t * t
+end
+local function copyPose(p)
+	local out = {}
+	for key, a in pairs(p) do
+		out[key] = table.clone(a)
+	end
+	return out
 end
 local function mixPose(p, q, t)
 	local out = {}
@@ -122,7 +169,7 @@ local function mixPose(p, q, t)
 		local b = q[key] or a
 		local m = {}
 		for i = 1, #a do
-			m[i] = a[i] + (b[i] - a[i]) * t
+			m[i] = a[i] + ((b[i] or a[i]) - a[i]) * t
 		end
 		out[key] = m
 	end
@@ -130,39 +177,74 @@ local function mixPose(p, q, t)
 end
 WeaponFX.mixPose = mixPose
 
--- A swing `u` of the way through (0 = pressed, 1 = over), whose blade lands
--- `contact` of the way through, starting from and settling back into `base`
--- (the stance). Gives the whole pose, and how much of it shows over whatever
--- the body was doing before (0 to 1).
-function WeaponFX.swingPose(keys, u, contact, base)
-	base = base or WeaponFX.STANCE
-	contact = math.clamp(contact or 0.4, 0.15, 0.8)
-	u = math.clamp(u, 0, 1)
-	local uWind = contact * 0.55 -- coiled by here...
-	local uFollow = math.min(0.82, contact + 0.24) -- ...followed through by here
-	local pose
-	if u < uWind then
-		pose = mixPose(base, keys.wind, easeOut(u / uWind))
-	elseif u < contact then
-		pose = mixPose(keys.wind, keys.cut, snap((u - uWind) / (contact - uWind)))
-	elseif u < uFollow then
-		pose = mixPose(keys.cut, keys.follow, overshoot((u - contact) / (uFollow - contact)))
-	else
-		pose = mixPose(keys.follow, base, smooth((u - uFollow) / (1 - uFollow)))
-	end
-	local weight = smooth(u / math.max(uWind * 0.4, 0.01))
-	return pose, weight, u >= uWind * 0.8 and u <= uFollow + 0.05 -- (the smear: through the cut)
+-- The moments of a swing, in seconds from the press, from its Config entry
+-- (Lock: how long it commits you; Contact: how far into that the blade lands -
+-- the same moment the server cuts)
+function WeaponFX.swingMoments(swing)
+	local lock = swing and swing.Lock or 0.5
+	local contact = lock * math.clamp(swing and swing.Contact or 0.4, 0.15, 0.8)
+	return {
+		coil = contact * 0.65, -- wound up by here...
+		hold = contact * 0.82, -- ...held for a heartbeat (you can see it coming)...
+		contact = contact, -- ...SNAP: the blade lands here...
+		follow = contact + (lock - contact) * 0.45, -- ...ripped all the way through by here...
+		lock = lock, -- ...hanging in the follow-through until you can act again...
+		done = lock + WeaponFX.SETTLE, -- ...then drifting back into the stance
+	}
 end
 
--- The Whirlwind `u` of the way through `spins` spins: the body turns all the
--- way round each spin (the same way a first slash cuts: to the left).
-function WeaponFX.spinPose(u, spins)
+-- A swing `t` seconds after the press, winding up from `from` (wherever the
+-- body was when it started - the stance, or the last swing's follow-through)
+-- and settling back into `base` (the stance). Gives the whole pose, how much
+-- of it shows over whatever the body was doing (0 to 1), whether the blade is
+-- cutting (the smear shows then), and whether it's over.
+-- So chained swings flow into each other: a swing hangs in its
+-- follow-through until it lets you go, and the next one winds up from there.
+function WeaponFX.swingPose(keys, t, swing, base, from)
+	base = base or WeaponFX.STANCE
+	local m = WeaponFX.swingMoments(swing)
+	t = math.clamp(t, 0, m.done)
+	local pose
+	if t < m.coil then
+		pose = mixPose(from or base, keys.coil, smooth(t / m.coil))
+	elseif t < m.hold then
+		-- the held heartbeat: creeping a touch further back, full of tension
+		pose = mixPose(keys.coil, keys.cut, -0.06 * smooth((t - m.coil) / (m.hold - m.coil)))
+	elseif t < m.contact then
+		local held = mixPose(keys.coil, keys.cut, -0.06)
+		pose = mixPose(held, keys.cut, snap((t - m.hold) / (m.contact - m.hold)))
+	elseif t < m.follow then
+		pose = mixPose(keys.cut, keys.follow, overshoot((t - m.contact) / (m.follow - m.contact)))
+	elseif t < m.lock then
+		-- hanging in the follow-through (the weight of it), only just starting to recover
+		pose = mixPose(keys.follow, base, 0.12 * smooth((t - m.follow) / math.max(m.lock - m.follow, 0.01)))
+	else
+		pose = mixPose(mixPose(keys.follow, base, 0.12), base, smooth((t - m.lock) / (m.done - m.lock)))
+	end
+	local weight = smooth(t / math.max(m.coil * 0.4, 0.01))
+	local cutting = t >= m.hold - 0.01 and t <= m.contact + (m.follow - m.contact) * 0.6
+	return pose, weight, cutting, t >= m.done
+end
+
+-- The Whirlwind `u` of the way through `spins` spins, from `from` (where the
+-- body was) back to `base` (the stance): a quick coil, then the body turns
+-- all the way round each spin (the same way a first slash cuts: to the
+-- left), then it settles. Gives the pose and the extra turn (degrees) that
+-- goes on top of it.
+function WeaponFX.spinPose(u, spins, base, from)
+	base = base or WeaponFX.STANCE
 	u = math.clamp(u, 0, 1)
-	local eased = u < 0.5 and 2 * u * u or 1 - 2 * (1 - u) * (1 - u)
-	local turn = 360 * spins * (0.75 * u + 0.25 * eased)
-	local pose = mixPose(WeaponFX.SPIN, WeaponFX.SPIN, 0)
-	pose.Root = { pose.Root[1], 0, turn }
-	return pose, 1
+	local pose
+	if u < 0.12 then
+		pose = mixPose(from or base, WeaponFX.SPIN_COIL, easeOut(u / 0.12))
+	elseif u < 0.88 then
+		pose = mixPose(WeaponFX.SPIN_COIL, WeaponFX.SPIN, smooth((u - 0.12) / 0.1))
+	else
+		pose = mixPose(WeaponFX.SPIN, base, smooth((u - 0.88) / 0.12))
+	end
+	local t = math.clamp((u - 0.12) / 0.76, 0, 1)
+	local eased = t < 0.5 and 2 * t * t or 1 - 2 * (1 - t) * (1 - t)
+	return pose, 360 * spins * (0.7 * t + 0.3 * eased)
 end
 
 -- the sword's place in the hand
@@ -269,24 +351,24 @@ local function buildSword(def, golden)
 		trail.Name = name
 		trail.Attachment0, trail.Attachment1 = a0, a1
 		trail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
-		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, see), NumberSequenceKeypoint.new(0.6, 0.7), NumberSequenceKeypoint.new(1, 1) })
+		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, see), NumberSequenceKeypoint.new(0.55, 0.65), NumberSequenceKeypoint.new(1, 1) })
 		trail.LightEmission = 1
 		trail.Lifetime = life
 		trail.MinLength = 0.02
-		trail.WidthScale = NumberSequence.new(1, 0.4)
+		trail.WidthScale = NumberSequence.new(1, 0.35)
 		trail.Enabled = false
 		trail.Parent = blade
 		return trail
 	end
 	local trails = {
-		smear("SwingTrail", 1.2, -2.3, golden and GOLD or GLOW, 0, 0.22),
-		smear("SwingGlow", 2, -3.2, golden and GOLD or Color3.fromRGB(120, 200, 255), 0.55, 0.3),
+		smear("SwingTrail", 1.2, -2.4, golden and GOLD or GLOW, 0, 0.2),
+		smear("SwingGlow", 2, -3.3, golden and GOLD or Color3.fromRGB(120, 200, 255), 0.5, 0.28),
 	}
-	return model, handle, trails
+	return model, handle, trails, blade
 end
 
 ----------------------------------------------------------------------
--- Hits: the slash mark ripping across what you hit
+-- Hits: the slash mark ripping across what you hit, and the finisher's slam
 ----------------------------------------------------------------------
 -- a bright bar that tears across the spot, stretching out and fading, with a
 -- burst of sparks - and on a heavy hit a second one crossing it
@@ -299,8 +381,7 @@ function WeaponFX.slashMark(position, direction, heavy, golden)
 	local holder = Instance.new("Folder")
 	holder.Name = "SlashMark"
 	holder.Parent = workspace
-	local marks = heavy and 2 or 1
-	for i = 1, marks do
+	for i = 1, heavy and 2 or 1 do
 		local bar = Instance.new("Part")
 		bar.Name = "Slash"
 		bar.Anchored, bar.CanCollide, bar.CanTouch, bar.CanQuery, bar.CastShadow = true, false, false, false, false
@@ -308,7 +389,6 @@ function WeaponFX.slashMark(position, direction, heavy, golden)
 		bar.Color = i == 1 and Color3.fromRGB(255, 255, 255) or color
 		local long = heavy and 11 or 7
 		bar.Size = Vector3.new(0.35, 0.35, 1)
-		-- across the swing, tilted (two crossing on a heavy hit)
 		local tilt = (i == 1 and 30 or -40) + math.random(-10, 10)
 		bar.CFrame = CFrame.lookAt(position, position + dir) * CFrame.Angles(0, math.rad(90), math.rad(tilt))
 		bar.Parent = holder
@@ -350,6 +430,47 @@ function WeaponFX.slashMark(position, direction, heavy, golden)
 	end)
 end
 
+-- the finisher hitting the floor: a flat ring bursting out and dust
+function WeaponFX.groundSlam(position, golden)
+	if typeof(position) ~= "Vector3" then
+		return
+	end
+	local ring = Instance.new("Part")
+	ring.Name = "SlamRing"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Anchored, ring.CanCollide, ring.CanTouch, ring.CanQuery, ring.CastShadow = true, false, false, false, false
+	ring.Material = Enum.Material.Neon
+	ring.Color = golden and GOLD or GLOW
+	ring.Size = Vector3.new(0.15, 1, 1)
+	ring.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Parent = workspace
+	local dust = Instance.new("ParticleEmitter")
+	dust.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	dust.Color = ColorSequence.new(Color3.fromRGB(200, 200, 210))
+	dust.Size = NumberSequence.new(1.2, 3.5)
+	dust.Transparency = NumberSequence.new(0.5, 1)
+	dust.Lifetime = NumberRange.new(0.3, 0.5)
+	dust.Speed = NumberRange.new(10, 18)
+	dust.SpreadAngle = Vector2.new(80, 10)
+	dust.Drag = 6
+	dust.Rate = 0
+	dust.Parent = ring
+	dust:Emit(16)
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - t0) / 0.3
+		if k >= 1 or not ring.Parent then
+			conn:Disconnect()
+			ring:Destroy()
+			return
+		end
+		local r = 2 + 12 * (1 - (1 - k) * (1 - k))
+		ring.Size = Vector3.new(0.15, r, r)
+		ring.Transparency = k
+	end)
+end
+
 ----------------------------------------------------------------------
 -- Who's holding what, and what they're doing
 ----------------------------------------------------------------------
@@ -377,13 +498,20 @@ local function blend(h, joint, target, weight)
 	mem.wrote = out
 end
 
--- let go of the joints: each back where it rests, if we were the last to move it
-local function release(h)
-	for joint, mem in pairs(h.mem) do
-		if joint.Parent and mem.wrote and joint.Transform == mem.wrote then
-			joint.Transform = mem.rest
-		end
+-- let go of one joint: back where it rests, if we were the last to move it
+local function letGo(h, joint)
+	local mem = h.mem[joint]
+	if mem and joint.Parent and mem.wrote and joint.Transform == mem.wrote then
+		joint.Transform = mem.rest
+	end
+	if mem then
 		mem.wrote = nil
+	end
+end
+
+local function release(h)
+	for joint in pairs(h.mem) do
+		letGo(h, joint)
 	end
 end
 
@@ -423,7 +551,7 @@ local function hold(plr, char, id, def)
 		return held[plr]
 	end
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
-	local model, handle, trails = buildSword(def, golden)
+	local model, handle, trails, blade = buildSword(def, golden)
 	local g = WeaponFX.STANCE.Grip
 	handle.CFrame = arm.CFrame * gripAt(g[1], g[2])
 	local weld = Instance.new("Weld")
@@ -437,6 +565,11 @@ local function hold(plr, char, id, def)
 		mem[joint] = { rest = joint.Transform }
 		weights[key] = 0
 	end
+	-- the springs start where the stance is
+	local springs = {}
+	for key, value in pairs(WeaponFX.STANCE) do
+		springs[key] = { p = table.clone(value), v = table.create(#value, 0) }
+	end
 	held[plr] = {
 		char = char,
 		hum = char:FindFirstChildOfClass("Humanoid"),
@@ -444,6 +577,7 @@ local function hold(plr, char, id, def)
 		def = def,
 		model = model,
 		handle = handle,
+		blade = blade,
 		weld = weld,
 		trails = trails,
 		trail = trails[1],
@@ -452,6 +586,7 @@ local function hold(plr, char, id, def)
 		root = joints.Root,
 		mem = mem,
 		weights = weights, -- how much each joint shows our pose (eased, so nothing snaps)
+		springs = springs,
 		golden = golden,
 		anim = nil,
 		freeze = 0, -- hit-stop: seconds the swing stays frozen
@@ -462,6 +597,15 @@ local function hold(plr, char, id, def)
 	return held[plr]
 end
 
+-- where the body is right now (the springs), as a pose
+local function whereNow(h)
+	local pose = {}
+	for key, s in pairs(h.springs) do
+		pose[key] = table.clone(s.p)
+	end
+	return pose
+end
+
 -- start swing `n` of the string for this player (now)
 local function startSwing(h, n)
 	local kind = h.def and W.Types[h.def.Type]
@@ -470,9 +614,8 @@ local function startSwing(h, n)
 	if not (s and keys and keys[n]) then
 		return
 	end
-	h.anim = { kind = "swing", t = 0, dur = s.Lock, contact = s.Contact, keys = keys[n], n = n }
+	h.anim = { kind = "swing", t = 0, swing = s, m = WeaponFX.swingMoments(s), keys = keys[n], n = n, sound = kind.Sounds and kind.Sounds.Swing, from = h.springs and whereNow(h) }
 	h.freeze = 0
-	playAt(kind.Sounds and kind.Sounds.Swing, h.handle, 1.08 - 0.06 * n)
 end
 
 -- start the ability (the Whirlwind) at a tier for this player (now)
@@ -482,7 +625,8 @@ local function startSpin(h, tierIndex)
 	if not tier then
 		return
 	end
-	h.anim = { kind = "spin", t = 0, dur = (ab.SpinTime or 0.32) * tier.Spins, spins = tier.Spins }
+	-- (a spin takes a moment longer than its spins: the coil and the settle)
+	h.anim = { kind = "spin", t = 0, dur = (ab.SpinTime or 0.32) * tier.Spins / 0.76, spins = tier.Spins, from = h.springs and whereNow(h) }
 	h.freeze = 0
 	local kind = W.Types[h.def.Type]
 	if not playAt(ab.Sound, h.handle) then
@@ -503,65 +647,184 @@ local function setSmear(h, on)
 	end
 end
 
--- the pose for this frame: the stance (breathing), or a swing, or the spin -
--- and how much each joint should show it
-local function poseFor(h, dt)
+-- a spring pulling `s` towards `target`
+local function spring(s, target, omega, zeta, dt)
+	local steps = math.max(1, math.ceil(dt * 240))
+	local hstep = dt / steps
+	for _ = 1, steps do
+		for i = 1, #target do
+			local a = omega * omega * (target[i] - s.p[i]) - 2 * zeta * omega * s.v[i]
+			s.v[i] = s.v[i] + a * hstep
+			s.p[i] = s.p[i] + s.v[i] * hstep
+		end
+	end
+end
+WeaponFX.spring = spring
+
+-- is one of Roblox's action animations playing on this character (the roll)?
+local ACTION = {}
+pcall(function()
+	for _, name in ipairs({ "Action", "Action2", "Action3", "Action4" }) do
+		ACTION[Enum.AnimationPriority[name]] = true
+	end
+end)
+local function actionPlaying(h)
+	local animator = h.hum and h.hum:FindFirstChildOfClass("Animator")
+	if not animator then
+		return false
+	end
+	local ok, tracks = pcall(function()
+		return animator:GetPlayingAnimationTracks()
+	end)
+	if not ok or type(tracks) ~= "table" then
+		return false
+	end
+	for _, track in ipairs(tracks) do
+		local fine, pri, weight = pcall(function()
+			return track.Priority, track.WeightTarget
+		end)
+		-- (a track played at no weight is just being warmed up: it doesn't count)
+		if fine and ACTION[pri] and track.IsPlaying ~= false and (tonumber(weight) or 1) > 0.05 then
+			return true
+		end
+	end
+	return false
+end
+
+local function inAir(h)
+	local ok, state = pcall(function()
+		return h.hum:GetState()
+	end)
+	return ok and (state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping)
+end
+
+-- where a foot is (the bottom of a leg) below the middle of the body, for a
+-- body turned/leaned by `root` and a leg turned by `leg`
+local function footY(h, hipKey, root, leg)
+	local hip = h.joints[hipKey]
+	local rj = h.root
+	if not (hip and rj) then
+		return WeaponFX.GROUND
+	end
+	local torso = rj.C0 * CFrame.Angles(rad(root[1]), rad(root[2]), rad(root[3])) * rj.C1:Inverse()
+	local limb = torso * hip.C0 * CFrame.Angles(rad(leg[1]), rad(leg[2]), rad(leg[3])) * hip.C1:Inverse()
+	return (limb * Vector3.new(0, -1, 0)).Y
+end
+
+-- the pose this frame (before the springs): the stance, a swing or the spin,
+-- how much each joint should show it, and what's going on
+local function targetFor(plr, h, dt)
 	local md = h.hum and h.hum.MoveDirection
 	local moving = typeof(md) == "Vector3" and md.Magnitude > 0.1
 	h.clock = h.clock + dt
-	local breathe = math.sin(h.clock * 2.2)
-	local pose = mixPose(WeaponFX.STANCE, WeaponFX.STANCE, 0)
-	pose.Root = { pose.Root[1] + 1.5 * breathe, 0, pose.Root[3] }
-	pose.RS = { pose.RS[1], pose.RS[2], pose.RS[3] + 3 * breathe }
-	pose.LS = { pose.LS[1], pose.LS[2], pose.LS[3] - 3 * breathe }
-	-- walking: the legs walk and the body stays square; the arms keep the stance
-	local want = { Root = moving and 0.3 or 1, RS = 1, LS = moving and 0.6 or 1, RH = moving and 0 or 1, LH = moving and 0 or 1, Neck = 1 }
-	local smearOn, planted = false, true
+	-- the stance, breathing, and slowly shifting its weight from foot to foot
+	local breathe = math.sin(h.clock * 1.7)
+	local shift = 0.75 * math.sin(h.clock * 0.6) + 0.25 * math.sin(h.clock * 1.35 + 1.1)
+	local stance = copyPose(WeaponFX.STANCE)
+	stance.Root[1] = stance.Root[1] + 1.2 * breathe
+	stance.Root[2] = stance.Root[2] + 1.2 * shift
+	stance.Root[3] = stance.Root[3] + 3 * shift
+	stance.RS[3] = stance.RS[3] + 1.5 * math.sin(h.clock * 1.7 - 0.6)
+	stance.LS[3] = stance.LS[3] - 2 * math.sin(h.clock * 1.7 - 0.9)
+	stance.Neck[1] = stance.Neck[1] - 1 * math.sin(h.clock * 1.7 - 0.4)
+	stance.Neck[3] = stance.Neck[3] - 3 * shift
+	stance.Grip[1] = stance.Grip[1] + 1.5 * math.sin(h.clock * 1.7 - 0.8)
+	local want = { Root = 1, RS = 1, LS = 1, RH = 1, LH = 1, Neck = 1 }
+	if moving then
+		-- walking: the legs, the free arm and the body walk; the sword arm
+		-- keeps the blade steady, letting a little of the walk's own arm swing
+		-- through so it sways in step
+		want.Root, want.LS, want.RH, want.LH, want.Neck, want.RS = 0, 0, 0, 0, 0.3, 0.82
+	end
+	if inAir(h) then
+		want.Root, want.RH, want.LH = 0, 0, 0
+		want.LS = math.min(want.LS, 0.5)
+	end
+	local drinking = h.char:GetAttribute("Drinking") ~= nil
+	if drinking then
+		want.RS, want.Neck, want.LS = 0, 0, 0 -- (your arm and head belong to the drink)
+	end
+	local rolling = actionPlaying(h)
+	if rolling then
+		-- the roll (or any action animation) wins: let go of everything, stop swinging
+		for key in pairs(want) do
+			want[key] = 0
+		end
+		h.anim = nil
+	end
+	local mode, turn, cutting = "idle", 0, false
 	local a = h.anim
 	if a then
+		mode = "swing"
 		if h.freeze > 0 then
 			h.freeze = h.freeze - dt -- hit-stop: frozen for a blink
 		else
 			a.t = a.t + dt
 		end
-		local u = a.t / a.dur
-		if u >= 1 then
-			h.anim = nil
-		elseif a.kind == "swing" then
-			local p, weight, smear = WeaponFX.swingPose(a.keys, u, a.contact, pose)
-			pose = p
-			for key in pairs(want) do
-				want[key] = math.max(want[key], weight)
+		if a.kind == "swing" then
+			local m = a.m
+			local _, weight, smear, over = WeaponFX.swingPose(a.keys, a.t, a.swing, stance, a.from)
+			if over then
+				h.anim = nil
+				mode = "idle"
+			else
+				-- the overlap: each part a little ahead of or behind the arm
+				local pose = {}
+				for key in pairs(stance) do
+					local p = WeaponFX.swingPose(a.keys, a.t + (WeaponFX.LEAD[key] or 0), a.swing, stance, a.from)
+					pose[key] = p[key]
+				end
+				stance = pose
+				if a.t < m.lock then
+					-- committed: the whole body is in it (after that, walking takes the legs back)
+					for key in pairs(want) do
+						want[key] = math.max(want[key], weight)
+					end
+					if drinking then
+						want.RS, want.Neck = 0, 0
+					end
+				end
+				cutting = smear
+				if not a.whooshed and a.t >= m.hold - 0.03 then
+					a.whooshed = true
+					-- the whoosh, as the cut starts (a touch different every time, so a string never sounds canned)
+					playAt(a.sound, h.handle, (1.08 - 0.06 * a.n) * (0.96 + 0.08 * math.random()))
+				end
+				if a.n == 3 and not a.slammed and a.t >= m.contact then
+					a.slammed = true
+					a.slamNow = true -- (the finisher hits the floor: see stepOne)
+				end
 			end
-			smearOn = smear
 		else
-			local p = WeaponFX.spinPose(u, a.spins)
-			-- from the stance into the spin and back out of it
-			local k = math.min(smooth(u / 0.12), 1 - smooth((u - 0.88) / 0.12))
-			local spinPose = p
-			pose = mixPose(pose, spinPose, k)
-			pose.Root = { pose.Root[1], 0, spinPose.Root[3] } -- (the turn itself goes all the way round)
-			for key in pairs(want) do
-				want[key] = 1
+			local u = a.t / a.dur
+			if u >= 1 then
+				h.anim = nil
+				mode = "idle"
+			else
+				local pose
+				pose, turn = WeaponFX.spinPose(u, a.spins, stance, a.from)
+				stance = pose
+				for key in pairs(want) do
+					want[key] = 1
+				end
+				mode, cutting = "spin", u > 0.12 and u < 0.9
 			end
-			smearOn, planted = true, false
 		end
 	end
-	return pose, want, smearOn, planted
+	return stance, want, mode, turn, cutting, drinking, rolling
 end
 
 local function stepOne(plr, h, dt)
 	-- awakened (mastery 100): the blade turns gold
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
 	if golden ~= h.golden then
-		h.golden = golden
-		local char, id, def, anim = h.char, h.id, h.def, h.anim
+		local char, id, def, anim, springs, weights, clock, freeze = h.char, h.id, h.def, h.anim, h.springs, h.weights, h.clock, h.freeze
 		drop(plr)
 		h = hold(plr, char, id, def)
 		if h.none then
 			return
 		end
-		h.anim = anim
+		h.anim, h.springs, h.weights, h.clock, h.freeze = anim, springs, weights, clock, freeze
 	end
 	-- everyone else's swings and abilities: when their counters change
 	if plr ~= Players.LocalPlayer then
@@ -582,37 +845,88 @@ local function stepOne(plr, h, dt)
 			end
 		end
 	end
-	local pose, want, smearOn, planted = poseFor(h, dt)
-	-- the feet stay on the floor: what the body leans and turns comes back off at the hips
-	local root = pose.Root
-	if planted then
-		pose.RH = { pose.RH[1], pose.RH[2] - root[3], pose.RH[3] + root[1] }
-		pose.LH = { pose.LH[1], pose.LH[2] - root[3], pose.LH[3] - root[1] }
+	local target, want, mode, turn, cutting, drinking, rolling = targetFor(plr, h, dt)
+	-- the springs: every part eases towards its target (snappier in a swing).
+	-- In hit-stop everything stops dead and just shudders.
+	local frozen = h.freeze > 0 and h.anim ~= nil
+	local set = WeaponFX.SPRINGS[mode == "idle" and "idle" or "swing"]
+	for key, s in pairs(h.springs) do
+		local goal = target[key]
+		if goal and not frozen then
+			local k = set[key] or set.RS
+			spring(s, goal, k[1], k[2], dt)
+		end
 	end
-	local k = math.min(1, dt * 14)
+	-- the pose to show: the springs, the spin's turn on top, feet kept on the floor
+	local pose = {}
+	for key, s in pairs(h.springs) do
+		pose[key] = s.p
+	end
+	if frozen then
+		-- the shudder: the arm and blade judder as the blade bites
+		pose.RS = { pose.RS[1], pose.RS[2], pose.RS[3] + (math.random() - 0.5) * 5 }
+		pose.Grip = { pose.Grip[1] + (math.random() - 0.5) * 6, pose.Grip[2] }
+	end
+	local lean, twist = pose.Root[1], pose.Root[3]
+	local root = { lean, pose.Root[2], twist + turn }
+	-- (the hips take back the body's own lean and turn so the feet stay put;
+	-- the spin's turn isn't taken back - the legs go round with it)
+	local rh = { pose.RH[1], pose.RH[2] - twist, pose.RH[3] + lean }
+	local lh = { pose.LH[1], pose.LH[2] - twist, pose.LH[3] - lean }
+	local legsOn = math.min(h.weights.RH, h.weights.Root)
+	local up = pose.Hop[1]
+	if legsOn > 0.01 then
+		local low = math.min(footY(h, "RH", root, rh), footY(h, "LH", root, lh))
+		up = up + (WeaponFX.GROUND - low) * legsOn
+	end
+	local show = {
+		Root = CFrame.new(0, 0, up) * CFrame.Angles(rad(root[1]), rad(root[2]), rad(root[3])),
+		RS = CFrame.Angles(rad(pose.RS[1]), rad(pose.RS[2]), rad(pose.RS[3])),
+		LS = CFrame.Angles(rad(pose.LS[1]), rad(pose.LS[2]), rad(pose.LS[3])),
+		RH = CFrame.Angles(rad(rh[1]), rad(rh[2]), rad(rh[3])),
+		LH = CFrame.Angles(rad(lh[1]), rad(lh[2]), rad(lh[3])),
+		Neck = CFrame.Angles(rad(pose.Neck[1]), rad(pose.Neck[2]), rad(pose.Neck[3])),
+	}
+	-- how much each joint shows it: a swing takes over quickly (but never
+	-- snaps), a roll takes the body back even quicker, everything else eases
 	for _, key in ipairs(WeaponFX.JOINTS) do
 		local joint = h.joints[key]
 		if joint then
-			local w = h.weights[key] + (want[key] - h.weights[key]) * k
-			if want[key] >= 0.999 and h.anim then
-				w = want[key] -- (a swing is sharp: no easing into it)
+			local w = h.weights[key]
+			local goal = want[key]
+			local rate = rolling and 40 or (goal < w and 16 or (h.anim and 30 or 8))
+			w = w + (goal - w) * math.min(1, dt * rate)
+			if math.abs(goal - w) < 0.002 then
+				w = goal
 			end
 			h.weights[key] = w
-			local p = pose[key]
 			if w > 0.001 then
-				blend(h, joint, CFrame.Angles(rad(p[1]), rad(p[2]), rad(p[3])), w)
+				blend(h, joint, show[key], w)
 			else
-				local mem = h.mem[joint]
-				if mem.wrote and joint.Transform == mem.wrote then
-					joint.Transform = mem.rest
-				end
-				mem.wrote = nil
+				letGo(h, joint)
 			end
 		end
 	end
 	local g = pose.Grip
 	h.weld.C0 = gripAt(g[1], g[2])
-	setSmear(h, smearOn)
+	setSmear(h, cutting)
+	-- tucked away while you drink (the potion's in that hand)
+	local wantParent = (not drinking) and h.char or nil
+	if h.model.Parent ~= wantParent then
+		h.model.Parent = wantParent
+	end
+	-- the finisher hits the floor: a shockwave where the blade lands
+	local a = h.anim
+	if a and a.slamNow then
+		a.slamNow = false
+		local ok, tip = pcall(function()
+			return h.blade.CFrame * Vector3.new(0, 0, -2.2)
+		end)
+		local hrp = h.char:FindFirstChild("HumanoidRootPart")
+		if ok and hrp then
+			WeaponFX.groundSlam(Vector3.new(tip.X, hrp.Position.Y + WeaponFX.GROUND + 0.1, tip.Z), h.golden)
+		end
+	end
 end
 
 local function step(dt)
@@ -661,7 +975,7 @@ function WeaponFX.spin(plr, tierIndex)
 	end
 end
 
--- hit-stop: your swing freezes for a blink as the blade bites
+-- hit-stop: your swing freezes for a blink (and shudders) as the blade bites
 function WeaponFX.hitStop(plr, seconds)
 	local h = held[plr]
 	if h and not h.none and h.anim then

@@ -952,7 +952,7 @@ local PUNCH_STEP = 15 -- studs per second (well under walking pace, so it reads 
 local PUNCH_STEP_TIME = CC.PunchLock * CC.PunchContact * 0.66
 local PUNCH_STOP_SHORT = 5 -- never close to within this of what you're hitting
 
-local function punchStep(hrp, swing, distance)
+local function punchStep(hrp, swing, distance, seconds)
 	local dir = flatLook(hrp)
 	local room = math.huge
 	if lockTarget then
@@ -970,12 +970,13 @@ local function punchStep(hrp, swing, distance)
 	if not dir or room <= 0 then
 		return -- nowhere to go, or already on top of them
 	end
+	local time = seconds or PUNCH_STEP_TIME
 	local speed = PUNCH_STEP * (CB.Steps[swing] or CB.Steps[#CB.Steps] or 1)
 	if distance then
-		speed = distance / PUNCH_STEP_TIME -- (a weapon's swing: its own lunge)
+		speed = distance / time -- (a weapon's swing: its own lunge)
 	end
-	speed = math.min(speed, room / PUNCH_STEP_TIME) -- don't overshoot into the enemy
-	push(hrp, dir * speed, PUNCH_STEP_TIME, true)
+	speed = math.min(speed, room / time) -- don't overshoot into the enemy
+	push(hrp, dir * speed, time, true)
 end
 
 -- Where you are in the string (0 = not in one), and a press waiting for the
@@ -1047,10 +1048,19 @@ local function tryPunch()
 		CombatAction:FireServer("Punch", nil, comboSwing)
 	end
 	if swingDef then
-		-- the blade's own swing, straight away (and its whoosh): WeaponFX
+		-- the blade's own swing, straight away: WeaponFX (it winds up, holds a
+		-- heartbeat, then cuts, with its whoosh)
 		Weapon.fx.swing(player, comboSwing)
 		commitToPunch(now, swingDef.Lock / CC.PunchLock)
-		punchStep(hrp, comboSwing, swingDef.Lunge) -- (a dash into the cut)
+		-- the dash forward goes with the cut, not the press: you wind up on the
+		-- spot, then drive into the blow (unless you rolled out or swung again)
+		local m = Weapon.fx.swingMoments(swingDef)
+		local thisSwing = comboSwing
+		task.delay(math.max(0, m.hold - 0.02), function()
+			if lastPunch == now and comboSwing == thisSwing and not rolling and active and hrp.Parent then
+				punchStep(hrp, thisSwing, swingDef.Lunge, m.contact - m.hold + 0.06)
+			end
+		end)
 		return
 	else
 		-- the air moving, straight away: waiting for the server would feel laggy

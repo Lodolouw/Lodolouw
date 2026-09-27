@@ -574,9 +574,10 @@ The game is moving from gear to **weapons** (see the new direction in
 **Iron Sword** (`Config.Weapons`). In Studio, open the dev console and press
 **DEV: Test Sword** (again: back to fists).
 
-- In a fight the punch button swings it instead: a **slash** right to left,
-  a **backhand**, and an overhead **chop** (the finisher: 1.5x, narrow, a
-  little more reach). Each swing cuts **every enemy in its arc**.
+- In a fight the punch button swings it instead: a **diagonal slash**, a
+  **rising backhand**, and a **leaping overhead finisher** that slams the
+  ground (1.5x, narrow, a little more reach). Each swing cuts **every enemy
+  in its arc**.
 - **F** (gamepad X, or the phone's crossed-swords button) is its ability,
   the **Whirlwind**: spin round cutting everything close to you (10 s
   cooldown, 20 stamina).
@@ -587,12 +588,17 @@ The game is moving from gear to **weapons** (see the new direction in
   quarter at a time. (Mastery isn't saved yet.)
 - A card bottom-right shows the weapon, its mastery and the Whirlwind's
   cooldown.
-- **Anime style:** you stand ready (blade low and back), and every swing puts
-  the whole body in - a quick coil, a snap into the cut with a lunge, a
-  follow-through that flies past and settles. A glowing smear follows the
-  blade; hits freeze for a blink (hit-stop), rip a slash mark across the
-  enemy, and heavy ones flash the screen with speed lines. A combo counter
-  climbs while you keep hitting.
+- **How it feels** (Elden Ring's weight, Hades' hits, Deepwoken as the Roblox
+  reference): you stand relaxed with the blade low and forward, breathing.
+  Every swing puts the whole body in: it winds up, holds for a heartbeat,
+  SNAPS through the cut as you dash in, rips on through and hangs there a
+  moment - and the next swing flows straight out of that follow-through.
+  The body moves first and the blade last, like a whip, and your feet stay
+  on the floor (lunges sink down into them). Rolling, jumping and drinking
+  always take your body back. A glowing smear follows the blade; hits stop
+  everything dead for a blink (hit-stop), rip a slash mark across the enemy,
+  and heavy ones flash the screen with speed lines. A combo counter climbs
+  while you keep hitting.
 - Everyone sees it: drawn on every screen by `ReplicatedStorage/WeaponFX`,
   in code on all the R6 joints. Preview: `Docs/sword_preview.png`.
 - Sounds (optional, in SoundService): **Sword Swing**, **Sword Hit**,

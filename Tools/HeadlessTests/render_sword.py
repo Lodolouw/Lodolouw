@@ -1,4 +1,5 @@
-# Draws the Iron Sword's swings and the Whirlwind from the real code's poses
+# Draws the Iron Sword's stance, its three swings (chained, as you'd play them)
+# and the Whirlwind from the real code's poses
 # (ReplicatedStorage/WeaponFX, run by test_weaponfx.luau):
 #   luau test_weaponfx.luau -a poses > s.txt
 #   python3 render_sword.py s.txt ../../Docs/sword_preview.png
@@ -133,27 +134,38 @@ def render(polys, yaw, pitch, size, label, trailPts=None):
     return img
 
 
-size = 280
-cols = len(poses)
-sheet = Image.new("RGB", (cols * size + (cols + 1) * 10, 2 * size + 150), (24, 20, 37))
-d = ImageDraw.Draw(sheet)
-d.text((sheet.width // 2, 40), "THE IRON SWORD  -  ANIME STYLE: STANCE, THREE SWINGS, WHIRLWIND", font=ImageFont.truetype(BOLD, 42),
-       fill=(254, 231, 97), anchor="mm")
-cf_ = ImageFont.truetype(BOLD, 17)
-trail = []
-lastGroup = None
-for i, (label, joints, smearOn) in enumerate(poses):
+size = 260
+# one row per move: the stance and the slash, the backhand, the leap, the Whirlwind
+rows, order = {}, []
+for label, joints, smearOn in poses:
     group = label.split(":")[0].split(" ")[0]
-    if group != lastGroup:
-        trail = []
-        lastGroup = group
-    polys, tipAt = character(joints)
-    if smearOn or group == "WHIRLWIND":
-        trail.append(tipAt)
-    x = 10 + i * (size + 10)
-    for k, word in enumerate(label.split(": ")):
-        d.text((x + size // 2, 88 + k * 20), word, font=cf_, fill=(255, 255, 255), anchor="mm")
-    sheet.paste(render(polys, -25, 8, size, "front", trail[:]), (x, 128))
-    sheet.paste(render(polys, 90, 4, size, "side", trail[:]), (x, 128 + size + 6))
+    key = "SLASH" if group == "STANCE" else group
+    if key not in rows:
+        rows[key] = []
+        order.append(key)
+    rows[key].append((label, joints, smearOn, group))
+cols = max(len(r) for r in rows.values())
+cellH = 2 * size + 6 + 52
+sheet = Image.new("RGB", (cols * size + (cols + 1) * 10, 110 + len(order) * (cellH + 16)), (24, 20, 37))
+d = ImageDraw.Draw(sheet)
+d.text((sheet.width // 2, 36), "THE IRON SWORD  -  WIND UP, HOLD, SNAP, RIP THROUGH", font=ImageFont.truetype(BOLD, 38),
+       fill=(254, 231, 97), anchor="mm")
+d.text((sheet.width // 2, 76), "the swings chained as you'd play them: each one starts from the last one's follow-through",
+       font=ImageFont.truetype(BOLD, 18), fill=(192, 203, 220), anchor="mm")
+cf_ = ImageFont.truetype(BOLD, 17)
+for r, key in enumerate(order):
+    y0 = 110 + r * (cellH + 16)
+    trail, lastGroup = [], None
+    for c, (label, joints, smearOn, group) in enumerate(rows[key]):
+        if group != lastGroup:
+            trail, lastGroup = [], group
+        polys, tipAt = character(joints)
+        if smearOn or group == "WHIRLWIND":
+            trail.append(tipAt)
+        x = 10 + c * (size + 10)
+        for k, word in enumerate(label.split(": ")):
+            d.text((x + size // 2, y0 + 12 + k * 20), word, font=cf_, fill=(255, 255, 255), anchor="mm")
+        sheet.paste(render(polys, -25, 8, size, "front", trail[:]), (x, y0 + 52))
+        sheet.paste(render(polys, 90, 4, size, "side", trail[:]), (x, y0 + 52 + size + 6))
 sheet.save(out)
-print("wrote", out, cols, "moments")
+print("wrote", out, len(poses), "moments")
