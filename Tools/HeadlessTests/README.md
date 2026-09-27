@@ -49,8 +49,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   (server) or a fingerprint of everything drawn on screen five times a
   second (client). `./golden.sh record` saves the scenarios in `golden/`
   (gzipped: 16 for Oozark and Nahrzul, 4 for Knight Burrowmore -
-  `knight_full` and `knight_attacks`, server and client - and 4 for Kaze,
-  `kaze_full` and `kaze_attacks`); `./golden.sh check`
+  `knight_full` and `knight_attacks`, server and client - 4 for Kaze,
+  `kaze_full` and `kaze_attacks`, and 4 for Revvington, `car_full` and
+  `car_attacks`); `./golden.sh check`
   replays them and fails on any difference - the proof that a change to the
   boss code (like splitting it into one file per boss) changed nothing
   players can see. `./golden.sh check client_` runs only the client ones, and
@@ -99,6 +100,25 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   ../../Docs/kaze_preview.png --title "KAZE|FLOOR 4  -  THE ROOFTOP DOJO|RECOMMENDED LV 60"`
   (the fight, eight moments); `-a poses` with `--cols 3 --title ""` the pose
   sheet (`Docs/kaze_poses.png`).
+- `test_revvington.luau` - SPEEDY REVVINGTON (floor 5) on the real Piston
+  Speedway (SpeedwayBuilder) with the real BossService and his own brain
+  (and, with `client` at the end, the real BossClient drawing him). `-a full`
+  fights him to the death (TURBO, the reward), `attacks` forces every move
+  in both rounds on a player standing still (each must land) and on one
+  rolling (each must be dodged), `reset` leaves mid-fight and comes back,
+  `duo` is two players, `timing` checks the dodge windows (a roll as the
+  charge arrives dodges it, a roll well before doesn't; the same for the
+  wheelie, the honk and the backfire) and `crash` checks the tyre wall (a
+  charge whose lane meets the wall crashes - dizzy - and one in the open
+  doesn't). It also checks every drive joins up with the last (no jumps),
+  he's never faster than he should be and never leaves the track, and
+  (client) that every part of him, every warning and every one of his
+  screen words (GO!, HONK!!, CRASH!, FINISH!...) gets drawn.
+- `revvington_snaps.luau` + `render_snaps.py` - Revvington's preview
+  pictures (a desert sky): `luau revvington_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/revvington_preview.png --title "SPEEDY REVVINGTON|FLOOR 5  -  PISTON SPEEDWAY|RECOMMENDED LV 75"`
+  (the fight: nine moments and a title card); `-a poses` with
+  `--cols 3 --title ""` the pose sheet (`Docs/revvington_poses.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

@@ -27,6 +27,8 @@
 --   knight_attacks every one of his moves forced in turn, in both phases
 --   kaze_full     Kaze (floor 4) fought to the death by one player
 --   kaze_attacks  every one of his moves forced in turn, in both rounds
+--   car_full      Speedy Revvington (floor 5) fought to the death by one player
+--   car_attacks   every one of his moves forced in turn, before and after TURBO
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -42,7 +44,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
-local FLOOR = string.find(SCENARIO, "^worm") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or 1))
+local FLOOR = string.find(SCENARIO, "^worm") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or 1)))
 
 ----------------------------------------------------------------------
 -- the log: numbers rounded so tiny float noise can't differ, -0 written as 0
@@ -109,6 +111,8 @@ if FLOOR == 3 then
 	mount.require(mount.module("ServerScriptService/DigBuilder.lua")).Build()
 elseif FLOOR == 4 then
 	mount.require(mount.module("ServerScriptService/DojoBuilder.lua")).Build()
+elseif FLOOR == 5 then
+	mount.require(mount.module("ServerScriptService/SpeedwayBuilder.lua")).Build()
 end
 M.run(1)
 -- (one boss per run: two would take turns in an order that isn't fixed)
@@ -745,7 +749,7 @@ local function forcedAttacks(tableOf)
 	end
 end
 
-if SCENARIO == "slime_full" or SCENARIO == "worm_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" then
+if SCENARIO == "slime_full" or SCENARIO == "worm_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -803,7 +807,7 @@ elseif SCENARIO == "slime_die" or SCENARIO == "worm_reset" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" then
+elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)

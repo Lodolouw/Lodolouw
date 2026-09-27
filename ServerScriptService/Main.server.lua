@@ -93,6 +93,10 @@ start("DigBuilder", DigBuilder and DigBuilder.Build)
 local DojoBuilder = load("DojoBuilder", 3)
 start("DojoBuilder", DojoBuilder and DojoBuilder.Build)
 
+-- The Spire's fifth floor, Piston Speedway (Speedy Revvington's arena): the same way
+local SpeedwayBuilder = load("SpeedwayBuilder", 3)
+start("SpeedwayBuilder", SpeedwayBuilder and SpeedwayBuilder.Build)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

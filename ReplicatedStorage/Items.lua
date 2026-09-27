@@ -104,6 +104,14 @@ Items.Sets = {
 		name = "Ki Master's",
 		bonuses = { { need = 2, stats = { Crit = 12 } }, { need = 4, stats = { Damage = 32, Defense = 14 } } },
 	},
+	Speedster = {
+		name = "Speedster",
+		bonuses = { { need = 2, stats = { Defense = 9 } }, { need = 4, stats = { Damage = 24, Health = 110 } } },
+	},
+	Turbocharged = {
+		name = "Turbocharged",
+		bonuses = { { need = 2, stats = { Crit = 13 } }, { need = 4, stats = { Damage = 36, Defense = 15 } } },
+	},
 }
 
 ----------------------------------------------------------------------
@@ -253,6 +261,38 @@ local list = {
 	{ id = "EndlessHeadband", name = "The Endless Headband", slot = "Helmet", rarity = "Secret", level = 78, floor = 4,
 		stats = { Damage = { 80, 110 }, Crit = { 18, 22 }, Health = { 140, 200 }, Power = { 22, 32 } }, tint = { RGB(228, 59, 68), RGB(255, 255, 255) },
 		lore = "* th# w*nd n3ver st0ps bl0wing. n#ither d0es h3." },
+
+	-- SPEEDY REVVINGTON, King of the Speedway (floor 5)
+	{ id = "RacingSneakers", name = "Racing Sneakers", slot = "Boots", rarity = "Common", level = 75, floor = 5, set = "Speedster",
+		stats = { Health = { 32, 48 } }, tint = { RGB(228, 59, 68), RGB(255, 255, 255) },
+		lore = "* Red stripes make you faster. Everybody knows that." },
+	{ id = "RaceHelmet", name = "Race Helmet", slot = "Helmet", rarity = "Uncommon", level = 77, floor = 5, set = "Speedster",
+		stats = { Health = { 46, 64 }, Defense = { 6, 8 } }, tint = { RGB(228, 59, 68), RGB(24, 20, 37) },
+		lore = "* Safety first. Speed a very, very close second." },
+	{ id = "PitCrewJacket", name = "Pit Crew Jacket", slot = "Chest", rarity = "Rare", level = 80, floor = 5, set = "Speedster",
+		stats = { Health = { 82, 114 }, Defense = { 9, 12 } }, tint = { RGB(254, 174, 52), RGB(24, 20, 37) },
+		lore = "* Can change four tyres in six seconds. Cannot tie shoelaces." },
+	{ id = "TireIron", name = "Tire Iron", slot = "Weapon", rarity = "Rare", level = 80, floor = 5, set = "Speedster",
+		stats = { Damage = { 26, 40 }, Crit = { 4, 7 } }, tint = { RGB(139, 155, 180), RGB(58, 68, 102) },
+		lore = "* For loosening nuts. And tightening grudges." },
+	{ id = "PistonFists", name = "Piston Fists", slot = "Weapon", rarity = "Epic", level = 83, floor = 5, set = "Turbocharged",
+		stats = { Damage = { 42, 58 }, Crit = { 7, 11 } }, tint = { RGB(139, 155, 180), RGB(254, 174, 52) },
+		lore = "* Pump. Pump. PUNCH." },
+	{ id = "NitroVest", name = "Nitro Vest", slot = "Chest", rarity = "Epic", level = 83, floor = 5, set = "Turbocharged",
+		stats = { Health = { 105, 145 }, Defense = { 11, 15 } }, tint = { RGB(44, 232, 245), RGB(0, 153, 219) },
+		lore = "* Do not light. Do not shake. Definitely do not do both." },
+	{ id = "CheckeredVisor", name = "Checkered Visor", slot = "Helmet", rarity = "Legendary", level = 86, floor = 5, set = "Turbocharged",
+		stats = { Damage = { 20, 28 }, Health = { 80, 110 }, Crit = { 8, 11 } }, tint = { RGB(255, 255, 255), RGB(24, 20, 37) },
+		lore = "* The finish line is always in sight." },
+	{ id = "BurnoutBoots", name = "Burnout Boots", slot = "Boots", rarity = "Legendary", level = 86, floor = 5, set = "Turbocharged",
+		stats = { Health = { 64, 90 }, Defense = { 10, 13 }, Power = { 14, 20 } }, tint = { RGB(247, 118, 34), RGB(24, 20, 37) },
+		lore = "* Leave a trail of fire. Politely." },
+	{ id = "GoldenPiston", name = "The Golden Piston", slot = "Weapon", rarity = "Mythic", level = 89, floor = 5,
+		stats = { Damage = { 84, 116 }, Crit = { 15, 20 }, Defense = { 8, 11 } }, tint = { RGB(254, 174, 52), RGB(254, 231, 97) },
+		lore = "* The trophy every racer dreams of. It also punches." },
+	{ id = "KaVroomEngine", name = "The Ka-VROOM Engine", slot = "Chest", rarity = "Secret", level = 93, floor = 5,
+		stats = { Damage = { 92, 126 }, Crit = { 19, 23 }, Health = { 160, 230 }, Power = { 24, 34 } }, tint = { RGB(228, 59, 68), RGB(254, 231, 97) },
+		lore = "* vr#om. vr0om. it st*ll w@nts t0 r#ce." },
 }
 
 Items.ById = {}

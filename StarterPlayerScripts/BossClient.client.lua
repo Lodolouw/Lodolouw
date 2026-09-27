@@ -361,7 +361,11 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- beam like a wave... The announcer's words have nothing to borrow.)
 	Punch = "Slam", Heavy = "Slam", Blast = "Spit", Dragon = "Lunge", Tornado = "Wave", Charge = "Wail",
 	Cancel = "Lunge", Focus = "Wail", Stagger = "Splat", Tired = "Wail", Super = "Wake", Beam = "Wave",
-	Pillar = "Erupt", KO = "Death" }
+	Pillar = "Erupt", KO = "Death",
+	-- (Speedy Revvington's: a rev sounds like a wail, a skid like a wave, the
+	-- backfire like an eruption... The crowd, the start lights, the flag and
+	-- his engine's hum have nothing to borrow.)
+	Rev = "Wail", Skid = "Wave", Whip = "Wave", Honk = "Wail", Backfire = "Erupt", Bump = "Slam", Donut = "Wave" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]

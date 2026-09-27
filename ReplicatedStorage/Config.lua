@@ -786,7 +786,34 @@ Config.Spire = {
 				Wind = Vector3.new(1, 0, 0.3),
 			},
 		},
-		{ id = 5, boss = "???", area = "???", level = 75, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
+		{
+			id = 5,
+			boss = "Speedy Revvington, King of the Speedway",
+			area = "Piston Speedway",
+			level = 75,
+			blurb = "A roaring racetrack in the desert, the stands packed with fans. Its champion is a cocky red race car who has never lost a race - and never lets anyone forget it.",
+			color = Color3.fromRGB(228, 59, 68),
+			open = true,
+			-- a hot, bright desert afternoon, a little dust blowing across the track
+			ambience = {
+				ClockTime = 14.2,
+				Atmosphere = {
+					Density = 0.26,
+					Offset = 0.1,
+					Color = Color3.fromRGB(255, 226, 180),
+					Decay = Color3.fromRGB(230, 160, 110),
+					Glare = 0.3,
+					Haze = 1.3,
+				},
+				Tint = Color3.fromRGB(255, 244, 226),
+				Saturation = 0.1,
+				Contrast = 0.05,
+				Sand = Color3.fromRGB(228, 166, 114), -- (the dust off the desert)
+				Grains = 0.15,
+				Clouds = false,
+				Wind = Vector3.new(1, 0, -0.2),
+			},
+		},
 		{ id = 6, boss = "???", area = "???", level = 90, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
 	},
 }
@@ -1567,6 +1594,135 @@ Config.Bosses = {
 			Fight = "Fight", -- "FIGHT!"
 			KO = "KO", -- "K.O.!"
 			Perfect = "Perfect", -- "PERFECT!" (you beat him without a scratch)
+		},
+	},
+
+	[5] = {
+		Name = "Speedy Revvington, King of the Speedway",
+		Short = "Revvington",
+		-- A cocky red race car (a parody of a certain famous red race car - with
+		-- his own name, number and catchphrase: "Ka-VROOM!"). A DRIVE-BY DUEL:
+		-- like a knight on horseback he charges at you, drives past swinging,
+		-- rears up, skids round and charges again. He never walks: he drives,
+		-- along lines, arcs and skid turns that every screen follows exactly
+		-- (ReplicatedStorage/CarPath.lua). His brain: ServerScriptService/
+		-- Bosses/Revvington.lua. His body: ReplicatedStorage/BossBodies/Revvington.lua.
+		Color = Color3.fromRGB(228, 59, 68), -- his paint
+		DeepColor = Color3.fromRGB(162, 38, 51), -- the paint in shadow
+		CoreColor = Color3.fromRGB(24, 20, 37), -- tyres, grille, his mouth
+		EyeColor = Color3.fromRGB(0, 153, 219), -- his big blue eyes
+		StripeColor = Color3.fromRGB(254, 174, 52), -- the lightning bolt down his sides
+
+		HealthPunches = 38,
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 12, -- (his invisible root; hits use his real shape, Car, below)
+		Car = { Length = 18, Width = 9, Height = 5 }, -- his body, studs: for his hits and yours
+		WakeRange = 45, -- walk this close and the countdown starts
+		WakeTime = 4.2, -- 3... 2... 1... GO!
+		WakeSoundLead = 0.2,
+		Leash = 53, -- his middle stays this far in from the track's middle line (his nose
+		-- just touches the tyre wall there - see SpeedwayBuilder: the edge is 62 out)
+		Breather = { { 0.25, 0.5 }, { 0.15, 0.35 } }, -- a pause between moves, per round
+
+		PhaseAt = 0.5, -- TURBO! at half health
+		BreakTime = 3.0, -- donuts, a blast of nitro (everyone near is thrown back), "TURBO!"
+		BreakShove = 50,
+		BreakReach = 26,
+		Phase2Recovery = 0.75,
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.65,
+
+		-- How he drives between moves: Cruise = his speed (studs a second, per
+		-- round: you run 16-24); SpinRate = how fast he skids round on the spot
+		-- (degrees a second, per round - you can hit him while he does);
+		-- CircleChance = how often he circles you like a shark instead of
+		-- driving off in a line; CruiseAfter = how often he drives off to get
+		-- some room after a move, per round.
+		Drive = { Cruise = { 46, 58 }, SpinRate = { 260, 360 }, CircleChance = 0.6, CruiseAfter = { 0.65, 0.5 } },
+
+		-- His moves. Tell = the warning before it hits. Recovery = how long he's
+		-- open after it. Range = { closest, furthest } he uses it from; Facing =
+		-- where you must be (Front: in front of his nose, Rear: behind him,
+		-- Side: beside him); Weight = how often. { a, b } = { round 1, TURBO }.
+		Attacks = {
+			-- CHARGE: he skids round to face you and revs (tyres smoking, a red
+			-- lane on the track that follows you, his headlights flash as it
+			-- locks at Lock of the Tell), then roars down it, past you, brakes in
+			-- a skid and turns round - slowly: your chance. If the lane ends at the
+			-- tyre wall he CRASHES into it and is dizzy for CrashStun. TURBO: he
+			-- charges twice (Charges).
+			Charge = { Tell = { 1.0, 0.8 }, Lock = 0.75, Speed = { 85, 100 }, Overshoot = 24, Damage = 30, Knockback = 70,
+				Brake = 0.5, BrakeSlide = 10, TurnAround = { 1.1, 0.7 }, Charges = { 1, 2 }, CrashStun = 2.2, Range = { 22, 400 }, Weight = 5 },
+			-- TAIL WHIP: he drives by close beside you (a red strip shows his path)
+			-- and as he passes he whips his tail round in a skid - the red
+			-- half-circle on your side. Roll through it or get clear. After it he
+			-- faces back toward you.
+			TailWhip = { Tell = 0.7, Speed = 70, Offset = 7, Whip = 0.35, Radius = 13, Damage = 22, Knockback = 50,
+				Recovery = { 0.7, 0.45 }, Range = { 16, 60 }, Weight = 4 },
+			-- WHEELIE SLAM (you're close, in front): he rears up on his back wheels
+			-- like a horse (a red circle in front of him fills in), then slams
+			-- down - and a shock ring rolls out across the track: jump it. He
+			-- bounces on his springs a moment after.
+			WheelieSlam = { Tell = 0.8, Ahead = 7, Radius = 10, Damage = 28, Knockback = 55,
+				WaveSpeed = 34, WaveReach = 26, WaveHeight = 3, WaveThickness = 4, WaveDamage = 14, WaveKnockback = 30,
+				Recovery = { 1.1, 0.8 }, Range = { 0, 16 }, Facing = "Front", Weight = 5 },
+			-- HONK (you're close, in front): his cheeks puff, then "HONK!!" - a
+			-- blast of sound in a cone that throws you back (not much damage).
+			Honk = { Tell = 0.6, Reach = 24, Arc = 70, Damage = 10, Knockback = 75, Recovery = 0.6, Range = { 0, 24 }, Facing = "Front", Weight = 3 },
+			-- BACKFIRE (you're behind him): his exhaust pipes glow and rumble...
+			-- BANG! Fire in a cone behind him, and burning puddles left on the track.
+			Backfire = { Tell = 0.7, Reach = 18, Arc = 60, Damage = 20, Knockback = 40,
+				Puddles = 3, PuddleRadius = 4.5, PuddleTime = 4, PuddleDamage = 3, PuddleTick = 0.5,
+				Recovery = 0.8, Range = { 0, 22 }, Facing = "Rear", Weight = 6 },
+			-- SIDE BUMP (you're right beside him): he hops sideways at you - BONK!
+			-- (a red half-circle on that side).
+			SideBump = { Tell = 0.55, Hop = 3, Radius = 10, Damage = 18, Knockback = 55, Recovery = 0.6, Range = { 0, 14 }, Facing = "Side", Weight = 5 },
+			-- DONUTS: showing off for his fans, spinning on the spot in a cloud of
+			-- tyre smoke. Free hits!
+			Donuts = { Time = 2.2, Range = { 30, 400 }, Weight = 1 },
+			-- BURNOUT RING (TURBO): he circles you once, fast, leaving a ring of fire
+			-- on the track round you (the flames burn for FlameTime seconds) - then
+			-- dashes straight through the middle at you. Jump the flames to get out,
+			-- or roll the dash.
+			BurnoutRing = { Tell = 0.6, Radius = 20, Lap = 1.7, Flames = 16, FlameRadius = 3.2, FlameTime = 4.5, FlameDamage = 4, FlameTick = 0.5,
+				DashSpeed = 100, Damage = 28, Knockback = 65, Phase = 2, Range = { 20, 80 }, Weight = 3 },
+		},
+
+		Reward = { Power = 3.2, FirstClear = 8 },
+
+		-- the fight's music: add a Sound named "Revvington Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Revvington Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear",
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see
+		-- BossClient) - except the crowd, the start lights, the flag and his
+		-- engine hum, which just stay quiet until you add them.
+		Sounds = {
+			Wake = "Revvington Wake", -- "Ka-VROOM!" at GO!
+			Rev = "Engine Rev", -- revving before a charge
+			Charge = "Revvington Charge", -- the charge's roar
+			Skid = "Tire Skid", -- braking, skidding round
+			Crash = "Revvington Crash", -- into the tyre wall
+			Whip = "Tire Screech", -- the tail whip
+			Slam = "Suspension Slam", -- the wheelie coming down
+			Honk = "Big Honk", -- HONK!!
+			Backfire = "Exhaust Backfire", -- BANG!
+			Bump = "Car Bump", -- the side bump
+			Donut = "Donut Screech", -- showing off
+			Fire = "Fire Whoosh", -- the burnout ring's flames
+			Break = "Revvington Turbo", -- TURBO!
+			Death = "Revvington Sputter", -- his engine giving out
+			Cheer = "Crowd Cheer", -- the fans in the stands
+			Engine = "Revvington Engine", -- a LOOPING engine hum (its pitch follows his speed)
+			Beep = "Start Beep", -- the start lights: 3... 2... 1...
+			Go = "Start Go", -- GO!
+			Finish = "Checkered Flag", -- FINISH!
 		},
 	},
 }

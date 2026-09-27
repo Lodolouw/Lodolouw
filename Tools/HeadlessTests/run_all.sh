@@ -37,9 +37,15 @@ for seed in 1 2 3; do run test_kaze.luau -a full $seed; done
 for sc in attacks reset duo timing rules super; do run test_kaze.luau -a $sc 1; done
 run test_kaze.luau -a full 2 client
 run test_kaze.luau -a attacks 1 client
+# Speedy Revvington (floor 5): whole fights, every move, resets, two players,
+# the dodge windows, crashing into the tyre wall, and his body on screen
+for seed in 1 2 3; do run test_revvington.luau -a full $seed; done
+for sc in attacks reset duo timing crash; do run test_revvington.luau -a $sc 1; done
+run test_revvington.luau -a full 2 client
+run test_revvington.luau -a attacks 1 client
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (24 boss traces)"
+	echo "pass  golden.sh check (28 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20

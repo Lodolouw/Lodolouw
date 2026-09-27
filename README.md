@@ -259,6 +259,55 @@ stands, bows, drops into his stance: **ROUND 1... FIGHT!** He fights like a
 - Previews: `Docs/kaze_preview.png` (the fight) and `Docs/kaze_poses.png` (him,
   pose by pose).
 
+## The Spire's fifth floor: Speedy Revvington (Piston Speedway)
+
+A cocky red race car (a parody of a certain famous red race car, with his own
+name, number - 57 - and catchphrase: "Ka-VROOM!") waits on the start line of a
+roaring desert racetrack, the grandstands packed with blocky fans. His face is
+his windscreen and his grin is on his bumper. Walk up and the start lights on
+the gantry count down: **3... 2... 1... GO!** It's a **drive-by duel**: like a
+knight on horseback he charges at you, drives past swinging his tail, rears
+up, skids round and charges again. Recommended level 75.
+
+- **How he moves:** he never walks - he drives, along straight lines, curves
+  and skid turns that every screen follows exactly (`ReplicatedStorage/CarPath`),
+  even at 100 studs a second. Between moves he circles you like a shark. You
+  can't walk through him, and when he's flat out he runs you over.
+- **His moves:** CHARGE (he revs, tyres smoking, a red lane follows you, his
+  headlights flash as it locks - get out of the lane; then he brakes and turns
+  round slowly: your chance. If the lane ends at the tyre wall a yellow ring
+  marks it: he CRASHES and is dizzy - "DIZZY! HIT HIM!"), TAIL WHIP (a red
+  strip shows where he'll drive past you, then his tail whips round across a
+  red half-circle on your side), WHEELIE SLAM (you're close in front: he rears
+  up on his back wheels over a red circle, slams down, and a shock ring rolls
+  out - jump it), HONK (close in front: his cheeks puff up... "HONK!!" throws
+  you back), BACKFIRE (behind him: his pipes glow... BANG - fire and burning
+  puddles), SIDE BUMP (right beside him: he leans away, then hops sideways at
+  you - "BONK!") and DONUTS (showing off for the crowd: free hits).
+- **TURBO!** (half health): a blast of blue nitro throws everyone back, his
+  stripes glow, his spoiler grows and he gets faster - he charges twice in a
+  row and adds the BURNOUT RING (he laps you once, leaving a ring of fire,
+  then dashes through the middle at you: jump the flames, or roll the dash).
+- **The end: FINISH!** He sputters and coughs black smoke, a front wheel pops
+  off and rolls away, his bumper drops off, X eyes... and he bursts into
+  checkered confetti. The screen shows YOUR TIME (the race clock under his
+  boss bar counts from GO!). Everyone gets Revvington's Chest (Speedster and
+  Turbocharged gear).
+- **Where things are:** every number in `Config.Bosses[5]`; the floor in
+  `Config.Spire.Floors[5]`; his brain and moves in `ServerScriptService/Bosses/Revvington.lua`;
+  how he drives in `ReplicatedStorage/CarPath.lua`; his body, the race clock and
+  the start lights in `ReplicatedStorage/BossBodies/Revvington.lua`; the arena
+  in `ServerScriptService/SpeedwayBuilder.lua`; his portrait and lines in `BossIntro`.
+- **Music:** a Sound named `Revvington Song` in SoundService (Oozark's plays
+  until you add it). **Sounds** (all optional; missing ones borrow Oozark's):
+  Revvington Wake, Engine Rev, Revvington Charge, Tire Skid, Revvington Crash,
+  Tire Screech, Suspension Slam, Big Honk, Exhaust Backfire, Car Bump, Donut
+  Screech, Fire Whoosh, Revvington Turbo, Revvington Sputter - and (silent
+  until you add them) Crowd Cheer, Start Beep, Start Go, Checkered Flag and
+  Revvington Engine (a LOOPING hum: its pitch follows his speed).
+- Previews: `Docs/revvington_preview.png` (the fight) and
+  `Docs/revvington_poses.png` (him, pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without
@@ -312,8 +361,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
   Health, Defense (both capped at 60%) and Training Power.
 - **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
   Oozark, Duneworn and Devourer's for Nahrzul, Spade Knight's and Relicbound
-  for Burrowmore, Windwalker and Ki Master's for Kaze) with bonuses for 2 and
-  4 pieces.
+  for Burrowmore, Windwalker and Ki Master's for Kaze, Speedster and
+  Turbocharged for Revvington) with bonuses for 2 and 4 pieces.
 - **Level:** each item needs a level: the highest you've ever reached, so
   prestiging never locks you out. Gear and chests stay through prestige.
 - **The bag:** your loadout and total stats on the left; your items, tabs,

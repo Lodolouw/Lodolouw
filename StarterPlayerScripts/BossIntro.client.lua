@@ -193,6 +193,26 @@ local PORTRAITS = {
 		ink = { H = RGB(62, 39, 49), R = RGB(228, 59, 68), r = RGB(162, 38, 51), S = RGB(232, 183, 150), K = RGB(24, 20, 37),
 			W = RGB(255, 255, 255), D = RGB(194, 133, 105), L = RGB(192, 203, 220) },
 	},
+	-- a red race car, head on: big eyes on his windscreen (lids half down:
+	-- cocky), headlights, and a toothy grin on his bumper
+	Revvington = {
+		rows = {
+			"....RRRRRR....",
+			"...RRRRRRRR...",
+			"..RDDDRRDDDR..",
+			"..RWWBRRWWBR..",
+			"..RWWKRRWWKR..",
+			".RRRRRRRRRRRR.",
+			"RYYRRRSRRRRYYR",
+			"RRKRRRRRRRRKRR",
+			"RRKKWWWWWWKKRR",
+			"RRRKKKKKKKKRRR",
+			"KKDDDDDDDDDDKK",
+			"KK..........KK",
+		},
+		ink = { R = RGB(228, 59, 68), D = RGB(162, 38, 51), K = RGB(24, 20, 37), W = RGB(255, 255, 255), B = RGB(0, 153, 219),
+			Y = RGB(254, 231, 97), S = RGB(254, 174, 52) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -450,6 +470,26 @@ local LINES = {
 		phase2 = { "* ROUND 2! Now I fight with everything I have!", "* You are strong. Good. Now I will be stronger!" },
 		win = { "* Train hard, and come back. I will be here.", "* A good fight! Get up and try again." },
 		lose = { "* ...A fine match. The road is yours now.", "* You have beaten me... I must train even harder!" },
+	},
+	-- a race car: cocky, loud, adores his fans, and the fastest thing on four
+	-- wheels (just ask him)
+	Revvington = {
+		wake = {
+			"* Ka-VROOM! Speedy Revvington, fastest car in the whole Spire!",
+			"* A challenger? On MY track? Start your engines, slowpoke!",
+		},
+		idle = {
+			"* Rockets are fast. I'm faster. Do the maths.",
+			"* My fans came to see me win. Wave to them! ...while you still can.",
+			"* Eat my dust! It's premium dust.",
+			"* I never brake for anybody. Well. For walls. Sometimes.",
+			"* Fifty-seven wins in a row! Want to be number fifty-eight?",
+			"* Is that your top speed? Aww. That's adorable.",
+		},
+		hit = { "* Beep beep! Coming through!", "* Ka-VROOM! You just got lapped!", "* Rubber, meet road. Road, meet YOU!" },
+		phase2 = { "* TURBO TIME! Now we're really racing!", "* You scratched my paint! NOBODY scratches the paint!" },
+		win = { "* And the crowd goes WILD! Another win for number 57!", "* Checkered flag! Better luck next lap, slowpoke!" },
+		lose = { "* You... beat... ME? Somebody check the replay...", "* Sputter... okay, okay... you're pretty fast... for a walker..." },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {

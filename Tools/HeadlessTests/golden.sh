@@ -40,6 +40,10 @@ SCENARIOS=(
 	"server_kaze_attacks|test_bosses.luau -a kaze_attacks 1"
 	"client_kaze_full|test_bosses.luau -a kaze_full 1 client"
 	"client_kaze_attacks|test_bosses.luau -a kaze_attacks 1 client"
+	"server_car_full|test_bosses.luau -a car_full 1"
+	"server_car_attacks|test_bosses.luau -a car_attacks 1"
+	"client_car_full|test_bosses.luau -a car_full 1 client"
+	"client_car_attacks|test_bosses.luau -a car_attacks 1 client"
 )
 mode=${1:-check}
 only=${2:-}
