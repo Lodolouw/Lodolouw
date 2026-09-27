@@ -15,7 +15,6 @@
 ]]
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
@@ -257,8 +256,9 @@ local function travel(player, action, floorId)
 		if not floor.open then
 			return false, "That floor is sealed."
 		end
-		-- the floor below has to be beaten first (not in Studio, so you can test)
-		if Config.Spire.RequirePrevious and floor.id > 1 and not RunService:IsStudio() then
+		-- the floor below has to be beaten first (not for a dev - Studio, or the
+		-- game's owner - so you can test any floor)
+		if Config.Spire.RequirePrevious and floor.id > 1 and not Config.isDev(player) then
 			if (player:GetAttribute("SpireCleared") or 0) < floor.id - 1 then
 				local below = floorInfo(floor.id - 1)
 				local name = below and below.boss and string.match(below.boss, "^[^,]+") or "the floor below"

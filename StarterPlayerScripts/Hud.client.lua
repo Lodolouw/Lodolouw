@@ -2017,15 +2017,19 @@ RunService.Heartbeat:Connect(function()
 end)
 
 ----------------------------------------------------------------------
--- Studio-only test buttons (the arena doesn't exist yet, so nothing drops loot)
+-- THE DEV CONSOLE: test buttons for you (Studio, or the game's owner in the
+-- real game - see Config.isDev; the server checks every button again). A
+-- small DEV button bottom-right opens and closes it, so the screen stays
+-- clean while you play.
 ----------------------------------------------------------------------
-if RunService:IsStudio() then
+do
 	local devCol = create("Frame", {
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -16, 1, -16),
+		Position = UDim2.new(1, -16, 1, -52),
 		Size = UDim2.fromOffset(150, 206),
 		BackgroundTransparency = 1,
+		Visible = false,
 		Parent = root,
 	}, {
 		create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
@@ -2056,6 +2060,29 @@ if RunService:IsStudio() then
 			doAction("DevGive", kind)
 		end)
 	end
+	local toggle = button({
+		Name = "DevToggle",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -16, 1, -16),
+		Size = UDim2.fromOffset(70, 30),
+		Text = "DEV",
+		TextSize = 16,
+		BackgroundColor3 = RGB(162, 38, 51),
+		Visible = false,
+		Parent = root,
+	})
+	local open = false
+	local function showDev()
+		local dev = RunService:IsStudio() or player:GetAttribute("Dev") == true
+		toggle.Visible = dev
+		devCol.Visible = dev and open
+	end
+	toggle.Activated:Connect(function()
+		open = not open
+		showDev()
+	end)
+	showDev()
+	player:GetAttributeChangedSignal("Dev"):Connect(showDev)
 end
 
 -- Ask for the first snapshot (listeners above are already connected)

@@ -345,9 +345,9 @@ local deathText = create("TextLabel", {
 	Parent = deathBand,
 })
 
--- Studio-only test button
+-- dev test button (Studio, or the game's owner: the server checks again)
 local devBtn = nil
-if RunService:IsStudio() then
+do
 	devBtn = create("TextButton", {
 		Name = "DevIncoming",
 		AnchorPoint = Vector2.new(1, 1),
@@ -360,6 +360,11 @@ if RunService:IsStudio() then
 		TextColor3 = RGB(255, 255, 255),
 		Parent = combatUI,
 	}, { corner(8) })
+	local function showDev()
+		devBtn.Visible = RunService:IsStudio() or player:GetAttribute("Dev") == true
+	end
+	showDev()
+	player:GetAttributeChangedSignal("Dev"):Connect(showDev)
 end
 
 ----------------------------------------------------------------------

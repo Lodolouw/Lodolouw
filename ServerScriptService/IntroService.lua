@@ -807,10 +807,11 @@ function IntroService.Start(combatService, playerService)
 		end
 		return true
 	end)
-	-- STUDIO ONLY: play it again from the start (the HUD's "DEV: Replay Intro")
+	-- DEV ONLY (Studio, or the game's owner): play it again from the start
+	-- (the dev console's "DEV: Replay Intro")
 	PlayerService.AddAction("DevReplayIntro", function(player)
-		if not RunService:IsStudio() then
-			return false, "Studio only."
+		if not Config.isDev(player) then
+			return false, "Dev tools are only for the game's owner."
 		end
 		local S = sessions[player]
 		if S and not S.over then

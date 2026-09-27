@@ -2022,4 +2022,38 @@ if Config.Retro and Config.Retro.On ~= false and Config.Retro.BossPalette ~= fal
 	end
 end
 
+----------------------------------------------------------------------
+-- DEV ACCESS: who gets the dev console (the DEV button's test tools).
+-- Always you in Studio. In the real game: the game's owner (when a person
+-- owns it, not a group) and anyone whose UserId is in DevUserIds (your
+-- UserId is the number in your Roblox profile's web address). The SERVER
+-- decides: every dev action checks this again, so nobody else can use them
+-- even if they hack their screen - the screen only uses it to show the button.
+----------------------------------------------------------------------
+Config.DevUserIds = {}
+function Config.isDev(player)
+	local ok, studio = pcall(function()
+		return game:GetService("RunService"):IsStudio()
+	end)
+	if ok and studio then
+		return true
+	end
+	if not player then
+		return false
+	end
+	local owner = false
+	pcall(function()
+		owner = game.CreatorType == Enum.CreatorType.User and player.UserId == game.CreatorId
+	end)
+	if owner then
+		return true
+	end
+	for _, id in ipairs(Config.DevUserIds) do
+		if player.UserId == id then
+			return true
+		end
+	end
+	return false
+end
+
 return Config

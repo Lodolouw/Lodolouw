@@ -20,7 +20,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local DataStoreService = game:GetService("DataStoreService")
-local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Items = require(ReplicatedStorage:WaitForChild("Items"))
@@ -919,10 +918,10 @@ handlers.ClaimQuest = function(player, d)
 	return true, "+" .. Config.format(def.reward) .. " coins!"
 end
 
--- Studio-only test helpers (the arena doesn't exist yet, so nothing drops loot)
+-- Dev test helpers: Studio, or the game's owner in the real game (Config.isDev)
 handlers.DevGive = function(player, d, kind)
-	if not RunService:IsStudio() then
-		return false, "Dev tools only work in Studio."
+	if not Config.isDev(player) then
+		return false, "Dev tools are only for the game's owner."
 	end
 	if kind == "Loot" then
 		for _, m in ipairs(Config.Materials) do
@@ -975,6 +974,10 @@ local function onPlayerAdded(player)
 		return
 	end
 	started[player] = true
+	-- (the owner's screen shows the DEV button: see Config.isDev)
+	if Config.isDev(player) then
+		player:SetAttribute("Dev", true)
+	end
 
 	local saved, ok, stillLocked = loadData(player)
 	if not player.Parent then

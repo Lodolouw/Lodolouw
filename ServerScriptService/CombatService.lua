@@ -885,8 +885,8 @@ local function onAction(player, action, arg, swing)
 				send(player, "Healed")
 			end
 		end)
-	elseif action == "DevIncoming" and RunService:IsStudio() then
-		-- Studio-only test: a hit lands in 1 second, so you can practise rolling through it
+	elseif action == "DevIncoming" and Config.isDev(player) then
+		-- dev test (Studio, or the game's owner): a hit lands in 1 second, so you can practise rolling through it
 		send(player, "Incoming", 1)
 		task.delay(1, function()
 			if fighters[player] then

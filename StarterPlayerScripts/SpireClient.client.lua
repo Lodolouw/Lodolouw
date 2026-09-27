@@ -470,7 +470,7 @@ end
 -- floor is free to enter in Studio, so you can test). Returns the boss you
 -- still have to beat, or nil if you can go in.
 local function lockedBy(f)
-	if not (Config.Spire.RequirePrevious and f.id > 1) or RunService:IsStudio() then
+	if not (Config.Spire.RequirePrevious and f.id > 1) or RunService:IsStudio() or player:GetAttribute("Dev") == true then
 		return nil
 	end
 	if (player:GetAttribute("SpireCleared") or 0) >= f.id - 1 then
