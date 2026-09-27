@@ -1767,7 +1767,7 @@ sightParams.FilterType = Enum.RaycastFilterType.Exclude
 sightParams.RespectCanCollide = true
 local function canSee(model, pos)
 	if model:GetAttribute("Boss") then
-		return true -- (a boss is never out of sight: the worm dives under the sand)
+		return true -- (a boss is never out of sight: it can be behind its own walls)
 	end
 	local cam = workspace.CurrentCamera
 	local _, hrp, char = charParts()

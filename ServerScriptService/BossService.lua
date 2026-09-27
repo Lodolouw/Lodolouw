@@ -16,16 +16,17 @@
 	    Dead       killed. Rewards are paid; it returns once the arena is empty.
 
 	EACH BOSS HAS ITS OWN FILE in ServerScriptService/Bosses, named after its
-	short name in Config.Bosses (Oozark.lua, Nahrzul.lua). This file is what
+	short name in Config.Bosses (Oozark.lua, Tuber.lua...). This file is what
 	every boss shares: the life above, picking targets, publishing actions,
 	timing, hitting players, the surface-boss brain (choose an attack that
 	suits the distance, do it, breathe), moving and turning, shock rings and
 	burning puddles, the phase change, rewards. A boss file adds its attacks,
 	and can replace or add to the shared parts through hooks:
 	    Oozark (the slime) fights on the surface: it only adds its attacks.
-	    Nahrzul (the worm) hunts from under the sand: it brings its own brain,
-	        its own every-frame step, and extras for building, resetting,
-	        dying and the phase change.
+	    Tuber (the cactus) brings its own brain - two whole fights, one per
+	        health bar - its own every-frame step, and extras for building,
+	        resetting, dying and the phase change (so do Kaze, Revvington
+	        and Gridlock; Burrowmore uses the shared brain with his own attacks).
 	To add a boss: copy Bosses/_Template.lua (and ReplicatedStorage/BossBodies/
 	_Template.lua for its body), give it a Config.Bosses entry and an arena.
 
@@ -33,9 +34,7 @@
 	    State, Phase, Health, MaxHealth, Moving
 	    Action, ActionId, ActionStart (server time), ActA/ActB/ActC (positions),
 	    ActN (a number), ActK (how many of the ActA..C slots are filled so far)
-	    Nahrzul also: Submerged (under the sand), ActT (a second moment in an
-	    action, server time), PosT (the server time of its current position),
-	    RumbleT / RumbleP (when and where the sand last bucked round it)
+	    (and whatever each boss's own file adds: see the top of each)
 ]]
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -212,8 +211,8 @@ end
 
 ----------------------------------------------------------------------
 -- Stone: nothing that comes up out of the ground can come up through it.
--- (The Sunken Dunes' five platforms are tagged "DunePlatform"; a floor with
--- none - Gloomgut's - is unaffected.)
+-- (An arena marks its stone platforms with the "DunePlatform" tag. None
+-- does at the moment - a floor with none is unaffected.)
 ----------------------------------------------------------------------
 local function findStones(floorId)
 	local list = {}
@@ -449,8 +448,8 @@ local function makeTarget(E, on)
 	end
 end
 
--- Which brain an encounter runs: the boss's own (Nahrzul hunts from under
--- the sand), or the shared surface-boss brain above
+-- Which brain an encounter runs: the boss's own (Tuber has two whole fights,
+-- one per health bar), or the shared surface-boss brain above
 local function runBrain(E, token)
 	if E.boss.brain then
 		E.boss.brain(E, token)
@@ -499,7 +498,7 @@ local function reset(E)
 	E.waves, E.puddles = {}, {}
 	E.motion, E.sweep, E.track, E.chase, E.target = nil, nil, false, false, nil
 	if E.boss.onReset then
-		E.boss.onReset(E) -- (e.g. Nahrzul: every platform whole again, and it forgets what it heard)
+		E.boss.onReset(E) -- (e.g. Tuber: every wall, turret and buddy he left around swept away)
 	end
 	E.model:SetAttribute("Invulnerable", true)
 	makeTarget(E, false)
@@ -756,9 +755,7 @@ local function build(floorId, homePart)
 
 	local home = homePart.Position
 	local floorY = home.Y
-	-- (the worm's is lower: most of it is under the sand, and you have to be able
-	-- to punch it from down in a crater or the whirlpool's bowl)
-	local height = def.Size * ((def.Body == "Worm") and 0.5 or 0.85)
+	local height = def.Size * 0.85
 
 	local model = Instance.new("Model")
 	model.Name = "Boss_" .. def.Short
@@ -814,7 +811,6 @@ local function build(floorId, homePart)
 		nextWatch = 0,
 		rng = Random.new(),
 		stones = findStones(floorId),
-		worm = def.Body == "Worm", -- fights from under the sand (Bosses/Nahrzul)
 		boss = boss, -- its own file: its attacks, and the hooks it adds (see Bosses/)
 	}
 	E.pos = E.home
@@ -826,7 +822,7 @@ local function build(floorId, homePart)
 	setAction(E, "Dormant", nil)
 
 	if boss.onBuild then
-		boss.onBuild(E) -- (e.g. Nahrzul: under the sand, its whole body a hitbox, the pit)
+		boss.onBuild(E) -- (e.g. Tuber: the arena's rocks, and where you can punch him)
 	end
 
 	onHit.Event:Connect(function(player, damage, killed)
@@ -943,7 +939,7 @@ function BossService.Start(combatService, playerService)
 	RunService.Heartbeat:Connect(function(dt)
 		for _, E in pairs(encounters) do
 			if E.boss.step then
-				-- a boss with its own every-frame step (Nahrzul). Protected: if it
+				-- a boss with its own every-frame step (Tuber). Protected: if it
 				-- ever errors, the other bosses and the rest of the frame carry on
 				local ok, err = pcall(function()
 					if E.state ~= "Dormant" and E.state ~= "Dead" then
@@ -970,7 +966,7 @@ function BossService.Encounter(floorId)
 end
 
 -- For tests: each boss's attacks by name (its short name in Config), so a
--- test can run one right now. (_Attacks / _WormAttacks: the first two bosses'.)
+-- test can run one right now. (_Attacks: the first boss's.)
 BossService._BossAttacks = {}
 for short, boss in pairs(bossModules) do
 	if boss then
@@ -978,6 +974,5 @@ for short, boss in pairs(bossModules) do
 	end
 end
 BossService._Attacks = BossService._BossAttacks.Oozark
-BossService._WormAttacks = BossService._BossAttacks.Nahrzul
 
 return BossService

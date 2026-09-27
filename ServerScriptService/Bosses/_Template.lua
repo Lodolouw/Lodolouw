@@ -35,7 +35,7 @@
 	    was reset or won meanwhile (then the attack just stops);
 	  * hurts players with hitArea(E, center, radius, damage, knockback).
 
-	MORE A BOSS CAN DO (see Bosses/Nahrzul.lua, which uses all of these)
+	MORE A BOSS CAN DO (see Bosses/Tuber.lua or Bosses/Kaze.lua, which use these)
 	  Boss.brain(E, token)  its own way of fighting instead of the shared one
 	  Boss.step(E, dt)      its own every-frame step (movement, hazards)
 	  Boss.onBuild(E), Boss.onReset(E), Boss.onHome(E), Boss.onDie(E),

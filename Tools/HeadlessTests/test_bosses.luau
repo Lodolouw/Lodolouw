@@ -20,9 +20,11 @@
 --   slime_duo     two players; both leave mid-fight (it resets), then return and win
 --   slime_die     the player dies mid-fight (it resets), then comes back
 --   slime_attacks every attack forced in turn, in phase one and phase two
---   worm_full     Nahrzul (floor 2) fought to the death by one player
---   worm_reset    the player leaves mid-fight (it resets), then returns and wins
---   worm_attacks  every attack forced in turn, in phase one and phase two
+--   tuber_full    Tuber (floor 2) fought to the death by one player: little
+--                 Tuber, the power-up, then the Brute
+--   tuber_reset   the player leaves mid-fight (it resets), then returns and wins
+--   tuber_attacks every one of his moves forced in turn: little Tuber's in
+--                 round 1, then the Brute's once he's powered up
 --   knight_full   Knight Burrowmore (floor 3) fought to the death by one player
 --   knight_attacks every one of his moves forced in turn, in both phases
 --   kaze_full     Kaze (floor 4) fought to the death by one player
@@ -47,7 +49,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
-local FLOOR = string.find(SCENARIO, "^worm") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or 1))))
+local FLOOR = string.find(SCENARIO, "^tuber") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or 1))))
 
 ----------------------------------------------------------------------
 -- the log: numbers rounded so tiny float noise can't differ, -0 written as 0
@@ -367,13 +369,6 @@ end
 -- how the pretend players move: every 1/30 s, deterministic from the time
 ----------------------------------------------------------------------
 local stones = E.stones or {}
-local function stoneTop(st)
-	local slab = st.model and st.model:FindFirstChild("PlatformSlab")
-	if slab then
-		return slab.Position.Y + slab.Size.Y / 2
-	end
-	return floorY + 1.7
-end
 local lastPos = {}
 local function place(p, pos, dt)
 	local root = rootOf(p)
@@ -402,29 +397,12 @@ local function fighterStep(p, k, dt, style)
 	center = Vector3.new(center.X, floorY, center.Z)
 	local phaseT = T + k * 3.7 + SEED * 1.3
 	local want
-	local onStone = nil
-	if style == "worm" and math.floor(phaseT / 7) % 3 == 2 and #stones > 0 then
-		-- every third spell: hide on the nearest stone that isn't broken
-		local best, bestD = nil, math.huge
-		for _, st in ipairs(stones) do
-			if not st.model or st.model:GetAttribute("Broken") ~= true then
-				local d = (Vector3.new(st.center.X, 0, st.center.Z) - Vector3.new(base.X, 0, base.Z)).Magnitude
-				if d < bestD then
-					best, bestD = st, d
-				end
-			end
-		end
-		if best then
-			want = Vector3.new(best.center.X, 0, best.center.Z)
-			onStone = best
-		end
-	end
-	if not want and style == "worm" and not onStone and model:GetAttribute("Submerged") ~= true then
-		-- the worm is out of the sand: run in and hit whatever of it is showing
-		local point = aimAt(base)
-		if point and math.abs(point.Y - base.Y) < 12 and (Vector3.new(point.X, 0, point.Z) - Vector3.new(base.X, 0, base.Z)).Magnitude < 45 then
-			want = Vector3.new(point.X, 0, point.Z)
-		end
+	if not want and style == "tuber" and (model:GetAttribute("Phase") or 1) >= 2
+		and math.floor(phaseT / 6) % 3 ~= 2 then
+		-- the Brute keeps hopping away: chase him down (and now and then back
+		-- off a while, so his long-range moves get their turn)
+		local c = model:GetPivot().Position
+		want = Vector3.new(c.X, 0, c.Z)
 	end
 	if not want and style == "keeper" then
 		-- (the second player in a duo: keeps just inside the reach of the
@@ -435,11 +413,10 @@ local function fighterStep(p, k, dt, style)
 	end
 	if not want then
 		-- (near enough to punch, then out to where it spits and lunges)
-		local r = (style == "worm" and 16 or 6) + (style == "worm" and 14 or 22) * (1 + math.sin(phaseT * 0.31))
+		local r = 6 + 22 * (1 + math.sin(phaseT * 0.31))
 		local spin = (math.floor(phaseT / 9) % 2 == 0) and 1 or -1
 		local ang = phaseT * 0.6 * spin + k * 2
-		local aroundHome = style == "worm" and home or center
-		want = Vector3.new(aroundHome.X + math.cos(ang) * r, 0, aroundHome.Z + math.sin(ang) * r)
+		want = Vector3.new(center.X + math.cos(ang) * r, 0, center.Z + math.sin(ang) * r)
 	end
 	local rolling = (phaseT % 4.3) < 0.45
 	if rolling and not rollUntil[p] or (rollUntil[p] and T > rollUntil[p] + 0.5 and rolling) then
@@ -448,12 +425,6 @@ local function fighterStep(p, k, dt, style)
 	local speed = rolling and 28 or 16
 	local nextPos = moveToward(base, want, speed, dt)
 	local y = floorY + 3
-	if onStone then
-		local d = (Vector3.new(onStone.center.X, 0, onStone.center.Z) - Vector3.new(nextPos.X, 0, nextPos.Z)).Magnitude
-		if d <= onStone.radius then
-			y = stoneTop(onStone) + 3
-		end
-	end
 	local jumpU = (phaseT % 3.1) / 0.6
 	if jumpU < 1 then
 		y = y + 4 * math.sin(math.pi * jumpU)
@@ -691,16 +662,19 @@ local function startSpot(k)
 	return Vector3.new(home.X + math.cos(a) * r, floorY + 3, home.Z + math.sin(a) * r)
 end
 
-local style = FLOOR == 2 and "worm" or "slime"
+local style = FLOOR == 2 and "tuber" or "slime"
 -- each punch takes this much of its health (a long fight: every attack gets
--- its turn; the worm is only out of the sand now and then, so more per hit)
-local share = FLOOR == 2 and 1 / 120 or 1 / 150
+-- its turn; the Brute is only in reach now and then, so more per hit)
+local share = FLOOR == 2 and 1 / 100 or 1 / 150
+local holdFire = false -- (tuber_attacks: no punching while little Tuber's moves are forced)
 local fightStepFor = function(list)
 	return function(dt)
 		for k, p in ipairs(list) do
 			if inArena[p] and humOf(p).Health > 0 then
 				fighterStep(p, k, dt, (k == 2 and style == "slime") and "keeper" or style)
-				punch(p, share)
+				if not holdFire then
+					punch(p, share)
+				end
 			end
 		end
 	end
@@ -727,17 +701,31 @@ local function forcedAttacks(tableOf)
 		names[#names + 1] = n
 	end
 	table.sort(names)
+	-- (Tuber: little Tuber's moves in round 1 - nobody punching, so they all
+	-- run before the power-up - and the Brute's in round 2)
+	holdFire = FLOOR == 2
 	fightUntil({ p }, function()
 		return stateIs("Fighting")
 	end, 60)
 	for _, phase in ipairs({ 1, 2 }) do
 		if phase == 2 then
 			-- the break at half health (the real way: punches down to it)
+			holdFire = false
 			fightUntil({ p }, function()
 				return (model:GetAttribute("Phase") or 1) == 2 and stateIs("Fighting")
 			end, 200)
+			holdFire = FLOOR == 2 -- (the Brute's moves each get their turn before he falls)
 		end
 		for _, name in ipairs(names) do
+			if FLOOR == 2 and ((def.Attacks[name] or {}).Phase or 1) ~= phase then
+				continue
+			end
+			if FLOOR == 2 then
+				-- (never mid power-up: forcing a move would cut it short)
+				fightUntil({ p }, function()
+					return not stateIs("Transition")
+				end, 20)
+			end
 			E.token = E.token + 1
 			local token = E.token
 			E.target, E.targetSince = p, T
@@ -763,7 +751,7 @@ local function forcedAttacks(tableOf)
 	end
 end
 
-if SCENARIO == "slime_full" or SCENARIO == "worm_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" then
+if SCENARIO == "slime_full" or SCENARIO == "tuber_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -799,7 +787,7 @@ elseif SCENARIO == "slime_duo" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_die" or SCENARIO == "worm_reset" then
+elseif SCENARIO == "slime_die" or SCENARIO == "tuber_reset" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -821,16 +809,11 @@ elseif SCENARIO == "slime_die" or SCENARIO == "worm_reset" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" then
+elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" or SCENARIO == "tuber_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
 	forcedAttacks((BS._BossAttacks and BS._BossAttacks[def.Short]) or BS._Attacks)
-elseif SCENARIO == "worm_attacks" then
-	local p = makePlayer("Alpha", 1001)
-	place(p, startSpot(1), 0)
-	enter(p)
-	forcedAttacks((BS._BossAttacks and BS._BossAttacks[def.Short]) or BS._WormAttacks)
 else
 	error("unknown scenario " .. SCENARIO)
 end

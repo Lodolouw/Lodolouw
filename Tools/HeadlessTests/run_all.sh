@@ -25,6 +25,15 @@ run test_intro.luau
 run test_intro.luau -a skip
 run test_intro.luau -a fail
 run test_intro.luau -a replay
+# Tuber / THE BRUTE (floor 2): whole fights, every move in its round, resets,
+# two players, the dodge windows, the power-up, SPLIT!, his cactus walls,
+# turrets, buddies and quicksand (and the stun), cornering him - and his body,
+# the power-up show and everything he plants on screen
+for seed in 1 2 3; do run test_tuber.luau -a full $seed; done
+for sc in attacks reset duo timing powerup split props corner; do run test_tuber.luau -a $sc 1; done
+run test_tuber.luau -a full 2 client
+run test_tuber.luau -a attacks 1 client
+run test_tuber.luau -a powerup 1 client
 # Knight Burrowmore (floor 3): whole fights, every move, resets, two players,
 # the dodge windows, and the same with his body drawn on screen
 for seed in 1 2 3; do run test_burrowmore.luau -a full $seed; done

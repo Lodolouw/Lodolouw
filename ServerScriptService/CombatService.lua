@@ -434,10 +434,11 @@ local function targetRadius(model)
 	return model:GetAttribute("HitRadius") or 3
 end
 
--- A long target (Mireworm) can tell us its shape: a function that gives the
--- point of its body nearest a spot, and how thick it is there. Then a punch
--- lands wherever you hit its body, not just near its middle. Anything that
--- doesn't (Gloomgut, the dummies) is judged from its middle as always.
+-- A big or odd-shaped target (the Brute, a split-up Tuber) can tell us its
+-- shape: a function that gives the point of its body nearest a spot, and how
+-- thick it is there. Then a punch lands wherever you hit its body, not just
+-- near its middle. Anything that doesn't (Gloomgut, the dummies) is judged
+-- from its middle as always.
 local shapes = setmetatable({}, { __mode = "k" })
 function CombatService.SetTargetShape(model, nearest)
 	shapes[model] = nearest

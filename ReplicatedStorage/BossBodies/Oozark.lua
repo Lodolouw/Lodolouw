@@ -58,7 +58,7 @@ Body.Poses, Body.Starts, Body.SlotSpawns = Poses, Starts, SlotSpawns
 ----------------------------------------------------------------------
 -- The body
 ----------------------------------------------------------------------
--- Gloomgut's body: a slime (the default for any boss without Body = "Worm")
+-- Gloomgut's body: a slime
 local function buildSlimeBody(def)
 	local D = def.Size
 	local folder = Instance.new("Model")

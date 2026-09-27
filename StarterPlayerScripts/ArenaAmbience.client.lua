@@ -11,13 +11,13 @@
 	For the Sunken Dunes that means:
 	  * a low golden sun and a warm, dusty haze
 	  * sand blowing past you all the time - fine grains streaking by, and big
-	    soft clouds of dust drifting through (just a breeze while the worm sleeps)
+	    soft clouds of dust drifting through (just a breeze while its boss sleeps)
 	  * THE SANDSTORM (ambience.Storm in Config): when the fight starts, a wall
 	    of sand rolls in across the arena and swallows it. While the storm
 	    rages the air is thick with dust - everything past a stone's throw
 	    fades into it, the light goes brown, and dust hangs right in front of
 	    your eyes. It follows the arena's "Storm" attribute (BossClient raises
-	    it when the worm wakes, higher again once its armour cracks) and dies
+	    it when its boss wakes, higher again in round 2 - its body file can say) and dies
 	    down again when the fight is over.
 	  * a looping wind, if a Sound named "Sandstorm" is in SoundService
 

@@ -10,6 +10,8 @@ title card fills it.
 
 A snapshot file can carry its own captions ("CAPTION <name> <words>") and
 sky colours ("SKY r,g,b|r,g,b", top then bottom - kaze_snaps.luau's sunset).
+A snapshot can zoom its own lens: an eighth number on its SNAP line is its
+field of view (tuber_snaps.luau's long look at the animals).
 
 (render_intro.py is the intro's own version of this, with its words on screen.)
 """
@@ -47,7 +49,8 @@ for line in open(args.snaps):
     if line.startswith('SNAP '):
         bits = line.split()
         cur = {'name': bits[1], 'eye': np.array([float(v) for v in bits[2:5]]),
-               'look': np.array([float(v) for v in bits[5:8]]), 'parts': [], 'bar': None}
+               'look': np.array([float(v) for v in bits[5:8]]), 'parts': [], 'bar': None,
+               'fov': float(bits[8]) if len(bits) > 8 else args.fov}
         snaps.append(cur)
     elif line.startswith('{') and cur is not None:
         cur['parts'].append(json.loads(line))
@@ -155,7 +158,7 @@ def render(snap, sky, rng_limit):
     right = np.cross(fwd, [0, 1, 0])
     right /= np.linalg.norm(right)
     up = np.cross(right, fwd)
-    f = (h / 2) / math.tan(math.radians(args.fov) / 2)
+    f = (h / 2) / math.tan(math.radians(snap['fov']) / 2)
     color = np.zeros((h, w, 3), dtype=np.float32)
     if sky:
         top, bottom = (np.array([110, 165, 255]), np.array([200, 225, 255])) if SKY is None else SKY
@@ -302,8 +305,8 @@ def render(snap, sky, rng_limit):
         if z > 0:
             sx = abs(q @ right) - rad
             sy = abs(q @ up) - rad
-            lim = z * math.tan(math.radians(args.fov) / 2) * (w / h) * 1.05
-            if sx > lim or sy > z * math.tan(math.radians(args.fov) / 2) * 1.05:
+            lim = z * math.tan(math.radians(snap['fov']) / 2) * (w / h) * 1.05
+            if sx > lim or sy > z * math.tan(math.radians(snap['fov']) / 2) * 1.05:
                 continue
         R = np.array(cf[3:12]).reshape(3, 3)
         neon = p['m'] == 'Neon'

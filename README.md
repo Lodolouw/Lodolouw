@@ -133,42 +133,79 @@ rises out of nothing: OOZARK AWAITS...
   normal start. `Config.Intro.On = false` switches it off for everyone.
 - Preview: `Docs/intro_preview.png`.
 
-## The Spire's second floor: Mireworm (the Sunken Dunes)
+## The Spire's second floor: Tuber, then THE BRUTE (the Sunken Dunes)
 
-Mireworm doesn't reuse any of Gloomgut's attacks. It sleeps coiled round the
-seal in the middle of the arena until someone comes near; then it rears up,
-roars, and goes under the sand to hunt by sound: running on sand is loud,
-stone is quiet, standing still is silent. Its cycle is hunt (under the sand,
-untouchable) -> strike -> exposed (hit it now) -> dive. While it's under the
-sand the ground bucks round its ridge (the rumble, which hurts), and the
-moment the fight starts a sandstorm rolls in.
+A boss with **two health bars and two completely different fights** (a
+parody of a certain famous stack of cactus from a certain plumber's games -
+with his own name and look). He sleeps in a little garden in the middle of a
+sunny cactus desert. Recommended level 30.
 
-- **Where the numbers are:** `Config.Bosses[2]` - `Hunt`, `Rumble`,
-  `Whirlpool` (phase two), `Scars` (how long torn-up sand lasts) and `Attacks`.
-  The sandstorm is `Config.Spire.Floors[2].ambience.Storm`, and the fight's
-  music is `Music = "SANDWORMSONG"`.
-- **Server:** `BossService` - `wormBrain`, `stepRumble` and the `WormAttacks`
-  table (Ambush, Breach, Coil, Devour, TailLash, Tremor, Undermine). The tail
-  lash is a whip (`lashAngle` - the client draws the same curve). Gloomgut
-  still runs on `brain` and `Attacks`, untouched.
-- **Arena:** `DunesBuilder` - the fighting floor is Terrain sand (so it can be
-  torn up), the ring of standing stones round the seal (the worm's lair), five
-  platforms that shatter in phase two (tag `DunePlatform`).
-- **Drawing:** `BossClient` - the "MIREWORM: the hunt" section. Its body is
-  solid wherever it's out of the sand, except to a roll (`pushOutOfWorm`), and
-  the whole fight is warmed up the moment you arrive (`rehearse`). Between
-  moves its body flows into the next shape head first; it dives in an arc into
-  a new hole ahead (`diveArc`); the tail lash is its own tail (`lashPath`).
-  Craters, trenches,
-  fissures and the phase-two bowl are carved into the Terrain on each player's
-  own screen and slide back after `Scars.Last` seconds; hits are always decided
-  by the server.
-- **The sandstorm:** `ArenaAmbience` - the wall of sand rolling in, the
-  thickened air, the dust over your view, the wind.
-- **Optional sounds** (SoundService): Worm Rise, Worm Charge, Worm Erupt,
-  Worm Slam, Worm Sweep, Worm Wail, Worm Devour, Worm Crack, Worm Death, a
-  looping Worm Rumble and a looping Sandstorm. Missing ones borrow Gloomgut's
-  (or are simply silent).
+- **Round 1: TUBER** - a chubby, potato-shaped stack of three lumpy cactus
+  blocks with a pink flower, dot eyes and rosy cheeks. Easy on purpose (long
+  warnings, long breaks), so you think he's a joke. WOBBLE BONK (leans back,
+  flops his head forward: step out of the red wedge), CLUMSY TOPPLE (falls flat
+  along a red lane like a tree, then lies there flailing: free hits), NEEDLE
+  SNEEZE ("ah... ah... ACHOO!": a ring of needles, jump or roll it), BOUNCE
+  STOMP (lands on the red circle) and, every third move, **SPLIT!**: he pops
+  into three buddies that curl into spiky balls and SPIN-DASH at you one after
+  another (each bounces once off a rock or the edge), then sit there dizzy -
+  punch any of them, they share his health - and hop back into a stack.
+- **THE POWER-UP** (his first bar runs out, 9 seconds, nobody can be hurt):
+  he flops over (split up? his buddies hop back together first), his flower
+  wilts, the music stops... the ground rumbles, a
+  sandstorm rolls in, and **every cactus in the arena rips out of the ground
+  and flies to him**. The pieces slam together into a giant cactus golem; a
+  crown drops onto his head; his eyes light up red. Across your screen the
+  letters of TUBER shake, slide into new places and turn red: **BRUTE** - and
+  **THE** slams down next to it. He roars: THE CACTUS KING... THE DESERT BOWS.
+  Camels (in bright saddle blankets), meerkats, vultures and lizards have come
+  to watch - the camera looks out at a camel walking up onto its ledge - and
+  they bow. His second health bar - "The Brute, the Cactus King" - fills up
+  and the music slams in. Your camera swoops round him for the whole show.
+- **Round 2: THE BRUTE** fights from a distance: his goal is to keep you away,
+  yours is to break through his cactus and catch him. Get close and he rips
+  his roots up and **hops away** across the arena (his roots wriggle when his
+  hop is ready again). Catch him while it's recharging and he's **CORNERED**:
+  he panics (free hits!), blasts you back with a shove burst and escapes.
+  Meanwhile: NEEDLE VOLLEY (a red cone, three fans of needles), DESERT RAIN
+  (cactus balls fall on red circles), SPINE LANCE (a line locks on, a giant
+  spike flies across the arena - dodge late, rocks stop it), CACTUS WALLS
+  (burst up between you and him; go round, or punch the glowing weak spot
+  twice), NEEDLE TURRETS (little towers that shoot you; two punches), BALL
+  HERD (spiky balls roll in from the edge, bouncing off rocks and walls),
+  PRICKLY BUDDIES (minions that waddle after you and pop; one punch) and
+  QUICKSAND (drags you in and nibbles). **Break the last of his walls and
+  turrets and he's STUNNED** - out of cactus, free hits. Low on health he
+  goes into a **RAGE**: more of everything, and his walls creep toward you.
+- **The end:** he freezes, cracks and crumbles into a heap of cactus balls
+  that roll away - and out pops tiny Tuber, flower wilted, who stomps off in a
+  huff (HMPH!). The banner says THE BRUTE VANQUISHED. Everyone gets the
+  floor-2 chest (its loot hasn't changed).
+- **The arena** (`DunesBuilder`): the Sunken Dunes as a cactus desert - cacti
+  everywhere (tagged `DuneCactus`: the ones that fly into the golem, put back
+  when the fight resets), boulders (`DesertRock`: rolling balls bounce off
+  them, needles and the lance stop at them - cover!), lookouts on the dunes
+  for the audience (`DuneLookout`), Tuber's garden in the middle, a cactus
+  flower over the gate. The worm's seal, lair, platforms, pillars and ribcage
+  are gone.
+- **Where things are:** every number in `Config.Bosses[2]` (`PhaseAt` is where
+  his first bar ends; `Attacks` has both rounds' moves, `Moves` the Brute's
+  hop, cornered, stun and rage); the floor in `Config.Spire.Floors[2]`; his
+  brain and moves in `ServerScriptService/Bosses/Tuber.lua`; his body, both
+  health bars, the power-up show (the letters, the camera, the flying cacti,
+  the audience) and everything he plants in `ReplicatedStorage/BossBodies/Tuber.lua`;
+  his portraits and lines (Tuber's, then the Brute's) in `BossIntro`.
+- **Music:** round 1 plays a Sound named `Tuber Song` (add a cute, bouncy one
+  - Oozark's plays until you do); the power-up is silent; round 2 plays
+  `SANDWORMSONG`. **Sounds** - the ones you already have from the old worm
+  (missing ones borrow Oozark's): Worm Erupt (popping up, cacti ripping out of
+  the ground, walls bursting up), SandWhip (the bonk, the sneeze, needles),
+  Worm Slam (toppling, stomping, landing), Worm Crack (splitting, the
+  power-up's burst, things breaking), Worm Charge (rolling balls, his hop, the
+  lance), Worm Devour (stacking back up, the golem forming), SandRumble (the
+  power-up's rumble), SandRoar (THE BRUTE roars), Worm Death.
+- Previews: `Docs/tuber_preview.png` (the fight) and `Docs/tuber_poses.png`
+  (him pose by pose, and the audience close up).
 
 ## The Spire's third floor: Knight Burrowmore (the Glimmer Dig)
 
@@ -418,7 +455,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
 - **Slots:** Weapon, Helmet, Chest, Boots. Stats: Damage, Crit Chance (x1.75),
   Health, Defense (both capped at 60%) and Training Power.
 - **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
-  Oozark, Duneworn and Devourer's for Nahrzul, Spade Knight's and Relicbound
+  Oozark, Duneworn and Devourer's on floor 2 (the old worm's - floor 2's loot
+  is going to be reworked for Tuber), Spade Knight's and Relicbound
   for Burrowmore, Windwalker and Ki Master's for Kaze, Speedster and
   Turbocharged for Revvington, Beatbound and Demon Geometry for Gridlock)
   with bonuses for 2 and 4 pieces.

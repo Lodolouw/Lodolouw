@@ -31,9 +31,10 @@
 	    "Dormant" and "Death" are its poses while asleep and once dead;
 	    "Wake", "Reset" and "Break" come from BossService.
 	  * Body.fx(def): what its attacks are made of (colours for bursts).
-	  * Optional (see BossBodies/Nahrzul.lua, which uses them all): onTrack,
-	    onAction, lateBreak, calm, breaks, signs, runPose, glide, afterPose,
-	    senses, pushOut, everyFrame.
+	  * Optional (see BossBodies/Tuber.lua or BossBodies/Gridlock.lua, which use
+	    most of them): onTrack, onAction, lateBreak, calm, breaks, signs,
+	    runPose, glide, afterPose, senses, pushOut, everyFrame, and barLook
+	    (its own health bars), music (its own songs), stormWant (its storm).
 ]]
 
 local RGB = Color3.fromRGB

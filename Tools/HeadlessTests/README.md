@@ -43,12 +43,13 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   in `Docs/`: the models, and snapshots of the fight (`test_colosseum.luau
   -a full 7 snap`) drawn inside a simple model of the arena.
 - `test_bosses.luau` + `golden.sh` - GOLDEN TRACES of the Spire's bosses.
-  `test_bosses.luau -a <scenario> <seed> [server|client]` fights Oozark or
-  Nahrzul with pretend players, the real BossService and (client mode) the
+  `test_bosses.luau -a <scenario> <seed> [server|client]` fights Oozark,
+  Tuber (and the others) with pretend players, the real BossService and (client mode) the
   real BossClient, and prints every boss attribute, hit, shove and reward
   (server) or a fingerprint of everything drawn on screen five times a
   second (client). `./golden.sh record` saves the scenarios in `golden/`
-  (gzipped: 16 for Oozark and Nahrzul, 4 for Knight Burrowmore -
+  (gzipped: 16 for Oozark and Tuber - `tuber_full`, `tuber_reset` and
+  `tuber_attacks`, which replaced the old worm's - 4 for Knight Burrowmore -
   `knight_full` and `knight_attacks`, server and client - 4 for Kaze,
   `kaze_full` and `kaze_attacks`, 4 for Revvington, `car_full` and
   `car_attacks`, and 4 for Gridlock, `grid_full` and `grid_attacks`);
@@ -120,6 +121,38 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `python3 render_snaps.py s.txt ../../Docs/revvington_preview.png --title "SPEEDY REVVINGTON|FLOOR 5  -  PISTON SPEEDWAY|RECOMMENDED LV 75"`
   (the fight: nine moments and a title card); `-a poses` with
   `--cols 3 --title ""` the pose sheet (`Docs/revvington_poses.png`).
+- `test_tuber.luau` - TUBER / THE BRUTE (floor 2) on the real Sunken Dunes
+  (DunesBuilder) with the real BossService and his own brain (and, with
+  `client` at the end, the real BossClient drawing him). Its pretend players
+  circle little Tuber, chase the Brute down and punch whatever's nearest in
+  reach (him through his shape - a split-up buddy, his toppled body, the
+  golem's trunk - or a wall's weak spot, a turret, a buddy). `-a full` fights
+  him to the death (both bars, the reward), `attacks` forces every move in its
+  round on a player standing still (each must land) and on one rolling (each
+  must be dodged), `reset` leaves in round 2 and comes back (little Tuber
+  again, everything he planted gone), `duo` is two players, `timing` checks
+  the dodge windows, `powerup` checks the power-up (nothing hurts anyone, he
+  can't be hurt, round 1's mess is cleared, the Brute is golem-sized, round 2
+  opens with a hop; it hits him while he's split up, and in client mode checks
+  the buddies hop back together), `split` checks SPLIT! (the buddies share his health,
+  their balls land, they stack back up), `props` checks his walls (burst up,
+  prick, two punches), turrets (shoot, two punches), buddies (pop), quicksand
+  (nibbles) and the stun (breaking the last of them), and `corner` checks
+  catching him with his hop recharging (free hits, then he escapes). In client
+  mode it checks every part of him, every warning, the flying cacti, the
+  camera shots (and the long look at the animals), the audience and his screen
+  words (THE, THE CACTUS KING, THE DESERT BOWS, SPLIT!, ACHOO!...) get drawn.
+  Every scenario also fails if he ever jumps across the arena (faster than 120
+  studs a second) - except when his buddies hop back together.
+- `tuber_snaps.luau` + `render_snaps.py` - Tuber's preview pictures (a hot
+  afternoon sky): `luau tuber_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/tuber_preview.png --cols 3 --title "TUBER|FLOOR 2  -  THE SUNKEN DUNES|RECOMMENDED LV 30"`
+  (the fight: fourteen moments and a title card - the power-up's are taken
+  from the game's own cutscene camera, the camel through its long lens); `-a
+  poses` with `--cols 3 --title ""` the pose sheet (`Docs/tuber_poses.png`:
+  him move by move, then a camel, a meerkat, a vulture and a lizard close up).
+  (`render_snaps.py` reads a picture's own field of view from an 8th number on
+  its SNAP line, if there is one.)
 - `test_gridlock.luau` - GRIDLOCK (floor 6) on the real Final Beat
   (GridBuilder) with the real BossService, his own brain and the shared
   sums in ReplicatedStorage/BeatGrid (and, with `client` at the end, the

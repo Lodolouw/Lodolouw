@@ -9,8 +9,8 @@
 	server hits you, whatever your ping.
 
 	EACH BOSS'S BODY HAS ITS OWN FILE in ReplicatedStorage/BossBodies, named
-	after its short name in Config.Bosses (Oozark.lua: the slime, Nahrzul.lua:
-	the worm). A body file holds everything that one boss draws: its body and
+	after its short name in Config.Bosses (Oozark.lua: the slime, Tuber.lua:
+	the cactus...). A body file holds everything that one boss draws: its body and
 	how it moves, the shape of each of its actions over time, their one-off
 	moments (sounds, landings, bursts), its warnings on the floor, and how its
 	arena answers the fight. See BossBodies/_Template.lua to add a boss.
@@ -350,9 +350,9 @@ local recentSplats = {}
 -- happens, so a slam across the arena still sounds further off than one on
 -- top of you. Config names the Sound (by default "Boss Slam" and so on, in
 -- SoundService); an asset id works too.
--- Mireworm's own sounds that have no Gloomgut sound of the same name: if you
+-- A boss's own sounds that have no Gloomgut sound of the same name: if you
 -- haven't added one yet, it borrows the nearest thing (a dive sounds like a
--- lunge, its body crashing down like a slam, and so on).
+-- lunge, a body crashing down like a slam, and so on).
 local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = "Wail", Devour = "Roar",
 	-- (Knight Burrowmore's: a jump sounds like a lunge, a landing like a slam...)
 	Jump = "Lunge", Land = "Slam", Swing = "Wave", Dig = "Spit", Clod = "Splat", Anchor = "Lunge",
@@ -369,7 +369,11 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- (Gridlock's: a hop sounds like a lunge, spikes like an eruption, a
 	-- portal like a wave... ATTEMPT and LEVEL COMPLETE have nothing to borrow.)
 	Hop = "Lunge", Spike = "Erupt", Portal = "Wave", Ship = "Wave", Bomb = "Splat", Burst = "Lunge", Orb = "Splat",
-	Zoom = "Wave", Build = "Wail", Drop = "Slam", Stun = "Splat", Flip = "Wave", Pad = "Lunge" }
+	Zoom = "Wave", Build = "Wail", Drop = "Slam", Stun = "Splat", Flip = "Wave", Pad = "Lunge",
+	-- (Tuber's: a bonk sounds like a slam, a sneeze like a spit, a cactus
+	-- ball rolling like a lunge, a wall bursting up like an eruption...)
+	Bonk = "Slam", Sneeze = "Spit", Split = "Erupt", Roll = "Lunge", Stack = "Slam", Rip = "Erupt",
+	Form = "Wail", Needle = "Spit", Lance = "Lunge", Wall = "Erupt", Pop = "Splat" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]
@@ -469,9 +473,10 @@ local function shockRing(B, at, fromR, toR, seconds, color)
 	})
 end
 
--- The stone platforms on a boss's floor (the dunes have five; nothing that
--- comes up out of the sand comes up through them - BossService has the same
--- rule). One the worm has shattered (Broken) is just sand again.
+-- The stone platforms on a boss's floor (an arena tags them "DunePlatform";
+-- nothing that comes up out of the ground comes up through them -
+-- BossService has the same rule). One that's shattered (Broken) is just
+-- ground again. (No arena has any at the moment.)
 local function onStone(B, pos)
 	if not B.stones or (#B.stones == 0 and os.clock() > (B.stonesLook or 0)) then
 		B.stonesLook = os.clock() + 2 -- (the arena may not have loaded in yet: look again soon)
@@ -507,8 +512,9 @@ local function arenaOf(B)
 end
 
 -- The sandstorm in the dunes (ArenaAmbience draws it from the arena's Storm
--- attribute): a breeze while the worm sleeps (0.35), a sandstorm the moment
--- it wakes (0.92), and howling once its armour is gone (1).
+-- attribute): a breeze while its boss sleeps, a storm once it's awake, and
+-- harder once it's in phase two - or however its body file says (stormWant:
+-- Tuber's power-up whips it right up).
 local function stepStorm(B, dt)
 	local arena = arenaOf(B)
 	if not arena then
@@ -1122,7 +1128,6 @@ local function track(model)
 		lastHealth = model:GetAttribute("Health") or 0,
 		wobbles = {},
 	}
-	B.kind = def.Body == "Worm" and "Worm" or "Slime"
 	-- what its attacks are made of (its body file says: slime you can see
 	-- into, sand and rock...)
 	B.fx = mod.fx(def)
@@ -1132,7 +1137,7 @@ local function track(model)
 	B.phase2Look = (model:GetAttribute("Phase") or 1) >= 2
 	B.crownGone = B.phase2Look
 	if mod.onTrack then
-		mod.onTrack(B) -- (its body file's own start: e.g. the worm's trail)
+		mod.onTrack(B) -- (its body file's own start)
 	end
 	bosses[model] = B
 	model.AncestryChanged:Connect(function()
@@ -1163,7 +1168,7 @@ local function onAction(B, name, t0, now)
 	B.slotsDone = 0
 	local mod = B.mod
 	if mod.onAction then
-		mod.onAction(B, name, t0, now) -- (its body file's own business, e.g. the worm's)
+		mod.onAction(B, name, t0, now) -- (its body file's own business)
 	end
 	if name == "Break" and now - t0 > B.def.BreakTime * 0.35 then
 		B.phase2Look, B.crownGone = true, true -- joined late: it's already broken
@@ -1191,7 +1196,7 @@ end
 local function stepBoss(B, now, dt)
 	local mod = B.mod
 	if mod.signs then
-		mod.signs(B, B.model:GetAttribute("State") or "Dormant") -- (e.g. the worm's "HIT IT!")
+		mod.signs(B, B.model:GetAttribute("State") or "Dormant") -- (e.g. a "HIT IT!" sign)
 	end
 	local m = B.model
 	local id = m:GetAttribute("ActionId") or 0
@@ -1239,7 +1244,6 @@ local function stepBoss(B, now, dt)
 		P.sz = P.sz + 0.05 * c
 		P.lean = 0.05 + 0.06 * c
 	end
-	B.humpEvery = nil -- (an under-the-sand pose sets it)
 	local shape = mod.Poses[action]
 	if state == "Dormant" then
 		shape = mod.Poses.Dormant
@@ -1248,7 +1252,7 @@ local function stepBoss(B, now, dt)
 	end
 	if shape then
 		if mod.runPose then
-			mod.runPose(B, shape, t, now, P) -- (the worm: catching up, flowing between stages)
+			mod.runPose(B, shape, t, now, P) -- (its body file's own way of playing a pose)
 		else
 			shape(B, t, P)
 		end
@@ -1281,8 +1285,7 @@ local function stepBoss(B, now, dt)
 	end
 
 	-- where it is: smoothed from the server's position, or exactly on its arc
-	-- while it's lunging or hopping (the worm glides between updates - see
-	-- glideWorm)
+	-- while it's lunging or hopping (its body file's glide)
 	local ground = rootGround(B)
 	local glided = mod.glide and mod.glide(B, now, ground) or nil
 	if P.override then
@@ -1300,7 +1303,7 @@ local function stepBoss(B, now, dt)
 
 	mod.pose(B, P, B.vpos, P.facing or B.vfacing, now, dt)
 	if mod.afterPose then
-		mod.afterPose(B) -- (the worm: the path its body follows under the sand)
+		mod.afterPose(B) -- (its body file's extras once it's posed)
 	end
 	if B.def.Weather == "Sandstorm" then
 		stepStorm(B, dt)
@@ -1319,7 +1322,7 @@ local function stepBoss(B, now, dt)
 	local here = player:GetAttribute("SpireFloor") == B.floor
 	local awake = state == "Waking" or state == "Fighting" or state == "Transition"
 	if mod.senses then
-		mod.senses(B, dt, here, awake, state) -- (the worm: the rumble and the whirlpool)
+		mod.senses(B, dt, here, awake, state) -- (e.g. Tuber: the cacti flying, the audience, his walls)
 	end
 	if here and awake then
 		showBar(B)
@@ -1328,7 +1331,7 @@ local function stepBoss(B, now, dt)
 	end
 
 	-- you can't walk through it: nudged out to the edge of its body (or
-	-- its body file's own way - the worm is long, not round)
+	-- its body file's own way)
 	if mod.pushOut then
 		mod.pushOut(B, P, here, awake, state)
 	elseif here and awake then

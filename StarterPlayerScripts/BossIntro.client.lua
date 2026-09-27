@@ -137,22 +137,43 @@ local PORTRAITS = {
 		},
 		ink = { G = RGB(99, 199, 77), L = RGB(190, 240, 140), D = RGB(62, 137, 72), W = RGB(236, 255, 170), K = RGB(25, 60, 62) },
 	},
-	Nahrzul = {
+	-- little Tuber: a chubby stack of cactus, rosy cheeks, a pink flower on top
+	Tuber = {
 		rows = {
-			"......SSSS....",
-			"....SSSSSSSS..",
-			"...SSKKKKKKSS.",
-			"..SSKWKWKWKKS.",
-			"..SSKKKKKKKKS.",
-			"..SSKWKWKWKKS.",
-			"...SSKKKKKKS..",
-			"...DSSSSSSSS..",
-			"..DDSS.SSDS...",
-			".DDSS...SS....",
-			"DDSS.........D",
-			"DSS.DDD..DDDDD",
+			"......PP......",
+			".....PYYP.....",
+			"......PP......",
+			"....GGGGGG....",
+			"...GKGGGGKG...",
+			"...GPGKKGPG...",
+			"....GGGGGG....",
+			"..DGGGGGGGGD..",
+			"..GGSGGGGSGG..",
+			"..DGGGGGGGGD..",
+			".GGGGSGGGSGGG.",
+			".DGGGGGGGGGGD.",
 		},
-		ink = { S = RGB(228, 166, 114), D = RGB(184, 111, 80), K = RGB(62, 39, 49), W = RGB(255, 255, 255) },
+		ink = { G = RGB(99, 199, 77), D = RGB(62, 137, 72), K = RGB(24, 20, 37), P = RGB(246, 117, 122),
+			Y = RGB(254, 231, 97), S = RGB(234, 212, 170) },
+	},
+	-- THE BRUTE: the golem's barrel-cactus head, crowned, eyes burning red
+	Brute = {
+		rows = {
+			"..Y.Y.YY.Y.Y..",
+			"..YYYYYYYYYY..",
+			"..GGGGGGGGGG..",
+			".GCCCCCCCCCCG.",
+			".GRRGGGGGGRRG.",
+			".GGGGGGGGGGGG.",
+			".GSKKKKKKKKSG.",
+			".GGKSKSKSKKGG.",
+			".GGGGGGGGGGGG.",
+			"SGGDGGGGGGDGGS",
+			"GGGGGGGGGGGGGG",
+			"GDGGGGSGGGGGDG",
+		},
+		ink = { Y = RGB(254, 174, 52), G = RGB(99, 199, 77), C = RGB(38, 92, 66), R = RGB(255, 0, 68),
+			K = RGB(24, 20, 37), S = RGB(234, 212, 170), D = RGB(62, 137, 72) },
 	},
 	-- a blue helmet with curly gold horns, the T-shaped visor, two glowing eyes
 	Burrowmore = {
@@ -438,20 +459,37 @@ local LINES = {
 		win = { "* Another subject for the Gelatinous Kingdom!", "* Long live Oozark! Long live the goo!" },
 		lose = { "* The Tyrant... falls... tell the puddles... I was great...", "* No... my kingdom... it's melting..." },
 	},
-	-- ancient, hungry and deadly serious
-	Nahrzul = {
-		wake = { "* I AM NAHRZUL. THE DUNES ARE MY MOUTH.", "* Another caravan of one. How small you are." },
+	-- little Tuber: sweet, bouncy, and very pleased you came to play. When
+	-- his first bar runs out he BECOMES the Brute: from then on it's the
+	-- Brute talking (his lines below), right after the power-up.
+	Tuber = {
+		becomes = "Brute",
+		wake = { "* Oh! Hi! I'm TUBER! Wanna play?", "* A visitor! Nobody EVER visits my garden!" },
 		idle = {
-			"* I can hear your heartbeat through the sand.",
-			"* Kingdoms have sunk into my belly. You will not be missed.",
-			"* The dunes remember every bone I have left in them.",
-			"* Run. The hunt ends the same either way.",
-			"* Beneath you. Behind you. Everywhere.",
+			"* Hehe! That tickles!",
+			"* Wanna see me roll? I'm REALLY good at rolling!",
+			"* Everyone says I look like a potato. I'm a CACTUS!",
+			"* Don't step on my flowers, okay?",
+			"* Wheee! Isn't this fun?",
+			"* I'm the prickliest cactus in the whole desert! ...I think.",
 		},
-		hit = { "* The sand drinks your strength.", "* You are already half swallowed.", "* Feel the earth break. That was me." },
-		phase2 = { "* YOU CRACKED MY SHELL. NOW THE SANDS WILL DROWN YOU.", "* Enough. I will pull this whole desert down on you." },
-		win = { "* Another bone for the dunes.", "* The sands keep you now." },
-		lose = { "* The dunes... fall... silent...", "* So even the desert... can be conquered..." },
+		hit = { "* Oops! Did I prick you? Sorry!", "* Boing!", "* Hee hee! Gotcha!" },
+		win = { "* Aww, are you taking a nap? Night night!", "* Yay, I win! ...Can we play again?" },
+		lose = { "* Waaah! No fair!", "* Ow ow ow..." },
+	},
+	-- THE BRUTE, THE CACTUS KING: huge, cold and very, very royal
+	Brute = {
+		phase2 = { "* THE DESERT KNEELS. SO WILL YOU.", "* YOU SHOULD HAVE LEFT THE LITTLE ONE ALONE." },
+		idle = {
+			"* EVERY CACTUS IN THIS DESERT ANSWERS TO ME.",
+			"* RUN ALL YOU LIKE. THE SAND IS MINE.",
+			"* NOBODY CATCHES A KING.",
+			"* MY THORNS HAVE THORNS.",
+			"* THE DESERT IS WATCHING. DO TRY TO LAST.",
+		},
+		hit = { "* PRICKED.", "* KNEEL.", "* THE THORNS WILL REMEMBER YOU." },
+		win = { "* THE DUNES CLAIM ANOTHER.", "* LONG LIVE THE CACTUS KING." },
+		lose = { "* THE KING... CRUMBLES...", "* NO... NOT... THE LITTLE POTATO AGAIN..." },
 	},
 	-- a knight of the shovel: cheerful, honourable, and fond of a dig pun
 	Burrowmore = {
@@ -640,7 +678,7 @@ local function watchTalk(model)
 			nextIdle = os.clock() + 14
 			task.delay(2.6, say, def.Short, "wake") -- (just after the VS splash)
 		elseif st == "Dead" then
-			say(def.Short, "lose")
+			say((current and current.short) or def.Short, "lose")
 			current = nil
 		elseif st == "Dormant" or st == "Resetting" then
 			current = nil
@@ -649,8 +687,24 @@ local function watchTalk(model)
 	model:GetAttributeChangedSignal("Phase"):Connect(function()
 		local def = onMyFloor()
 		if def and model:GetAttribute("Phase") == 2 then
-			say(def.Short, "phase2")
-			nextIdle = os.clock() + 12
+			local becomes = LINES[def.Short] and LINES[def.Short].becomes
+			if becomes and LINES[becomes] then
+				-- (Tuber: from now on it's the Brute talking - his first words
+				-- once the power-up is over)
+				if current then
+					current.short = becomes
+				end
+				local wait = def.BreakTime or 0
+				nextIdle = os.clock() + wait + 12
+				task.delay(wait, function()
+					if current and current.short == becomes then
+						say(becomes, "phase2")
+					end
+				end)
+			else
+				say(def.Short, "phase2")
+				nextIdle = os.clock() + 12
+			end
 		end
 	end)
 end

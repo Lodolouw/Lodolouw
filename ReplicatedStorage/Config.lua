@@ -684,16 +684,16 @@ Config.Spire = {
 		},
 		{
 			id = 2,
-			boss = "Nahrzul, Devourer of the Dunes",
+			boss = "Tuber",
 			area = "The Sunken Dunes",
 			level = 30,
-			blurb = "An arena the desert swallowed whole. Something vast sleeps coiled at its heart - wake it, and it hunts you by sound from under the sand. Stone is silent.",
-			color = Color3.fromRGB(236, 186, 98),
+			blurb = "A sunny cactus desert. In a little garden at its heart naps Tuber, a chubby cactus with a flower on his head. He looks harmless. The desert knows better.",
+			color = Color3.fromRGB(99, 199, 77),
 			open = true,
 			-- how the arena looks and sounds on your screen while you're in it
 			-- (ArenaAmbience puts the lobby's look back when you leave)
 			ambience = {
-				ClockTime = 16.8, -- a low golden sun
+				ClockTime = 15.6, -- a hot afternoon sun, turning golden
 				Atmosphere = {
 					Density = 0.36,
 					Offset = 0.12,
@@ -709,15 +709,15 @@ Config.Spire = {
 				Wind = Vector3.new(1, 0, 0.35), -- the way it blows
 				Sound = "Sandstorm", -- a looping wind in SoundService, if you add one
 				Volume = 0.3,
-				-- THE SANDSTORM. When the fight starts a wall of sand rolls in across
-				-- the arena, and while it rages it's like fog: thick blowing dust
-				-- that swallows everything past a stone's throw. It dies down again
-				-- when the worm does (and blows harder still once its armour cracks).
+				-- THE SANDSTORM. Just a breeze while little Tuber fights - but when
+				-- he powers up, a wall of sand rolls in across the arena and whips
+				-- round him while the cactus flies, then settles to a haze for the
+				-- Brute (BossBodies/Tuber decides how hard it blows, and when).
 				Storm = {
 					Front = true, -- the wall of sand you see rolling in (false: it just thickens)
 					FrontSpeed = 55, -- how fast the wall crosses the arena, studs a second
 					-- the air at the storm's height: Density is how thick (0..1) - the
-					-- higher, the less you can see. 0.85 is a fog: the worm is clear up
+					-- higher, the less you can see. 0.85 is a fog: things are clear up
 					-- close and gone into the dust half the arena away. (0.6 = a haze.)
 					Atmosphere = {
 						Density = 0.85,
@@ -1179,149 +1179,175 @@ Config.Bosses = {
 	},
 
 	[2] = {
-		Name = "Nahrzul, Devourer of the Dunes",
-		Short = "Nahrzul",
-		-- Body = "Worm" gives it the worm's body (BossClient) AND the worm's own
-		-- way of fighting (BossService): it lives under the sand and hunts by
-		-- sound. None of Gloomgut's attacks are used - its moves are all below.
-		Body = "Worm",
-		Color = Color3.fromRGB(228, 166, 114), -- its sand-crusted hide (8-bit: bands of this...)
-		DeepColor = Color3.fromRGB(115, 62, 57), -- ...and this, its underside in shadow
-		CoreColor = Color3.fromRGB(40, 26, 18), -- the dark of its throat
-		EyeColor = Color3.fromRGB(255, 214, 90), -- small and many, amber
-		HeartColor = Color3.fromRGB(255, 90, 40), -- the molten glow behind its armor
+		Name = "Tuber",
+		Short = "Tuber",
+		-- TUBER (a parody of a certain famous stack of cactus from a certain
+		-- famous plumber's games - with his own name and look): a chubby,
+		-- potato-shaped little cactus stack with a flower on his head. He looks
+		-- like a joke... until his first health bar runs out. Then every cactus
+		-- in the desert rips out of the ground and flies to him, and he rebuilds
+		-- himself into THE BRUTE, THE CACTUS KING: a giant cactus golem who
+		-- fights from a distance - walls of cactus, needle turrets, rolling
+		-- balls, quicksand - and keeps hopping away from you. (TUBER and BRUTE
+		-- are the same five letters: watch them swap places.)
+		-- His brain: ServerScriptService/Bosses/Tuber.lua. His body:
+		-- ReplicatedStorage/BossBodies/Tuber.lua. His arena: DunesBuilder.
+		Round2Name = "The Brute, the Cactus King", -- the name on his second health bar
+		VictoryName = "The Brute", -- the banner when you win: THE BRUTE VANQUISHED
+		Color = Color3.fromRGB(99, 199, 77), -- his cactus green
+		DeepColor = Color3.fromRGB(62, 137, 72), -- the green of his lumps and shadows
+		CoreColor = Color3.fromRGB(38, 92, 66), -- the golem's dark green
+		EyeColor = Color3.fromRGB(24, 20, 37), -- Tuber's little dot eyes
+		FlowerColor = Color3.fromRGB(246, 117, 122), -- the flower on his head
+		RageColor = Color3.fromRGB(255, 0, 68), -- the Brute's glowing eyes (and his warnings)
+		CrownColor = Color3.fromRGB(254, 174, 52), -- the Cactus King's crown
+		SpineColor = Color3.fromRGB(234, 212, 170), -- his spines
 
-		-- The second boss: a little longer than Gloomgut, and it hits harder,
-		-- but the same "punches at your recommended power" fairness applies.
-		-- (You can only hurt it while it's out of the sand, so every window counts.)
-		HealthPunches = 30,
-		PartyScale = 0.62,
-		-- after each punch that lands it shrugs off every other punch for this
-		-- many seconds (from anyone) - bigger = fewer hits land, a harder fight
-		IFrames = 0.35, -- (was 0.6: every opening is worth more punches now)
+		-- BOTH bars together, in punches at your recommended power (see PhaseAt)
+		HealthPunches = 40,
+		PartyScale = 0.6,
 		StudioFairFight = true,
 
-		Size = 30, -- a vast creature - half again as wide as Gloomgut
-		WakeRange = 55,
-		WakeTime = 3.2, -- it uncoils from round the seal and rears up to roar
-		WakeSoundLead = 0.6,
-		Leash = 130, -- keeps it inside the SandRadius DunesBuilder marked out for it
-		TurnSpeed = { 260, 380 }, -- degrees a second it can turn while it swims, per phase
+		Size = 8, -- little Tuber (the Brute's size is below)
+		WakeRange = 45,
+		WakeTime = 3.0, -- he pops up out of his garden, yawns, and waves
+		WakeSoundLead = 0.3,
+		Leash = 96, -- he stays this far from the middle of the arena (its wall is 150 out)
+		MoveSpeed = { 7, 0 }, -- Tuber waddles after you (studs a second); the Brute never walks: he hops
+		TurnSpeed = { 200, 300 }, -- degrees a second, per round
 
-		PhaseAt = 0.5, -- its armor cracks at half health, and the seal caves in
-		BreakTime = 3.0,
-		BreakShove = 70,
-		BreakReach = 55,
-		Phase2Recovery = 0.72, -- phase two: its moments out of the sand are shorter
-		DesperateAt = 0.15,
-		DesperateRecovery = 0.6,
+		-- THE TWO BARS: his first bar is the top 38% of his health (PhaseAt =
+		-- 0.62), the Brute's is the other 62%. When the first runs out: the
+		-- POWER-UP, BreakTime seconds long (nobody can be hurt while it plays).
+		PhaseAt = 0.62,
+		BreakTime = 9.0,
+		BreakShove = 60, -- the golem standing up throws everyone near back...
+		BreakReach = 34, -- ...this far
+		Phase2Recovery = 0.85,
+		DesperateAt = 0.19, -- (his RAGE: 30% of the Brute's bar)
+		DesperateRecovery = 0.7,
+		Breather = { { 1.5, 2.3 }, { 0.5, 1.0 } }, -- seconds between moves: easy little Tuber, then the Brute
+		RageBreather = { 0.3, 0.7 },
+		-- the golem: how tall and wide his body is (for your punches and the
+		-- lock-on camera). Reach = how far out from his middle you can hit him.
+		Brute = { Height = 24, Width = 14, Reach = 6.5 },
 
-		-- THE HUNT. Between attacks it swims under the sand - you can't hurt it
-		-- there, you only see the ridge it pushes up - and it goes after whoever
-		-- is making the most noise. Running on sand is loud, rolling is louder,
-		-- walking on stone is quiet and standing still is silent.
-		Hunt = {
-			SwimSpeed = { 30, 38 }, -- per phase (nobody runs faster than 24 in here)
-			Time = { { 0.9, 1.6 }, { 0.6, 1.2 } }, -- how long it stalks before it strikes, per phase (short: more fighting, less waiting)
-			StrikeRange = 26, -- it strikes sooner once it's this close to its quarry
-			DiveTime = 0.95, -- going back under after it's been out (it arches over and plunges in ahead)
-			NoiseFade = 2.5, -- seconds a noise takes to fade (bigger = it remembers you longer)
-			StoneNoise = 0.25, -- moving on stone is this much as loud as on sand
-		},
-
-		-- PHASE TWO: the seal caves in and the middle of the arena collapses into
-		-- a real bowl of sand that drags you down toward the pit at the bottom,
-		-- which burns. (The pull is on your screen; the damage is the server's.)
-		Whirlpool = {
-			Radius = 34, -- how far out the pull reaches (the seal's size)
-			Depth = 5, -- how deep the bowl sinks at its middle
-			Pull = { 5, 11 }, -- studs a second: at the edge, and near the middle (you run 16-24)
-			PitRadius = 8, -- the bottom of the pit
-			PitDamage = 6, PitTick = 0.5,
-		},
-
-		-- THE RUMBLE: while it swims under the sand hunting, the ground bucks in a
-		-- ring round it every `Every` seconds - you see the sand jump. Anyone
-		-- standing on sand inside `Radius` takes `Damage` and is jolted up: get
-		-- away from where it went under, keep off its ridge, jump as the sand
-		-- jumps, or get on stone. Range = how close before you feel each one in
-		-- your view; Shake = how hard (0 = not at all).
-		-- (Damage = 0 switches it off: the constant chip damage wasn't fun)
-		Rumble = { Every = 1.1, Radius = 18, Damage = 0, Knockback = 26, Range = 40, Shake = 0.45 },
-
-		-- THE SAND IT TEARS UP. Where it bursts out, crashes down or cracks the
-		-- floor, the sand really opens up (craters, trenches, fissures - on your
-		-- screen, and you walk in them). This is how long before it slides back.
-		-- Terrain = false: off. Tearing up the Terrain sand was the laggiest
-		-- thing in the fight, so the craters and trenches aren't dug any more
-		-- (every hit still works exactly the same).
-		Scars = { Last = 7, Terrain = false },
-
-		-- Its attacks. Tell = the warning before it lands (always longer than
-		-- your roll's 0.5s). Exposed = how long it stays out of the sand after,
-		-- which is your chance to hit it. Sand = true: only used on someone
-		-- standing on sand (it can't come up through stone). Anything given as
-		-- { a, b } is { phase one, phase two }.
+		-- His moves. Tell = the warning before it lands (always longer than your
+		-- roll's 0.5s). Recovery = how long he's open afterwards. Range =
+		-- { closest, furthest } he uses it from. Phase = 1: little Tuber's
+		-- (round 1), 2: the Brute's (round 2). Anything given as { a, b } in
+		-- round 2 is { normal, in a RAGE }.
 		Attacks = {
-			-- AMBUSH: its back races after you through the sand, stops, the ground
-			-- heaves up under you... and it bursts out where you stood. Move or roll off it.
-			Ambush = { StalkSpeed = 44, StalkTime = 2.2, Lock = 0.65, Radius = 10, Damage = 30, Knockback = 70, Exposed = 2.6, Phase = 1, Weight = 6, Sand = true },
-			-- BREACH: it leaps out of the sand in a great arc, and while it's in the
-			-- air the strip it'll crash down on FOLLOWS YOU. Lock = how far through
-			-- the leap it stops following (the strip flashes): roll then. Its body
-			-- carves a trench where it lands, and it lies there stuck for a moment.
-			-- In phase two it leaps again straight away (Leaps).
-			Breach = { Tell = 1.0, Flight = 1.25, Lock = 0.62, Length = 120, Overshoot = 16, BodyLength = 72, Width = 14, Launch = 12, Height = 38,
-				Damage = 32, Knockback = 60, Stuck = 3.4, Slide = 0.9, Leaps = { 1, 2 }, ChainTell = 0.5, Phase = 1, Weight = 4 },
-			-- COIL: it circles you under the sand, then its body bursts up in a
-			-- CLOSED ring round you with its head reared over you, and tightens.
-			-- There's no gap: touching its body throws you back the way you came.
-			-- The only way out is to ROLL through it. At the end the head strikes down.
-			Coil = { Tell = 1.1, Radius = 22, Crush = 9, Close = 1.7, Wall = 10, WallDamage = 18, Damage = 40, Knockback = 55, Exposed = 2.6, Phase = 1, Weight = 4, Sand = true },
-			-- DEVOUR: a sinkhole spins open under you - the sand really sinks - and
-			-- drags you toward its middle, then its maw bursts up out of it. Roll
-			-- (you can't be dragged in the air) or get on stone.
-			Devour = { Tell = 1.5, Radius = 18, Depth = 6, Pull = { 6, 12 }, Bite = 10, Damage = 36, Knockback = 50, Exposed = 2.6, Phase = 1, Weight = 4, Sand = true },
-			-- TAIL LASH: its tail rips up out of the sand BEHIND you and whips
-			-- round in a wide arc, low over the sand - the tip trailing behind and
-			-- cracking round at the end, like a whip - and in phase two, straight
-			-- back again (Sweeps). Roll through it, jump it, or be out of reach.
-			TailLash = { Tell = 0.85, Behind = 10, Reach = 26, Sweep = 220, Time = 0.55, Sweeps = { 1, 2 }, Pause = 0.25, Width = 5, Height = 5, Damage = 24, Knockback = 64, Phase = 1, Weight = 4 },
-			-- TREMOR: it thrashes underground, the whole sand floor quakes and
-			-- cracks open, a few times in a row. Be on stone, or in the air when each one hits.
-			Tremor = { Tell = 1.3, Quakes = 2, Gap = 0.95, Damage = 12, Knockback = 22, Phase = 1, Weight = 2 },
-			-- UNDERMINE (phase two): you're hiding on stone? It circles under the
-			-- platform, the cracks glow... and it bursts up through it. The stone is
-			-- gone for the rest of the fight. Get off when the cracks light up.
-			Undermine = { Tell = 1.6, Damage = 30, Knockback = 60, Exposed = 2.4, Phase = 2, Weight = 6 },
+			-- WOBBLE BONK: leans back... and flops his head forward (the red wedge). Step aside.
+			Bonk = { Tell = 1.0, Lock = 0.25, Reach = 11, Arc = 80, Damage = 14, Knockback = 40, Recovery = 1.3,
+				Range = { 0, 14 }, Weight = 5, Phase = 1 },
+			-- CLUMSY TOPPLE: falls flat along the red lane like a tree, then lies
+			-- there flailing - free hits all along him - and struggles back up
+			Topple = { Tell = 1.2, Lock = 0.35, Fall = 0.35, Length = 12, Width = 6, Damage = 20, Knockback = 45,
+				Down = 2.4, Rise = 0.9, Range = { 5, 26 }, Weight = 4, Phase = 1 },
+			-- NEEDLE SNEEZE: "ah... ah... ACHOO!" - a ring of needles. Jump it or roll through.
+			Sneeze = { Tell = 1.3, Reach = 26, Speed = 24, Thickness = 2.5, Height = 3.2, Damage = 12, Knockback = 30,
+				Recovery = 1.0, Range = { 0, 22 }, Weight = 4, Phase = 1 },
+			-- BOUNCE STOMP: springs up and lands on the red circle (with a little ring of sand to jump)
+			Stomp = { Crouch = 0.55, Air = 1.05, Height = 12, Radius = 8, Damage = 16, Knockback = 40, RingReach = 12,
+				RingDamage = 8, Recovery = 1.1, Range = { 8, 40 }, Weight = 4, Phase = 1 },
+			-- SPLIT!: pops into three cactus balls that spin-dash at you one after
+			-- another (each bounces once off a rock or the edge) - jump them or roll -
+			-- then sit there dizzy (free hits: punch any of them) and hop back into
+			-- a stack. His special: never picked at random - he splits after
+			-- every Every other moves.
+			Split = { Shake = 0.6, Pop = 0.5, Spread = 7, Rev = 0.9, Gap = 0.85, Speed = 50, Length = 110, Radius = 2.4,
+				Height = 4, Damage = 18, Knockback = 45, Dizzy = 2.2, Restack = 0.9, Every = 2,
+				Range = { 10, 70 }, Weight = 0, Phase = 1 },
+
+			-- NEEDLE VOLLEY: a red cone, then three fans of needles. Roll sideways - a rock or a wall stops them.
+			Volley = { Tell = 0.8, Lock = 0.2, Shots = 3, Gap = 0.28, Needles = 5, Spread = 40, Speed = 70, Reach = 90,
+				Radius = 1, Height = 3.5, Damage = 10, Knockback = 20, Recovery = 0.6, Range = { 14, 999 }, Weight = 5, Phase = 2 },
+			-- DESERT RAIN: spits cactus balls into the sky; they land on the red circles round you
+			Rain = { Spit = 0.8, Drops = { 7, 10 }, Gap = 0.22, Fall = 1.25, Radius = 6, Spread = 16, Damage = 16,
+				Knockback = 30, Recovery = 0.5, Range = { 10, 999 }, Weight = 4, Phase = 2 },
+			-- SPINE LANCE: charges up - the red line follows you, then locks and flashes -
+			-- and fires a giant spike across the arena. Dodge late. A rock stops it.
+			Lance = { Charge = 1.4, Lock = 0.5, Speed = 150, Width = 5, Height = 5, Damage = 30, Knockback = 65,
+				Recovery = 1.0, Range = { 20, 999 }, Weight = 3, Phase = 2 },
+			-- CACTUS WALL: a wall bursts up between you and him. Go round it, or punch
+			-- its glowing weak spot (Punches punches). Touching it pricks. In a rage it creeps toward you.
+			Wall = { Tell = 1.0, Length = { 40, 48 }, Segment = 4, Height = 7, Thick = 2.5, At = 0.45, RiseDamage = 14,
+				TouchDamage = 8, Knockback = 40, Life = { 14, 12 }, Slide = { 0, 3 }, Max = { 2, 3 }, Punches = 2,
+				Range = { 16, 999 }, Weight = 3, Phase = 2 },
+			-- NEEDLE TURRETS: little cactus towers sprout round you and shoot needles
+			-- (a thin red line first). Punches punches each.
+			Turrets = { Plant = { 2, 3 }, Max = { 3, 4 }, Grow = 0.9, Near = 22, Far = 30, Every = 2.4, First = 1.6,
+				Warn = 0.7, Speed = 80, Reach = 80, Radius = 1, Height = 3.5, Damage = 10, Knockback = 20, Life = 26,
+				Punches = 2, Range = { 14, 999 }, Weight = 3, Phase = 2 },
+			-- BALL HERD: spinning cactus balls roll in from the edge at you, bouncing off rocks and walls. Jump or roll.
+			Herd = { Balls = { 3, 5 }, Show = 0.6, Gap = 0.35, Tell = 0.9, Speed = 46, Bounces = 2, Length = 170,
+				Radius = 2.6, Height = 4.5, Damage = 16, Knockback = 50, Range = { 10, 999 }, Weight = 3, Phase = 2 },
+			-- PRICKLY BUDDIES: little cactus minions waddle after you and pop into
+			-- needles if they reach you. Punches punches each.
+			Buddies = { Spawn = { 2, 3 }, Max = { 3, 4 }, Land = 0.9, Speed = 10, Trigger = 4.5, Puff = 0.7, Radius = 7,
+				Damage = 14, Knockback = 45, Life = 18, Punches = 1, Range = { 14, 999 }, Weight = 2, Phase = 2 },
+			-- QUICKSAND: swirling sand opens up between you and him: it drags you in
+			-- (Pull: studs a second at its edge and its middle - you run 20) and nibbles at you
+			Quicksand = { Patches = { 2, 3 }, Max = { 3, 4 }, Warn = 0.8, Radius = 10, Life = 12, Pull = { 5, 9 },
+				Damage = 4, Tick = 0.6, Range = { 18, 999 }, Weight = 2, Phase = 2 },
+		},
+		-- The Brute's moves that aren't picked at random (see Bosses/Tuber.lua)
+		Moves = {
+			-- ROOT HOP: get within Trigger studs and he leaps away (landing Want
+			-- studs from you if he can, never under Min), then it takes Cooldown
+			-- seconds to recharge ({ normal, rage })
+			RootHop = { Trigger = 16, Tell = 0.55, Air = 1.35, Height = 34, Plant = 0.5, Radius = 7, Damage = 22,
+				Knockback = 50, RingReach = 16, RingSpeed = 30, RingDamage = 14, Cooldown = { 7, 5 }, Want = 58, Min = 36 },
+			-- SHOVE BURST: right next to him with his hop recharging? His spines blast you back.
+			ShoveBurst = { Tell = 0.6, Radius = 11, Damage = 10, Knockback = 70, Recovery = 0.5 },
+			-- CORNERED: catch him before his hop recharges and he panics for Panic
+			-- seconds (free hits!), then blasts you back and escapes. Once every Cooldown seconds.
+			Cornered = { Panic = { 2.4, 1.8 }, Cooldown = 10 },
+			-- STUNNED: break the last of his walls and turrets (after breaking at
+			-- least Needs) and he's out of cactus: Time seconds of free hits, and no
+			-- new walls or turrets for NoCacti more
+			Stunned = { Time = 5.5, NoCacti = 6, Needs = 2 },
+			-- RAGE: at this share of the Brute's bar, he roars (needles fly off him)
+			Rage = { At = 0.3, Time = 1.6, Reach = 30, Damage = 10 },
 		},
 
 		Reward = { Power = 2.0, FirstClear = 5 },
 
-		-- the fight's music: the Sound named "SANDWORMSONG" in SoundService
-		-- (capitals and spaces don't matter). If it's ever missing, it plays
-		-- Gloomgut's ("Boss") instead of nothing.
-		Music = "SANDWORMSONG",
-		-- how loud it plays: this song is quieter than Gloomgut's, so it's turned
-		-- up (every other boss uses Config.Audio.BossMusic, 0.42). Higher = louder.
+		-- The fight's music. Round 1: add a cute, bouncy Sound named "Tuber Song"
+		-- to SoundService (until you do, Oozark's plays). The power-up goes
+		-- quiet, and round 2's song slams in the moment THE BRUTE is named.
+		-- (Capitals and spaces don't matter.)
+		Music = "Tuber Song",
+		Round2Music = "SANDWORMSONG",
 		MusicVolume = 0.8,
+		Round2MusicVolume = 0.8,
 		VictorySound = "Victory Is Ours (a) Sting",
-		-- no acid rain here: the sandstorm (ArenaAmbience) picks up as it fights
+		-- a breeze in round 1; the power-up whips up a sandstorm (ArenaAmbience)
 		Weather = "Sandstorm",
 
-		-- Its sounds: add Sounds with these names to SoundService whenever you
-		-- like. Any you haven't added yet borrow one of Gloomgut's instead.
+		-- His sounds: the names of Sounds in SoundService. They're the sounds you
+		-- already have from the old worm; any you haven't added borrow one of
+		-- Oozark's instead.
 		Sounds = {
-			Wake = "SandRoar", -- rearing up out of its coils when it wakes
-			Dive = "Worm Charge", -- going head-first under the sand
-			Erupt = "Worm Erupt", -- bursting up out of the sand
-			Crash = "Worm Slam", -- its body crashing down (breach, coil)
-			Sweep = "SandWhip", -- the tail lash
-			Roar = "SandRoar", -- the tremor
-			Devour = "Worm Devour", -- the sinkhole opening
-			Break = "Worm Crack", -- its armour blowing off
+			Wake = "Worm Erupt", -- popping up out of his garden
+			Bonk = "SandWhip", -- the wobble bonk
+			Crash = "Worm Slam", -- toppling over, stomping down, the Brute landing
+			Sneeze = "SandWhip", -- ACHOO! (and every ring of needles)
+			Split = "Worm Crack", -- popping apart
+			Roll = "Worm Charge", -- a cactus ball spin-dashing
+			Stack = "Worm Devour", -- snapping back together
+			Rumble = "SandRumble", -- the ground rumbling in the power-up
+			Rip = "Worm Erupt", -- a cactus ripping out of the ground
+			Form = "Worm Devour", -- the golem forming
+			Break = "Worm Crack", -- the power-up's big burst
+			Roar = "SandRoar", -- THE BRUTE roars
+			Hop = "Worm Charge", -- his roots ripping up for a hop
+			Needle = "SandWhip", -- needles firing
+			Lance = "Worm Charge", -- the spine lance
+			Wall = "Worm Erupt", -- a cactus wall bursting up
+			Pop = "Worm Crack", -- a wall, turret or buddy breaking
 			Death = "Worm Death",
-			Rumble = "SandRumble", -- a LOOPING low rumble, louder the closer it swims to you
 		},
 	},
 
