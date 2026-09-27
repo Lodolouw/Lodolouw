@@ -2027,7 +2027,7 @@ do
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -52),
-		Size = UDim2.fromOffset(150, 206),
+		Size = UDim2.fromOffset(150, 250),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = root,
@@ -2060,6 +2060,48 @@ do
 			doAction("DevGive", kind)
 		end)
 	end
+	-- SET LEVEL: type a level, press the button (the server sets your Power
+	-- to that level's and refunds your stat points)
+	local levelRow = create("Frame", {
+		LayoutOrder = 6,
+		Size = UDim2.fromOffset(150, 36),
+		BackgroundTransparency = 1,
+		Parent = devCol,
+	})
+	local levelBox = create("TextBox", {
+		Size = UDim2.fromOffset(52, 36),
+		BackgroundColor3 = RGB(24, 20, 37),
+		BorderSizePixel = 0,
+		Font = FONT,
+		PlaceholderText = "Lv",
+		Text = "",
+		TextSize = 18,
+		TextColor3 = RGB(255, 255, 255),
+		ClearTextOnFocus = true,
+		Parent = levelRow,
+	}, { corner(8) })
+	local setLevel = button({
+		Position = UDim2.fromOffset(58, 0),
+		Size = UDim2.fromOffset(92, 36),
+		Text = "Set Level",
+		TextSize = 16,
+		BackgroundColor3 = RGB(18, 78, 137),
+		Parent = levelRow,
+	})
+	local function applyLevel()
+		local n = tonumber(levelBox.Text)
+		if n then
+			doAction("DevSetLevel", math.floor(n))
+		else
+			toast("Type a level number first.", "bad")
+		end
+	end
+	setLevel.Activated:Connect(applyLevel)
+	levelBox.FocusLost:Connect(function(enter)
+		if enter then
+			applyLevel()
+		end
+	end)
 	local toggle = button({
 		Name = "DevToggle",
 		AnchorPoint = Vector2.new(1, 1),

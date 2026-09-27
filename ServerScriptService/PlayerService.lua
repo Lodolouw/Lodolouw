@@ -944,6 +944,29 @@ handlers.DevGive = function(player, d, kind)
 	return true, "Done."
 end
 
+-- DEV: become exactly this level, as a real player at that level would be:
+-- your Power is set to that level's (so the Colosseum and bosses feel as
+-- they're meant to), your stat points are all refunded to spend again, and
+-- the highest level you've reached becomes this one (so gear needs it too).
+-- Your gear and coins are left alone.
+handlers.DevSetLevel = function(player, d, level)
+	if not Config.isDev(player) then
+		return false, "Dev tools are only for the game's owner."
+	end
+	level = math.floor(tonumber(level) or 0)
+	if level < 1 or level > Config.MaxLevel then
+		return false, "Pick a level from 1 to " .. Config.MaxLevel .. "."
+	end
+	d.Power = Config.powerForLevel(level)
+	d.BestLevel = level
+	for id in pairs(d.Stats) do
+		d.Stats[id] = 0
+	end
+	applyCharacterStats(player, true)
+	markDirty(player)
+	return true, "You're level " .. level .. " now (stat points refunded)."
+end
+
 ----------------------------------------------------------------------
 -- Player lifecycle
 ----------------------------------------------------------------------
