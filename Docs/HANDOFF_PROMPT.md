@@ -98,6 +98,8 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 
 ### Places we discussed for later (not built yet)
 
+(**Fishing and pets were re-decided:** you fish for pet EGGS - see "Fishing for pets" under the new direction. The two older ideas below are kept only for history.)
+
 - **Fishing** (a big one, the "chill" second loop for players who don't want to fight):
   - **Where:** the **cove / pier by the mushroom house** was chosen to be repurposed as the fishing spot. Earlier plans also mentioned fishing docks by a lake or waterfall outside the walls.
   - **How it plays:** a timing minigame, not just waiting. The bobber dips, you hit the button in the sweet spot, and a pixel meter shows it.
@@ -139,9 +141,75 @@ I decided to make the game **simple, like Blox Fruits**: few things to understan
 - **What gets CUT:** armour gear (helmet, chest, boots and their sets), boss chests (bosses give Tokens, Power and sometimes a rare egg instead), talismans and the upgrade shop. The screen shrinks to **4 buttons: Roll, Inventory, Shop, Quests**, with Level, Coins and Tokens at the top. Existing players' gear is turned into Arcade Tokens once, so nobody loses out.
 - **What stays the same:** the bosses, the Colosseum, the intro, combat and the daily quests.
 - **No "evil" tricks:** no fake timers, no fake free-Robux, no misleading thumbnails, no fake near-misses. Fair and exciting, within Roblox's rules.
-- **Build order:** 1) Arcade Tokens + the Arcade Machine system + the first two packs (Slime and Cactus), starting with ONE test weapon I playtest first; then the other packs one at a time. 2) The cuts (armour, chests, talismans, upgrade shop, the simpler screen). 3) Pets and eggs. 4) Trading. 5) The Robux shop. 6) Event bosses. (And main bosses keep coming, up to 20.)
-- **20 main bosses + EVENT BOSSES (decided):** the Spire has **20 main bosses**, one per floor (the main game). On top of that, **event bosses** spawn on a reset timer (planned: every ~45 minutes): 5 minutes before, a lobby-wide warning (the sky darkens, a siren, a big countdown "EVENT BOSS IN 4:59"; night-time feel, event music); then the boss **lands right in the lobby** (decided: no separate arena) - in the big open plaza - and the **whole server races to kill it**: a live **damage leaderboard** shows who's dealt the most. Health scales with how many players are around. Its attacks only hit players who are fighting it (someone shopping or in a menu is left alone) and never break the lobby. It's a **random** boss from a set of event-only bosses, each with its own moves. Rewards go by damage: everyone who hit it gets Arcade Tokens, more for the top damage dealers, and a chance at a **special event weapon** that no arcade machine gives - better chances the higher you placed (top 3 highest) - with an event pity counter so regulars always get one eventually. Event weapons are the rarest trades. (Inspired by the night-time events in games like "steal an egg"; our own bosses and look.)
+- **Launch = weapons only, no pets.** Pets (from fishing) are the first big update after launch.
+- **Build order:** 1) ONE test weapon (a sword) I playtest first, then weapon ownership + rarity + mastery. 2) Arcade Tokens + the Arcade Machine (the spin screen below) + the first two packs (Slime and Cactus); then the other packs one at a time. 3) The cuts (armour, chests, talismans, upgrade shop) and the NEW GUI (being designed now). 4) Trading. 5) The Robux shop. 6) Event bosses + the Event Arena. 7) Main bosses up to 15, then launch. After launch: fishing and pets, Nightmare Spire, bosses 16-20.
+- **Main bosses:** the goal is 20 floors. **At least 15 before launch** (so Nightmare Spire, below, has enough to replay); 16-20 come in updates.
+- **EVENT BOSSES (decided, replaces the older "lands in the lobby plaza" plan):** see "Event bosses" below.
 - **Growing the game (agreed ideas):** update tags in the title, bosses on the thumbnails (test a few), a daily login streak, codes on update days and like milestones, a group-join reward, leaderboards (fastest boss kill) and a badge per boss, clips for TikTok/Shorts, and Roblox ads only once players stay.
+
+### The arcade spin (how a roll looks - decided)
+
+- A **CS:GO-crate-style strip**, but on the **screen of an arcade cabinet**: pixel weapon tiles fly past and slow down, a coin-slot "clunk" when a token goes in.
+- **Rarity colours** on each tile's border: grey (Common), green (Uncommon), blue (Rare), purple (Epic), gold (Legendary), red (Mythic), rainbow (Secret).
+- **The landing reacts to rarity:** a small beep for Common; flashing marquee lights for Epic+; a full-screen reveal for Legendary+; a **server-wide banner** for a Secret ("X just rolled a SECRET weapon!").
+- **Honest:** the server rolls the result BEFORE the spin, the animation only shows it (also exploit-proof). The strip is filled using the real odds. **No fake near-misses** (never slowing past a Legendary on purpose). The odds button is always on the machine.
+- **Mobile and respectful of time:** a spin takes ~3-4 seconds, **tap to skip**, a **Roll x10** button shows a grid of 10 results, and the **pity bar** ("Epic guaranteed in 12 rolls") is on the machine.
+
+### Weapons: small differences at first, true ceiling with mastery (decided)
+
+Every weapon has **mastery** (levels up by using it, up to 100). At the start the rarities are close; at high mastery the rare ones pull away. Damage vs a basic weapon:
+
+| Rarity | Mastery 1 | Mastery 100 |
+|---|---|---|
+| Common | 100% | 150% |
+| Uncommon | ~102% | 170% |
+| Rare | ~104% | 195% |
+| Epic | ~106% | 225% |
+| Legendary | ~108% | 260% |
+| Mythic | ~110% | 300% |
+| Secret | 112% | 340% |
+| Event (rare drop) | ~110% | 320% |
+
+At mastery 100 a weapon can be **awakened** (a new look + a stronger special). So a new player isn't hopeless with a Common, and a long-time player has a reason to keep going.
+
+### Event bosses (decided)
+
+- **Timer:** a **global** timer, about every **45 minutes**, at the **same clock times** on every server (players can plan for it). 5 minutes before: a warning (sky darkens, siren, "EVENT BOSS IN 4:59", event music).
+- **Where:** a new **Event Arena on the side of the island**, which **transforms to fit** each event boss (lava, snow, storm clouds, space...). Everyone runs/teleports there.
+- **Who:** at launch, **8 event bosses** that are **turbocharged, themed versions of existing bosses** (same bodies and moves, reused, but bigger, faster and restyled): Magma Kongo, Frostbloom Petalina, Storm Kaze, Galaxy Oozark, Golden Burrowmore, Nitro Revvington, Shadow Tuber, Glitch Gridlock. Picked at random.
+- **The fight:** the whole server races to kill it; a live **damage leaderboard**. Health scales with players. Its attacks only hit players who are fighting it.
+- **Rewards:** damage milestones at **1% / 5% / 15%** of its health give everyone who reaches them Arcade Tokens. The **top 3** get a gold name + a crown for a while, and the best odds.
+- **Two event weapons per event boss:** a **common** one (about **20-30%** drop, so most people leave happy) and a **very rare** one (about **0.5-1%**, the rarest trade in the game). An **event pity counter** so regulars eventually get the rare one.
+- **Robux:** a "Double Event Luck" game pass (better odds, shown openly).
+- **Late game:** stronger versions later (Calamity / Mythic tier) for high-level players.
+
+### Fishing for pets (decided - first update after launch)
+
+- **You fish for pet EGGS**, not fish: Pond, Coral, Abyss and Golden eggs, and a **Secret pet** (server-wide banner when caught).
+- **Rods unlock by level** from the shop: Twig (1), Bamboo (25), Iron (60), Crystal (110), Arcade (180). Better rods = better chances, but **every rod can catch everything**, so a brand-new player can still land the Secret.
+- **Beginner's luck:** boosted rare odds for your first 50 catches.
+- **Bait** (boosts odds), a **fishing spot per boss** area, and a **pet log** to complete.
+- **Ocean events:** the sea changes for a while - **Lava Ocean** (lava-themed pets), **Cosmic Ocean** (cosmic pets), more later.
+- **The minigame (mobile friendly, one button):** "keep it in the zone" - hold to raise the marker, let go to drop it, keep it on the moving fish zone until the bar fills. Rarer eggs move more wildly.
+- Odds shown for every egg, including the Secret (its picture can be a silhouette, its chance cannot be hidden).
+
+### The late game (decided)
+
+- **Nightmare Spire = New Game+** (like Elden Ring): replay every Spire boss with **more aggression and bigger attacks** and a darker look. **No new attacks** (too much work) - bigger, faster, more of them.
+- Speedrun leaderboards per boss, a **Boss Rush** mode, **shiny** pets, an **aquarium** to show off pets, and the stronger event bosses.
+
+### The boss lineup (floors 9-15, decided so far)
+
+9. **Scribble** (as planned before). 10. An **arcade robot tank** (original). 11. A **hammer king** (inspired by King Dedede - own design and name). 12. A **ghost pirate ship captain**. 13. A **cosmic boss** - proposed: "The Stargazer", a giant in the sky with galaxy hands (star cores in the palms are the weak spots) and a telescope eye in round 2, on an asteroid island that shrinks (awaiting my OK). 14. A **skeleton bullet-hell** boss. 15. An **End Dragon** (the finale). 16-20 later.
+
+### Platform safety rules (so the game never gets taken down)
+
+- **Copyright:** borrow a fight's IDEA, never a character's look or name. Every boss gets its own name and a clearly original design. Never show or name real characters in the title, thumbnails, icon, description or ads. Extra care on the dragon, skeleton and ghost bosses.
+- **Paid random items** (anything Robux can roll, even through tokens): odds shown before every roll, for every item including the Secret. Check `PolicyService:GetPolicyInfoForPlayerAsync` - if `ArePaidRandomItemsRestricted`, no Robux token purchases for that player (free tokens still work).
+- **No real casino games** (slots, roulette, betting items against other players).
+- **Trading:** two-sided with a confirm screen and a short cooldown; never promote selling items for real money or Robux off Roblox.
+- **No bait:** no rewards for liking/favouriting/following, no fake free Robux, no thumbnails showing things not in the game, no fake player counts or bots.
+- **Age rating:** fill in the maturity questionnaire honestly; keep bosses cartoony (no blood, no real jump-scares).
 
 ## The repository
 
@@ -521,7 +589,7 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 
 **Growth plan (we worked it out together, step by step):** the big risk was a new player's first minutes - the name promises a boss, but the first real one (Oozark) is level 15. Step 1, a boss in the first minute, is done: the intro (above). **Step 2 is next: the gap after it** - you finish the intro at level 3 and the Spire says level 15, so you farm dummies for a long time. We haven't decided how to close it yet.
 
-**Also asked for: more bosses** (my goal is 20+). Floors 3 to 8 are done: Knight Burrowmore, Kaze, Speedy Revvington, Gridlock, Kongo and Petalina (see their sections above, and the agreed lineup). Next is floor 9 (Scribble) - ask me before building it.
+**Also asked for: more bosses** (my goal is 20+). Floors 3 to 8 are done: Knight Burrowmore, Kaze, Speedy Revvington, Gridlock, Kongo and Petalina (see their sections above, and the agreed lineup). Floor 9 (Scribble) comes after the weapon system starts (see the new direction's build order) - ask me before building it.
 
 ### The dev console
 A small red **DEV** button bottom-right (Hud) opens the dev console: +Loot, +Coins, +Power, Max Upgrades, Replay Intro, and **Set Level** (type a level: your Power becomes that level's, `BestLevel` becomes it, stat points are refunded - so everything feels as it would for a real player at that level; gear and coins untouched); in a fight CombatClient adds "DEV: Incoming hit"; and every Spire floor is open (no need to beat the one below). Who gets it: `Config.isDev(player)` - always in Studio, and in the real game the game's owner (when a person owns it, not a group) plus anyone in `Config.DevUserIds`. The server sets the player attribute `Dev` (only so the screen shows the button) and **every dev action checks `Config.isDev` again on the server**, so nobody else can use them. I playtest in the real Roblox (fullscreen), so keep dev tools working there - owner-only.
