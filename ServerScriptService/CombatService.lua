@@ -13,6 +13,10 @@
 	    invincible.
 	  * Punch: hits the nearest enemy in reach. Damage comes from your Power
 	    compared to the floor's recommended level.
+	  * Weapons (Config.Weapons): holding one ("Weapon" attribute), the same
+	    button swings it instead - it cuts every enemy in its arc, harder the
+	    rarer it is and the higher its mastery - and F uses its ability.
+	    Every enemy you hit with it is mastery. See "Weapons" below.
 	  * Healing flasks: a few per trip. Drinking takes a moment (you're slowed
 	    and can't attack), then heals part of your health.
 	  * Dying in an arena sends you back to the Spire's doors (SpireService).
@@ -27,6 +31,7 @@
 	    CombatService.Launch(player, velocity)      --> fling them up (a jump pad): they fly on
 	    CombatService.OnWhiff(function(player, pos) --> hear about punches that hit nothing
 	    CombatService.IsFighting(player)            --> in an arena and alive
+	    CombatService.Equip(player, "IronSword")     --> hold a weapon (nil: fists)
 	A target Model can also carry: NoBar (draws its own bar), Invulnerable,
 	MinHealth (damage can't take it below this), StudioFair (see DamageAgainst),
 	Owner (a UserId: only that player can hit it - the Colosseum's dummies),
@@ -738,6 +743,198 @@ local function hitTarget(player, model, damage, weight)
 end
 
 ----------------------------------------------------------------------
+-- Weapons (Config.Weapons): the weapon in your hand swings instead of your
+-- fist, has one ability, and gets better the more you hit with it (mastery).
+-- Everything that matters is decided here. The player's attributes tell
+-- every screen what to draw (ReplicatedStorage/WeaponFX):
+--   Weapon          the id of the weapon you're holding (nil: fists)
+--   Mastery         its mastery level (1-100), MasteryProgress 0-1 into it
+--   SwingN          "count:swing" - changes on every swing, so everyone's
+--                   screen swings it (swing 1, 2 or 3 of the string)
+--   AbilityN        "count:tier" - changes every time you use the ability
+-- (Mastery isn't saved yet: that comes with owning weapons.)
+----------------------------------------------------------------------
+local W = Config.Weapons or { List = {}, Types = {}, MasteryMax = 100, MasteryPerHit = 1 }
+local mastery = {} -- [player] = { [weapon id] = mastery points }
+
+-- the weapon a player is holding: its entry in Config.Weapons.List, its type, its id
+local function weaponOf(player)
+	local id = player:GetAttribute("Weapon")
+	local def = id and W.List[id]
+	local kind = def and W.Types[def.Type]
+	if def and kind then
+		return def, kind, id
+	end
+	return nil
+end
+
+local function masteryPoints(player, id)
+	local t = mastery[player]
+	return t and t[id] or 0
+end
+
+local function showMastery(player, id)
+	if id then
+		local level, into = Config.masteryLevel(masteryPoints(player, id))
+		player:SetAttribute("Mastery", level)
+		player:SetAttribute("MasteryProgress", into)
+	else
+		player:SetAttribute("Mastery", nil)
+		player:SetAttribute("MasteryProgress", nil)
+	end
+end
+
+local function setMasteryPoints(player, id, points)
+	mastery[player] = mastery[player] or {}
+	local before = Config.masteryLevel(masteryPoints(player, id))
+	mastery[player][id] = math.clamp(points, 0, Config.masteryPointsFor(W.MasteryMax))
+	showMastery(player, id)
+	local after = Config.masteryLevel(mastery[player][id])
+	if after > before then
+		local def = W.List[id]
+		local _, tierBefore = Config.abilityTier(def, before)
+		local _, tierAfter = Config.abilityTier(def, after)
+		-- "MASTERY 12!" - and when the ability gets better, what it does now
+		send(player, "Mastery", after, tierAfter > tierBefore and tierAfter or nil)
+	end
+end
+
+local function addMastery(player, id, points)
+	if points > 0 then
+		setMasteryPoints(player, id, masteryPoints(player, id) + points)
+	end
+end
+
+-- Hold a weapon (an id in Config.Weapons.List), or nil for your fists again
+function CombatService.Equip(player, id)
+	if id ~= nil and not W.List[id] then
+		return false
+	end
+	player:SetAttribute("Weapon", id)
+	showMastery(player, id)
+	return true
+end
+
+-- Every enemy you can hit within `range` studs of you (to its edge), and
+-- within `arc` degrees either side of the way you face (180: all round you).
+-- A locked-on target in range counts even if it's just outside the arc.
+local function targetsInArc(root, player, range, arc, locked)
+	local look = root.CFrame.LookVector
+	local facing = Vector3.new(look.X, 0, look.Z)
+	facing = facing.Magnitude > 0.01 and facing.Unit or Vector3.new(0, 0, -1)
+	local cosArc = math.cos(math.rad(arc))
+	local list = {}
+	for model in pairs(targets) do
+		if model.Parent and (model:GetAttribute("Health") or 0) > 0 and mine(model, player) then
+			local cf, radius = aimAt(model, root.Position)
+			if cf then
+				local flat = Vector3.new(cf.X - root.Position.X, 0, cf.Z - root.Position.Z)
+				local centre = flat.Magnitude
+				local d = centre - radius
+				local inArc = arc >= 180 or centre < 0.01 or d < 1 or facing:Dot(flat.Unit) >= cosArc or model == locked
+				if d <= range and math.abs(cf.Y - root.Position.Y) < 12 and inArc then
+					list[#list + 1] = model
+				end
+			end
+		end
+	end
+	return list
+end
+
+-- One swing of a weapon: like a punch (it commits you, costs stamina and lands
+-- partway through), but it cuts every enemy in its arc, hits as hard as the
+-- weapon's rarity and mastery say, and every enemy it hits is mastery.
+local function swingWeapon(player, st, def, kind, id, locked, swing, now)
+	local n = (type(swing) == "number" and swing == swing and math.clamp(math.floor(swing), 1, #kind.Swings)) or 1
+	local s = kind.Swings[n]
+	if st.drinking or now < (st.busyUntil or 0) or now - st.lastPunch < (st.lastLock or 0) * 0.85 or st.stamina < s.Cost then
+		return
+	end
+	st.lastPunch, st.lastLock = now, s.Lock
+	spend(st, s.Cost, now)
+	st.swings = (st.swings or 0) + 1
+	player:SetAttribute("SwingN", st.swings .. ":" .. n) -- (everyone's screen swings it)
+	locked = typeof(locked) == "Instance" and locked or nil
+	task.delay(s.Lock * s.Contact, function()
+		if fighters[player] ~= st then
+			return -- left the arena, died, or otherwise stopped fighting
+		end
+		local _, atRoot = charParts(player)
+		if not atRoot then
+			return
+		end
+		local hit = targetsInArc(atRoot, player, s.Range, s.Arc, locked)
+		if #hit == 0 then
+			for _, fn in ipairs(whiffListeners) do
+				pcall(fn, player, atRoot.Position)
+			end
+			return
+		end
+		local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1) * s.Damage
+		for _, target in ipairs(hit) do
+			local dmg, crit = CombatService.DamageAgainst(player, target)
+			hitTarget(player, target, math.max(1, math.floor(dmg * mult)), (crit or n == #kind.Swings) and 3 or n)
+		end
+		addMastery(player, id, (W.MasteryPerHit or 1) * #hit)
+	end)
+end
+
+-- The weapon's ability (the Iron Sword's Whirlwind: spin round, cutting
+-- everything close to you). What it does comes from its tier - the highest
+-- mastery you've reached (Config.Weapons.List[id].Ability.Tiers).
+local function useAbility(player, st, def, id, now)
+	local ab = def.Ability
+	if not ab then
+		return
+	end
+	if st.drinking or now < (st.abilityReadyAt or 0) or st.stamina < ab.Cost then
+		send(player, "Denied", "Ability")
+		return
+	end
+	local tier, tierIndex = Config.abilityTier(def, player:GetAttribute("Mastery") or 1)
+	local spinTime = ab.SpinTime or 0.32
+	st.abilityReadyAt = now + ab.Cooldown
+	st.busyUntil = now + spinTime * tier.Spins -- (no swinging mid-spin)
+	spend(st, ab.Cost, now)
+	st.abilities = (st.abilities or 0) + 1
+	player:SetAttribute("AbilityN", st.abilities .. ":" .. tierIndex) -- (everyone's screen spins it)
+	send(player, "Ability", ab.Cooldown, tierIndex)
+	local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1)
+	for spin = 1, tier.Spins do
+		-- each spin cuts halfway round (the blade's gone all the way round by then)
+		task.delay(spinTime * (spin - 0.5), function()
+			if fighters[player] ~= st then
+				return
+			end
+			local _, atRoot = charParts(player)
+			if not atRoot then
+				return
+			end
+			local last = spin == tier.Spins
+			local cut = {}
+			local count = 0
+			for _, target in ipairs(targetsInArc(atRoot, player, tier.Radius, 180)) do
+				cut[target] = true
+				count = count + 1
+				local dmg, crit = CombatService.DamageAgainst(player, target)
+				hitTarget(player, target, math.max(1, math.floor(dmg * mult * tier.Damage)), (crit or last) and 3 or 2)
+			end
+			-- the shockwave off the last spin: what's a little further out
+			if last and tier.Ring then
+				for _, target in ipairs(targetsInArc(atRoot, player, tier.Ring, 180)) do
+					if not cut[target] then
+						count = count + 1
+						local dmg = CombatService.DamageAgainst(player, target)
+						hitTarget(player, target, math.max(1, math.floor(dmg * mult * (tier.RingDamage or 1))), 2)
+					end
+				end
+			end
+			addMastery(player, id, (W.MasteryPerHit or 1) * count)
+		end)
+	end
+end
+
+----------------------------------------------------------------------
 -- Fighters (players in an arena)
 ----------------------------------------------------------------------
 local function startFighting(player)
@@ -799,6 +996,18 @@ local function onAction(player, action, arg, swing)
 		return
 	end
 	local now = os.clock()
+
+	-- holding a weapon: it swings instead of your fist (see "Weapons" above)
+	local weapon, weaponKind, weaponId = weaponOf(player)
+	if action == "Punch" and weapon then
+		swingWeapon(player, st, weapon, weaponKind, weaponId, arg, swing, now)
+		return
+	elseif action == "Ability" then
+		if weapon then
+			useAbility(player, st, weapon, weaponId, now)
+		end
+		return
+	end
 
 	if action == "Punch" then
 		if st.drinking or now - st.lastPunch < math.max(CC.PunchInterval, CC.PunchLock) * 0.85 or st.stamina < CC.PunchCost then
@@ -920,10 +1129,10 @@ function CombatService.Start(playerService)
 	local folder = Instance.new("Folder")
 	folder.Name = "CombatRemotes"
 	local action = Instance.new("RemoteEvent")
-	action.Name = "CombatAction" -- client -> server: "Punch" / "Roll" / "Jump" / "Heal"
+	action.Name = "CombatAction" -- client -> server: "Punch" / "Roll" / "Jump" / "Heal" / "Ability"
 	action.Parent = folder
 	local event = Instance.new("RemoteEvent")
-	event.Name = "CombatEvent" -- server -> client: "State", "Hit", "Hurt", "Shove", "Iframes", "Dodged", "Drinking", "Healed", "Denied", "Died", "Stop"
+	event.Name = "CombatEvent" -- server -> client: "State", "Hit", "Hurt", "Shove", "Iframes", "Dodged", "Drinking", "Healed", "Denied", "Died", "Stop", "Ability", "Mastery"
 	event.Parent = folder
 	folder.Parent = ReplicatedStorage
 	remotes.CombatAction = action
@@ -938,6 +1147,42 @@ function CombatService.Start(playerService)
 			warn("[CombatService] " .. name .. " failed: " .. tostring(err))
 		end
 	end)
+
+	-- DEV ONLY (Studio, or the game's owner): the weapon test buttons on the
+	-- dev console - "DEV: Test Sword" and "DEV: Mastery +25"
+	if PlayerService and PlayerService.AddAction then
+		PlayerService.AddAction("DevTestWeapon", function(player)
+			if not Config.isDev(player) then
+				return false, "Dev tools are only for the game's owner."
+			end
+			if player:GetAttribute("Weapon") then
+				CombatService.Equip(player, nil)
+				return true, "Back to your fists."
+			end
+			local def = W.Test and W.List[W.Test]
+			if not def then
+				return false, "There's no test weapon in Config.Weapons."
+			end
+			CombatService.Equip(player, W.Test)
+			return true, def.Name .. " in hand! It swings in fights - F is " .. (def.Ability and def.Ability.Name or "its ability") .. "."
+		end)
+		PlayerService.AddAction("DevMastery", function(player)
+			if not Config.isDev(player) then
+				return false, "Dev tools are only for the game's owner."
+			end
+			local def, _, id = weaponOf(player)
+			if not def then
+				return false, "Hold a weapon first (DEV: Test Sword)."
+			end
+			-- up to the next quarter (25, 50, 75, 100), then back to 1
+			local level = player:GetAttribute("Mastery") or 1
+			local want = level >= W.MasteryMax and 1 or math.min(W.MasteryMax, math.floor(level / 25) * 25 + 25)
+			setMasteryPoints(player, id, Config.masteryPointsFor(want))
+			local _, tierIndex = Config.abilityTier(def, want)
+			local say = def.Ability and def.Ability.Say and def.Ability.Say[tierIndex] or ""
+			return true, "Mastery " .. want .. (say ~= "" and (": " .. say) or "")
+		end)
+	end
 
 	for _, m in ipairs(CollectionService:GetTagged("CombatTarget")) do
 		addTarget(m)
@@ -1004,6 +1249,7 @@ function CombatService.Start(playerService)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		fighters[player] = nil
+		mastery[player] = nil
 	end)
 
 	-- stamina regen, and keep each fighter's screen up to date (~8 times a second)

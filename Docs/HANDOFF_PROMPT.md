@@ -169,6 +169,17 @@ I decided to make the game **simple, like Blox Fruits**: few things to understan
 - On phones: one attack button, one ability button.
 - Each boss pack has about 4 weapons (3 + a Mythic), each a different type in that boss's theme; 15 bosses = about 60 weapons from 6 movesets, plus the event weapons. New types (a 7th, 8th) can be big update headlines later.
 
+### The test sword ✅ (build step 1)
+
+The first weapon is in, to test the feel before anything is built around it: the **Iron Sword** (Common, type Sword). In Studio: dev console, **DEV: Test Sword** (again: back to fists) and **DEV: Mastery +25** (25, 50, 75, 100, then back to 1). Preview `Docs/sword_preview.png` (the three swings and the Whirlwind, drawn from the real code's poses).
+
+- **Numbers:** all in `Config.Weapons` - `Rarity` (Start/Ceiling multipliers, the mastery table above), `MasteryHits` (8 hits for level 2, +2 per level after), `Types.Sword` (the string: slash 1.0x / backhand 1.0x / chop 1.5x; each swing's `Lock` (commit time), `Contact` (when it lands), `Cost` (stamina), `Range`, `Arc`), `List.IronSword` (colours, and the ability: Whirlwind, 10 s cooldown, 20 stamina, `Tiers` by mastery with the words the card shows). Helpers: `Config.masteryLevel`, `masteryPointsFor`, `weaponMultiplier`, `abilityTier`.
+- **Server (CombatService, "Weapons" part):** the player attribute `Weapon` (an id) makes "Punch" swing the weapon instead: it cuts EVERY target in the swing's arc (a punch hits one), damage = your punch x the swing's Damage x the weapon's rarity/mastery multiplier; every enemy hit is a mastery point (attributes `Mastery`, `MasteryProgress`; a "Mastery" event on level up). "Ability" (F) does the Whirlwind: spins hit everything within the tier's Radius, the last spin's `Ring` hits further out (tier 4+). `SwingN` / `AbilityN` attributes change on every swing / ability so every screen animates it. `CombatService.Equip(player, id)`. Mastery is kept per player per weapon for the session only - **saving comes with step 2 (owning weapons)**. Fists are unchanged.
+- **Screens:** `ReplicatedStorage/WeaponFX` (new) builds the sword in each fighter's right hand (on each screen, only in a fight) and animates swings and the Whirlwind on the R6 `Right Shoulder` and `RootJoint` (the body turns) plus the sword's angle in the hand (carried up and forward, in line with the arm mid-swing for reach), with a white trail. CombatClient uses the sword's timings and stamina costs in `tryPunch`, predicts your own swing/spin instantly, adds F / gamepad X / a phone button, and a card bottom-right (name, ability, mastery bar, cooldown). Mastery 100: gold blade.
+- **Sounds to add (optional):** "Sword Swing", "Sword Hit", "Whirlwind" (missing: silent swings, punch hit sounds).
+- Tests: `test_sword.luau` (server rules), `test_weaponfx.luau` (how it looks); pictures `render_sword.py`.
+- **Next:** I playtest it. Then step 2: weapon data (owning, equipping, saving, mastery saved), then the big switch (new GUI, old loot out), then the Arcade Token machine.
+
 ### Weapons: small differences at first, true ceiling with mastery (decided)
 
 Every weapon has **mastery** (levels up by using it, up to 100). At the start the rarities are close; at high mastery the rare ones pull away. Damage vs a basic weapon:
@@ -244,6 +255,7 @@ At mastery 100 a weapon can be **awakened** (a new look + a stronger special). S
 - `CarPath.lua`: how Speedy Revvington drives - the segment sums (lines, arcs, skid turns) shared by his server file and his body, so every screen draws him exactly where he is.
 - `BeatGrid.lua`: Gridlock's level - the grid, the beat, the tile patterns and his motion (hops, flights, falls, zig-zags), shared by his server file and his body, so every screen lights the same tiles on the same beat and draws him exactly where he is.
 - `Vitals.lua`: THE HEART (your health), and in a fight THE POTION (flasks, on its left) and THE LIGHTNING BOLT (stamina, on its right): three pixel-art pictures filled with liquid, drawn at the bottom of the screen. Hud starts it (`Vitals.start`) and CombatClient feeds it (`Vitals.set` for numbers, `Vitals.fire` for moments: "drink", "iframes", "empty", "noFlask"). See "The heart, the potion and the bolt" below.
+- `WeaponFX.lua`: how weapons look on every screen - the weapon in each fighter's hand, its swings and its ability, animated in code on the R6 joints (see "The test sword").
 - `Items.lua`: gear rarities, stats, sets and loot tables. "Floor" 0 is Oozlet's Chest (the intro's starter gear, level 1: Squishy Gloves, Bouncy Boots, Oozlet Cap, Goo Vest).
 - `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Tuber.lua`, `Burrowmore.lua`, `Kaze.lua`, `Revvington.lua`, `Gridlock.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
 
@@ -268,7 +280,7 @@ At mastery 100 a weapon can be **awakened** (a new look + a stronger special). S
 
 **StarterPlayerScripts/** (LocalScripts)
 - `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying. (Stamina and flasks are drawn by `ReplicatedStorage/Vitals`, not here.)
-  It has about **193 top-level locals** — same rule: use `do ... end` blocks.
+  It has about **194 top-level locals** — same rule: use `do ... end` blocks.
 - `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door and the "Leave?" check at its exit, the walk-up pop-ups (no "press E"), the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: what every boss's visuals share: the drawing kit (8-bit parts, rings, bursts, camera kicks, sounds, warnings, one-off moments on the server's clock), tracking each boss and its pose every frame, the arena weather (acid rain, the dunes' sandstorm), the boss bar, the victory banner, and the music. Each boss's body is in `ReplicatedStorage/BossBodies/` (below).
 - `IntroClient.client.lua`: everything the intro shows (see "The intro: Oozlet").

@@ -25,6 +25,9 @@ run test_boss_template.luau
 # the heart, the potion and the bolt at the bottom of the screen, and the drink
 run test_vitals.luau
 run test_drink.luau
+# the test sword: its rules on the server, and how it looks on every screen
+run test_sword.luau
+run test_weaponfx.luau
 run test_intro.luau
 run test_intro.luau -a skip
 run test_intro.luau -a fail

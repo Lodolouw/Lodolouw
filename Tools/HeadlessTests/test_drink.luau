@@ -22,7 +22,8 @@ local Config = M.load(S.Config, "Config", env)()
 -- the drink's code, exactly as it is in CombatClient
 local src = S.files["StarterPlayerScripts/CombatClient.client.lua"]
 local a = assert(string.find(src, "-- The drink, as everyone sees it", 1, true), "the drink's code isn't in CombatClient")
-local b = assert(string.find(src, "\n----------------------------------------------------------------------\n-- Damage numbers", a, true), "can't find where the drink's code ends")
+local b = assert(string.find(src, "\n----------------------------------------------------------------------\n-- Weapon: the ability", a, true)
+	or string.find(src, "\n----------------------------------------------------------------------\n-- Damage numbers", a, true), "can't find where the drink's code ends")
 local chunk = "local Players, RunService, RGB, CC = ...\n" .. string.sub(src, a, b)
 M.load(chunk, "CombatClient (the drink)", env)(Players, RunService, M.Color3.fromRGB, Config.Combat)
 

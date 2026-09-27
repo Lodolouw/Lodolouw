@@ -567,6 +567,33 @@ previews `Docs/vitals_preview.png` and `Docs/vitals_drink.png`):
 `CombatClient` tells `Vitals` your stamina and flasks (`Vitals.set`) and what
 just happened (`Vitals.fire`: a drink, a roll's invincibility, running out).
 
+## Weapons (being built: the test sword)
+
+The game is moving from gear to **weapons** (see the new direction in
+`Docs/HANDOFF_PROMPT.md`). The first one is in, to test the feel: the
+**Iron Sword** (`Config.Weapons`). In Studio, open the dev console and press
+**DEV: Test Sword** (again: back to fists).
+
+- In a fight the punch button swings it instead: a **slash** right to left,
+  a **backhand**, and an overhead **chop** (the finisher: 1.5x, narrow, a
+  little more reach). Each swing cuts **every enemy in its arc**.
+- **F** (gamepad X, or the phone's crossed-swords button) is its ability,
+  the **Whirlwind**: spin round cutting everything close to you (10 s
+  cooldown, 20 stamina).
+- **Mastery** goes up with every enemy you hit. The sword hits harder as it
+  grows (1x to 1.5x for a Common), and the Whirlwind gets better at 25
+  (wider, harder), 50 (two spins), 75 (a shockwave) and 100 (awakened: three
+  golden spins, and the blade turns gold). **DEV: Mastery +25** jumps a
+  quarter at a time. (Mastery isn't saved yet.)
+- A card bottom-right shows the weapon, its mastery and the Whirlwind's
+  cooldown.
+- Everyone sees it: the sword, the swings (a white trail follows the blade)
+  and the spin are drawn on every screen by `ReplicatedStorage/WeaponFX`, in
+  code on the R6 joints. Preview: `Docs/sword_preview.png`.
+- Sounds (optional, in SoundService): **Sword Swing**, **Sword Hit**,
+  **Whirlwind**. Until you add them the swings are silent and hits use the
+  punch sounds.
+
 ## Gear: boss chests, items and your bag
 
 Every boss drops its **treasure chest** for everyone in the arena when it

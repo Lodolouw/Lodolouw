@@ -1705,7 +1705,7 @@ do
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -52),
-		Size = UDim2.fromOffset(150, 250),
+		Size = UDim2.fromOffset(150, 334),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = root,
@@ -1724,6 +1724,21 @@ do
 	replay.Activated:Connect(function()
 		doAction("DevReplayIntro")
 	end)
+	-- the weapon test: hold the test sword (again: back to fists), and level its
+	-- mastery up a quarter at a time (25, 50, 75, 100, then back to 1)
+	for i, what in ipairs({ { "DEV: Test Sword", "DevTestWeapon" }, { "DEV: Mastery +25", "DevMastery" } }) do
+		local b = button({
+			LayoutOrder = 6 + i,
+			Size = UDim2.fromOffset(150, 36),
+			Text = what[1],
+			TextSize = 16,
+			BackgroundColor3 = RGB(104, 56, 108),
+			Parent = devCol,
+		})
+		b.Activated:Connect(function()
+			doAction(what[2])
+		end)
+	end
 	local DEV_LABELS = { Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power", MaxUpgrades = "DEV: Max Upgrades" }
 	for i, kind in ipairs({ "Loot", "Coins", "Power", "MaxUpgrades" }) do
 		local b = button({

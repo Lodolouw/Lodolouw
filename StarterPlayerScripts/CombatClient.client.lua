@@ -18,6 +18,11 @@
 	     swipe LOCK on a     to the nearest enemy left; it lets go if you get
 	     phone)              too far away or lose sight of it for a moment
 	  * Phones get ROLL, FLASK and LOCK buttons next to the jump button.
+	  * Holding a weapon (the "Weapon" attribute - Config.Weapons): the punch
+	    button swings it instead (its type's own string of swings, drawn on
+	    every screen by ReplicatedStorage/WeaponFX), F (gamepad X, the
+	    phone's crossed-swords button) uses its ability, and a card
+	    bottom-right shows the weapon, its mastery and the ability's cooldown.
 	  * Your stamina is the pixel LIGHTNING BOLT on the right of the heart:
 	    punching, rolling and jumping use it, and it refills when you stop.
 	    Your flasks are the pixel POTION on the heart's left. Both are drawn
@@ -43,6 +48,9 @@ local ContentProvider = game:GetService("ContentProvider")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Vitals = require(ReplicatedStorage:WaitForChild("Vitals")) -- draws the bolt (stamina) and the potion (flasks)
+-- the weapon in your hand (see "Weapon" below; how weapons look: ReplicatedStorage/WeaponFX)
+local Weapon = { fx = require(ReplicatedStorage:WaitForChild("WeaponFX")), readyAt = 0 }
+Weapon.fx.start()
 local CombatRemotes = ReplicatedStorage:WaitForChild("CombatRemotes")
 local CombatAction = CombatRemotes:WaitForChild("CombatAction")
 local CombatEvent = CombatRemotes:WaitForChild("CombatEvent")
@@ -980,6 +988,8 @@ local function tryPunch()
 	if rolling or now < drinkingUntil then
 		return
 	end
+	-- holding a weapon? Then it's its type's string of swings, not punches
+	local _, kind = Weapon.fx.swingInfo(player:GetAttribute("Weapon"), 1)
 	local readyAt = math.max(punchLockUntil, lastPunch + CC.PunchInterval)
 	if now < readyAt then
 		-- Not yet - but a press near the end of a swing is remembered and thrown
@@ -989,7 +999,13 @@ local function tryPunch()
 		end
 		return
 	end
-	if stamina < CC.PunchCost then
+	-- which one of the string this is: keep going if you kept the rhythm, else start again
+	local window = kind and kind.Window or CB.Window
+	local steps = kind and #kind.Swings or #CB.Steps
+	local nextSwing = (now - lastPunch <= window and comboSwing >= 1 and comboSwing < steps) and comboSwing + 1 or 1
+	local swingDef = kind and kind.Swings[nextSwing]
+	local cost = swingDef and swingDef.Cost or CC.PunchCost
+	if stamina < cost then
 		noStamina()
 		return
 	end
@@ -1003,14 +1019,9 @@ local function tryPunch()
 	end
 	facingHoldUntil = now + FACING_HOLD
 	bufferedPunchAt = nil
-	-- keep going through the string if you kept the rhythm, else start it again
-	if now - lastPunch <= CB.Window and comboSwing >= 1 and comboSwing < #CB.Steps then
-		comboSwing = comboSwing + 1
-	else
-		comboSwing = 1
-	end
+	comboSwing = nextSwing
 	lastPunch = now
-	spendLocal(CC.PunchCost)
+	spendLocal(cost)
 	renderStats()
 	if lockTarget then
 		-- locked on: line up on the target and punch it
@@ -1032,11 +1043,17 @@ local function tryPunch()
 	else
 		CombatAction:FireServer("Punch", nil, comboSwing)
 	end
-	-- the air moving, straight away: waiting for the server would feel laggy
-	playLocalSound(IMPACT_SOUNDS.Whoosh, 0.45 + 0.08 * comboSwing, 1.12 - 0.07 * comboSwing)
-	local recovery = CB.Recovery[comboSwing] or 1
-	playPunch(comboSwing, recovery)
-	commitToPunch(now, recovery)
+	if swingDef then
+		-- the blade's own swing, straight away (and its whoosh): WeaponFX
+		Weapon.fx.swing(player, comboSwing)
+		commitToPunch(now, swingDef.Lock / CC.PunchLock)
+	else
+		-- the air moving, straight away: waiting for the server would feel laggy
+		playLocalSound(IMPACT_SOUNDS.Whoosh, 0.45 + 0.08 * comboSwing, 1.12 - 0.07 * comboSwing)
+		local recovery = CB.Recovery[comboSwing] or 1
+		playPunch(comboSwing, recovery)
+		commitToPunch(now, recovery)
+	end
 	punchStep(hrp, comboSwing)
 end
 
@@ -1601,6 +1618,211 @@ do
 					d.potion = nil
 				end
 			end
+		end
+	end)
+end
+
+----------------------------------------------------------------------
+-- Weapon: the ability (F, gamepad X, or the phone's crossed-swords button)
+-- and the card bottom-right: what you're holding, its mastery, and the
+-- ability's cooldown. (Its swings are in tryPunch; how it all looks is
+-- ReplicatedStorage/WeaponFX; what it hits is decided by CombatService.)
+----------------------------------------------------------------------
+do
+	local WHITE, GOLD, INK = RGB(255, 255, 255), RGB(254, 231, 97), RGB(24, 20, 37)
+
+	-- the weapon you're holding (its entry in Config.Weapons.List), or nil
+	function Weapon.current()
+		local id = player:GetAttribute("Weapon")
+		return id and Config.Weapons and Config.Weapons.List[id] or nil
+	end
+
+	function Weapon.tryAbility()
+		if not active then
+			return
+		end
+		local def = Weapon.current()
+		local ab = def and def.Ability
+		if not ab then
+			return
+		end
+		local now = os.clock()
+		if rolling or now < drinkingUntil then
+			return
+		end
+		if now < Weapon.readyAt then
+			flashMessage(ab.Name .. " isn't ready yet", RGB(200, 205, 225), 0.5)
+			return
+		end
+		if now < punchLockUntil and now - punchStartedAt < CC.PunchRollCancel then
+			return -- (too early in a swing to break out of it)
+		end
+		if stamina < ab.Cost then
+			noStamina()
+			return
+		end
+		local tier, tierIndex = Config.abilityTier(def, player:GetAttribute("Mastery") or 1)
+		Weapon.readyAt = now + ab.Cooldown
+		spendLocal(ab.Cost)
+		renderStats()
+		CombatAction:FireServer("Ability")
+		if punchLockUntil > 0 then
+			releasePunchLock()
+		end
+		Weapon.fx.spin(player, tierIndex) -- (straight away: it's your own)
+		commitToPunch(now, (ab.SpinTime or 0.32) * tier.Spins / CC.PunchLock) -- (you spin on the spot)
+		comboSwing = 0
+	end
+
+	-- THE CARD (not on phones: they get the round button instead)
+	local card = create("Frame", {
+		Name = "WeaponCard",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -180, 1, -16),
+		Size = UDim2.fromOffset(250, 74),
+		BackgroundColor3 = INK,
+		BackgroundTransparency = 0.2,
+		Visible = false,
+		Parent = combatUI,
+	}, { corner(8), stroke(2, WHITE, 0.25) })
+	local slot = create("Frame", {
+		Name = "Ability",
+		Position = UDim2.fromOffset(7, 7),
+		Size = UDim2.fromOffset(60, 60),
+		BackgroundColor3 = RGB(58, 68, 102),
+		Parent = card,
+	}, { corner(6), stroke(2, GOLD, 0) })
+	create("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Font = BOLD,
+		Text = "⚔",
+		TextSize = 30,
+		TextColor3 = WHITE,
+		Parent = slot,
+	})
+	local shade = create("Frame", {
+		Name = "Cooldown",
+		Size = UDim2.fromScale(1, 0),
+		BackgroundColor3 = RGB(0, 0, 0),
+		BackgroundTransparency = 0.35,
+		BorderSizePixel = 0,
+		ZIndex = 3,
+		Parent = slot,
+	})
+	local cdText = create("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Font = BOLD,
+		Text = "",
+		TextSize = 26,
+		TextColor3 = WHITE,
+		ZIndex = 4,
+		Parent = slot,
+	}, { textStroke(2) })
+	create("TextLabel", {
+		Position = UDim2.fromOffset(2, 0),
+		Size = UDim2.fromOffset(18, 16),
+		BackgroundTransparency = 1,
+		Font = BOLD,
+		Text = "F",
+		TextSize = 14,
+		TextColor3 = GOLD,
+		ZIndex = 5,
+		Parent = slot,
+	}, { textStroke(2) })
+	local function line(y, size, color)
+		return create("TextLabel", {
+			Position = UDim2.fromOffset(76, y),
+			Size = UDim2.fromOffset(168, size + 2),
+			BackgroundTransparency = 1,
+			Font = BOLD,
+			Text = "",
+			TextSize = size,
+			TextColor3 = color,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = card,
+		}, { textStroke(2) })
+	end
+	local nameText = line(3, 18, WHITE)
+	local abilityText = line(23, 13, RGB(192, 203, 220))
+	local masteryText = line(38, 15, GOLD)
+	local masteryPop = create("UIScale", { Scale = 1, Parent = masteryText })
+	local barBack = create("Frame", {
+		Position = UDim2.fromOffset(76, 60),
+		Size = UDim2.fromOffset(166, 7),
+		BackgroundColor3 = RGB(38, 43, 68),
+		BorderSizePixel = 0,
+		Parent = card,
+	})
+	local barFill = create("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = GOLD,
+		BorderSizePixel = 0,
+		Parent = barBack,
+	})
+
+	-- THE PHONE BUTTON (next to ROLL), with the cooldown counting down on it
+	local phoneBtn = roundButton("AbilityButton", "⚔", UDim2.new(1, -300, 1, -110), 74, RGB(162, 38, 51))
+	local phoneCd = create("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Font = BOLD,
+		Text = "",
+		TextSize = 26,
+		TextColor3 = WHITE,
+		ZIndex = 3,
+		Parent = phoneBtn,
+	}, { textStroke(2) })
+	phoneBtn.Activated:Connect(Weapon.tryAbility)
+
+	-- a new mastery level: the number bumps (and when the ability gets better,
+	-- a big message says what it does now)
+	function Weapon.masteryUp(level, tierIndex)
+		masteryPop.Scale = 1.35
+		local def = Weapon.current()
+		local say = tierIndex and def and def.Ability and def.Ability.Say and def.Ability.Say[tierIndex]
+		if say then
+			flashMessage("MASTERY " .. level .. "!  " .. say, GOLD, 2.2)
+		end
+	end
+
+	RunService.RenderStepped:Connect(function(dt)
+		local def = Weapon.current()
+		local show = active and def ~= nil and player:GetAttribute("Intro") == nil
+		local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		card.Visible = show and not touch
+		phoneBtn.Visible = show and touch and def.Ability ~= nil
+		if not show then
+			return
+		end
+		local ab = def.Ability
+		local left = math.max(0, Weapon.readyAt - os.clock())
+		local cd = left > 0 and tostring(math.ceil(left)) or ""
+		if card.Visible then
+			local mastery = player:GetAttribute("Mastery") or 1
+			local name = string.upper(def.Name)
+			if nameText.Text ~= name then
+				nameText.Text = name
+			end
+			local what = ab and string.upper(ab.Name) or ""
+			if abilityText.Text ~= what then
+				abilityText.Text = what
+			end
+			local m = "MASTERY " .. mastery
+			if masteryText.Text ~= m then
+				masteryText.Text = m
+			end
+			local into = math.clamp(player:GetAttribute("MasteryProgress") or 0, 0, 1)
+			barFill.Size = UDim2.fromScale(into, 1)
+			shade.Size = UDim2.fromScale(1, ab and math.clamp(left / ab.Cooldown, 0, 1) or 0)
+			if cdText.Text ~= cd then
+				cdText.Text = cd
+			end
+			masteryPop.Scale = 1 + (masteryPop.Scale - 1) * math.exp(-8 * dt)
+		end
+		if phoneCd.Text ~= cd then
+			phoneCd.Text = cd
 		end
 	end)
 end
@@ -2359,6 +2581,13 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 		return
 	end
+	-- F (gamepad X): the weapon's ability
+	if input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.ButtonX then
+		if not processed or input.KeyCode == Enum.KeyCode.ButtonX then
+			Weapon.tryAbility()
+		end
+		return
+	end
 	-- Q / E: switch to the next enemy left / right (while locked on)
 	if input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.E then
 		if not processed and lockTarget then
@@ -2490,6 +2719,13 @@ local SoundService = game:GetService("SoundService")
 local lastHitSound = 0
 local function playHitSound(weight)
 	local names = IM.HitSounds
+	-- holding a weapon: its own hit sound, if you've added it
+	local held = Weapon.current and Weapon.current()
+	local kindOf = held and Config.Weapons.Types[held.Type]
+	local own = kindOf and kindOf.Sounds and kindOf.Sounds.Hit
+	if own and SoundService:FindFirstChild(own) then
+		names = { own }
+	end
 	if not names or #names == 0 then
 		return
 	end
@@ -2579,6 +2815,10 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
 		flashMessage("+ Healed", RGB(140, 255, 150), 0.7)
 	elseif kind == "Iframes" then
 		showIframes(a) -- the server granted the window: show it for real
+	elseif kind == "Ability" then
+		Weapon.readyAt = os.clock() + (tonumber(a) or 0) -- (the server's cooldown is the real one)
+	elseif kind == "Mastery" then
+		Weapon.masteryUp(a, b)
 	elseif kind == "Incoming" then
 		flashMessage("! Incoming hit - roll !", RGB(255, 90, 90), a)
 	elseif kind == "Died" then

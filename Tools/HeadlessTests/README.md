@@ -256,6 +256,29 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   drink shows too, and a non-R6 body is left alone. `-a poses` prints the
   joints over a drink for `render_drink.py` (`python3 render_drink.py d.txt
   ../../Docs/drink_preview.png`).
+- `test_sword.luau` - THE TEST SWORD on the server: the real CombatService
+  (its "Weapons" part) with a pretend player among punchable targets. Fists
+  still hit one enemy per punch; "DEV: Test Sword" puts the Iron Sword in
+  your hand; a slash cuts every enemy in its arc but not the one behind or
+  out of reach, as hard as a punch at mastery 1; the chop reaches further,
+  hits 1.5x and is narrow; a swing thrown too soon is ignored; twelve quick
+  slashes only get ten through (stamina); hitting raises mastery (and tells
+  the screen); "DEV: Mastery +25" goes 25, 50, 75, 100, then back to 1; at
+  100 a slash hits 1.5x; the Whirlwind cuts all round (not far away), cools
+  down, spins twice at 50, sends a shockwave at 75 and spins three times at
+  100; no swinging mid-spin; leaving mid-swing lands nothing; bad swing
+  numbers and weapon ids can't break it.
+- `test_weaponfx.luau` - WEAPONFX, how weapons look: the real module on
+  pretend R6 characters. The sword is in the hand only in a fight (6 pieces,
+  welded to the right arm, bumping into nothing); the slash sweeps the blade
+  right to left and the backhand left to right (with the trail on), the body
+  winds up and follows through, the chop comes down from above your head, the
+  Whirlwind turns the body 360 / 720 / 1080 degrees by tier; everything's
+  back exactly where it was afterwards; another player's swing and Whirlwind
+  play when their counters change (an old counter doesn't); mastery 100 turns
+  the blade gold; leaving the fight, dying mid-swing or letting go puts it
+  away; a non-R6 body gets nothing. `-a poses` prints the joints for
+  `render_sword.py` (`python3 render_sword.py s.txt ../../Docs/sword_preview.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

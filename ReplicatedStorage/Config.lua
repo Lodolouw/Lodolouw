@@ -2374,6 +2374,141 @@ Config.Combat = {
 	}, -- the practice slime takes about this many hits at the recommended level
 }
 
+----------------------------------------------------------------------
+-- WEAPONS (the new direction: see Docs/HANDOFF_PROMPT.md, "Weapon types
+-- and abilities"). A weapon replaces your punches in a fight: its TYPE
+-- decides how its normal attacks swing (every sword swings like a sword),
+-- and each WEAPON has one ability of its own that gets better as that
+-- weapon's MASTERY grows (mastery goes up by landing hits with it).
+-- For now there's one, the Iron Sword, to test the feel: the dev console's
+-- "DEV: Test Sword" gives it to you and "DEV: Mastery +25" levels it.
+-- (Mastery isn't saved yet: that comes with owning weapons.)
+----------------------------------------------------------------------
+Config.Weapons = {
+	-- how much harder than your punch a weapon hits: its rarity's Start at
+	-- mastery 1, rising to its Ceiling at mastery 100 (small differences at
+	-- first, the rare ones pull away later)
+	Rarity = {
+		Common = { Start = 1.00, Ceiling = 1.50 },
+		Uncommon = { Start = 1.02, Ceiling = 1.70 },
+		Rare = { Start = 1.04, Ceiling = 1.95 },
+		Epic = { Start = 1.06, Ceiling = 2.25 },
+		Legendary = { Start = 1.08, Ceiling = 2.60 },
+		Mythic = { Start = 1.10, Ceiling = 3.00 },
+		Secret = { Start = 1.12, Ceiling = 3.40 },
+		Event = { Start = 1.10, Ceiling = 3.20 },
+	},
+	MasteryMax = 100,
+	MasteryHits = 8, -- hits for the first mastery level; each level after needs 2 more
+	MasteryPerHit = 1, -- mastery points per enemy you hit (an ability hit counts the same)
+
+	-- how each TYPE's normal attacks work: a string of swings, like the punches.
+	-- Damage is x your punch; Lock is how long each swing commits you (you
+	-- stand still, like a punch); Contact is how far into it the blade lands;
+	-- Range is studs from you to the enemy's edge; Arc is how wide the swing
+	-- cuts in front of you (degrees either side). A swing hits EVERY enemy in
+	-- its arc - that's what a blade has over a fist.
+	Types = {
+		Sword = {
+			Window = 0.9, -- swing again within this to carry on the string
+			Swings = {
+				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75 }, -- a slash, right to left
+				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75 }, -- a backhand, left to right
+				{ Damage = 1.5, Lock = 0.75, Contact = 0.45, Cost = 14, Range = 11, Arc = 30 }, -- an overhead chop (the finisher: narrow)
+			},
+			Sounds = { Swing = "Sword Swing", Hit = "Sword Hit" }, -- Sounds in SoundService (missing: the punch ones)
+		},
+	},
+
+	-- every weapon
+	List = {
+		IronSword = {
+			Name = "Iron Sword",
+			Type = "Sword",
+			Rarity = "Common",
+			Colors = {
+				Blade = Color3.fromRGB(192, 203, 220),
+				Edge = Color3.fromRGB(255, 255, 255),
+				Guard = Color3.fromRGB(254, 174, 52),
+				Grip = Color3.fromRGB(115, 62, 57),
+			},
+			-- F (gamepad X, the phone's ability button): spin round, cutting
+			-- everything close to you. Close range only, like every ability.
+			Ability = {
+				Name = "Whirlwind",
+				Cooldown = 10, -- seconds
+				Cost = 20, -- stamina
+				SpinTime = 0.32, -- seconds per spin
+				Sound = "Whirlwind", -- a Sound in SoundService (missing: the swing sound)
+				-- what it does at each mastery (the highest one you've reached counts)
+				Tiers = {
+					{ Mastery = 1, Spins = 1, Radius = 9, Damage = 1.6 },
+					{ Mastery = 25, Spins = 1, Radius = 11, Damage = 1.9 },
+					{ Mastery = 50, Spins = 2, Radius = 11, Damage = 1.6 },
+					{ Mastery = 75, Spins = 2, Radius = 12, Damage = 1.6, Ring = 16, RingDamage = 1.2 },
+					{ Mastery = 100, Spins = 3, Radius = 13, Damage = 1.6, Ring = 16, RingDamage = 1.2, Golden = true },
+				},
+				-- the words for each tier (the weapon card shows what's next)
+				Say = {
+					"Spin once, cutting all round you",
+					"A wider, harder spin",
+					"Spin twice",
+					"The last spin sends out a shockwave",
+					"AWAKENED: three golden spins",
+				},
+			},
+		},
+	},
+	Test = "IronSword", -- what "DEV: Test Sword" gives you
+}
+
+-- The mastery level `points` mastery points make (1 to MasteryMax), and how far
+-- into that level they are (0 to 1)
+function Config.masteryLevel(points)
+	local W = Config.Weapons
+	local level, need = 1, W.MasteryHits
+	points = math.max(0, points or 0)
+	while level < W.MasteryMax and points >= need do
+		points = points - need
+		level = level + 1
+		need = W.MasteryHits + 2 * (level - 1)
+	end
+	return level, level >= W.MasteryMax and 1 or points / need
+end
+
+-- The mastery points it takes to reach mastery `level`
+function Config.masteryPointsFor(level)
+	local W = Config.Weapons
+	local total = 0
+	for l = 1, math.clamp(math.floor(level or 1), 1, W.MasteryMax) - 1 do
+		total = total + W.MasteryHits + 2 * (l - 1)
+	end
+	return total
+end
+
+-- x your punch for a weapon at a mastery level (its rarity's Start to Ceiling)
+function Config.weaponMultiplier(weapon, mastery)
+	local W = Config.Weapons
+	local r = W.Rarity[weapon and weapon.Rarity or "Common"] or W.Rarity.Common
+	local t = math.clamp(((mastery or 1) - 1) / math.max(1, W.MasteryMax - 1), 0, 1)
+	return r.Start + (r.Ceiling - r.Start) * t
+end
+
+-- The ability tier for a mastery level (the highest one reached), and its number
+function Config.abilityTier(weapon, mastery)
+	local tiers = weapon and weapon.Ability and weapon.Ability.Tiers
+	if not tiers then
+		return nil, 0
+	end
+	local best, index = tiers[1], 1
+	for i, t in ipairs(tiers) do
+		if (mastery or 1) >= t.Mastery then
+			best, index = t, i
+		end
+	end
+	return best, index
+end
+
 -- The bosses in the game's look: every colour that paints a boss (its body,
 -- its underside, its eyes, its glow...) snapped to the same 32-colour
 -- pixel-art palette as the menus and the lobby. Only how they look - the
