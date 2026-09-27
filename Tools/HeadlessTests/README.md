@@ -59,6 +59,12 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   boss code (like splitting it into one file per boss) changed nothing
   players can see. `./golden.sh check client_` runs only the client ones, and
   `./golden.sh record server_knight` re-records only those.
+- `test_arenas_apart.luau` - EVERY ARENA IN ITS OWN SPOT: builds the lobby
+  (with Oozark's hollow and the Colosseum) and every Spire arena together
+  and fails if any two overlap, seen from above (`-a list` prints the ground
+  each one covers). A new floor's builder goes in its list. (Kongo's jungle
+  was first built right on top of the Colosseum: each arena's own test only
+  builds that one arena, so nothing noticed.)
 - `test_boss_template.luau` - the "how to add a boss" templates really
   work: `Bosses/_Template.lua` and `BossBodies/_Template.lua` plugged in as
   a pretend extra boss (on a made-up floor 99), fought to the death with the

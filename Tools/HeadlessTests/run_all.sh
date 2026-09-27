@@ -20,6 +20,7 @@ for sc in cursed clearleave leave die oldbuilder kite kitejump nextrun locked; d
 for seed in 1 2 3; do run test_colosseum.luau -a hard $seed; run test_colosseum.luau -a nightmare $seed; done
 run test_client.luau
 run test_builder.luau
+run test_arenas_apart.luau
 run test_boss_template.luau
 run test_intro.luau
 run test_intro.luau -a skip

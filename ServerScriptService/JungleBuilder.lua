@@ -48,7 +48,9 @@ local Mat = Enum.Material
 ----------------------------------------------------------------------
 -- Layout (+Z is south: the gate; Kongo sits in the middle facing it)
 ----------------------------------------------------------------------
-local CENTER = V3(-2600, 0, 0) -- well away from the lobby and the other floors
+-- (well away from the lobby, the Colosseum - which is at -2600, 0, 0 - and
+-- the other floors: every arena has its own spot, 2600 studs apart)
+local CENTER = V3(-2600, 0, -2600)
 local FIGHT_R = 70 -- the invisible wall stands this far out (the fight's edge)
 local CLEARING_R = 76 -- the packed dirt goes a little further
 local PATH_HALF = 7 -- half the width of the way in from the gate
