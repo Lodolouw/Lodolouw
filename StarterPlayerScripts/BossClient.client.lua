@@ -521,6 +521,13 @@ local function stepStorm(B, dt)
 	if state == "Waking" or state == "Fighting" or state == "Transition" then
 		want = B.phase2Look and 0.7 or 0.5
 	end
+	if B.mod.stormWant then
+		-- (its body file can blow the storm its own way: the Brute's power-up)
+		local ok, w = pcall(B.mod.stormWant, B, state, want)
+		if ok and type(w) == "number" then
+			want = w
+		end
+	end
 	B.storm = B.storm or (arena:GetAttribute("Storm") or 0.35)
 	B.storm = B.storm + (want - B.storm) * math.min(1, dt * 0.6)
 	if math.abs((arena:GetAttribute("Storm") or 0) - B.storm) > 0.01 then
@@ -678,6 +685,29 @@ do
 		return label, bb
 	end
 end
+
+--   kit.shot(cframe, fov)  a boss's own camera shot (the Brute's power-up).
+--       The camera belongs to CombatClient, so this asks it (its
+--       "CombatCutscene" event). Call it every frame the shot should hold:
+--       the camera comes back to you by itself a moment after the last one.
+--       kit.shot(nil) gives it back straight away.
+do
+	local cutEvent = nil
+	function kit.shot(cf, fov)
+		if not (cutEvent and cutEvent.Parent) then
+			local scripts = player:FindFirstChild("PlayerScripts")
+			cutEvent = scripts and scripts:FindFirstChild("CombatCutscene")
+			if not cutEvent then
+				return -- (CombatClient isn't running: no shot, nothing breaks)
+			end
+		end
+		if cf then
+			cutEvent:Fire("Shot", cf, fov)
+		else
+			cutEvent:Fire("Stop")
+		end
+	end
+end
 local bodyModules = {} -- [short name] = its body file, or false
 local bodyList = {} -- (in Config's order)
 local bodiesFolder = ReplicatedStorage:WaitForChild("BossBodies", 30)
@@ -705,6 +735,95 @@ for _, def in pairs(Config.Bosses or {}) do
 end
 local function bodyModule(def)
 	return bodyModules[def.Short] or nil
+end
+
+----------------------------------------------------------------------
+-- Warming up
+----------------------------------------------------------------------
+-- Everything the fights play is fetched well before it's needed, so nothing
+-- stalls, or plays silent, the first time it happens:
+--  * every boss sound and song, a couple of seconds after you join (in the
+--    background)
+--  * the particle textures the sand and slime are drawn with
+--  * the first time you arrive in a Spire arena, every material the fight
+--    draws with is shown to your screen for a moment, too small to see
+-- (The arenas themselves are loaded for you by SpireService as soon as you
+-- open the Spire menu.)
+do
+	local ContentProvider = game:GetService("ContentProvider")
+	local function warmSounds()
+		local list, seen = {}, {}
+		local function add(name)
+			if type(name) == "string" and name ~= "" and not seen[name] then
+				seen[name] = true
+				local sound = findSound(name)
+				if sound then
+					list[#list + 1] = sound
+				end
+			end
+		end
+		for _, def in pairs(Config.Bosses or {}) do
+			for key, name in pairs(def.Sounds or {}) do
+				add(name)
+				add("Boss " .. key)
+			end
+			add(def.Music)
+			add(def.Round2Music)
+			add(def.VictorySound)
+		end
+		for _, key in ipairs({ "Wake", "Slam", "Wave", "Spit", "Splat", "Lunge", "Wail", "Erupt", "Break", "Death" }) do
+			add("Boss " .. key) -- (what the other bosses borrow when they have no sound of their own)
+		end
+		add(Config.AcidRain and Config.AcidRain.Sound)
+		for _, f in ipairs((Config.Spire and Config.Spire.Floors) or {}) do
+			add(f.ambience and f.ambience.Sound)
+		end
+		list[#list + 1] = "rbxasset://textures/particles/smoke_main.dds"
+		list[#list + 1] = "rbxasset://textures/particles/sparkles_main.dds"
+		pcall(function()
+			ContentProvider:PreloadAsync(list)
+		end)
+	end
+	task.delay(2, warmSounds)
+
+	local WARM_MATERIALS = {
+		Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Slate, Enum.Material.Neon, Enum.Material.SmoothPlastic,
+		Enum.Material.Glass, Enum.Material.Metal, Enum.Material.Fabric, Enum.Material.Wood, Enum.Material.Limestone,
+	}
+	local warmedFloors = {}
+	local function warmMaterials()
+		local cam = Workspace.CurrentCamera
+		if not cam then
+			return
+		end
+		local bits = {}
+		for k, mat in ipairs(WARM_MATERIALS) do
+			local bit = newPart("Warm", nil, RGB(200, 200, 200), mat, 0.97)
+			bit.Size = V3(0.2, 0.2, 0.2)
+			bits[k] = bit
+		end
+		local t0 = os.clock()
+		local conn
+		conn = RunService.RenderStepped:Connect(function()
+			local cf = cam.CFrame
+			for k, bit in ipairs(bits) do
+				bit.CFrame = cf * CFrame.new((k - 5) * 0.25, -1.2, -5)
+			end
+			if os.clock() - t0 > 0.5 then
+				conn:Disconnect()
+				for _, bit in ipairs(bits) do
+					bit:Destroy()
+				end
+			end
+		end)
+	end
+	player:GetAttributeChangedSignal("SpireFloor"):Connect(function()
+		local f = player:GetAttribute("SpireFloor")
+		if f and not warmedFloors[f] then
+			warmedFloors[f] = true
+			warmMaterials()
+		end
+	end)
 end
 
 ----------------------------------------------------------------------
@@ -784,6 +903,18 @@ local barFor = nil -- the boss the bar is showing
 local shownShare, chipShare, chipHoldUntil = 1, 1, 0
 local recentDamage, recentUntil = 0, 0
 
+-- A body file can draw its boss's bar its own way (barLook(B, now, share) ->
+-- nil, or { name =, share =, color = }): Tuber has two bars, one per round,
+-- each with its own name. Every other boss: one bar, its Config name.
+local function barLook(B, now, share)
+	local f = B.mod.barLook
+	if not f then
+		return nil
+	end
+	local ok, look = pcall(f, B, now, share)
+	return (ok and type(look) == "table") and look or nil
+end
+
 local function showBar(B)
 	if barFor == B then
 		return
@@ -791,11 +922,15 @@ local function showBar(B)
 	barFor = B
 	barGui.Enabled = B ~= nil
 	if B then
-		barName.Text = B.def.Name
+		local share = (B.model:GetAttribute("Health") or 1) / math.max(B.model:GetAttribute("MaxHealth") or 1, 1)
+		local look = barLook(B, serverNow(), share)
+		barName.Text = (look and look.name) or B.def.Name
 		barName.TextTransparency = 1
 		barName.TextStrokeTransparency = 1
 		tween(barName, 1.2, { TextTransparency = 0, TextStrokeTransparency = 0.45 })
-		local share = (B.model:GetAttribute("Health") or 1) / math.max(B.model:GetAttribute("MaxHealth") or 1, 1)
+		if look and look.share then
+			share = clamp(look.share, 0, 1)
+		end
 		shownShare, chipShare = share, share
 		recentDamage, recentUntil = 0, 0
 		barDamage.Text = ""
@@ -808,6 +943,18 @@ local function stepBar(now, dt)
 		return
 	end
 	local share = clamp((B.model:GetAttribute("Health") or 0) / math.max(B.model:GetAttribute("MaxHealth") or 1, 1), 0, 1)
+	local look = barLook(B, now, share)
+	if look then
+		if look.share then
+			share = clamp(look.share, 0, 1)
+		end
+		if look.name and barName.Text ~= look.name then
+			-- (a new round, a new name)
+			barName.Text = look.name
+			barName.TextTransparency, barName.TextStrokeTransparency = 1, 1
+			tween(barName, 0.5, { TextTransparency = 0, TextStrokeTransparency = 0.45 })
+		end
+	end
 	if share < shownShare - 1e-4 then
 		chipHoldUntil = now + 0.55 -- the chip waits a moment before catching up
 	end
@@ -818,7 +965,7 @@ local function stepBar(now, dt)
 	chipShare = math.max(chipShare, share)
 	barFill.Size = UDim2.fromScale(shownShare, 1)
 	barChip.Size = UDim2.fromScale(chipShare, 1)
-	barFill.BackgroundColor3 = B.phase2Look and RGB(196, 18, 30) or RGB(168, 26, 24)
+	barFill.BackgroundColor3 = (look and look.color) or (B.phase2Look and RGB(196, 18, 30) or RGB(168, 26, 24))
 	if now > recentUntil and recentDamage > 0 then
 		recentDamage = 0
 		barDamage.Text = ""
@@ -897,7 +1044,8 @@ local function victory(floorId, gained, firstClear)
 			s:Destroy()
 		end)
 	end
-	winTitle.Text = string.upper((def and def.Short or "Boss") .. " vanquished")
+	-- (VictoryName: who you really beat, if that isn't its short name - Tuber's is "The Brute")
+	winTitle.Text = string.upper((def and (def.VictoryName or def.Short) or "Boss") .. " vanquished")
 	local line = "+" .. Config.format(gained or 0) .. " Power"
 	if firstClear then
 		line = line .. '     <font color="#ffd678">First clear!</font>'
@@ -1208,11 +1356,12 @@ end
 local SoundService = game:GetService("SoundService")
 local MUSIC_VOLUME = (Config.Audio and Config.Audio.BossMusic) or 0.42
 local music, musicFor, musicLevel = nil, nil, 0
+local musicSong = nil -- the song playing (a boss can change it mid-fight: Tuber's round 2)
 local musicVolume = MUSIC_VOLUME -- (a boss can have its own: MusicVolume in its Config)
 
 local diedAt = -math.huge -- when you last died (the fight's music bows out)
 local function stepMusic(dt)
-	local want, def = nil, nil
+	local want, def, wantB = nil, nil, nil
 	-- dead: the music slips away under the YOU DIED screen
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -1224,13 +1373,24 @@ local function stepMusic(dt)
 		local state = model:GetAttribute("State")
 		if not dead and player:GetAttribute("SpireFloor") == model:GetAttribute("Floor")
 			and (state == "Waking" or state == "Fighting" or state == "Transition") then
-			want, def = model, B.def
+			want, def, wantB = model, B.def, B
 		end
 	end
-	if want and musicFor ~= want then
-		-- a new fight: start the track from the top
-		local template = def.Music and findSound(def.Music)
-		if not template then
+	-- which song: its Config's Music, unless its body file says otherwise
+	-- (music(B, now) -> a song's name, or false for silence, and a volume)
+	local song, songVolume = def and def.Music, nil
+	if wantB and wantB.mod.music then
+		local ok, s, v = pcall(wantB.mod.music, wantB, serverNow())
+		if ok and s ~= nil then
+			song, songVolume = s, v
+		end
+	end
+	if want and (musicFor ~= want or musicSong ~= song) then
+		-- a new fight: start the track from the top (a new song in the same
+		-- fight - round 2 - slams straight in at full volume)
+		local sameFight = musicFor == want
+		local template = song and findSound(song)
+		if not template and song ~= false then
 			template = findSound((Config.Bosses[1] and Config.Bosses[1].Music) or "Boss") -- no track of its own yet
 		end
 		if music then
@@ -1268,8 +1428,9 @@ local function stepMusic(dt)
 				music.TimePosition = from
 			end
 		end
-		musicFor, musicLevel = want, 0
-		musicVolume = def.MusicVolume or MUSIC_VOLUME
+		musicFor, musicLevel = want, sameFight and 1 or 0
+		musicSong = song
+		musicVolume = songVolume or def.MusicVolume or MUSIC_VOLUME
 	end
 	-- in over about a second and a half, out over about two and a half
 	local target = want and 1 or 0
@@ -1285,10 +1446,10 @@ local function stepMusic(dt)
 		music.Volume = musicVolume * musicLevel
 		if not want and musicLevel < 0.01 then
 			music:Destroy()
-			music, musicFor = nil, nil
+			music, musicFor, musicSong = nil, nil, nil
 		end
 	elseif not want then
-		musicFor = nil
+		musicFor, musicSong = nil, nil
 	end
 end
 

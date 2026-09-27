@@ -2092,6 +2092,59 @@ RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1
 	local _ = char
 end)
 
+-- A boss's cutscene camera (BossClient's kit.shot: the Brute's power-up).
+-- This script still owns the camera: the boss's script sends the shot it
+-- wants through this event every frame ("Shot", cframe, fov) and this puts
+-- it on your screen (with any shake on top) and lets go of your lock-on.
+-- Your camera comes back exactly as it was a moment after the last shot -
+-- or straight away if the boss's script says "Stop", or you die or leave.
+-- (All inside this do-block: this script is close to Luau's limit on
+-- top-level locals.)
+do
+	local cut = { at = -math.huge }
+	local cutEvent = Instance.new("BindableEvent")
+	cutEvent.Name = "CombatCutscene"
+	cutEvent.Event:Connect(function(kind, cf, fov)
+		if kind == "Shot" and typeof(cf) == "CFrame" then
+			cut.cf, cut.fov, cut.at = cf, tonumber(fov), os.clock()
+		elseif kind == "Stop" then
+			cut.cf = nil
+		end
+	end)
+	RunService:BindToRenderStep("BossShot", Enum.RenderPriority.Camera.Value + 2, function()
+		local cam = workspace.CurrentCamera
+		if not cam then
+			return
+		end
+		if cut.cf and active and charParts() and os.clock() - cut.at < 0.3 then
+			if lockTarget then
+				unlock() -- (the shot takes over from your lock-on)
+			end
+			if not cut.was then
+				cut.was = { type = cam.CameraType, cf = cam.CFrame, fov = (fovOffset ~= 0 and restFov) or cam.FieldOfView }
+				cam.CameraType = Enum.CameraType.Scriptable
+			end
+			-- (a shake shows on a scripted camera only if it's added here)
+			local jolt = Vector3.new()
+			if shake > 0.001 then
+				local flip = (math.random() > 0.5) and 0.35 or -0.35
+				jolt = (cut.cf.RightVector * shakeDir.X + cut.cf.UpVector * shakeDir.Y) * shake * flip
+			end
+			cam.CFrame = cut.cf + jolt
+			cam.FieldOfView = (cut.fov or cut.was.fov) + fovOffset
+		elseif cut.was then
+			-- the shot's over: your camera back, exactly as it was
+			local was = cut.was
+			cut.was, cut.cf = nil, nil
+			cam.CameraType = was.type
+			cam.CFrame = was.cf
+			cam.FieldOfView = was.fov
+			restFov = was.fov
+		end
+	end)
+	cutEvent.Parent = player:WaitForChild("PlayerScripts")
+end
+
 
 ----------------------------------------------------------------------
 -- Switching on and off

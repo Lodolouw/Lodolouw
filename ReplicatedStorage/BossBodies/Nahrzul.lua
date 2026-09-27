@@ -2999,8 +2999,6 @@ do
 			ContentProvider:PreloadAsync(list)
 		end)
 	end
-	task.delay(2, warmSounds)
-
 	-- THE REHEARSAL: the moment you're in the worm's arena - while it's still
 	-- asleep - everything its fight does for the first time is done now, so
 	-- the fight looks right from its very first move instead of only the
@@ -3039,44 +3037,6 @@ do
 		pcall(quakeEmitter, B)
 	end
 
-	local WARM_MATERIALS = {
-		Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Slate, Enum.Material.Neon, Enum.Material.SmoothPlastic,
-		Enum.Material.Glass, Enum.Material.Metal, Enum.Material.Fabric, Enum.Material.Wood, Enum.Material.Limestone,
-	}
-	local warmedFloors = {}
-	local function warmMaterials()
-		local cam = Workspace.CurrentCamera
-		if not cam then
-			return
-		end
-		local bits = {}
-		for k, mat in ipairs(WARM_MATERIALS) do
-			local bit = newPart("Warm", nil, RGB(200, 200, 200), mat, 0.97)
-			bit.Size = V3(0.2, 0.2, 0.2)
-			bits[k] = bit
-		end
-		local t0 = os.clock()
-		local conn
-		conn = RunService.RenderStepped:Connect(function()
-			local cf = cam.CFrame
-			for k, bit in ipairs(bits) do
-				bit.CFrame = cf * CFrame.new((k - 5) * 0.25, -1.2, -5)
-			end
-			if os.clock() - t0 > 0.5 then
-				conn:Disconnect()
-				for _, bit in ipairs(bits) do
-					bit:Destroy()
-				end
-			end
-		end)
-	end
-	player:GetAttributeChangedSignal("SpireFloor"):Connect(function()
-		local f = player:GetAttribute("SpireFloor")
-		if f and not warmedFloors[f] then
-			warmedFloors[f] = true
-			warmMaterials()
-		end
-	end)
 end
 
 -- The worm's body flows from the shape it was in to its next one (see
