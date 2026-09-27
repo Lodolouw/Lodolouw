@@ -2407,16 +2407,23 @@ Config.Weapons = {
 	-- stand still, like a punch); Contact is how far into it the blade lands;
 	-- Range is studs from you to the enemy's edge; Arc is how wide the swing
 	-- cuts in front of you (degrees either side). A swing hits EVERY enemy in
-	-- its arc - that's what a blade has over a fist.
+	-- its arc - that's what a blade has over a fist. Lunge is how far each
+	-- swing dashes you in (studs; it stops short of a locked-on target).
 	Types = {
 		Sword = {
 			Window = 0.9, -- swing again within this to carry on the string
 			Swings = {
-				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75 }, -- a slash, right to left
-				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75 }, -- a backhand, left to right
-				{ Damage = 1.5, Lock = 0.75, Contact = 0.45, Cost = 14, Range = 11, Arc = 30 }, -- an overhead chop (the finisher: narrow)
+				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75, Lunge = 3.5 }, -- a slash, right to left
+				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75, Lunge = 3.5 }, -- a backhand, left to right
+				{ Damage = 1.5, Lock = 0.75, Contact = 0.45, Cost = 14, Range = 11, Arc = 30, Lunge = 6 }, -- an overhead chop (the finisher: narrow)
 			},
 			Sounds = { Swing = "Sword Swing", Hit = "Sword Hit" }, -- Sounds in SoundService (missing: the punch ones)
+			-- the hit feel (anime style): how long a hit freezes your swing
+			-- (hit-stop) and whether a heavy hit flashes the screen with speed lines
+			HitStop = 0.06, -- a normal hit
+			HeavyHitStop = 0.12, -- the finisher, a crit, the last spin
+			ImpactFrames = true,
+			ComboCounter = true, -- "12 HITS" climbing while you keep hitting
 		},
 	},
 

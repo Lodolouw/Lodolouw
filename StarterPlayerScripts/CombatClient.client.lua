@@ -952,7 +952,7 @@ local PUNCH_STEP = 15 -- studs per second (well under walking pace, so it reads 
 local PUNCH_STEP_TIME = CC.PunchLock * CC.PunchContact * 0.66
 local PUNCH_STOP_SHORT = 5 -- never close to within this of what you're hitting
 
-local function punchStep(hrp, swing)
+local function punchStep(hrp, swing, distance)
 	local dir = flatLook(hrp)
 	local room = math.huge
 	if lockTarget then
@@ -971,6 +971,9 @@ local function punchStep(hrp, swing)
 		return -- nowhere to go, or already on top of them
 	end
 	local speed = PUNCH_STEP * (CB.Steps[swing] or CB.Steps[#CB.Steps] or 1)
+	if distance then
+		speed = distance / PUNCH_STEP_TIME -- (a weapon's swing: its own lunge)
+	end
 	speed = math.min(speed, room / PUNCH_STEP_TIME) -- don't overshoot into the enemy
 	push(hrp, dir * speed, PUNCH_STEP_TIME, true)
 end
@@ -1047,6 +1050,8 @@ local function tryPunch()
 		-- the blade's own swing, straight away (and its whoosh): WeaponFX
 		Weapon.fx.swing(player, comboSwing)
 		commitToPunch(now, swingDef.Lock / CC.PunchLock)
+		punchStep(hrp, comboSwing, swingDef.Lunge) -- (a dash into the cut)
+		return
 	else
 		-- the air moving, straight away: waiting for the server would feel laggy
 		playLocalSound(IMPACT_SOUNDS.Whoosh, 0.45 + 0.08 * comboSwing, 1.12 - 0.07 * comboSwing)
@@ -1786,6 +1791,114 @@ do
 			flashMessage("MASTERY " .. level .. "!  " .. say, GOLD, 2.2)
 		end
 	end
+
+	-- THE HIT FEEL (anime style) - a blade landing: your swing freezes for a
+	-- blink (hit-stop), a slash mark rips across what you hit, and a heavy hit
+	-- (the chop, a crit, the Whirlwind's last spin) flashes the screen with
+	-- speed lines. Every hit in a row counts up: "12 HITS".
+	local flash = create("Frame", {
+		Name = "ImpactFlash",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = WHITE,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 30,
+		Parent = combatUI,
+	})
+	local lines = {}
+	for i = 1, 22 do
+		local a = (i / 22) * math.pi * 2 + (i % 2) * 0.08
+		lines[i] = create("Frame", {
+			Name = "SpeedLine",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5 + math.cos(a) * 0.46, 0.5 + math.sin(a) * 0.46),
+			Size = UDim2.fromOffset(260 + (i % 3) * 90, 3 + (i % 2) * 2),
+			Rotation = math.deg(a),
+			BackgroundColor3 = WHITE,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 31,
+			Parent = combatUI,
+		})
+		lines[i]:SetAttribute("RetroSkip", true)
+	end
+	flash:SetAttribute("RetroSkip", true)
+	local impactAt = -10
+	local comboText = create("TextLabel", {
+		Name = "Combo",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -40, 0.42, 0),
+		Size = UDim2.fromOffset(260, 60),
+		BackgroundTransparency = 1,
+		Font = BOLD,
+		Text = "",
+		TextSize = 44,
+		TextColor3 = GOLD,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Visible = false,
+		ZIndex = 20,
+		Parent = combatUI,
+	}, { textStroke(3) })
+	local comboPop = create("UIScale", { Scale = 1, Parent = comboText })
+	local combo, comboAt = 0, -10
+
+	function Weapon.landed(at, weight, crit)
+		local def = Weapon.current()
+		local kind = def and Config.Weapons.Types[def.Type]
+		if not kind then
+			return
+		end
+		local heavy = crit or (tonumber(weight) or 1) >= 3
+		Weapon.fx.hitStop(player, heavy and (kind.HeavyHitStop or 0.12) or (kind.HitStop or 0.06))
+		local _, hrp = charParts()
+		local dir = hrp and typeof(at) == "Vector3" and (at - hrp.Position) or nil
+		Weapon.fx.slashMark(at, dir, heavy, Weapon.fx.isGolden(player))
+		if heavy and kind.ImpactFrames ~= false then
+			impactAt = os.clock()
+		end
+		if kind.ComboCounter ~= false then
+			local now = os.clock()
+			combo = (now - comboAt < 1.6) and combo + 1 or 1
+			comboAt = now
+			if combo >= 2 then
+				comboText.Text = combo .. " HITS"
+				comboText.Visible = true
+				comboPop.Scale = 1.4
+			end
+		end
+	end
+
+	local HINT_FISTS = hints.Text
+	local HINT_WEAPON = "Click: swing     F: ability     Shift: dodge roll     Space: jump     R: flask     Tab: lock on"
+	RunService.RenderStepped:Connect(function(dt)
+		-- the impact frame: a white flash and speed lines, gone in a blink
+		local k = (os.clock() - impactAt) / 0.22
+		if k < 1 then
+			flash.BackgroundTransparency = 0.35 + 0.65 * math.min(1, k * 2.2)
+			for i, l in ipairs(lines) do
+				l.BackgroundTransparency = 0.1 + 0.9 * k
+				local a = math.rad(l.Rotation)
+				local r = 0.46 - 0.05 * k
+				l.Position = UDim2.fromScale(0.5 + math.cos(a) * r, 0.5 + math.sin(a) * r)
+			end
+		elseif flash.BackgroundTransparency < 1 then
+			flash.BackgroundTransparency = 1
+			for _, l in ipairs(lines) do
+				l.BackgroundTransparency = 1
+			end
+		end
+		-- the combo counter: pops on each hit, gone when you stop hitting
+		if comboText.Visible then
+			comboPop.Scale = 1 + (comboPop.Scale - 1) * math.exp(-10 * dt)
+			if os.clock() - comboAt > 1.6 then
+				comboText.Visible = false
+			end
+		end
+		local wantHint = Weapon.current() and HINT_WEAPON or HINT_FISTS
+		if hints.Text ~= wantHint then
+			hints.Text = wantHint
+		end
+	end)
 
 	RunService.RenderStepped:Connect(function(dt)
 		local def = Weapon.current()
@@ -2774,6 +2887,9 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
 		fovPunch(-IMPACT_FOV * (0.55 + 0.22 * weight))
 		if c or weight >= 3 then
 			slowMotion(IMPACT_STOP) -- a beat of slow motion on the big ones
+		end
+		if Weapon.current() then
+			Weapon.landed(a, weight, c) -- a blade: hit-stop, a slash mark, the combo
 		end
 	elseif kind == "Hurt" then
 		if d then

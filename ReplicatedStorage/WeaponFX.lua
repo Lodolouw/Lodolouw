@@ -91,7 +91,7 @@ WeaponFX.POSES = {
 		{ -- an overhead chop: up high, then everything comes down with it
 			wind = { Root = { -15, 0, -15 }, RS = { 0, 5, 190 }, LS = { 20, 0, -160 }, RH = { 0, 0, -15 }, LH = { 0, 0, -20 }, Neck = { -15, 0, 15 }, Grip = { -60, 0 } },
 			cut = { Root = { 35, 0, 0 }, RS = { 0, 5, 85 }, LS = { 20, 0, -80 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 10, 0, 0 }, Grip = { -75, 0 } },
-			follow = { Root = { 40, 0, 0 }, RS = { 0, 5, 55 }, LS = { 10, 0, -45 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 15, 0, 0 }, Grip = { -70, 0 } },
+			follow = { Root = { 30, 0, 0 }, RS = { 0, 5, 78 }, LS = { 10, 0, -45 }, RH = { 0, 0, -40 }, LH = { 0, 0, -50 }, Neck = { 15, 0, 0 }, Grip = { -58, 0 } },
 		},
 	},
 }
@@ -162,8 +162,7 @@ function WeaponFX.spinPose(u, spins)
 	local turn = 360 * spins * (0.75 * u + 0.25 * eased)
 	local pose = mixPose(WeaponFX.SPIN, WeaponFX.SPIN, 0)
 	pose.Root = { pose.Root[1], 0, turn }
-	local weight = math.min(smooth(u / 0.1), 1 - smooth((u - 0.9) / 0.1) * 0) -- (it hands back to the stance)
-	return pose, weight
+	return pose, 1
 end
 
 -- the sword's place in the hand

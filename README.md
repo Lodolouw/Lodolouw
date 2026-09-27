@@ -587,9 +587,14 @@ The game is moving from gear to **weapons** (see the new direction in
   quarter at a time. (Mastery isn't saved yet.)
 - A card bottom-right shows the weapon, its mastery and the Whirlwind's
   cooldown.
-- Everyone sees it: the sword, the swings (a white trail follows the blade)
-  and the spin are drawn on every screen by `ReplicatedStorage/WeaponFX`, in
-  code on the R6 joints. Preview: `Docs/sword_preview.png`.
+- **Anime style:** you stand ready (blade low and back), and every swing puts
+  the whole body in - a quick coil, a snap into the cut with a lunge, a
+  follow-through that flies past and settles. A glowing smear follows the
+  blade; hits freeze for a blink (hit-stop), rip a slash mark across the
+  enemy, and heavy ones flash the screen with speed lines. A combo counter
+  climbs while you keep hitting.
+- Everyone sees it: drawn on every screen by `ReplicatedStorage/WeaponFX`,
+  in code on all the R6 joints. Preview: `Docs/sword_preview.png`.
 - Sounds (optional, in SoundService): **Sword Swing**, **Sword Hit**,
   **Whirlwind**. Until you add them the swings are silent and hits use the
   punch sounds.

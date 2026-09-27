@@ -5,7 +5,8 @@
 # PIECE lines are the sword's blocks (size, colour, where each sits on the
 # handle); POSE lines are the right shoulder's and the root joint's Transform
 # and the sword's grip (all like CFrame:GetComponents()) at a moment. Each
-# moment is drawn from the front and from above, as a blocky R6 character.
+# moment is drawn from the front and the side, as a blocky R6 character with
+# every joint (both arms and legs, the neck, the body lean and turn).
 import sys, math
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -47,8 +48,11 @@ for line in open(src):
         pieces.append((p[1], tuple(float(v) for v in p[2:5]), tuple(int(v) for v in p[5:8]), cf([float(v) for v in p[8:20]])))
     elif p[0] == "POSE":
         parts = [s.strip() for s in line[5:].split("|")]
-        poses.append((parts[0], cf([float(v) for v in parts[1].split()]), cf([float(v) for v in parts[2].split()]),
-                      cf([float(v) for v in parts[3].split()]), parts[4] == "trail"))
+        joints = {}
+        for chunk in parts[1:-1]:
+            bits = chunk.split()
+            joints[bits[0]] = cf([float(v) for v in bits[1:13]])
+        poses.append((parts[0], joints, parts[-1] == "smear"))
 
 SC0 = cf([1, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
 SC1 = cf([-0.5, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
@@ -64,24 +68,34 @@ def box(M, size, color):
     return [([P[i] for i in f], color) for f in faces]
 
 
-def character(armT, rootT, grip):
+LC0 = cf([-1, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+LC1 = cf([0.5, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+RHC0 = cf([1, -1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+RHC1 = cf([0.5, 1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
+LHC0 = cf([-1, -1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+LHC1 = cf([-0.5, 1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+NC0 = cf([0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0])
+NC1 = cf([0, -0.5, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0])
+
+
+def character(j):
     polys = []
-    torso = RC @ rootT @ inv(RC)  # the body turned by the root joint (legs too, in R6)
+    torso = RC @ j["Root"] @ inv(RC)  # the whole body, turned and leaned by the root joint
     polys += box(torso, (2, 2, 1), SHIRT)
-    polys += box(torso @ T(-1.5, 0, 0), (1, 2, 1), SKIN)
-    polys += box(torso @ T(-0.5, -2, 0), (1, 2, 1), PANTS)
-    polys += box(torso @ T(0.5, -2, 0), (1, 2, 1), PANTS)
-    A = torso @ SC0 @ armT @ inv(SC1)
+    polys += box(torso @ LC0 @ j["LS"] @ inv(LC1), (1, 2, 1), SKIN)
+    polys += box(torso @ RHC0 @ j["RH"] @ inv(RHC1), (1, 2, 1), PANTS)
+    polys += box(torso @ LHC0 @ j["LH"] @ inv(LHC1), (1, 2, 1), PANTS)
+    A = torso @ SC0 @ j["RS"] @ inv(SC1)
     polys += box(A, (1, 2, 1), SKIN)
-    H = torso @ T(0, 1.5, 0)
+    H = torso @ NC0 @ j["Neck"] @ inv(NC1)
     polys += box(H, (1.25, 1.2, 1.2), SKIN)
     for ex in (-0.26, 0.26):
         polys += box(H @ T(ex, 0.12, -0.61), (0.14, 0.24, 0.02), INK)
     polys += box(H @ T(0, -0.25, -0.61), (0.4, 0.08, 0.02), INK)
-    handle = A @ grip
+    handle = A @ j["Grip"]
     for name, size, color, off in pieces:
         polys += box(handle @ off, size, color)
-    tipAt = (handle @ np.array([0, 0, -4, 1.0]))[:3]
+    tipAt = (handle @ np.array([0, 0, -5, 1.0]))[:3]
     return polys, tipAt
 
 
@@ -123,23 +137,23 @@ size = 280
 cols = len(poses)
 sheet = Image.new("RGB", (cols * size + (cols + 1) * 10, 2 * size + 150), (24, 20, 37))
 d = ImageDraw.Draw(sheet)
-d.text((sheet.width // 2, 40), "THE IRON SWORD  -  THREE SWINGS AND THE WHIRLWIND", font=ImageFont.truetype(BOLD, 42),
+d.text((sheet.width // 2, 40), "THE IRON SWORD  -  ANIME STYLE: STANCE, THREE SWINGS, WHIRLWIND", font=ImageFont.truetype(BOLD, 42),
        fill=(254, 231, 97), anchor="mm")
 cf_ = ImageFont.truetype(BOLD, 17)
 trail = []
 lastGroup = None
-for i, (label, armT, rootT, grip, trailOn) in enumerate(poses):
+for i, (label, joints, smearOn) in enumerate(poses):
     group = label.split(":")[0].split(" ")[0]
     if group != lastGroup:
         trail = []
         lastGroup = group
-    polys, tipAt = character(armT, rootT, grip)
-    if trailOn or group == "WHIRLWIND":
+    polys, tipAt = character(joints)
+    if smearOn or group == "WHIRLWIND":
         trail.append(tipAt)
     x = 10 + i * (size + 10)
     for k, word in enumerate(label.split(": ")):
         d.text((x + size // 2, 88 + k * 20), word, font=cf_, fill=(255, 255, 255), anchor="mm")
-    sheet.paste(render(polys, -20, 8, size, "front", trail[:]), (x, 128))
-    sheet.paste(render(polys, 180, 80, size, "from above", trail[:]), (x, 128 + size + 6))
+    sheet.paste(render(polys, -25, 8, size, "front", trail[:]), (x, 128))
+    sheet.paste(render(polys, 90, 4, size, "side", trail[:]), (x, 128 + size + 6))
 sheet.save(out)
 print("wrote", out, cols, "moments")
