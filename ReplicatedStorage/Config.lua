@@ -814,7 +814,35 @@ Config.Spire = {
 				Wind = Vector3.new(1, 0, -0.2),
 			},
 		},
-		{ id = 6, boss = "???", area = "???", level = 90, blurb = "Sealed.", color = Color3.fromRGB(230, 110, 90), open = false },
+		{
+			id = 6,
+			boss = "Gridlock, the Final Beat",
+			area = "The Final Beat",
+			level = 90,
+			blurb = "The last level. A grid of neon floating in the void, pulsing to the music - and the whole level is out to get you. It's led by a giant cube with a demon's grin.",
+			color = Color3.fromRGB(255, 0, 68),
+			open = true,
+			-- a purple void, neon everywhere, a few sparks drifting past
+			ambience = {
+				ClockTime = 19.4,
+				Atmosphere = {
+					Density = 0.34,
+					Offset = 0.2,
+					Color = Color3.fromRGB(104, 56, 108),
+					Decay = Color3.fromRGB(38, 43, 68),
+					Glare = 0.2,
+					Haze = 2.2,
+				},
+				Tint = Color3.fromRGB(236, 222, 255),
+				Saturation = 0.2,
+				Contrast = 0.12,
+				Sand = Color3.fromRGB(181, 80, 136), -- (the "dust" here is neon sparks)
+				Grains = 0.12,
+				Clouds = false,
+				Wind = Vector3.new(0.3, 0, 1),
+			},
+		},
+		{ id = 7, boss = "???", area = "???", level = 105, blurb = "Sealed.", color = Color3.fromRGB(99, 199, 77), open = false },
 	},
 }
 
@@ -1723,6 +1751,161 @@ Config.Bosses = {
 			Beep = "Start Beep", -- the start lights: 3... 2... 1...
 			Go = "Start Go", -- GO!
 			Finish = "Checkered Flag", -- FINISH!
+		},
+	},
+
+	[6] = {
+		Name = "Gridlock, the Final Beat",
+		Short = "Gridlock",
+		-- A living LEVEL (a parody of a certain famous final level of a certain
+		-- rhythm game full of cubes and spikes - with his own name and look): a
+		-- giant neon cube with a demon's grin who fights ON THE BEAT, in an
+		-- arena that fights too: tiles light up and spike on the beat. He
+		-- changes FORM through portals - CUBE (hops and slams), SHIP (bombing
+		-- runs, dives), UFO (bursts up, slams down), WAVE (zig-zags leaving a
+		-- wall of light) - and now and then the music builds to THE DROP: the
+		-- whole floor spikes except the jump pads... then he's stunned.
+		-- His brain: ServerScriptService/Bosses/Gridlock.lua. His body:
+		-- ReplicatedStorage/BossBodies/Gridlock.lua. The grid, the beat and
+		-- the tile patterns: ReplicatedStorage/BeatGrid.lua.
+		Color = Color3.fromRGB(255, 0, 68), -- his neon edges
+		DeepColor = Color3.fromRGB(24, 20, 37), -- his body
+		CoreColor = Color3.fromRGB(104, 56, 108), -- the level's purple
+		EyeColor = Color3.fromRGB(254, 231, 97), -- his eyes
+		Accent = Color3.fromRGB(44, 232, 245), -- cyan (the VS splash, his chest's icon)
+
+		HealthPunches = 42,
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 10, -- the cube (studs); his other forms are about as big
+		WakeRange = 40, -- walk this close to him and the level starts
+		WakeTime = 4.4, -- "ATTEMPT 1"... then the beat starts
+		WakeSoundLead = 0.2,
+		Leash = 52, -- his middle stays this far from the grid's middle (the grid is 120 across)
+
+		-- THE BEAT: everything he does lands on it. Bpm = beats a minute: set it
+		-- to your song's tempo, so the level pulses with the music. BeatOffset
+		-- (seconds) nudges the beat to line up with the song's first beat.
+		Bpm = 128,
+		BeatOffset = 0,
+		Breather = { { 1, 2 }, { 0, 1 } }, -- beats between moves, per round
+
+		PhaseAt = 0.5, -- GRAVITY FLIP! at half health
+		BreakTime = 3.4,
+		BreakShove = 55,
+		BreakReach = 28,
+		Phase2Recovery = 0.75,
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.65,
+
+		-- His forms: Height = how high he flies (studs above the tiles); the cube
+		-- hops Hop tiles a beat, HopHeight high. FormEvery = moves between form
+		-- changes (through a portal), DropEvery = moves between drops, FlipEvery
+		-- (round 2) = moves between gravity flips, per round.
+		Forms = {
+			Cube = { Height = 0, Hop = 2, HopHeight = 7 },
+			Ship = { Height = 8, Wobble = 1.5 },
+			Ufo = { Height = 8, Burst = 3 },
+			Wave = { Height = 2.5 },
+		},
+		FormEvery = { 3, 1 },
+		DropEvery = { 6, 5 },
+		FlipEvery = 2,
+		Ceiling = 44, -- the ceiling grid, studs above the tiles (round 2: he hangs from it)
+
+		-- His moves. Every time is in BEATS. Tell = beats of warning. Recovery =
+		-- beats he's open afterwards. Range = { closest, furthest } he uses it
+		-- from. Form = the form he must be in; Gravity = -1: only while he hangs
+		-- from the ceiling (round 2); Phase = 2: round 2 only. Spikes (tile
+		-- attacks) are Height studs tall: jump them, roll through, or be elsewhere.
+		Attacks = {
+			-- HOP SLAM (cube): the square he'll land on lights up; he crouches, hops
+			-- (spinning, like every cube should), SLAMS - and a ring of spikes pops
+			-- up round him on the next beat
+			HopSlam = { Form = "Cube", Gravity = 1, Tell = 2, Radius = 9, Damage = 28, Knockback = 55,
+				Ring = 2, SpikeDamage = 16, SpikeKnockback = 30, Height = 3, Recovery = 2, Range = { 8, 80 }, Weight = 5 },
+			-- SPIKE ROWS (cube): a stomp, then rows of spikes march out from him
+			-- one tile a beat - along the four straight lines (round 2: the
+			-- diagonals too). Stand off the lines, or jump each row on the beat.
+			SpikeRows = { Form = "Cube", Gravity = 1, Tell = 1, Rows = 6, Damage = 18, Knockback = 35, Height = 3,
+				Diagonals = { false, true }, Recovery = 1, Range = { 0, 45 }, Weight = 4 },
+			-- STOMP CHAIN (cube, round 2): three hop slams, one a beat, each square
+			-- lit a beat before he lands (the last one with its ring of spikes)
+			StompChain = { Form = "Cube", Gravity = 1, Phase = 2, Hops = 3, Radius = 8, Damage = 24, Knockback = 50,
+				Ring = 2, SpikeDamage = 16, SpikeKnockback = 30, Height = 3, Recovery = 2, Range = { 8, 80 }, Weight = 4 },
+			-- CEILING DROP (round 2, hanging from the ceiling): the square under him
+			-- follows you, locks, and he drops out of the sky onto it - a slam and
+			-- a ring of spikes. Then he's stuck on the floor a moment: hit him!
+			CeilingDrop = { Gravity = -1, Tell = 3, Lock = 2, Radius = 10, Damage = 32, Knockback = 60,
+				Ring = 2, SpikeDamage = 16, SpikeKnockback = 30, Height = 3, Stuck = 3, Range = { 0, 400 }, Weight = 6 },
+			-- BOMB RUN (ship): a lane of tiles lights up across the grid, through
+			-- you; he flies along it dropping a bomb on a tile every beat
+			BombRun = { Form = "Ship", Tell = 2, Bombs = 8, Damage = 20, Knockback = 40, Height = 4, Recovery = 1,
+				Range = { 0, 80 }, Weight = 5 },
+			-- SWOOP (ship): the red lane follows you, locks, and he dives down it,
+			-- skimming the tiles (running into you), then climbs away
+			Swoop = { Form = "Ship", Tell = 2, Lock = 1, Width = 8, Damage = 28, Knockback = 60, Skim = 1, Recovery = 1,
+				Range = { 15, 90 }, Weight = 4 },
+			-- UFO SLAM (UFO): hovering over you, bursting up on each beat, the
+			-- circle under him follows you... locks, and he slams down. Stuck a moment.
+			UfoSlam = { Form = "Ufo", Tell = 4, Lock = 3, Radius = 9, Damage = 30, Knockback = 60, Stuck = 2,
+				Range = { 0, 70 }, Weight = 5 },
+			-- ORB RAIN (UFO): glowing orbs fall onto lit tiles round you, one a beat
+			OrbRain = { Form = "Ufo", Orbs = 6, Warn = 2, Spread = 3, Damage = 18, Knockback = 35, Height = 4, Recovery = 1,
+				Range = { 0, 70 }, Weight = 4 },
+			-- ZIG-ZAG (wave): a dotted zig-zag shows his path through you; he zooms
+			-- along it, one leg a beat, leaving a wall of light that burns for
+			-- Trail beats (jump it, or roll through)
+			ZigZag = { Form = "Wave", Tell = 2, Legs = 4, Leg = 2, Width = 3, Height = 4, Trail = 4, Damage = 22,
+				Knockback = 45, Recovery = 1, Range = { 10, 90 }, Weight = 5 },
+			-- TILE PATTERN (any form): THE LEVEL ITSELF. A pattern of tiles lights
+			-- up for two beats and spikes on the third - checkers, stripes, rings -
+			-- then the other half. Keep moving onto the dark tiles!
+			TilePattern = { Tell = 2, Cycles = { 2, 3 }, Damage = 20, Knockback = 30, Height = 3, Range = { 0, 400 }, Weight = 3 },
+		},
+
+		-- THE DROP: the music builds for Build beats (he rises to the middle, the
+		-- jump pads glow, DROP IN 3... 2... 1...), then EVERY tile spikes except
+		-- the jump pads - be on a pad (it throws you up), or in the air, or
+		-- rolling. Then he crashes down, STUNNED for Stun beats: free hits!
+		Drop = { Build = 4, Damage = 38, Knockback = 50, Height = 5, Rise = 14, Stun = 6 },
+		-- The jump pads: step on one and it throws you Power studs a second up
+		Pads = { Power = 95, Cooldown = 1.2 },
+
+		Reward = { Power = 4, FirstClear = 10 },
+
+		-- the fight's music: add a Sound named "Gridlock Song" to SoundService
+		-- (until you do, Oozark's plays instead) - and set Bpm above to its tempo
+		Music = "Gridlock Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear",
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see
+		-- BossClient) - except the announcer's words, which just stay quiet.
+		Sounds = {
+			Wake = "Gridlock Wake", -- the level starts
+			Hop = "Cube Hop", -- a hop
+			Slam = "Cube Slam", -- landing hard
+			Spike = "Spikes Up", -- tiles spiking
+			Portal = "Portal Whoosh", -- changing form
+			Ship = "Ship Thrust", -- flying
+			Bomb = "Bomb Drop", -- a bomb bursting on a tile
+			Dive = "Ship Dive", -- the swoop
+			Burst = "UFO Burst", -- a UFO hop
+			Orb = "Orb Land", -- an orb landing
+			Zoom = "Wave Zoom", -- the zig-zag
+			Build = "Drop Build", -- the music building up
+			Drop = "The Drop", -- THE DROP
+			Stun = "Gridlock Stun", -- stunned
+			Flip = "Gravity Flip", -- the gravity flip
+			Pad = "Jump Pad", -- a pad throwing you up
+			Break = "Gridlock Break", -- GRAVITY FLIP! (half health)
+			Death = "Gridlock Shatter", -- he shatters into cubes
+			Attempt = "Attempt Start", -- "ATTEMPT 1"
+			Complete = "Level Complete", -- LEVEL COMPLETE!
 		},
 	},
 }

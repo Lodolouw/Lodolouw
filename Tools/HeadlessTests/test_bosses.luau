@@ -29,6 +29,9 @@
 --   kaze_attacks  every one of his moves forced in turn, in both rounds
 --   car_full      Speedy Revvington (floor 5) fought to the death by one player
 --   car_attacks   every one of his moves forced in turn, before and after TURBO
+--   grid_full     Gridlock (floor 6) fought to the death by one player
+--   grid_attacks  every one of his moves forced in turn (each in its own form),
+--                 before and after the gravity flip
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -44,7 +47,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
-local FLOOR = string.find(SCENARIO, "^worm") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or 1)))
+local FLOOR = string.find(SCENARIO, "^worm") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or 1))))
 
 ----------------------------------------------------------------------
 -- the log: numbers rounded so tiny float noise can't differ, -0 written as 0
@@ -113,6 +116,8 @@ elseif FLOOR == 4 then
 	mount.require(mount.module("ServerScriptService/DojoBuilder.lua")).Build()
 elseif FLOOR == 5 then
 	mount.require(mount.module("ServerScriptService/SpeedwayBuilder.lua")).Build()
+elseif FLOOR == 6 then
+	mount.require(mount.module("ServerScriptService/GridBuilder.lua")).Build()
 end
 M.run(1)
 -- (one boss per run: two would take turns in an order that isn't fixed)
@@ -737,6 +742,15 @@ local function forcedAttacks(tableOf)
 			local token = E.token
 			E.target, E.targetSince = p, T
 			E.quarry = p
+			if FLOOR == 6 then
+				-- (Gridlock: each move in the form it's made for, the right way up -
+				-- or hanging from the ceiling, for the one made for that)
+				local a = def.Attacks[name] or {}
+				E.form = a.Form or "Cube"
+				model:SetAttribute("Form", E.form)
+				E.gravity = a.Gravity or 1
+				model:SetAttribute("Gravity", E.gravity)
+			end
 			log("FORCE", name, "phase", E.phase)
 			M.task.spawn(function()
 				local ok, err = pcall(tableOf[name], E, token)
@@ -749,7 +763,7 @@ local function forcedAttacks(tableOf)
 	end
 end
 
-if SCENARIO == "slime_full" or SCENARIO == "worm_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" then
+if SCENARIO == "slime_full" or SCENARIO == "worm_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -807,7 +821,7 @@ elseif SCENARIO == "slime_die" or SCENARIO == "worm_reset" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" then
+elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)

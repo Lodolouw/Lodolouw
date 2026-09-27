@@ -112,6 +112,14 @@ Items.Sets = {
 		name = "Turbocharged",
 		bonuses = { { need = 2, stats = { Crit = 13 } }, { need = 4, stats = { Damage = 36, Defense = 15 } } },
 	},
+	Beatbound = {
+		name = "Beatbound",
+		bonuses = { { need = 2, stats = { Defense = 10 } }, { need = 4, stats = { Damage = 27, Health = 130 } } },
+	},
+	DemonGeometry = {
+		name = "Demon Geometry",
+		bonuses = { { need = 2, stats = { Crit = 14 } }, { need = 4, stats = { Damage = 40, Defense = 16 } } },
+	},
 }
 
 ----------------------------------------------------------------------
@@ -293,6 +301,38 @@ local list = {
 	{ id = "KaVroomEngine", name = "The Ka-VROOM Engine", slot = "Chest", rarity = "Secret", level = 93, floor = 5,
 		stats = { Damage = { 92, 126 }, Crit = { 19, 23 }, Health = { 160, 230 }, Power = { 24, 34 } }, tint = { RGB(228, 59, 68), RGB(254, 231, 97) },
 		lore = "* vr#om. vr0om. it st*ll w@nts t0 r#ce." },
+
+	-- GRIDLOCK, the Final Beat (floor 6)
+	{ id = "NeonSneakers", name = "Neon Sneakers", slot = "Boots", rarity = "Common", level = 90, floor = 6, set = "Beatbound",
+		stats = { Health = { 38, 56 } }, tint = { RGB(44, 232, 245), RGB(24, 20, 37) },
+		lore = "* They light up with every step. Mostly on the beat." },
+	{ id = "PixelVisor", name = "Pixel Visor", slot = "Helmet", rarity = "Uncommon", level = 92, floor = 6, set = "Beatbound",
+		stats = { Health = { 54, 74 }, Defense = { 7, 9 } }, tint = { RGB(181, 80, 136), RGB(44, 232, 245) },
+		lore = "* Shows you the world in 32 colours. Which is plenty." },
+	{ id = "GridJacket", name = "Grid Jacket", slot = "Chest", rarity = "Rare", level = 95, floor = 6, set = "Beatbound",
+		stats = { Health = { 94, 130 }, Defense = { 10, 13 } }, tint = { RGB(104, 56, 108), RGB(44, 232, 245) },
+		lore = "* Every square is a different shade of purple. Collect them all." },
+	{ id = "SpikeKnuckles", name = "Spike Knuckles", slot = "Weapon", rarity = "Rare", level = 95, floor = 6, set = "Beatbound",
+		stats = { Damage = { 30, 46 }, Crit = { 5, 8 } }, tint = { RGB(24, 20, 37), RGB(255, 0, 68) },
+		lore = "* The one thing in the level that's on YOUR side." },
+	{ id = "PortalGauntlets", name = "Portal Gauntlets", slot = "Weapon", rarity = "Epic", level = 98, floor = 6, set = "DemonGeometry",
+		stats = { Damage = { 48, 66 }, Crit = { 8, 12 } }, tint = { RGB(247, 118, 34), RGB(44, 232, 245) },
+		lore = "* Punch in one side. Knock them out the other." },
+	{ id = "GravityBoots", name = "Gravity Boots", slot = "Boots", rarity = "Epic", level = 98, floor = 6, set = "DemonGeometry",
+		stats = { Health = { 70, 98 }, Defense = { 11, 15 } }, tint = { RGB(0, 153, 219), RGB(254, 231, 97) },
+		lore = "* Which way is down? These know. Usually." },
+	{ id = "DemonCubeHelm", name = "Demon Cube Helm", slot = "Helmet", rarity = "Legendary", level = 101, floor = 6, set = "DemonGeometry",
+		stats = { Damage = { 24, 32 }, Health = { 92, 126 }, Crit = { 9, 12 } }, tint = { RGB(24, 20, 37), RGB(255, 0, 68) },
+		lore = "* Grin. Keep grinning. Never stop grinning." },
+	{ id = "DropArmor", name = "Drop Armor", slot = "Chest", rarity = "Legendary", level = 101, floor = 6, set = "DemonGeometry",
+		stats = { Health = { 130, 176 }, Defense = { 13, 17 }, Power = { 16, 22 } }, tint = { RGB(255, 0, 68), RGB(104, 56, 108) },
+		lore = "* Built for the moment the bass hits." },
+	{ id = "FinalBeat", name = "The Final Beat", slot = "Weapon", rarity = "Mythic", level = 104, floor = 6,
+		stats = { Damage = { 96, 130 }, Crit = { 17, 22 }, Defense = { 9, 12 } }, tint = { RGB(255, 0, 68), RGB(254, 231, 97) },
+		lore = "* One hundred percent. Level complete." },
+	{ id = "SecretCoin", name = "The Secret Coin", slot = "Helmet", rarity = "Secret", level = 108, floor = 6,
+		stats = { Damage = { 104, 140 }, Crit = { 20, 25 }, Health = { 180, 250 }, Power = { 26, 36 } }, tint = { RGB(254, 174, 52), RGB(255, 255, 255) },
+		lore = "* y0u f#und it. n0b*dy f#nds it. h0w d#d y0u f*nd it." },
 }
 
 Items.ById = {}

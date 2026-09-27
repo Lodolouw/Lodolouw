@@ -308,6 +308,64 @@ up, skids round and charges again. Recommended level 75.
 - Previews: `Docs/revvington_preview.png` (the fight) and
   `Docs/revvington_poses.png` (him, pose by pose).
 
+## The Spire's sixth floor: Gridlock, the Final Beat (The Final Beat)
+
+A living LEVEL (a parody of a certain famous final level of a certain rhythm
+game full of cubes and spikes - with his own name and look): a giant black
+cube with glowing red edges, slanted yellow eyes, a jagged grin and little
+horns, asleep in the middle of a neon grid floating in a purple void, with
+giant spikes, spinning saws and his own grinning face in the sky all round.
+Walk up and the level starts: **ATTEMPT 1** (then 2, then 3...), written
+across your screen and in the level itself. Everything happens **on the beat**
+of the music. Recommended level 90.
+
+- **The level fights too:** tiles light up red, flare on every beat (white on
+  the last one: get off!) and then spike - rows marching out from him, rings,
+  checkers, stripes, halves. Jump the spikes, roll through them, or stand on a
+  dark tile. The lines between the tiles pulse with the music, and eight
+  yellow **jump pads** throw you high into the air.
+- **His forms** (he changes through a portal every few moves: green, pink,
+  orange or cyan): **CUBE** (HOP SLAM: his square lights up, he flips through
+  the air onto it and a ring of spikes pops up round it; SPIKE ROWS: a stomp,
+  and rows of spikes march out a tile a beat), **SHIP** (BOMB RUN: a lane of
+  tiles through you, a bomb a beat down it; SWOOP: a red lane locks on and he
+  dives down it), **UFO** (UFO SLAM: the circle under him follows you, locks,
+  the tractor beam comes down... SLAM - then he's stuck: "STUCK! HIT HIM!";
+  ORB RAIN) and **WAVE** (ZIG-ZAG: he zooms along a dotted zig-zag, leaving a
+  wall of light behind him). Any form: TILE PATTERN (the level itself).
+- **THE DROP:** every few moves the music builds - DROP IN 3... 2... 1... -
+  he rises to the middle, the jump pads glow green, and EVERY tile spikes
+  (the runway too) except the pads. Stand on a pad (it throws you up), jump,
+  or roll. Then he crashes down: **STUNNED! HIT HIM!**
+- **GRAVITY FLIP!** (half health): the whole world turns upside down and he
+  falls UP to the ceiling grid. From there he drops onto a square that follows
+  you (a red line shows where - and then he's stuck head-first in the tiles),
+  flips back down now and then, changes form faster, and adds STOMP CHAIN
+  (three hop slams, one a beat). Round 2 starts with THE DROP.
+- **The end: LEVEL COMPLETE!** He glitches, X-eyed, and shatters into little
+  neon cubes while the grid lights up green, and your attempts are on the
+  screen. The level's **%** bar under his boss bar shows how far through him
+  you are. Everyone gets Gridlock's Chest (Beatbound and Demon Geometry gear).
+- **The beat:** `Bpm` in `Config.Bosses[6]` is the level's tempo (128). Set it
+  to your song's tempo and everything (his hops, the tiles, the drop) lands on
+  your music; `BeatOffset` (seconds) lines it up with the song's first beat.
+  The song starts from wherever the level is (it began when he woke), so the
+  music and the tiles stay in step even if you arrive mid-fight.
+- **Where things are:** every number in `Config.Bosses[6]`; the floor in
+  `Config.Spire.Floors[6]`; his brain and moves in `ServerScriptService/Bosses/Gridlock.lua`;
+  the grid, the beat, the tile patterns and his motion (the same sums on the
+  server and every screen) in `ReplicatedStorage/BeatGrid.lua`; his body, the
+  level's tiles, the % bar and the screens in `ReplicatedStorage/BossBodies/Gridlock.lua`;
+  the level in `ServerScriptService/GridBuilder.lua`; his portrait and lines in `BossIntro`.
+- **Music:** a Sound named `Gridlock Song` in SoundService (Oozark's plays
+  until you add it). **Sounds** (all optional; missing ones borrow Oozark's):
+  Gridlock Wake, Cube Hop, Cube Slam, Spikes Up, Portal Whoosh, Ship Thrust,
+  Bomb Drop, Ship Dive, UFO Burst, Orb Land, Wave Zoom, Drop Build, The Drop,
+  Gridlock Stun, Gravity Flip, Jump Pad, Gridlock Break, Gridlock Shatter -
+  and (silent until you add them) Attempt Start and Level Complete.
+- Previews: `Docs/gridlock_preview.png` (the fight) and
+  `Docs/gridlock_poses.png` (him, pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without
@@ -362,7 +420,8 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
 - **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
   Oozark, Duneworn and Devourer's for Nahrzul, Spade Knight's and Relicbound
   for Burrowmore, Windwalker and Ki Master's for Kaze, Speedster and
-  Turbocharged for Revvington) with bonuses for 2 and 4 pieces.
+  Turbocharged for Revvington, Beatbound and Demon Geometry for Gridlock)
+  with bonuses for 2 and 4 pieces.
 - **Level:** each item needs a level: the highest you've ever reached, so
   prestiging never locks you out. Gear and chests stay through prestige.
 - **The bag:** your loadout and total stats on the left; your items, tabs,

@@ -213,6 +213,26 @@ local PORTRAITS = {
 		ink = { R = RGB(228, 59, 68), D = RGB(162, 38, 51), K = RGB(24, 20, 37), W = RGB(255, 255, 255), B = RGB(0, 153, 219),
 			Y = RGB(254, 231, 97), S = RGB(254, 174, 52) },
 	},
+	-- a black cube with glowing red edges and little horns: slanted yellow
+	-- eyes and a jagged grin
+	Gridlock = {
+		rows = {
+			"HH..........HH",
+			".HH........HH.",
+			"RRRRRRRRRRRRRR",
+			"RKKKKKKKKKKKKR",
+			"RKYYKKKKKKYYKR",
+			"RKKYYYKKYYYKKR",
+			"RKKKKKKKKKKKKR",
+			"RKMWMWMWMWMWKR",
+			"RKWMWMWMWMWMKR",
+			"RKKKKKKKKKKKKR",
+			"RKKKKKKKKKKKKR",
+			"RRRRRRRRRRRRRR",
+		},
+		ink = { H = RGB(255, 0, 68), R = RGB(255, 0, 68), K = RGB(24, 20, 37), Y = RGB(254, 231, 97), W = RGB(255, 255, 255),
+			M = RGB(162, 38, 51) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -490,6 +510,25 @@ local LINES = {
 		phase2 = { "* TURBO TIME! Now we're really racing!", "* You scratched my paint! NOBODY scratches the paint!" },
 		win = { "* And the crowd goes WILD! Another win for number 57!", "* Checkered flag! Better luck next lap, slowpoke!" },
 		lose = { "* You... beat... ME? Somebody check the replay...", "* Sputter... okay, okay... you're pretty fast... for a walker..." },
+	},
+	-- a living LEVEL: smug, loves his beat, and loves watching you retry
+	Gridlock = {
+		wake = {
+			"* Another attempt? Let's see how far you get this time.",
+			"* Welcome to THE FINAL BEAT. Every tile here moves to the music. So should you.",
+		},
+		idle = {
+			"* Feel that? That's the bass. And the bass does NOT like you.",
+			"* Jump. Jump. JUMP. ...Too late.",
+			"* Stay off the red tiles. Oh wait - they're ALL going to be red.",
+			"* I'm a cube. A ship. A UFO. A wave. You're just... you.",
+			"* Keep to the beat! Nobody beats the beat.",
+			"* 99%? Oh, I LOVE it when they get to 99%.",
+		},
+		hit = { "* CRASH! Back to 0%!", "* Off the beat! Try again!", "* Spikes: 1. You: 0." },
+		phase2 = { "* GRAVITY FLIP! Up is down now. Keep up!", "* Halfway? Then let's turn this level UPSIDE DOWN!" },
+		win = { "* ATTEMPT FAILED. Press any key to try again!", "* So close! ...Nah. Not even close." },
+		lose = { "* LEVEL... COMPLETE...? But I'm the LAST level...", "* 100%... Nobody gets 100%... GG." },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {

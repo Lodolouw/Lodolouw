@@ -365,7 +365,11 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- (Speedy Revvington's: a rev sounds like a wail, a skid like a wave, the
 	-- backfire like an eruption... The crowd, the start lights, the flag and
 	-- his engine's hum have nothing to borrow.)
-	Rev = "Wail", Skid = "Wave", Whip = "Wave", Honk = "Wail", Backfire = "Erupt", Bump = "Slam", Donut = "Wave" }
+	Rev = "Wail", Skid = "Wave", Whip = "Wave", Honk = "Wail", Backfire = "Erupt", Bump = "Slam", Donut = "Wave",
+	-- (Gridlock's: a hop sounds like a lunge, spikes like an eruption, a
+	-- portal like a wave... ATTEMPT and LEVEL COMPLETE have nothing to borrow.)
+	Hop = "Lunge", Spike = "Erupt", Portal = "Wave", Ship = "Wave", Bomb = "Splat", Burst = "Lunge", Orb = "Splat",
+	Zoom = "Wave", Build = "Wail", Drop = "Slam", Stun = "Splat", Flip = "Wave", Pad = "Lunge" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]
@@ -1240,7 +1244,29 @@ local function stepMusic(dt)
 			music.Volume = 0
 			music.SoundGroup = soundGroup("Music")
 			music.Parent = SoundService
+			-- a boss that fights to the beat (Bpm in its Config: Gridlock): the
+			-- song starts where the level is (it began when the boss woke), so
+			-- the music and the tiles line up - even if you arrive mid-fight
+			local from = nil
+			if def.Bpm then
+				local woke = nil
+				if want:GetAttribute("Action") == "Wake" then
+					woke = want:GetAttribute("ActionStart")
+				elseif type(want:GetAttribute("BeatStart")) == "number" then
+					woke = want:GetAttribute("BeatStart") - (def.BeatOffset or 0)
+				end
+				local length = tonumber(music.TimeLength) or 0
+				if type(woke) == "number" and length > 0 then
+					from = math.max(serverNow() - woke, 0) % length
+				end
+			end
+			if from then
+				music.TimePosition = from
+			end
 			music:Play()
+			if from then
+				music.TimePosition = from
+			end
 		end
 		musicFor, musicLevel = want, 0
 		musicVolume = def.MusicVolume or MUSIC_VOLUME

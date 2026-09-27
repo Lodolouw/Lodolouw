@@ -97,6 +97,10 @@ start("DojoBuilder", DojoBuilder and DojoBuilder.Build)
 local SpeedwayBuilder = load("SpeedwayBuilder", 3)
 start("SpeedwayBuilder", SpeedwayBuilder and SpeedwayBuilder.Build)
 
+-- The Spire's sixth floor, The Final Beat (Gridlock's level): the same way
+local GridBuilder = load("GridBuilder", 3)
+start("GridBuilder", GridBuilder and GridBuilder.Build)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

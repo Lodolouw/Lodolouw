@@ -50,8 +50,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   second (client). `./golden.sh record` saves the scenarios in `golden/`
   (gzipped: 16 for Oozark and Nahrzul, 4 for Knight Burrowmore -
   `knight_full` and `knight_attacks`, server and client - 4 for Kaze,
-  `kaze_full` and `kaze_attacks`, and 4 for Revvington, `car_full` and
-  `car_attacks`); `./golden.sh check`
+  `kaze_full` and `kaze_attacks`, 4 for Revvington, `car_full` and
+  `car_attacks`, and 4 for Gridlock, `grid_full` and `grid_attacks`);
+  `./golden.sh check`
   replays them and fails on any difference - the proof that a change to the
   boss code (like splitting it into one file per boss) changed nothing
   players can see. `./golden.sh check client_` runs only the client ones, and
@@ -119,6 +120,30 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `python3 render_snaps.py s.txt ../../Docs/revvington_preview.png --title "SPEEDY REVVINGTON|FLOOR 5  -  PISTON SPEEDWAY|RECOMMENDED LV 75"`
   (the fight: nine moments and a title card); `-a poses` with
   `--cols 3 --title ""` the pose sheet (`Docs/revvington_poses.png`).
+- `test_gridlock.luau` - GRIDLOCK (floor 6) on the real Final Beat
+  (GridBuilder) with the real BossService, his own brain and the shared
+  sums in ReplicatedStorage/BeatGrid (and, with `client` at the end, the
+  real BossClient drawing him, the level's tiles and his screens). Its
+  pretend players circle him, roll and jump now and then, and the jump pads
+  really throw them up (a pretend CombatService.Launch). `-a full` fights him
+  to the death (both rounds, every form, the drop, the gravity flip, the
+  reward), `attacks` forces every move (each in its own form) in both rounds
+  on a player standing still (each must land) and on one rolling (each must
+  be dodged), `reset` leaves mid-fight and comes back (a cube again, the
+  right way up), `duo` is two players, `timing` checks the dodge windows (a
+  roll as a slam or a spike lands dodges it, one far too early doesn't),
+  `drop` checks THE DROP (a player on a jump pad is safe, one on a plain
+  tile is hit, one rolling on the beat is safe, one hiding on the runway is
+  hit) and `pads` checks a pad throws you up (and not again straight away).
+  It also checks every hit from the level lands on the beat, his moves join
+  up (no jumps), he never leaves the grid, and (client) that every part of
+  him, every warning and every one of his screen words (ATTEMPT 1, DROP!,
+  GRAVITY FLIP!, LEVEL COMPLETE!...) gets drawn.
+- `gridlock_snaps.luau` + `render_snaps.py` - Gridlock's preview pictures (a
+  purple void): `luau gridlock_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/gridlock_preview.png --cols 3 --title "GRIDLOCK, THE FINAL BEAT|FLOOR 6  -  THE FINAL BEAT|RECOMMENDED LV 90"`
+  (the fight: eleven moments and a title card); `-a poses` with
+  `--cols 3 --title ""` the pose sheet (`Docs/gridlock_poses.png`).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

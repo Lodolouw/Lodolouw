@@ -43,9 +43,16 @@ for seed in 1 2 3; do run test_revvington.luau -a full $seed; done
 for sc in attacks reset duo timing crash; do run test_revvington.luau -a $sc 1; done
 run test_revvington.luau -a full 2 client
 run test_revvington.luau -a attacks 1 client
+# Gridlock (floor 6): whole fights, every move in its form, resets, two
+# players, the dodge windows, THE DROP and the jump pads, and his body and
+# the level's tiles on screen
+for seed in 1 2 3; do run test_gridlock.luau -a full $seed; done
+for sc in attacks reset duo timing drop pads; do run test_gridlock.luau -a $sc 1; done
+run test_gridlock.luau -a full 2 client
+run test_gridlock.luau -a attacks 1 client
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (28 boss traces)"
+	echo "pass  golden.sh check (32 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20
