@@ -18,12 +18,16 @@
 	     swipe LOCK on a     to the nearest enemy left; it lets go if you get
 	     phone)              too far away or lose sight of it for a moment
 	  * Phones get ROLL, FLASK and LOCK buttons next to the jump button.
-	  * A green stamina bar sits above your health: punching and rolling use
-	    it, and it refills when you stop.
+	  * Your stamina is the pixel LIGHTNING BOLT on the right of the heart:
+	    punching, rolling and jumping use it, and it refills when you stop.
+	    Your flasks are the pixel POTION on the heart's left. Both are drawn
+	    by ReplicatedStorage/Vitals (with the heart); this script tells it
+	    your numbers (Vitals.set) and what just happened (Vitals.fire: a
+	    drink, a roll's invincibility, running out).
 	  * Damage numbers, a red flash when you're hit, and YOU DIED.
 	  * In the intro (fighting Oozlet: the "Intro" attribute) it's all on too,
 	    but with nothing on screen except the phone's ROLL button - stamina
-	    is free there (the server agrees), so there's no bar to watch.
+	    is free there (the server agrees), so there's no bolt to watch.
 
 	The server (CombatService) has the final say on stamina, invincibility,
 	damage and healing - this script just makes it feel instant.
@@ -38,6 +42,7 @@ local Lighting = game:GetService("Lighting")
 local ContentProvider = game:GetService("ContentProvider")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Vitals = require(ReplicatedStorage:WaitForChild("Vitals")) -- draws the bolt (stamina) and the potion (flasks)
 local CombatRemotes = ReplicatedStorage:WaitForChild("CombatRemotes")
 local CombatAction = CombatRemotes:WaitForChild("CombatAction")
 local CombatEvent = CombatRemotes:WaitForChild("CombatEvent")
@@ -126,45 +131,8 @@ end
 
 local combatUI = create("Frame", { Name = "CombatUI", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, Parent = root })
 
--- stamina bar, right above the health bar
-local stamBack = create("Frame", {
-	Name = "Stamina",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -132),
-	Size = UDim2.fromOffset(320, 14),
-	BackgroundColor3 = RGB(16, 30, 18),
-	BackgroundTransparency = 0.1,
-	Parent = combatUI,
-}, { corner(6), stroke(2.5, RGB(0, 0, 0)) })
-local stamFill = create("Frame", {
-	Size = UDim2.fromScale(1, 1),
-	BackgroundColor3 = RGB(90, 220, 100),
-	BorderSizePixel = 0,
-	Parent = stamBack,
-}, {
-	corner(6),
-	create("UIGradient", { Color = ColorSequence.new(RGB(140, 245, 130), RGB(50, 170, 70)), Rotation = 90 }),
-})
-
--- flask counter, left of the health bar
-local flaskBox = create("Frame", {
-	Name = "Flasks",
-	AnchorPoint = Vector2.new(1, 1),
-	Position = UDim2.new(0.5, -212, 1, -90),
-	Size = UDim2.fromOffset(78, 42),
-	BackgroundColor3 = RGB(20, 26, 22),
-	BackgroundTransparency = 0.15,
-	Parent = combatUI,
-}, { corner(10), stroke(2.5, RGB(90, 200, 110), 0.3) })
-local flaskText = create("TextLabel", {
-	Size = UDim2.fromScale(1, 1),
-	BackgroundTransparency = 1,
-	Font = BOLD,
-	Text = "🧪 3",
-	TextSize = 24,
-	TextColor3 = RGB(230, 255, 230),
-	Parent = flaskBox,
-}, { textStroke(2) })
+-- (Your stamina and flasks aren't drawn here: they're the lightning bolt and
+-- the potion either side of the heart - see ReplicatedStorage/Vitals.)
 
 -- control hints (not on phones)
 local hints = create("TextLabel", {
@@ -393,26 +361,25 @@ local function spendLocal(amount)
 	lastSpend = os.clock()
 end
 
--- Redraws the stamina bar and flask count - but only when they have actually
--- moved. This runs every frame, and setting the same values again each time is
--- work the engine does for nothing.
+-- Tells the bolt and the potion (ReplicatedStorage/Vitals) your stamina and
+-- flasks - but only when they have actually moved. This runs every frame, and
+-- sending the same values again each time is work for nothing.
 local shownStamina, shownFlasks = nil, nil
 local function renderStats()
-	local fraction = math.clamp(stamina / maxStamina, 0, 1)
+	local fraction = math.clamp(stamina / math.max(maxStamina, 1), 0, 1)
 	if shownStamina == nil or math.abs(fraction - shownStamina) > 0.002 then
 		shownStamina = fraction
-		stamFill.Size = UDim2.fromScale(fraction, 1)
+		Vitals.set({ stamina = fraction })
 	end
 	if shownFlasks ~= flasks then
 		shownFlasks = flasks
-		flaskText.Text = "🧪 " .. flasks
-		flaskText.TextTransparency = flasks > 0 and 0 or 0.5
+		Vitals.set({ flasks = flasks })
 	end
 end
 
+-- too little stamina for what you tried: the bolt flickers like a dying light
 local function noStamina()
-	stamBack.BackgroundColor3 = RGB(120, 20, 20)
-	tween(stamBack, 0.4, { BackgroundColor3 = RGB(16, 30, 18) })
+	Vitals.fire("empty")
 end
 
 ----------------------------------------------------------------------
@@ -679,8 +646,7 @@ end
 -- The server is the one that decides you are untouchable: it sets the window
 -- when it accepts your roll and refuses any damage that lands inside it. All
 -- this does is show you the window, so you can learn the timing - you glow pale
--- blue and the stamina bar goes the same colour until it runs out.
-local STAMINA_GREEN = RGB(90, 220, 100)
+-- blue and the lightning bolt (your stamina) goes the same colour until it runs out.
 local iframeHighlight, iframeUntil = nil, 0
 
 local function showIframes(seconds)
@@ -709,13 +675,11 @@ local function showIframes(seconds)
 	iframeHighlight = hl
 	-- fade out as the window closes, so the end of it is visible
 	tween(hl, seconds, { FillTransparency = 1, OutlineTransparency = 1 }, Enum.EasingStyle.Linear)
-	stamFill.BackgroundColor3 = RGB(130, 200, 255)
-	tween(stamFill, seconds, { BackgroundColor3 = STAMINA_GREEN }, Enum.EasingStyle.Linear)
+	Vitals.fire("iframes", seconds)
 	task.delay(seconds, function()
 		if iframeHighlight == hl then
 			hl:Destroy()
 			iframeHighlight = nil
-			stamFill.BackgroundColor3 = STAMINA_GREEN
 		end
 	end)
 end
@@ -1458,6 +1422,7 @@ local function tryHeal()
 	end
 	if flasks <= 0 then
 		flashMessage("No flasks left", RGB(255, 120, 120))
+		Vitals.fire("noFlask") -- (the empty potion shakes)
 		return
 	end
 	CombatAction:FireServer("Heal")
@@ -2162,12 +2127,11 @@ local function setActive(on)
 	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 	-- (the intro shows nothing but the ROLL button: the big words teach the rest)
 	local intro = player:GetAttribute("Intro") ~= nil
-	stamBack.Visible = not intro
-	flaskBox.Visible = not intro
+	Vitals.set({ shown = on and not intro }) -- the bolt and the potion beside the heart
 	rollBtn.Visible = on and touch
 	flaskBtn.Visible = on and touch and not intro
 	hints.Visible = on and not touch and not intro
-	-- nudge the main HUD's pop-up messages up so they don't sit on the stamina bar
+	-- nudge the main HUD's pop-up messages up so they don't sit on the control hints
 	local toasts = hudToasts()
 	if toasts then
 		toastHome = toastHome or toasts.Position
@@ -2452,11 +2416,13 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
 			noStamina()
 		elseif a == "Heal" then
 			flashMessage("Can't drink right now", RGB(255, 150, 150))
+			Vitals.fire("noFlask")
 		end
 	elseif kind == "Drinking" then
 		drinkingUntil = os.clock() + a
 		drinkEffect(a)
 		playPlayerSound("Drink")
+		Vitals.fire("drink", a) -- the potion tips over and pours into the heart
 	elseif kind == "Healed" then
 		flashMessage("+ Healed", RGB(140, 255, 150), 0.7)
 	elseif kind == "Iframes" then

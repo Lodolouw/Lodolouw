@@ -222,6 +222,28 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `luau petalina_snaps.luau > s.txt` then
   `python3 render_snaps.py s.txt ../../Docs/petalina_preview.png --cols 3 --title "PETALINA|FLOOR 8  -  THE GLASSHOUSE GARDEN|RECOMMENDED LV 120"`;
   `-a poses` with `--cols 3 --title ""` the pose sheet (`Docs/petalina_poses.png`).
+- `test_vitals.luau` - THE HEART, THE POTION AND THE BOLT
+  (ReplicatedStorage/Vitals): the three pixel pictures at the bottom of the
+  screen. It starts the real module the way Hud does, with a pretend
+  Humanoid and what CombatClient would tell it, and checks what's drawn
+  square by square: the pictures are closed (no liquid can leak) and fill by
+  how many squares are full (`shapes`); the heart alone in the lobby, filling
+  with your health, spilling, shattering and mending (`lobby`); in a fight
+  the potion and the bolt pop in beside it, standing on the same line, with
+  the HP and Power words stepping aside so nothing overlaps (`arrive`); the
+  bolt following your stamina closely (`stamina`), crackling when full
+  (`sparks`), flickering with a red outline when you're out (`empty`) and
+  glowing blue while a roll makes you untouchable (`iframes`); a drink - the
+  cork pops, the bottle tips, its drops land in the heart, the heart fills
+  without pouring its own drops too, the count ticks down and the next one's
+  full (`drink`); the last flask, then grey glass, x0 and a shake (`last`);
+  the count reaching 0 just before "Drinking" arrives (`race`); leaving
+  mid-pour (`leave`); and two minutes of random everything (`fuzz`).
+- `render_vitals.py` - its preview pictures: `luau test_vitals.luau -a snaps
+  > v.txt` then `python3 render_vitals.py v.txt ../../Docs/vitals_preview.png`
+  (every state); `-a pour` and `--cols 4 --tight --title "DRINKING A FLASK"`
+  (`Docs/vitals_drink.png`: a drink, moment by moment). It lays out the real
+  frames (anchor points, UIScale, rotation) the way Roblox does.
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

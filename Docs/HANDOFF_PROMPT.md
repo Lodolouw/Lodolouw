@@ -229,6 +229,7 @@ At mastery 100 a weapon can be **awakened** (a new look + a stronger special). S
 - `Config.lua`: ALL the tuning numbers (levels, colosseum, bosses, combat, spire, retro look).
 - `CarPath.lua`: how Speedy Revvington drives - the segment sums (lines, arcs, skid turns) shared by his server file and his body, so every screen draws him exactly where he is.
 - `BeatGrid.lua`: Gridlock's level - the grid, the beat, the tile patterns and his motion (hops, flights, falls, zig-zags), shared by his server file and his body, so every screen lights the same tiles on the same beat and draws him exactly where he is.
+- `Vitals.lua`: THE HEART (your health), and in a fight THE POTION (flasks, on its left) and THE LIGHTNING BOLT (stamina, on its right): three pixel-art pictures filled with liquid, drawn at the bottom of the screen. Hud starts it (`Vitals.start`) and CombatClient feeds it (`Vitals.set` for numbers, `Vitals.fire` for moments: "drink", "iframes", "empty", "noFlask"). See "The heart, the potion and the bolt" below.
 - `Items.lua`: gear rarities, stats, sets and loot tables. "Floor" 0 is Oozlet's Chest (the intro's starter gear, level 1: Squishy Gloves, Bouncy Boots, Oozlet Cap, Goo Vest).
 - `BossBodies/` (a Folder): one ModuleScript per boss's BODY - everything that boss draws (its body and how it moves, the shape of each action, their sounds, bursts and warnings, its arena reacting): `Oozark.lua`, `Tuber.lua`, `Burrowmore.lua`, `Kaze.lua`, `Revvington.lua`, `Gridlock.lua`, and `_Template.lua` (not a boss: the starting point for a new one). BossClient finds each by the boss's `Short` name and hands it the drawing kit (`Body.init(kit)`).
 
@@ -252,8 +253,8 @@ At mastery 100 a weapon can be **awakened** (a new look + a stronger special). S
 - `IntroService.lua`: the intro's fight, all decided on the server (see "The intro: Oozlet").
 
 **StarterPlayerScripts/** (LocalScripts)
-- `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying.
-  It has about **192 top-level locals** — same rule: use `do ... end` blocks.
+- `CombatClient.client.lua`: combat input, lock-on, roll, camera, damage numbers and health-bar tidying. (Stamina and flasks are drawn by `ReplicatedStorage/Vitals`, not here.)
+  It has about **193 top-level locals** — same rule: use `do ... end` blocks.
 - `LobbyActivities.client.lua`: the Colosseum HUD (quest tab, wave box, banners, confetti), the coins/XP shower, the King's boss bar and music, the CLEARED screen, the difficulty pop-up at the Colosseum's door and the "Leave?" check at its exit, the walk-up pop-ups (no "press E"), the pipe shrink animation, the quest menu, and the "never sunk in the floor" guard.
 - `BossClient.client.lua`: what every boss's visuals share: the drawing kit (8-bit parts, rings, bursts, camera kicks, sounds, warnings, one-off moments on the server's clock), tracking each boss and its pose every frame, the arena weather (acid rain, the dunes' sandstorm), the boss bar, the victory banner, and the music. Each boss's body is in `ReplicatedStorage/BossBodies/` (below).
 - `IntroClient.client.lua`: everything the intro shows (see "The intro: Oozlet").
@@ -302,6 +303,23 @@ Assume players can run any LocalScript code, fire any RemoteEvent with any argum
   - Each dummy has an `Owner` = UserId attribute.
   - CombatService only lets the owner hit it (`mine()`).
   - Other players' screens hide it (`hideIfNotMine` in LobbyActivities hides any child of `workspace.ColosseumEnemies` whose Owner isn't you).
+
+## The heart, the potion and the bolt ✅
+
+Everything about your own health, stamina and flasks sits in the middle of the bottom of the screen, as three pixel pictures in the heart's style (dark outline, glass, white shine, liquid that fills by how many squares are full, not by height). All drawn by `ReplicatedStorage/Vitals.lua`; previews `Docs/vitals_preview.png` (every state) and `Docs/vitals_drink.png` (a drink, moment by moment).
+
+```
+   HP 55/100   x3 [potion]   [ HEART ]   [ BOLT ]   Power: 12.4K
+```
+
+- **The heart** (always on; `Config.Heart`): moved from Hud into Vitals unchanged - slosh, spill, beat red when low, shatter at 0, mend on respawn.
+- **The bolt** (in a fight; right of the heart): yellow electric liquid = your stamina. It follows the stamina closely (`Config.Vitals.Follow`) because you read it mid-fight. Full: sparks crackle off it (`Sparks`), with a burst when it fills up. Too little for what you tried (CombatClient's `noStamina`): the liquid blinks like a dying light and the outline goes red. A roll's invincibility window: it glows pale blue, fading back to yellow as the window ends. The surface crawls white and yellow and a white zap climbs through it now and then.
+- **The potion** (in a fight; left of the heart): the heart's own red, with the count beside it (x3). On "Drinking" from the server the cork pops off, the bottle tips `Tip` degrees towards the heart and pours an arc of drops that land in the heart (the heart skips its own pour-in while this happens); it drains over about as long as the heart takes to fill, stands back up, and the next one is full and corked. The count ticks down with the server's number. None left: grey outline, see-through glass, no cork, dim x0; pressing R then makes it shake and the count flash red. A fresh Colosseum run (flasks refilled) bounces it back full.
+- **The words move aside:** in the lobby HP and Power sit right beside the heart; in a fight they slide out past the potion and the bolt.
+- In the intro CombatClient keeps the bolt and potion hidden (stamina is free there). Nothing about combat changed - it's only how the numbers are shown.
+- Tests: `test_vitals.luau` (see Testing tips).
+
+**The new GUI (being discussed, NOT decided):** the old screen was made for the old game (armour gear, selling loot, three shops). Proposed: a top bar (level + XP bar, Coins, Arcade Tokens with a [+] for the token shop), four big buttons on the left (ROLL, BAG, SHOP, QUESTS, with red dots when something's waiting), the heart cluster above, the equipped weapon and its mastery bar beside the heart, an event-boss timer only in its last 15 minutes, and phone-first sizes. Open questions I haven't answered yet: cut stat points (level alone makes you stronger)? Does ROLL open the spin anywhere or walk you to the machines? Keep the chunky outlined look or go fully pixel-arcade?
 
 ## The Colosseum (what's built so far)
 
@@ -416,7 +434,7 @@ A brand-new player's first minute, from the growth plan we worked out (step 1: "
   - It **pops** into pixels, its crown bounces away, and a **chest** drops out of the sky and bursts open: +1 OOZLET'S CHEST.
 - **The reveal:** the mist rolls back over `Reveal.Time` seconds and the lobby builds itself round you - the island's ground unrolls under the mist and every piece pops in (in 8-bit steps) as it passes. Then the screen blinks, and we're past the castle walls looking up at **the Spire building itself out of nothing**, bottom to top: BOOM, **OOZARK AWAITS...** A blink back, and everything returns: your HUD (LEVEL UP!), the music, the other players. (The shot looks at the middle of the tower, under the blue flame in its crown - `FlameOrb` - and RetroWorld's beacon shoots up out of that flame, with its runes turning just above the crown's spikes: it used to start at a spike on the crown's rim, off to one side, and looked odd. `Docs/spire_beacon.png`.)
 - **Rewards:** Oozlet's Chest and 100 coins when it pops; enough Power to be at least level 3 once the lobby is back; full health; a toast saying to open the chest in your bag.
-- **Who gets it:** brand-new players only (`IntroDone` in their save; an old save with any Power counts as done). **In Studio every Play shows it while `Config.Intro.AlwaysInStudio = true`** - set it false to test the normal start. The dev console (see "The dev console" below) has a **"DEV: Replay Intro"** button that plays it again from the start (it pays its rewards again).
+- **Who gets it:** brand-new players only (`IntroDone` in their save; an old save with any Power counts as done). **In Studio it never starts by itself** (I asked for this: it played on every Studio Play, which got annoying - Studio often can't save, so every Play looked like a brand-new player) - `Config.Intro.InStudio = true` brings that back. The dev console (see "The dev console" below) has a **"DEV: Replay Intro"** button that plays it again from the start (it pays its rewards again).
 - **Never stuck:** if the fight breaks on the server, or anything breaks on the player's screen, everything is put back and they play on normally (no reward; they get the intro next time).
 - **How it plugs in:** the player attribute `Intro` = `"Void"` (dark, Oozlet happy) / `"Fight"` / `"Reveal"` / nil (over), and `IntroChecked` once the server has decided. CombatService and CombatClient fight while it's "Void" or "Fight"; BossClient keeps the lobby music off, LobbyActivities keeps its pop-ups shut, RetroWorld keeps its flavour text quiet while `Intro` is set. The screen tells the server only "IntroLook" (I can see: the bump waits for it), "IntroDone" (the reveal's finished) and "IntroFailed" (Actions).
 - **Sounds** (by name in SoundService, each with a built-in Roblox fallback): Blip "UI Blip", Boom "Boss Slam", Hop "Dummy Land", Squish "Boss Splat", Wake "Boss Wake", Slam "Boss Slam", Crack "Boss Break", Pop "Boss Death"/"Dummy Poof", Chest "Reward Pop", Win "Quest Complete", Awaits "Boss Wake". Add a Sound named **"Oozlet Song"** for its own music.
@@ -561,6 +579,7 @@ Rough levels 45 / 60 / 75 / 90 / 105 / 120 (+15 a floor). Build one boss at a ti
 - **Slime boss:** flicker fixed, and its spawn fixed.
 - **Worm boss:** reworked to be more fun and less laggy - and then **replaced** by Tuber (floor 2): worms just didn't work and lagged. Its sounds and "SANDWORMSONG" live on in Tuber's fight.
 - **Heart health display:** a liquid heart that spills.
+- **Stamina and flasks redone to match the heart:** the green stamina bar and the "🧪 3" box were replaced by a pixel **lightning bolt** (stamina, right of the heart) and a pixel **potion** (flasks, left of the heart). I picked this over pixel wings (too complex) and a plain tube under the heart. See "The heart, the potion and the bolt".
 
 ### Security audit
 I asked for a full client-exploit audit: remote abuse, economy duplication, teleport and speed hacks, combat spoofing, inventory manipulation and privilege escalation. The fixes are in (see "Security rules" above). Keep everything server-authoritative.
@@ -612,6 +631,7 @@ A small red **DEV** button bottom-right (Hud) opens the dev console: +Loot, +Coi
 - **Gridlock:** `test_gridlock.luau -a <full|attacks|reset|duo|timing|drop|pads> [seed] [client]` fights him on the real Final Beat (see its header). `luau gridlock_snaps.luau > s.txt` then `python3 render_snaps.py s.txt out.png --cols 3 --title "..."` draws the fight sheet; `-a poses` and `--cols 3 --title ""` the pose sheet.
 - **Kongo:** `test_kongo.luau -a <full|attacks|reset|duo|timing|tired> [seed] [client]` fights him in the real Jungle Village (see its header). `luau kongo_snaps.luau > s.txt` then `python3 render_snaps.py s.txt out.png --cols 3 --title "..."` draws the fight sheet; `-a poses` and `--cols 3 --title ""` the pose sheet.
 - **Petalina:** `test_petalina.luau -a <full|attacks|reset|duo|timing|droop|traps|thorns> [seed] [client]` fights her in the real greenhouse. `luau petalina_snaps.luau > s.txt` then `python3 render_snaps.py s.txt out.png --cols 3 --title "..."` draws the fight sheet; `-a poses` and `--cols 3 --title ""` the pose sheet.
+- **The heart, the potion and the bolt:** `test_vitals.luau` starts the real `Vitals` the way Hud does, with a pretend Humanoid and pretend CombatClient messages, and checks every picture square by square (`-a shapes|lobby|arrive|stamina|sparks|empty|iframes|drink|last|race|leave|fuzz`). `luau test_vitals.luau -a snaps > v.txt` then `python3 render_vitals.py v.txt out.png` draws every state; `-a pour` with `--cols 4 --tight --title "DRINKING A FLASK"` the drink, moment by moment.
 - **The intro:** `test_intro.luau` plays it end to end with the real server and screen scripts (`-a skip`: a returning player; `-a fail`: a broken screen). `luau intro_snaps.luau > snaps.txt` then `python3 render_intro.py snaps.txt out.png` draws the four-picture preview from the real lobby.
 - **Where every arena is** (2600 studs apart, so none overlap): the lobby round `(0, 0, 0)`; Oozark's hollow `(0, 0, 2600)`; the Colosseum `(-2600, 0, 0)`; the Sunken Dunes `(2600, 0, 2600)`; the Glimmer Dig `(-2600, 0, 2600)`; the Rooftop Dojo `(2600, 0, 0)`; Piston Speedway `(0, 0, -2600)`; The Final Beat `(2600, 0, -2600)`; Kongo's Jungle Village `(-2600, 0, -2600)`; the Glasshouse Garden `(5200, 0, 0)`. A new arena takes a free spot (the next ring out: `(-5200, 0, 0)`, `(0, 0, 5200)` and so on) and goes in `test_arenas_apart.luau`'s list: it builds every arena together and fails if any two overlap.
 - `mount.luau` loads the game's scripts into the mock the way Rojo lays them out (folders and all), so scripts that require each other by their place in the game work in tests.

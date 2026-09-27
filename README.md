@@ -128,9 +128,11 @@ rises out of nothing: OOZARK AWAITS...
 - `ServerScriptService/IntroService.lua` runs the fight (all on the server);
   `StarterPlayerScripts/IntroClient.client.lua` draws everything, on that
   player's screen only. Every number and word is in `Config.Intro`.
-- Only brand-new players get it (it's saved). **In Studio every Play shows it
-  while `Config.Intro.AlwaysInStudio = true`** - set it false to test the
-  normal start. `Config.Intro.On = false` switches it off for everyone.
+- Only brand-new players get it (it's saved). **In Studio it never starts by
+  itself** (Studio often can't save, so every Play would look brand new) -
+  watch it with the dev console's "DEV: Replay Intro", or set
+  `Config.Intro.InStudio = true` to get it on every Play.
+  `Config.Intro.On = false` switches it off for everyone.
 - Preview: `Docs/intro_preview.png`.
 
 ## The Spire's second floor: Tuber, then THE BRUTE (the Sunken Dunes)
@@ -539,11 +541,27 @@ light shooting up out of the blue flame in the Spire's crown (`Docs/spire_beacon
 screen: nothing is moved, nothing solid changes, and the people and the
 boss arenas are left alone.
 
-Your health is **the heart** (in `Hud`, tuned in `Config.Heart`): red liquid
-inside a pixel heart, measured by how much of it is full. A hit makes it
-slosh, spill drops over the rim and shake; a flask pours it back in; low on
-health it beats and blinks red; at zero it cracks in two and shatters, and
-forms again when you respawn.
+Your health is **the heart** (drawn by `ReplicatedStorage/Vitals` for `Hud`,
+tuned in `Config.Heart`): red liquid inside a pixel heart, measured by how
+much of it is full. A hit makes it slosh, spill drops over the rim and
+shake; low on health it beats and blinks red; at zero it cracks in two and
+shatters, and forms again when you respawn.
+
+In a fight two more pixel pictures stand either side of it (`Config.Vitals`,
+previews `Docs/vitals_preview.png` and `Docs/vitals_drink.png`):
+
+- **The potion** on its left is your healing flasks, with how many are left
+  beside it (x3). Drink one (R) and the cork pops off, the bottle tips over
+  and pours into the heart in an arc of red drops, and the heart fills as
+  they land. None left: empty grey glass, x0, and it shakes if you try.
+- **The lightning bolt** on its right is your stamina: yellow electric liquid
+  that drains as you punch, roll and jump and refills from the bottom when
+  you stop. Full, it crackles with sparks; try something with too little
+  left and it flickers like a dying light with a red outline; while a roll
+  makes you untouchable it glows pale blue.
+
+`CombatClient` tells `Vitals` your stamina and flasks (`Vitals.set`) and what
+just happened (`Vitals.fire`: a drink, a roll's invincibility, running out).
 
 ## Gear: boss chests, items and your bag
 

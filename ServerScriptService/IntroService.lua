@@ -7,8 +7,9 @@
 	script decides everything that matters, so nobody can fake it.)
 
 	  * WHO GETS IT: only brand-new players - beating it is saved
-	    (PlayerService: IntroDone) - or everyone in Studio while
-	    Config.Intro.AlwaysInStudio is on, so you can see it.
+	    (PlayerService: IntroDone). In Studio it never starts by itself
+	    unless Config.Intro.InStudio is on (the dev console's "Replay Intro"
+	    plays it any time).
 	  * They wake up by the fountain (Config.Intro.SpawnAt) with the "Intro"
 	    attribute set, which says where they are in it:
 	        "Void"   - it's dark; Oozlet is happily hopping round the fountain
@@ -735,8 +736,10 @@ local function wantsIntro(d)
 	if I.On == false or not d then
 		return false
 	end
-	if RunService:IsStudio() and I.AlwaysInStudio then
-		return true
+	if RunService:IsStudio() then
+		-- (Studio: only if Config.Intro.InStudio is on - the dev console's
+		-- "Replay Intro" plays it any time)
+		return I.InStudio == true
 	end
 	return not d.IntroDone
 end

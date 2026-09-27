@@ -993,7 +993,8 @@ Config.Retro = {
 	},
 }
 
--- THE HEART: your health on screen, as red liquid inside a pixel heart (Hud).
+-- THE HEART: your health on screen, as red liquid inside a pixel heart
+-- (ReplicatedStorage/Vitals draws it, for Hud).
 Config.Heart = {
 	Pixel = 5, -- screen pixels per pixel of the heart (bigger = a bigger heart)
 	Drain = 1.2, -- how fast it drains after a hit (a whole heart a second, x this)
@@ -1002,6 +1003,16 @@ Config.Heart = {
 	Drops = 36, -- drops spilled per whole heart lost (a hit spills at least 3...)
 	MaxDrops = 12, -- ...and at most this many
 	Low = 0.25, -- below this much health it beats and its outline blinks red
+}
+
+-- In a fight, either side of the heart (ReplicatedStorage/Vitals): your
+-- flasks as a pixel POTION on its left and your stamina as a pixel LIGHTNING
+-- BOLT on its right. They use the heart's pixel size (Heart.Pixel above).
+Config.Vitals = {
+	Gap = 10, -- screen pixels between the heart and the potion / the bolt
+	Follow = 16, -- how quickly the bolt's level keeps up with your stamina (higher = snappier)
+	Sparks = true, -- little sparks crackling off the bolt while it's full
+	Tip = 60, -- how far (degrees) the potion tips over to pour into the heart
 }
 
 -- the lobby's music: Sounds in SoundService, played in turn (or one name, looped)
@@ -1042,10 +1053,12 @@ Config.Audio = {
 -- the fight; IntroClient draws all of it, on that player's screen only.
 Config.Intro = {
 	On = true, -- false: nobody gets the intro (new players start in the lobby)
-	-- In Studio, every Play starts with the intro so you can see it (even with
-	-- your own save). Set false and Studio works like the real game: only a
-	-- brand-new player gets it.
-	AlwaysInStudio = true,
+	-- In Roblox Studio: false = it never starts by itself (watch it any time
+	-- with the dev console's "DEV: Replay Intro"); true = every Play starts
+	-- with it. (Studio often can't save - no API access - so otherwise every
+	-- Play would look like a brand-new player's.) In the real game only
+	-- brand-new players get it, whatever this says.
+	InStudio = false,
 
 	-- Where it happens
 	Center = Vector3.new(0, 0, 0), -- the fountain: the middle of the lit circle
