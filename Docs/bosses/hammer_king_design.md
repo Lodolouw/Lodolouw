@@ -35,6 +35,36 @@ angry. The last boss before Nightmare / Eclipse / Doom.
 - The sky turns from sunset (round 1) to storm (round 2) to a red eclipse
   (round 3).
 
+## What makes him different (his signature moves)
+Things no other boss in the Spire does - built around him being a fat,
+greedy goliath king:
+
+- **Climb the Gavel:** when a Royal Smash gets stuck, the hammer's handle
+  becomes a ramp - run up it onto his shoulder and hit his **crown** (a
+  weak spot: triple damage) until he shakes you off.
+- **The Royal Feast (heals!):** servants wheel in a giant roast; he sits and
+  starts eating, healing fast. Break the platter (hit it) or hit his belly
+  enough to make him **choke** - he's stunned and loses the heal. Ignore it
+  and he gets health back.
+- **Tax Collector:** "TAXES ARE DUE!" - gold coins rain down; each one he
+  vacuums up makes his next attack stronger (glowing gold). Grab coins first (they give YOU a little
+  power-up instead). A race against the king.
+- **"GUILTY!" (the courtroom):** he bangs the Gavel like a judge, one player
+  is sentenced (a spotlight + a red target). In 4 seconds a giant gavel
+  falls on them - they must run to a **safe podium**; other players can
+  stand with them to **share the damage**.
+- **The Royal Roll:** he tucks into a ball (he's round enough) and bowls
+  across the arena like a boulder, bouncing off the walls and smashing
+  pillars - jump over him or get out of the lane.
+- **Burp Wave:** after a Big Gulp he lets out a huge burp: a green cone of
+  wind that pushes everyone back and knocks the minions flying (they hit
+  you if you're behind them).
+- **Toe Stomp weak spot:** his giant toes glow after a stomp - hit a toe and
+  he hops around on one foot for 2 s (funny, and a free opening).
+- **Throne Toss (round 3):** he rips his throne out of the floor and hurls it
+  - it smashes where it lands and stays there as cover (the only cover
+  left once the pillars are gone).
+
 ## Round 1 - "The King is Amused" (100% -> 65%)
 He fights with the Gavel, slow and heavy. Each attack has a clear warning.
 1. **Royal Smash:** raises the Gavel (big wind-up), slams where you stand -
@@ -81,3 +111,8 @@ Same attacks, no new ones:
   Big Gulp pulls harder, pillars start broken.
 - **Doom:** everything at once - triple rings, the Earthquake twice, round 3
   starts at 50%; dark purple and gold look.
+
+## Where the signature moves go
+- Round 1: Climb the Gavel, Toe Stomp weak spot, Tax Collector.
+- Round 2: The Royal Feast, Burp Wave (after Big Gulp), The Royal Roll.
+- Round 3: "GUILTY!", Throne Toss, plus everything above faster.
