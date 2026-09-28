@@ -9,3 +9,6 @@ rojo.exe
 
 # Python leaves these next to scripts it imports
 __pycache__/
+
+# Claude Code helpers work in temporary copies of the repo here
+.claude/worktrees/
