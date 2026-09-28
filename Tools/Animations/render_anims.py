@@ -229,6 +229,102 @@ def pose_sheet(out, which):
     print('saved', out)
 
 
+# ----------------------------------------------------------------------
+# THE TRAIL: a glowing ribbon the blade leaves through a cut - where it was
+# over the last tenth of a second, bright at the blade and fading behind,
+# white-hot along the tip, with a few brighter streaks through it; slower
+# blade, fainter trail. (A preview of the look the game's effect will have.)
+# ----------------------------------------------------------------------
+TRAIL_WINDOW, TRAIL_STEPS = 0.1, 18
+BLADE_BASE, BLADE_TIP = -0.9, -4.2  # studs along the Handle's -Z
+
+
+def blade_at(anim, t):
+    world = r6.solve(anims.dir_transforms(anim.at(t)))
+    h = world['Handle']
+    return (h @ np.array([0, 0, BLADE_BASE, 1.0]))[:3], (h @ np.array([0, 0, BLADE_TIP, 1.0]))[:3]
+
+
+def trail_material():
+    m = bpy.data.materials.new('Trail')
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
+    nt = m.node_tree
+    for n in list(nt.nodes):
+        if n.type != 'OUTPUT_MATERIAL':
+            nt.nodes.remove(n)
+    out = [n for n in nt.nodes if n.type == 'OUTPUT_MATERIAL'][0]
+    vc = nt.nodes.new('ShaderNodeVertexColor')
+    vc.layer_name = 'Col'
+    em = nt.nodes.new('ShaderNodeEmission')
+    em.inputs['Strength'].default_value = 3.4
+    tp = nt.nodes.new('ShaderNodeBsdfTransparent')
+    mix = nt.nodes.new('ShaderNodeMixShader')
+    nt.links.new(vc.outputs['Color'], em.inputs['Color'])
+    nt.links.new(vc.outputs['Alpha'], mix.inputs['Fac'])
+    nt.links.new(tp.outputs['BSDF'], mix.inputs[1])
+    nt.links.new(em.outputs['Emission'], mix.inputs[2])
+    nt.links.new(mix.outputs['Shader'], out.inputs['Surface'])
+    return m
+
+
+class Trail:
+    def __init__(self):
+        self.mat = trail_material()
+        self.ob = None
+
+    def show(self, anim, t, windows):
+        if self.ob:
+            bpy.data.objects.remove(self.ob, do_unlink=True)
+            self.ob = None
+        on = [(a, b) for a, b in windows if a - 0.02 <= t <= b + TRAIL_WINDOW]
+        if not on:
+            return
+        a0, a1 = on[0]
+        samples = []
+        for k in range(TRAIL_STEPS + 1):
+            ts = t - TRAIL_WINDOW * k / TRAIL_STEPS
+            if ts < a0 - 0.02 or ts > a1:
+                continue
+            base, tip = blade_at(anim, ts)
+            gate = min(1.0, (ts - (a0 - 0.02)) / 0.03) * min(1.0, (a1 - ts) / 0.05 + 0.0)
+            samples.append((base, tip, (1 - k / TRAIL_STEPS) ** 1.4 * max(0.0, min(1.0, gate))))
+        if len(samples) < 2:
+            return
+        bm = bmesh.new()
+        col = bm.loops.layers.color.new('Col')
+        dt = TRAIL_WINDOW / TRAIL_STEPS
+
+        def bl(p):
+            return (p[0], -p[2], p[1])  # (Roblox -> Blender)
+
+        cyan = np.array([0.12, 0.62, 1.0])
+        white = np.array([1.0, 1.0, 1.0])
+        for f0, f1, bright in ((0.22, 1.0, 1.0), (0.56, 0.62, 1.4), (0.74, 0.80, 1.6), (0.88, 1.0, 2.0)):
+            for i in range(len(samples) - 1):
+                (b0, t0, al0), (b1, t1, al1) = samples[i], samples[i + 1]
+                speed = np.linalg.norm(t0 - t1) / dt
+                s = min(1.0, max(0.0, (speed - 25) / 120))
+                quad = [b0 + (t0 - b0) * f0, b0 + (t0 - b0) * f1, b1 + (t1 - b1) * f1, b1 + (t1 - b1) * f0]
+                fs = (f0, f1, f1, f0)
+                als = (al0, al0, al1, al1)
+                try:
+                    face = bm.faces.new([bm.verts.new(bl(q)) for q in quad])
+                except ValueError:
+                    continue
+                for loop, f, al in zip(face.loops, fs, als):
+                    c = cyan + (white - cyan) * max(0.0, (f - 0.55) / 0.45)
+                    loop[col] = (c[0], c[1], c[2], min(1.0, al * s * bright))
+        me = bpy.data.meshes.new('Trail')
+        bm.to_mesh(me)
+        bm.free()
+        self.ob = bpy.data.objects.new('Trail', me)
+        bpy.context.scene.collection.objects.link(self.ob)
+        self.ob.data.materials.append(self.mat)
+
+
 def video(out, size=480, samples=8, fps=60):
     """the whole combo from behind you (the way you see yourself) and from the
     front, side by side: at real speed, then at a quarter speed"""
@@ -239,15 +335,18 @@ def video(out, size=480, samples=8, fps=60):
     rig = Rig()
     cam = camera(scene, (0, 0, 0), (0, 0, 1))
     from mathutils import Vector
-    views = (((4.5, -11.0, 5.6), (0.3, 1.5, 2.6)),  # behind, over the right shoulder (your camera)
+    views = (((4.0, -12.0, 9.0), (0.3, 2.0, 2.4)),  # behind and above, over the right shoulder (your camera)
              ((6.5, 10.0, 4.4), (0, 0, 2.4)))  # in front, from the right
     tmp = os.path.join(os.path.dirname(os.path.abspath(out)), '_frame.png')
     anim = combo.COMBO
+    trail = Trail()
+    windows = anim.trails()
     n = int(round(anim.length * fps))
     frames = []
     for i in range(n + 1):
         t = i / fps
         rig.pose(anims.dir_transforms(anim.at(t)))
+        trail.show(anim, t, windows)
         pair = []
         for eye, look in views:
             cam.location = eye

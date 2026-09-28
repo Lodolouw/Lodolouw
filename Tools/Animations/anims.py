@@ -30,6 +30,10 @@ def ease(kind, u):
         return 0.25 * u
     if kind == 'snap':  # almost all of it in the first third (a whip)
         return 1 - (1 - u) ** 6
+    if kind == 'in2':  # speeding up the whole way (a strike: fastest as it lands)
+        return u * u
+    if kind == 'out2':  # fast, then slowing (a follow-through carrying on)
+        return 1 - (1 - u) * (1 - u)
     raise ValueError(kind)
 
 
@@ -226,6 +230,10 @@ def dir_transforms(p):
     tr['Right Hip'] = rel('Right Hip', hrp_rot, frame_from(right, (0.35, 0, -1)))
     # the head, looking where it's told (never twisted past what a neck can do)
     look = unit(p.get('look', (0, -0.1, -1)))
+    chest = -torso_rot[:, 2]  # (where the chest faces)
+    turn = math.degrees(math.acos(float(np.clip(chest @ look, -1, 1))))
+    if turn > 55:  # (a neck turns only so far: past that the head goes with the chest)
+        look = slerp(chest, look, 55 / turn)
     down = np.array([0.0, -1.0, 0.0])
     head_rot = frame_from(unit(down - (down @ look) * look), look)
     tr['Neck'] = rel('Neck', torso_rot, head_rot)
@@ -241,7 +249,7 @@ def mix_dir(a, b, t):
         va, vb = a.get(k, b.get(k)), b.get(k, a.get(k))
         if k in ('root',):
             out[k] = tuple(x + (y - x) * t for x, y in zip(va, vb))
-        elif k in ('hop',):
+        elif isinstance(va, (int, float)):
             out[k] = va + (vb - va) * t
         elif k == 'arm':
             out[k] = tuple(slerp(x, y, t) for x, y in zip(va, vb))

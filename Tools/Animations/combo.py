@@ -1,9 +1,25 @@
-"""The sword's animations, posed by direction (see anims.py: POSING BY
-DIRECTION). Space: the character's own - x right, y up, -z forward (the
-enemy). Every swing lands on the game's hit moment: 0.2 s after the press
-for swings 1 and 2, 0.3375 s for the finisher (Config.Weapons.Types.Sword).
+"""The sword's animations (see anims.py: POSING BY DIRECTION). Space: the
+character's own - x right, y up, -z forward (the enemy).
+
+THE FEEL (a tennis swing, not a poke): each swing travels round a SWING
+PLANE, the way a real slash or a forehand does. The blade's angle round
+that plane (phi: 0 at the hit, pointing at the enemy; minus before, plus
+after) follows a timing curve -
+  * a quick coil back, held for a heartbeat (you can see it coming),
+  * the whip through, speeding up the whole way - fastest as it lands on
+    the game's hit moment (0.2 s after the press, 0.3375 s for the
+    finisher: Config.Weapons.Types.Sword),
+  * and a long follow-through that carries on round the body past the
+    enemy, slowing, the chest turned right round, the back foot pivoting.
+The chest turns with the blade but a little AHEAD of it, and the arm leads
+the blade into the hit and lets it fly past after (the wrist's whip) - the
+body starts it, the blade finishes it. The cutting edge always faces the
+way the blade travels.
 """
-from anims import DirAnim
+import math
+import numpy as np
+
+from anims import DirAnim, mix_dir, ease, slerp, unit
 
 # THE STANCE: side-on, left foot forward, the blade low and pointing at the
 # enemy's chest, the free hand relaxed - ready, not stiff
@@ -18,97 +34,156 @@ IDLE = {
 IDLE_IN = dict(IDLE, root=(7.5, 0, -17), arm=((0.25, -0.88, -0.38), (0.05, -0.15, -1.0), (0.0, 1.0, 0.0)),
                larm=(-0.36, -0.9, -0.12))
 
-# SWING 1: a diagonal forehand slash - wound right back, then the whole body
-# whips round through it and the blade wraps on round behind the left hip
-W1 = {
-    'root': (-2, 0, -70),
-    'legs': ((-0.30, -1, -0.45), (0.30, -1, 0.25)),
-    'arm': ((0.65, 0.55, 0.55), (0.30, 0.35, 0.90), (-0.5, 0.0, -0.85)),
-    'larm': (-0.10, -0.20, -1.0),
-    'look': (0, -0.05, -1),
-    'hop': 0.0,
-}
-H1 = dict(W1, root=(-3, 0, -74), arm=((0.65, 0.58, 0.60), (0.30, 0.35, 0.90), (-0.5, 0.0, -0.85)))
-C1 = {
-    'root': (14, 0, 10),
-    'legs': ((-0.25, -1, -0.62), (0.30, -1, 0.55)),
-    'arm': ((0.10, -0.05, -1.0), (-0.70, -0.25, -0.67), (-0.6, -0.75, 0.2)),
-    'larm': (-0.45, -0.70, 0.55),
-    'look': (0, -0.15, -1),
-    'hop': 0.0,
-}
-F1 = {  # wrapped right round: chest turned far left, blade behind the left hip
-    'root': (18, 0, 80),
-    'legs': ((-0.25, -1, -0.62), (0.40, -1, 0.50)),
-    'arm': ((-0.80, -0.50, 0.35), (0.10, -0.40, 0.90), (0.3, -0.3, 0.9)),
-    'larm': (-0.20, -0.85, 0.50),
-    'look': (0.15, -0.2, -1),
-    'hop': 0.0,
-}
-E1 = dict(F1, root=(15, 0, 72), arm=((-0.75, -0.50, 0.30), (0.10, -0.35, 0.92), (0.3, -0.3, 0.9)))
 
-# SWING 2: a rising backhand - from behind the left hip, up through the front,
-# finishing over the right shoulder like a tennis backhand
-W2 = dict(F1, root=(16, 0, 86), arm=((-0.82, -0.50, 0.40), (0.05, -0.45, 0.90), (0.6, 0.6, -0.5)))
-C2 = {
-    'root': (4, 0, -10),
-    'legs': ((-0.25, -1, -0.55), (0.30, -1, 0.50)),
-    'arm': ((-0.05, 0.10, -1.0), (0.65, 0.40, -0.65), (0.55, 0.8, 0.2)),
-    'larm': (-0.40, -0.75, 0.45),
-    'look': (0, -0.1, -1),
-    'hop': 0.0,
-}
-F2 = {
-    'root': (-4, 0, -85),
-    'legs': ((-0.35, -1, -0.50), (0.30, -1, 0.50)),
-    'arm': ((0.80, 0.50, 0.35), (0.05, 0.55, 0.83), (0.2, 0.6, 0.8)),
-    'larm': (-0.30, -0.55, -0.80),
-    'look': (-0.15, -0.05, -1),
-    'hop': 0.0,
-}
-E2 = dict(F2, root=(-2, 0, -78), arm=((0.75, 0.48, 0.35), (0.05, 0.50, 0.85), (0.2, 0.6, 0.8)))
+class PlaneSwing:
+    """A swing round a plane: u = where the blade points at the hit, w = the
+    way it's travelling then. keys: [(time, phi, easing into it, the rest)]
+    where the rest is lean, tilt (the body), delta (how far the arm is ahead
+    of the blade round the plane), legs, larm, look, hop - all keyed on the
+    same moments. Before the first key it swings in from `start`; after the
+    last it settles back into the stance by `settle`."""
 
-# SWING 3, THE FINISHER: a leap with the blade hanging down the back, then
-# everything comes over and down, the blade ripping on through to behind
-W3 = {
-    'root': (-8, 0, -12),
-    'legs': ((-0.15, -1, -0.30), (0.18, -1, 0.05)),
-    'arm': ((0.10, 0.92, 0.40), (0.0, -0.30, 0.95), (0, 1, -0.2)),
-    'larm': (-0.30, 0.60, -0.75),
-    'look': (0, 0.1, -1),
-    'hop': 0.9,
-}
-H3 = dict(W3, root=(-10, 0, -10), arm=((0.10, 0.95, 0.35), (0.0, -0.40, 0.92), (0, 1, -0.2)), hop=1.1)
-C3 = {
-    'root': (26, 0, 2),
-    'legs': ((-0.20, -1, -0.55), (0.25, -1, 0.48)),
-    'arm': ((0.08, -0.55, -0.85), (0.0, -0.72, -0.70), (0, -1, 0.2)),
-    'larm': (-0.40, -0.50, 0.75),
-    'look': (0, -0.35, -1),
-    'hop': 0.0,
-}
-F3 = dict(C3, root=(34, 0, 6), arm=((0.10, -0.95, -0.15), (0.0, -0.75, 0.66), (0, -0.4, 0.9)))
-E3 = dict(F3, root=(28, 0, 4))
+    def __init__(self, name, u, w, keys, start, turn, settle, lead=0.025, arm_to=(0.1, -0.45, -1.0),
+                 arm_mix=0.35, trail=None, priority='Action'):
+        self.name, self.keys, self.start, self.settle = name, keys, start, settle
+        self.u = unit(u)
+        w = np.asarray(w, dtype=float)
+        self.w = unit(w - (w @ self.u) * self.u)
+        self.turn, self.lead = turn, lead
+        self.arm_to, self.arm_mix = unit(arm_to), arm_mix
+        self.length, self.loop, self.priority = settle, False, priority
+        self.trail = trail  # (from, to): when the blade leaves a trail (the cut)
+
+    def _key(self, t):
+        ks = self.keys
+        if t <= ks[0][0]:
+            return ks[0][1], dict(ks[0][3])
+        for (t0, p0, _, x0), (t1, p1, e, x1) in zip(ks, ks[1:]):
+            if t <= t1:
+                k = ease(e, (t - t0) / (t1 - t0))
+                return p0 + (p1 - p0) * k, mix_dir(x0, x1, k)
+        return ks[-1][1], dict(ks[-1][3])
+
+    def _dir(self, phi_deg):
+        p = math.radians(phi_deg)
+        return math.cos(p) * self.u + math.sin(p) * self.w
+
+    def on_plane(self, t):
+        phi, x = self._key(t)
+        b = self._dir(phi)
+        e = self._dir(phi + 90)  # (the way it's moving: the edge faces that way)
+        d = slerp(self._dir(phi + x.get('delta', 0)), self.arm_to, self.arm_mix)
+        lead_phi, _ = self._key(t + self.lead)
+        turn = self.turn[0] + self.turn[1] * lead_phi
+        pose = {k: v for k, v in x.items() if k not in ('lean', 'tilt', 'delta')}
+        pose['root'] = (x.get('lean', 0), x.get('tilt', 0), turn)
+        pose['arm'] = (d, b, e)
+        return pose
+
+    def at(self, t):
+        first, last = self.keys[0][0], self.keys[-1][0]
+        if t < first:
+            return mix_dir(self.start, self.on_plane(first), ease('out', t / first))
+        if t <= last:
+            return self.on_plane(t)
+        return mix_dir(self.on_plane(last), IDLE, ease('inout', (t - last) / (self.settle - last)))
+
+
+def keys(*rows):
+    """(time, phi, easing, lean, delta, legs, larm, look, hop[, tilt])"""
+    out = []
+    for r in rows:
+        t, phi, e, lean, delta, legs, larm, look, hop = r[:9]
+        out.append((t, phi, e, {'lean': lean, 'tilt': r[9] if len(r) > 9 else 0, 'delta': delta,
+                                'legs': legs, 'larm': larm, 'look': look, 'hop': hop}))
+    return out
+
+
+BACK = ((-0.30, -1, -0.40), (0.30, -1, 0.22))  # weight on the back foot
+LUNGE = ((-0.22, -1, -0.62), (0.32, -1, 0.55))  # stepped in on the front foot
+PIVOT = ((-0.24, -1, -0.62), (0.06, -1, 0.52))  # ...the back foot swung round behind
+AHEAD = (0, -0.08, -1)  # eyes on the enemy
+DOWN = (0, -0.22, -1)
+
+# SWING 1: a diagonal forehand - coiled right back behind the right shoulder,
+# whipped round and down across the enemy, wrapping on round behind the left hip
+SWING1 = PlaneSwing(
+    'SwordSwing1', u=(-0.30, -0.18, -1.0), w=(-1.0, -0.55, 0.2), start=IDLE, settle=0.85,
+    turn=(6, 0.52), trail=(0.13, 0.40),
+    keys=keys(
+        (0.09, -150, 'out', -2, 30, BACK, (-0.12, -0.15, -1.0), AHEAD, 0.0),
+        (0.13, -157, 'inout', -3, 38, BACK, (-0.10, -0.12, -1.0), AHEAD, 0.0),
+        (0.20, 0, 'in2', 14, 0, LUNGE, (-0.55, -0.55, 0.60), DOWN, 0.0),
+        (0.36, 138, 'out2', 18, -25, PIVOT, (-0.12, -0.70, 0.70), AHEAD, 0.0),
+        (0.50, 143, 'linear', 16, -20, PIVOT, (-0.25, -0.85, 0.45), AHEAD, 0.0),
+    ))
+
+# SWING 2: a rising backhand - from behind the left hip up through the enemy,
+# finishing high over the right shoulder like a tennis backhand
+SWING2 = PlaneSwing(
+    'SwordSwing2', u=(0.35, 0.12, -1.0), w=(1.0, 0.70, 0.10), start=SWING1.at(0.5), settle=0.85,
+    turn=(-8, -0.5), trail=(0.13, 0.40),
+    keys=keys(
+        (0.08, -140, 'out', 15, 30, PIVOT, (-0.20, -0.25, -1.0), AHEAD, 0.0),
+        (0.13, -146, 'inout', 15, 38, PIVOT, (-0.20, -0.20, -1.0), AHEAD, 0.0),
+        (0.20, 0, 'in2', 6, 0, LUNGE, (-0.50, -0.50, 0.60), AHEAD, 0.0),
+        (0.36, 145, 'out2', -4, -25, ((-0.30, -1, -0.55), (0.34, -1, 0.40)), (-0.90, -0.30, 0.10), AHEAD, 0.0),
+        (0.50, 150, 'linear', -2, -20, ((-0.30, -1, -0.55), (0.34, -1, 0.40)), (-0.80, -0.50, 0.10), AHEAD, 0.0),
+    ))
+
+# SWING 3, THE FINISHER: a leap with the blade hanging back over the shoulder,
+# then everything comes over and down, the blade ripping on down into the ground
+SWING3 = PlaneSwing(
+    'SwordSwing3', u=(0.05, -0.30, -1.0), w=(0.0, -1.0, 0.30), start=SWING2.at(0.5), settle=1.2,
+    turn=(2, 0.05), arm_to=(0.1, -0.35, -1.0), trail=(0.27, 0.56),
+    keys=keys(
+        (0.16, -165, 'out', -8, 22, ((-0.15, -1, -0.30), (0.18, -1, 0.05)), (-0.30, 0.60, -0.75), (0, 0.1, -1), 0.9),
+        (0.26, -174, 'inout', -10, 28, ((-0.15, -1, -0.30), (0.18, -1, 0.05)), (-0.30, 0.65, -0.70), (0, 0.1, -1), 1.15),
+        (0.3375, 0, 'in2', 26, 0, ((-0.20, -1, -0.55), (0.25, -1, 0.48)), (-0.40, -0.50, 0.75), (0, -0.35, -1), 0.0),
+        (0.50, 86, 'out2', 30, -15, ((-0.20, -1, -0.55), (0.25, -1, 0.48)), (-0.45, -0.60, 0.60), (0, -0.3, -1), 0.0),
+        (0.75, 90, 'linear', 25, -12, ((-0.20, -1, -0.55), (0.25, -1, 0.48)), (-0.40, -0.70, 0.55), (0, -0.2, -1), 0.0),
+    ))
 
 ANIMS = {
     'SwordIdle': DirAnim('SwordIdle', [(0, IDLE, 'linear'), (1.2, IDLE_IN, 'inout'), (2.4, IDLE, 'inout')], loop=True, priority='Idle'),
-    'SwordSwing1': DirAnim('SwordSwing1', [(0, IDLE, 'linear'), (0.08, W1, 'out'), (0.13, H1, 'inout'), (0.20, C1, 'in'),
-                                           (0.34, F1, 'out'), (0.50, E1, 'linear'), (0.85, IDLE, 'inout')]),
-    'SwordSwing2': DirAnim('SwordSwing2', [(0, F1, 'linear'), (0.08, W2, 'out'), (0.20, C2, 'in'), (0.34, F2, 'out'),
-                                           (0.50, E2, 'linear'), (0.85, IDLE, 'inout')]),
-    'SwordSwing3': DirAnim('SwordSwing3', [(0, F2, 'linear'), (0.16, W3, 'out'), (0.26, H3, 'inout'), (0.3375, C3, 'in'),
-                                           (0.50, F3, 'out'), (0.75, E3, 'linear'), (1.2, IDLE, 'inout')]),
+    'SwordSwing1': SWING1,
+    'SwordSwing2': SWING2,
+    'SwordSwing3': SWING3,
 }
 
-# the whole string, pressed as fast as the game lets you (each swing starts
-# once the last one's cut is through), then back to the stance
-COMBO = DirAnim('Combo', [
-    (0, IDLE, 'linear'), (0.25, IDLE, 'linear'),
-    (0.33, W1, 'out'), (0.38, H1, 'inout'), (0.45, C1, 'in'), (0.59, F1, 'out'), (0.75, E1, 'linear'),
-    (0.83, W2, 'out'), (0.95, C2, 'in'), (1.09, F2, 'out'), (1.25, E2, 'linear'),
-    (1.41, W3, 'out'), (1.51, H3, 'inout'), (1.5875, C3, 'in'), (1.75, F3, 'out'), (2.0, E3, 'linear'),
-    (2.5, IDLE, 'inout'), (2.8, IDLE, 'linear'),
-])
 
-KEY_POSES = [('STANCE', IDLE), ('1 WIND-UP', W1), ('1 HIT', C1), ('1 THROUGH', F1),
-             ('2 WIND-UP', W2), ('2 HIT', C2), ('2 THROUGH', F2), ('3 LEAP', H3), ('3 HIT', C3), ('3 LANDED', F3)]
+class Timeline:
+    """swings one after another, each pressed as its lock ends - how the whole
+    string plays when you click through it - then the stance"""
+
+    def __init__(self, parts, lead_in=0.25, tail=0.3):
+        self.parts = []  # (start time, swing)
+        t = lead_in
+        for swing, gap in parts:
+            self.parts.append((t, swing))
+            t += gap
+        last_t, last = self.parts[-1]
+        self.lead_in = lead_in
+        self.length = last_t + last.settle + tail
+        self.loop = False
+
+    def at(self, t):
+        if t < self.lead_in:
+            return dict(IDLE)
+        for i, (t0, swing) in enumerate(self.parts):
+            nxt = self.parts[i + 1][0] if i + 1 < len(self.parts) else math.inf
+            if t < nxt:
+                return swing.at(min(t - t0, swing.settle))
+        return dict(IDLE)
+
+    def trails(self):
+        return [(t0 + s.trail[0], t0 + s.trail[1]) for t0, s in self.parts if s.trail]
+
+
+COMBO = Timeline([(SWING1, 0.5), (SWING2, 0.5), (SWING3, 0)])
+
+KEY_POSES = [('STANCE', IDLE)] + [
+    ('%d %s' % (n + 1, label), s.at(t))
+    for n, s in enumerate((SWING1, SWING2, SWING3))
+    for label, t in (('COILED', s.keys[1][0]), ('HIT', s.keys[2][0]), ('FOLLOW-THROUGH', s.keys[3][0]))
+]

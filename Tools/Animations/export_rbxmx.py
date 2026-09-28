@@ -25,8 +25,8 @@ FPS = 60
 PRIORITY = {'Idle': 0, 'Movement': 1, 'Action': 2, 'Action2': 3, 'Action3': 4, 'Action4': 5}
 # when each swing's markers fall (seconds): the strike starting, the hit, the end of the cut
 MARKERS = {
-    'SwordSwing1': [('Cut', 0.13), ('Hit', 0.20), ('Through', 0.34)],
-    'SwordSwing2': [('Cut', 0.08), ('Hit', 0.20), ('Through', 0.34)],
+    'SwordSwing1': [('Cut', 0.13), ('Hit', 0.20), ('Through', 0.36)],
+    'SwordSwing2': [('Cut', 0.13), ('Hit', 0.20), ('Through', 0.36)],
     'SwordSwing3': [('Cut', 0.26), ('Hit', 0.3375), ('Through', 0.50)],
 }
 
