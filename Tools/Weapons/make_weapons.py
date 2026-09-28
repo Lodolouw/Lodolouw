@@ -296,4 +296,5 @@ def render_preview(scene, made):
     print('rendered', os.path.abspath(PREVIEW))
 
 
-main()
+if __name__ == '__main__':
+    main()
