@@ -385,7 +385,13 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- (Scribble's: a pencil scratch sounds like a spit, the eraser like a wave,
 	-- paint like a splat, the cursor's click and an error window like a slam...)
 	Draw = "Spit", Erase = "Wave", Paint = "Splat", Copy = "Wail", Swipe = "Lunge", Key = "Splat", Undo = "Wail",
-	Click = "Slam", Popup = "Slam", Lag = "Wave", Delete = "Wail", Glitch = "Wail" }
+	Click = "Slam", Popup = "Slam", Lag = "Wave", Delete = "Wail", Glitch = "Wail",
+	-- (King Gavelgrunt's: a smash or a stomp sounds like a slam, a swing like
+	-- a wave, the guards' fanfare like a wail, coins like splats...)
+	Smash = "Slam", Sweep = "Wave", Bounce = "Slam", Guards = "Wail", Guard = "Lunge", Stomp = "Slam", Toe = "Wail",
+	Coins = "Splat", Coin = "Splat", Vacuum = "Wave", Piston = "Wail", Gulp = "Wail", Swallow = "Splat", Burp = "Wave",
+	Rocket = "Lunge", Chain = "Wave", Feast = "Wail", Eat = "Splat", Choke = "Wail", Quake = "Slam", Crown = "Splat",
+	Trip = "Slam", Guilty = "Slam", Gavel = "Slam", Throne = "Slam", Final = "Slam", Berserk = "Wail" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]

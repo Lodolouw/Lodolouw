@@ -566,6 +566,68 @@ rounds, 3-4 minutes: the longest fight yet. Recommended level 135.
 - Previews: `Docs/scribble_preview.png` (the fight) and `Docs/scribble_poses.png`
   (him, pose by pose).
 
+## The Spire's tenth floor: King Gavelgrunt, Lord of the Spire (The Throne Summit)
+
+THE FINAL BOSS. The king at the top of the Spire - every boss below works for
+him. A goliath: a huge, fat, greedy king six times your height, with a
+wobbling belly, a gold crown, a red cape and a giant wooden gavel (a
+hammer-swinging king with his own name and look). His arena is a round stone
+courtyard above the clouds: a purple carpet up to his golden throne, four
+stone pillars to hide behind, three low podiums round the edge and torches.
+The sky turns from sunset (round 1) to a storm (round 2) to a red eclipse
+(round 3). Three rounds, 4-5 minutes: the longest fight in the game.
+Recommended level 150.
+
+- **ROUND 1, "THE KING IS AMUSED":** ROYAL SMASH (a red circle, then the gavel
+  slams and a shockwave ring rolls out - jump or roll it; the gavel sticks in
+  the floor: "STUCK! HIT HIM!"), GAVEL SWEEP (a wide swing in front of him -
+  get behind him), BELLY BOUNCE (he hops up and belly-flops on you - his
+  shadow grows under you), ROYAL DECREE ("GUARDS!": little guards drop in),
+  TOE STOMP (after a stomp his toe glows: "PUNCH HIS TOE!" and he hops round
+  on one foot) and TAX COLLECTOR ("TAXES ARE DUE!": gold coins rain down -
+  grab them to heal; every coin you leave he sucks up and his next move hits
+  harder).
+- **ROUND 2, "THE MECHANICAL GAVEL"** at 65%: steam, and the gavel becomes a
+  piston hammer. TRIPLE SLAM (three slams walking at you, each with its own
+  ring), HAMMER TORNADO ("SPIN TO WIN!": he spins after you, then he's dizzy),
+  BIG GULP (he breathes in, pulling you in; caught, you're swallowed and spat
+  out across the courtyard, then a burp shoves everyone back), ROCKET HAMMER
+  (the hammer head fires out on a chain and yanks back), THE ROYAL FEAST
+  ("DINNER TIME!": he sits and eats a giant roast, healing - smash the
+  platter or punch his belly till he chokes) and THE ROYAL ROLL ("BOWLING!":
+  he rolls into a ball and bowls across the courtyard, breaking pillars).
+- **ROUND 3, "NO ONE TAKES MY CROWN"** at 30%: his crown flies off and he goes
+  berserk (faster, red eyes), and the pillars that are left crumble. EARTHQUAKE
+  (he leaps sky-high; some flagstones light up gold - "STAND ON THE GOLD!"),
+  CROWN GRAB ("MY CROWN!!": he runs for his crown - punch him in time and he
+  trips: "TRIP HIM!"), "GUILTY!" (one player gets a spotlight; a giant gavel
+  falls on them - run to a podium to take far less, and friends can stand
+  with you to share it) and THRONE TOSS (he throws his throne: "MY THRONE!
+  CATCH!"). At 10%, THE FINAL GAVEL: one gigantic slam and a shockwave over
+  everything - jump or roll it at the last moment - then he's worn out and
+  wide open.
+- **The end:** he falls flat on his back: "SPIRE CONQUERED!". He pays Power
+  and a floor-10 chest; his gear is coming with the loot rework (no floor-10
+  items yet). The Nightmare, Eclipse and Doom versions of the Spire come next.
+- **Where things are:** every number in `Config.Bosses[10]`; the floor in
+  `Config.Spire.Floors[10]`; his moves and his three-round brain in
+  `ServerScriptService/Bosses/Gavelgrunt.lua`; his body, warnings, guards,
+  coins, the feast, the crown, the spotlight and the crumbling pillars in
+  `ReplicatedStorage/BossBodies/Gavelgrunt.lua`; the courtyard's shape (the
+  pillars, podiums, flagstones, throne) in `ReplicatedStorage/ThronePlan.lua`;
+  the arena in `ServerScriptService/ThroneBuilder.lua`; his portrait and lines
+  (with a round-3 line) in `BossIntro`; his design in
+  `Docs/bosses/hammer_king_design.md`.
+- **Music:** a Sound named `Gavelgrunt Song` in SoundService (Oozark's plays
+  until you add it), and `Summit Wind` for the arena's background loop.
+  **Sounds** (all optional; missing ones borrow Oozark's): Gavelgrunt Laugh,
+  Gavel Smash, Gavel Swing, Belly Bounce, Giant Land, Royal Trumpet, Guard
+  Jab, Giant Stomp, Toe Ouch, Coin Rain, Coin Pickup, Coin Vacuum, Piston
+  Hiss, Hammer Spin, Big Inhale, Gulp, Spit Out, Royal Burp, Rocket Hammer,
+  Chain Rattle, Royal Feast, Munching, Choke Cough, Royal Roll, Earthquake,
+  Crown Clang, Giant Trip, Gavel Guilty, Giant Gavel, Throne Crash, Final
+  Gavel, Pillar Crumble, Gavel Transform, King Roar, King Fall.
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without

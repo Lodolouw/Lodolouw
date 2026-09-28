@@ -940,6 +940,37 @@ Config.Spire = {
 				Volume = 0.3,
 			},
 		},
+		{
+			id = 10,
+			boss = "King Gavelgrunt, Lord of the Spire",
+			area = "The Throne Summit",
+			level = 150,
+			blurb = "The very top of the Spire: a stone courtyard above the clouds, and a golden throne. Its king has watched you climb every floor. He is enormous, he is greedy, and he does not share his tower.",
+			color = Color3.fromRGB(104, 56, 108),
+			open = true,
+			-- above the clouds at sunset (his body file darkens it to a storm in
+			-- round 2 and a red eclipse in round 3): warm gold light, a soft haze
+			ambience = {
+				ClockTime = 17.6,
+				Atmosphere = {
+					Density = 0.3,
+					Offset = 0.15,
+					Color = Color3.fromRGB(255, 214, 170),
+					Decay = Color3.fromRGB(181, 80, 136),
+					Glare = 0.5,
+					Haze = 1.6,
+				},
+				Tint = Color3.fromRGB(255, 236, 214),
+				Saturation = 0.12,
+				Contrast = 0.08,
+				Sand = Color3.fromRGB(255, 232, 190), -- (the "dust" here is wisps of cloud)
+				Grains = 0.08,
+				Clouds = true,
+				Wind = Vector3.new(0.6, 0, 0.2),
+				Sound = "Summit Wind", -- a high, cold wind, looping, if you add one
+				Volume = 0.3,
+			},
+		},
 	},
 }
 
@@ -2488,6 +2519,234 @@ Config.Bosses = {
 			Break = "Scribble Rip", -- round 2: tearing himself out of the paper
 			Glitch = "Scribble Glitch", -- round 3: glitching into rainbow
 			Death = "Paper Crumple", -- crumpled into a ball at the end
+		},
+	},
+
+	[10] = {
+		Name = "King Gavelgrunt, Lord of the Spire",
+		Short = "Gavelgrunt",
+		-- THE FINAL BOSS: the king at the top of the Spire - every boss below
+		-- works for him. A GOLIATH: a huge, fat, greedy king six times your
+		-- height, with a wobbling belly, a gold crown and a giant wooden gavel
+		-- (a hammer-swinging king - his own design and name). Three rounds:
+		-- round 1 he's amused (slow, heavy gavel smashes), round 2 the gavel
+		-- becomes a steam-powered piston hammer, round 3 his crown flies off
+		-- and he goes berserk. His own brain runs the rounds; his moves:
+		-- ServerScriptService/Bosses/Gavelgrunt.lua. His body:
+		-- ReplicatedStorage/BossBodies/Gavelgrunt.lua. His arena: ThroneBuilder
+		-- (its shape: ReplicatedStorage/ThronePlan).
+		Color = Color3.fromRGB(104, 56, 108), -- his royal purple robe
+		DeepColor = Color3.fromRGB(62, 39, 49), -- its shadows
+		SkinColor = Color3.fromRGB(232, 183, 150), -- his face and hands
+		CapeColor = Color3.fromRGB(228, 59, 68), -- his red cape
+		FurColor = Color3.fromRGB(255, 255, 255), -- the cape's white fur trim
+		GoldColor = Color3.fromRGB(254, 174, 52), -- his crown, belt and the gavel's bands
+		WoodColor = Color3.fromRGB(184, 111, 80), -- the gavel's wooden head
+		SteelColor = Color3.fromRGB(139, 155, 180), -- round 2: the piston hammer
+		SteamColor = Color3.fromRGB(192, 203, 220),
+		BeardColor = Color3.fromRGB(115, 62, 57), -- his bushy moustache
+		CoreColor = Color3.fromRGB(24, 20, 37), -- his eyes and mouth
+		EyeColor = Color3.fromRGB(255, 255, 255),
+		RageColor = Color3.fromRGB(255, 0, 68), -- round 3: berserk red eyes
+		Accent = Color3.fromRGB(254, 174, 52), -- the VS splash's colour
+
+		HealthPunches = 96, -- (three rounds, 4-5 minutes: the final boss is the longest fight)
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 16, -- how wide he is for bumping into him and hits (his belly)
+		Height = 30, -- how tall he is (you're about 5)
+		BodyRadius = 7.5, -- how thick he is, for your punches
+		WakeRange = 48, -- walk this close and he wakes up
+		WakeTime = 4.0, -- he heaves himself off the throne step, cracks his neck and laughs
+		WakeSoundLead = 0.3,
+		Leash = 52, -- (the courtyard is 62 across the middle: his belly stays on it)
+		MoveSpeed = { 11, 13, 16 }, -- per round (you run at 20 in a fight)
+		TurnSpeed = { 220, 280, 360 }, -- degrees a second
+		Breather = { { 0.8, 1.3 }, { 0.55, 1.0 }, { 0.4, 0.75 } }, -- the pause between moves, per round
+
+		PhaseAt = 0.65, -- ROUND 2 ("the Mechanical Gavel") at 65% health
+		BreakTime = 3.6, -- steam bursts out, the gavel splits open into a piston hammer
+		BreakShove = 55,
+		BreakReach = 26,
+		Phase2Recovery = 0.85,
+		DesperateAt = 0.15,
+		DesperateRecovery = 0.75,
+		-- ROUND 3 ("NO ONE TAKES MY CROWN") at Round3At: his crown flies off, the
+		-- sky turns to a red eclipse, and every pillar still standing crumbles
+		Round3At = 0.3,
+		BerserkTime = 3.6,
+		-- THE FINAL GAVEL: once, at FinalAt health, he leaps up high and brings
+		-- the gavel down on the whole courtyard - a huge red warning for Tell
+		-- seconds, then the slam (Radius round him: Damage) and a shockwave
+		-- rolling out over everything (jump it, or roll through it). Then he's
+		-- worn out for Tired seconds: finish him!
+		FinalAt = 0.1,
+		Final = { Tell = 3.0, Radius = 14, Damage = 50, Knockback = 70, WaveSpeed = 36, WaveReach = 90, WaveHeight = 3,
+			WaveThickness = 3, WaveDamage = 40, Tired = 4.5 },
+
+		-- His moves. Tell = the wind-up you see before it hits (every one is at
+		-- least your roll's half a second). Recovery = how long he's open after
+		-- it. Range = { closest, furthest } he uses it from; Weight = how often;
+		-- Phase = the first round it's used in (UpTo = the last). A list like
+		-- { 1, 2, 2 } means { round 1, round 2, round 3 }. Damage is against
+		-- your 100 health.
+		Attacks = {
+			-- ROYAL SMASH: he heaves the gavel up over his head (a red circle
+			-- marks where it lands, in front of him - up to Reach away) and SMASHES
+			-- it down: Radius round it hurts, and shockwave rings roll out along the
+			-- floor (Rings per round - jump them, or roll through). The gavel is
+			-- STUCK in the floor for Stuck seconds after: free hits! A smash on a
+			-- pillar breaks it.
+			RoyalSmash = { Tell = 1.1, Reach = 18, Radius = 7, Damage = 26, Knockback = 55, Rings = { 1, 2, 2 }, RingGap = 0.45,
+				WaveSpeed = 34, WaveReach = 38, WaveHeight = 2.6, WaveThickness = 2.4, WaveDamage = 14, Stuck = 1.8,
+				Phase = 1, Range = { 0, 26 }, Weight = 3 },
+			-- GAVEL SWEEP: a huge sideways swing in front of him (Reach, Arc
+			-- degrees wide). Get behind him, or roll.
+			GavelSweep = { Tell = 0.8, Reach = 18, Arc = 160, Damage = 22, Knockback = 60, Recovery = 0.7, Phase = 1,
+				Range = { 0, 17 }, Weight = 2.5 },
+			-- BELLY BOUNCE: he crouches and hops high (Height studs), and his
+			-- shadow grows under you - then he belly-flops onto it (Radius), and
+			-- the landing bounces everyone near away. Bounces per round.
+			BellyBounce = { Tell = 0.9, Air = 0.85, Height = 22, Bounces = { 1, 2, 2 }, Gap = 0.35, Radius = 10, Damage = 28,
+				Knockback = 60, Recovery = 1.0, Phase = 1, Range = { 10, 70 }, Weight = 2.5 },
+			-- ROYAL DECREE: "GUARDS!" - little tin guards from the floors below drop
+			-- in (Guards per round) and chase you (Speed studs a second - slower
+			-- than you). Close up they wind up a spear jab (SwipeTell) and jab
+			-- anyone within Reach. Punches punches knock one over; left alone
+			-- they march off after Life seconds. Never more than Max at once.
+			RoyalDecree = { Tell = 1.0, Guards = { 2, 2, 3 }, Punches = 1.5, Speed = 13, Life = 16, Reach = 4.5, SwipeTell = 0.6,
+				Damage = 12, Knockback = 28, Rest = 1.3, Max = 4, Recovery = 0.4, Phase = 1, Range = { 0, 200 }, Weight = 1.4 },
+			-- TOE STOMP: he stamps his giant foot down in front of him (Radius).
+			-- Then his big toe GLOWS for Window seconds: punch it (Punches punches)
+			-- and he hops round on one foot holding it for Hop seconds - hit him!
+			ToeStomp = { Tell = 0.7, Radius = 6, Damage = 20, Knockback = 45, Window = 2.2, Punches = 1, Hop = 2.6, Recovery = 0.5,
+				Phase = 1, Range = { 0, 16 }, Weight = 2 },
+			-- TAX COLLECTOR: "TAXES ARE DUE!" - gold coins rain down round you
+			-- (Coins per round, spread over Drop seconds, Spread studs round each
+			-- of you) and lie there for Lie seconds. Walk over one to grab it:
+			-- it heals you Heal. Then he sucks up every coin that's left - each one
+			-- makes his NEXT move hit PerCoin harder (at most MaxCoins). (Rounds 1
+			-- and 2.)
+			TaxCollector = { Tell = 0.9, Coins = { 6, 8, 8 }, Drop = 1.0, Lie = 4.5, Spread = 22, Pickup = 3.2, Heal = 5,
+				PerCoin = 0.08, MaxCoins = 8, Recovery = 0.4, Phase = 1, UpTo = 2, Range = { 0, 200 }, Weight = 1.2 },
+
+			-- PISTON TRIPLE SLAM (round 2): three slams, one after another,
+			-- stepping towards you (Step studs each) - each one hurts round it
+			-- and sends out its own shockwave ring. The rings overlap: find the gap.
+			TripleSlam = { Tell = 0.9, Slams = 3, Gap = 0.62, Step = 7, Radius = 6.5, Damage = 22, Knockback = 50, WaveSpeed = 32,
+				WaveReach = 28, WaveHeight = 2.6, WaveThickness = 2.4, WaveDamage = 12, Recovery = 1.0, Phase = 2,
+				Range = { 0, 34 }, Weight = 3 },
+			-- HAMMER TORNADO (round 2): hammer out, he spins and chases you for
+			-- Time seconds - anyone inside the red ring gets clobbered (again every
+			-- Rehit seconds). Then he's DIZZY for Dizzy seconds: hit him!
+			HammerTornado = { Tell = 0.7, Time = 3.0, Speed = 14, Radius = 10, Damage = 14, Knockback = 40, Rehit = 0.6,
+				Dizzy = 2.2, Phase = 2, Range = { 0, 30 }, Weight = 2 },
+			-- BIG GULP (round 2): he breathes in HARD for Inhale seconds, pulling
+			-- everyone in front of him (Reach, Arc wide) towards his mouth. Anyone
+			-- right in front of him at the end (Swallow) is swallowed (Damage),
+			-- chewed for Chew seconds and SPAT out across the courtyard. Then a huge
+			-- BURP: a cone of wind that throws everyone in front back. Run - or roll
+			-- out of his breath.
+			BigGulp = { Tell = 0.5, Inhale = 2.2, Reach = 34, Arc = 120, Pull = 14, Swallow = 8, Damage = 30, Chew = 0.7,
+				Spit = 110, BurpReach = 28, BurpArc = 100, BurpDamage = 10, BurpKnockback = 75, Recovery = 0.9, Phase = 2,
+				Range = { 0, 30 }, Weight = 2 },
+			-- ROCKET HAMMER (round 2): the piston fires the hammer's head at you on
+			-- a chain - a red lane Length long, Width wide - and yanks it back
+			-- along the same lane. Get out of the lane!
+			RocketHammer = { Tell = 0.8, Length = 44, Speed = 75, Width = 5, Damage = 24, Knockback = 55, Hold = 0.35,
+				Recovery = 0.7, Phase = 2, Range = { 10, 60 }, Weight = 2 },
+			-- THE ROYAL FEAST (round 2): servants wheel in a giant roast on a
+			-- platter and he sits down to eat, healing HealRate of his health a
+			-- second for Feast seconds. Break the platter (Punches punches) - or hit
+			-- him hard enough (ChokeAt of his health) - and he CHOKES: stunned for
+			-- Choke seconds, and the healing stops. Not more than once every
+			-- Cooldown seconds.
+			RoyalFeast = { Tell = 1.0, Feast = 6, HealRate = 0.012, Punches = 4, ChokeAt = 0.05, Choke = 3.2, Recovery = 0.5,
+				Cooldown = 30, Phase = 2, UpTo = 2, Range = { 16, 200 }, Weight = 1.2 },
+			-- THE ROYAL ROLL (round 2): he tucks into a ball (he's round enough)
+			-- and bowls across the courtyard at you, bouncing off the edge
+			-- (Bounces times) and smashing through pillars. Jump over him or get out
+			-- of his lane. Dizzy after.
+			RoyalRoll = { Tell = 0.9, Speed = 50, Distance = 120, Bounces = 2, Width = 8, Damage = 24, Knockback = 60,
+				Dizzy = 1.4, Phase = 2, Range = { 14, 70 }, Weight = 2 },
+
+			-- ROYAL EARTHQUAKE (round 3): he jumps sky-high and lands in the middle
+			-- of the courtyard. While he's up, some flagstones light up gold (Safe
+			-- of them - at least one near each of you): stand on one! Everyone
+			-- else is shaken off their feet (Damage). A roll at the landing works too.
+			Earthquake = { Tell = 0.6, Air = 1.4, Safe = 6, Damage = 30, Knockback = 45, Recovery = 1.0, Cooldown = 16, Phase = 3,
+				Range = { 0, 200 }, Weight = 1.6 },
+			-- CROWN GRAB (round 3): his crown lands somewhere in the courtyard and
+			-- he lumbers after it for Rush seconds. Get in his way and hit him Trip
+			-- times before he gets there and he TRIPS: flat on his face for Tripped
+			-- seconds. Too slow and he puts it back on: a roar that throws you back
+			-- (RoarRadius) and heals him Heal of his health.
+			CrownGrab = { Tell = 0.8, Rush = 3.6, Trip = 5, Tripped = 4.0, Heal = 0.03, RoarRadius = 14, RoarDamage = 18,
+				Knockback = 60, Recovery = 0.6, Cooldown = 24, Phase = 3, Range = { 0, 200 }, Weight = 1.4 },
+			-- "GUILTY!" (round 3): he bangs the gavel like a judge and one of you
+			-- is SENTENCED (a spotlight). Countdown seconds later a giant gavel
+			-- falls on them (it locks on Lock seconds before). Stand on a PODIUM
+			-- and it hits you Podium as hard. Anyone standing with them (Share)
+			-- SHARES the damage.
+			Guilty = { Tell = 0.7, Countdown = 4.0, Lock = 0.6, Radius = 7, Damage = 60, Podium = 0.25, Share = 8, Knockback = 50,
+				Recovery = 0.6, Cooldown = 16, Phase = 3, Range = { 0, 200 }, Weight = 1.6 },
+			-- THRONE TOSS (round 3, once): he leaps back to his throne (Leap
+			-- seconds), rips it out of the floor (Lift) and hurls it at you - a red
+			-- circle marks where it lands (Flight seconds in the air). It stays
+			-- there as cover: the only cover left once the pillars are gone.
+			ThroneToss = { Leap = 0.9, Lift = 0.8, Flight = 1.0, Radius = 10, Damage = 30, Knockback = 60, Recovery = 0.8,
+				Phase = 3, Range = { 0, 200 }, Weight = 1.2 },
+		},
+
+		Reward = { Power = 4.2, FirstClear = 10 },
+
+		-- the fight's music: add a Sound named "Gavelgrunt Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Gavelgrunt Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		VictoryName = "King Gavelgrunt",
+		Weather = "Clear",
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient).
+		Sounds = {
+			Wake = "Gavelgrunt Laugh", -- waking up: a big booming royal laugh
+			Smash = "Gavel Smash", -- the gavel slamming into the floor
+			Sweep = "Gavel Swing", -- the big sideways swing whooshing past
+			Bounce = "Belly Bounce", -- his belly-flop (a huge wobbling THUD)
+			Land = "Giant Land", -- landing after a jump
+			Guards = "Royal Trumpet", -- "GUARDS!": a fanfare
+			Guard = "Guard Jab", -- a little guard's spear jab
+			Stomp = "Giant Stomp", -- stamping his foot
+			Toe = "Toe Ouch", -- "OW! MY TOE!"
+			Coins = "Coin Rain", -- coins pouring down
+			Coin = "Coin Pickup", -- you grabbing a coin
+			Vacuum = "Coin Vacuum", -- him sucking up the coins that are left
+			Piston = "Piston Hiss", -- round 2's steam hammer hissing
+			Tornado = "Hammer Spin", -- the tornado's whoosh
+			Gulp = "Big Inhale", -- breathing in HARD
+			Swallow = "Gulp", -- gulping someone down
+			Spit = "Spit Out", -- spitting them out
+			Burp = "Royal Burp", -- the huge burp
+			Rocket = "Rocket Hammer", -- the hammer's head firing out
+			Chain = "Chain Rattle", -- the chain yanking back
+			Feast = "Royal Feast", -- the servants' dinner bell
+			Eat = "Munching", -- him munching
+			Choke = "Choke Cough", -- choking on it
+			Roll = "Royal Roll", -- rolling like a boulder
+			Quake = "Earthquake", -- the earthquake landing
+			Crown = "Crown Clang", -- his crown hitting the floor
+			Trip = "Giant Trip", -- tripping flat on his face
+			Guilty = "Gavel Guilty", -- the judge's gavel: "GUILTY!"
+			Gavel = "Giant Gavel", -- the giant gavel coming down
+			Throne = "Throne Crash", -- the throne smashing down
+			Final = "Final Gavel", -- the final gavel's slam
+			Pillar = "Pillar Crumble", -- a pillar breaking
+			Break = "Gavel Transform", -- round 2: the gavel becoming a piston hammer
+			Berserk = "King Roar", -- round 3: his crown flies off, a furious roar
+			Death = "King Fall", -- falling flat on his back at the end
 		},
 	},
 }

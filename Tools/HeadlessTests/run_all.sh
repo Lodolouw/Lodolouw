@@ -92,15 +92,23 @@ for sc in attacks reset duo timing undo delete whip clones; do run test_scribble
 run test_scribble.luau -a full 2 client
 run test_scribble.luau -a attacks 1 client
 run test_scribble.luau -a delete 1 client
+# King Gavelgrunt (floor 10, the last boss): whole fights (all three rounds and
+# THE FINAL GAVEL), every move, resets, two players, the dodge windows, his toe,
+# the tax coins, the feast, the crown, GUILTY! and the podiums, the pillars,
+# and him on screen
+for seed in 1 2 3; do run test_gavelgrunt.luau -a full $seed; done
+for sc in attacks reset duo timing toe coins feast crown guilty pillars final; do run test_gavelgrunt.luau -a $sc 1; done
+run test_gavelgrunt.luau -a full 2 client
+run test_gavelgrunt.luau -a attacks 1 client
 # where your lock-on aims and where the bosses' words hang: every boss's
 # measured middle and head (AimAt / HeadAt) checked against what's drawn
 # through every move; the lock-on's own sums; the speech bubbles
-for boss in slime tuber knight kaze car grid kongo petal scrib; do run test_bosses.luau -a ${boss}_attacks 1 client aim; done
+for boss in slime tuber knight kaze car grid kongo petal scrib king; do run test_bosses.luau -a ${boss}_attacks 1 client aim; done
 run test_lockaim.luau
 run test_talk.luau
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (44 boss traces)"
+	echo "pass  golden.sh check (48 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20

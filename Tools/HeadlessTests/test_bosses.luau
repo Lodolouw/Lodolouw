@@ -44,6 +44,9 @@
 --   scrib_full    Scribble (floor 9) fought to the death by one player (all
 --                 three rounds, the DELETE boxes too)
 --   scrib_attacks every one of his moves forced in turn, in rounds 1 and 2
+--   king_full     King Gavelgrunt (floor 10) fought to the death by one player
+--                 (all three rounds and THE FINAL GAVEL)
+--   king_attacks  every one of his moves forced in turn, in each round
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -60,7 +63,7 @@ local RunService = M.services.RunService or game:GetService("RunService")
 local Players = M.services.Players
 local workspace = M.workspace
 
-local FLOOR = string.find(SCENARIO, "^tuber") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or (string.find(SCENARIO, "^kongo") and 7 or (string.find(SCENARIO, "^petal") and 8 or (string.find(SCENARIO, "^scrib") and 9 or 1)))))))
+local FLOOR = string.find(SCENARIO, "^tuber") and 2 or (string.find(SCENARIO, "^knight") and 3 or (string.find(SCENARIO, "^kaze") and 4 or (string.find(SCENARIO, "^car") and 5 or (string.find(SCENARIO, "^grid") and 6 or (string.find(SCENARIO, "^kongo") and 7 or (string.find(SCENARIO, "^petal") and 8 or (string.find(SCENARIO, "^scrib") and 9 or (string.find(SCENARIO, "^king") and 10 or 1))))))))
 
 ----------------------------------------------------------------------
 -- the log: numbers rounded so tiny float noise can't differ, -0 written as 0
@@ -140,6 +143,8 @@ elseif FLOOR == 8 then
 	mount.require(mount.module("ServerScriptService/GreenhouseBuilder.lua")).Build()
 elseif FLOOR == 9 then
 	mount.require(mount.module("ServerScriptService/CanvasBuilder.lua")).Build()
+elseif FLOOR == 10 then
+	mount.require(mount.module("ServerScriptService/ThroneBuilder.lua")).Build()
 end
 M.run(1)
 -- (one boss per run: two would take turns in an order that isn't fixed)
@@ -878,7 +883,7 @@ local function forcedAttacks(tableOf)
 	end
 end
 
-if SCENARIO == "slime_full" or SCENARIO == "tuber_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" or SCENARIO == "kongo_full" or SCENARIO == "petal_full" or SCENARIO == "scrib_full" then
+if SCENARIO == "slime_full" or SCENARIO == "tuber_full" or SCENARIO == "knight_full" or SCENARIO == "kaze_full" or SCENARIO == "car_full" or SCENARIO == "grid_full" or SCENARIO == "kongo_full" or SCENARIO == "petal_full" or SCENARIO == "scrib_full" or SCENARIO == "king_full" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)
@@ -936,7 +941,7 @@ elseif SCENARIO == "slime_die" or SCENARIO == "tuber_reset" then
 	end, 600)
 	note("dead", stateIs("Dead"))
 	runFor(4)
-elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" or SCENARIO == "tuber_attacks" or SCENARIO == "kongo_attacks" or SCENARIO == "petal_attacks" or SCENARIO == "scrib_attacks" then
+elseif SCENARIO == "slime_attacks" or SCENARIO == "knight_attacks" or SCENARIO == "kaze_attacks" or SCENARIO == "car_attacks" or SCENARIO == "grid_attacks" or SCENARIO == "tuber_attacks" or SCENARIO == "kongo_attacks" or SCENARIO == "petal_attacks" or SCENARIO == "scrib_attacks" or SCENARIO == "king_attacks" then
 	local p = makePlayer("Alpha", 1001)
 	place(p, startSpot(1), 0)
 	enter(p)

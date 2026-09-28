@@ -315,6 +315,27 @@ local PORTRAITS = {
 		},
 		ink = { B = RGB(0, 153, 219), W = RGB(255, 255, 255), K = RGB(24, 20, 37), Y = RGB(254, 174, 52), P = RGB(246, 117, 122) },
 	},
+	-- King Gavelgrunt: a wonky gold crown with gems, a big round face, little
+	-- angry eyes, a bushy brown moustache, and his white fur collar
+	Gavelgrunt = {
+		rows = {
+			"..Y..Y..Y..Y..",
+			"..YYYYYYYYYY..",
+			"..YBYYRYYGYY..",
+			".SSSSSSSSSSSS.",
+			".SKKSSSSSSKKS.",
+			".SSWKSSSSKWSS.",
+			".SSSSSPPSSSSS.",
+			".SMMMMMMMMMMS.",
+			".SSMMSKKSMMSS.",
+			"..SSSSSSSSSS..",
+			".WWWWWWWWWWWW.",
+			"WWUUUUUUUUUUWW",
+		},
+		ink = { Y = RGB(254, 174, 52), B = RGB(0, 153, 219), R = RGB(228, 59, 68), G = RGB(99, 199, 77),
+			S = RGB(232, 183, 150), K = RGB(24, 20, 37), W = RGB(255, 255, 255), P = RGB(246, 117, 122),
+			M = RGB(115, 62, 57), U = RGB(104, 56, 108) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -691,6 +712,27 @@ local LINES = {
 		win = { "* GAME OVER! Press any key to try again!", "* Ha! Another player, undone. CTRL+Z!" },
 		lose = { "* Hey... you can't just... crumple me... up...", "* Scribble.exe has stopped working. ...Nice one." },
 	},
+	-- the king at the top of the Spire: huge, greedy, pompous - funny until
+	-- he gets angry
+	Gavelgrunt = {
+		wake = {
+			"* Another peasant climbs MY tower? How... adorable. HO HO HO!",
+			"* You beat ALL my servants? Then kneel before their KING!",
+		},
+		idle = {
+			"* Every floor of this Spire is MINE. Every coin, every crumb, every CRUMB.",
+			"* I didn't climb to the top. I was BORN at the top.",
+			"* My gavel has one ruling for you: SQUASHED.",
+			"* Is that a sword? It's very small. Like you.",
+			"* A king never runs. A king ROLLS.",
+			"* Pay your taxes, peasant! ...with your health!",
+		},
+		hit = { "* ORDER! ORDER IN MY COURT!", "* HO HO! Squashed flat!", "* The king has spoken. With a HAMMER." },
+		phase2 = { "* Enough games. Behold my MECHANICAL GAVEL!", "* You scuffed my robe! Now feel the STEAM!" },
+		phase3 = { "* MY CROWN! NOBODY TAKES MY CROWN!", "* NO MORE MR. NICE KING!" },
+		win = { "* Long live the KING! That's me. Forever.", "* Case closed. GUILTY of being too small!" },
+		lose = { "* Impossible... a peasant... on MY throne...", "* Fine... FINE... take the tower... I need a nap anyway..." },
+	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {
 		wake = {
@@ -1049,7 +1091,7 @@ local function watchTalk(model)
 				nextIdle = os.clock() + 12
 			end
 		elseif def and model:GetAttribute("Phase") == 3 then
-			-- (a boss with a third round: Scribble)
+			-- (a boss with a third round: Scribble, King Gavelgrunt)
 			say(def.Short, "phase3", model)
 			nextIdle = os.clock() + 12
 		end

@@ -113,6 +113,10 @@ start("GreenhouseBuilder", GreenhouseBuilder and GreenhouseBuilder.Build)
 local CanvasBuilder = load("CanvasBuilder", 3)
 start("CanvasBuilder", CanvasBuilder and CanvasBuilder.Build)
 
+-- The Spire's tenth and last floor, The Throne Summit (King Gavelgrunt's arena): the same way
+local ThroneBuilder = load("ThroneBuilder", 3)
+start("ThroneBuilder", ThroneBuilder and ThroneBuilder.Build)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)
