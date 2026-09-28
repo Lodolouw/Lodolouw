@@ -83,9 +83,17 @@ for sc in attacks reset duo timing droop traps thorns; do run test_petalina.luau
 run test_petalina.luau -a full 2 client
 run test_petalina.luau -a attacks 1 client
 run test_petalina.luau -a thorns 1 client
+# Scribble (floor 9): whole fights (all three rounds), every move, resets, two
+# players, the dodge windows, the Z key, the DELETE box, the whip, the clones,
+# and him on screen
+for seed in 1 2 3; do run test_scribble.luau -a full $seed; done
+for sc in attacks reset duo timing undo delete whip clones; do run test_scribble.luau -a $sc 1; done
+run test_scribble.luau -a full 2 client
+run test_scribble.luau -a attacks 1 client
+run test_scribble.luau -a delete 1 client
 # the bosses' golden traces: they must match exactly (see golden.sh)
 if ./golden.sh check > /tmp/golden_check.$$ 2>&1; then
-	echo "pass  golden.sh check (40 boss traces)"
+	echo "pass  golden.sh check (44 boss traces)"
 else
 	echo "FAIL  golden.sh check"
 	grep -v "^same" /tmp/golden_check.$$ | head -20

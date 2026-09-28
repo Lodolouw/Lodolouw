@@ -509,6 +509,63 @@ Recommended level 120.
 - Previews: `Docs/petalina_preview.png` (the fight) and `Docs/petalina_poses.png`
   (her, pose by pose).
 
+## The Spire's ninth floor: Scribble, the 4th-Dimensional Doodle (The Canvas)
+
+A stick figure drawn in blue pen who knows he's inside a video game (his own
+name and look - no famous stick figure's), so he fights with the game
+itself. He's a DRAWING: flat as paper, his lines wobbling like hand-drawn
+animation, and he always turns to face your camera, like a paper cut-out.
+His arena is a giant sheet of graph paper inside a paint program's window
+("SCRIBBLE.EXE" on the title bar, giant tools down one side, colour swatches
+down the other), floating over a computer desktop with giant folders, the
+recycle bin and the taskbar. The way out is a giant red [X] close button.
+He sleeps as a faint pencil sketch; walk up and he inks himself in. Three
+rounds, 3-4 minutes: the longest fight yet. Recommended level 135.
+
+- **ROUND 1, "DOODLE" (the drawing tools):** PENCIL DASH (a dotted line draws
+  itself through you, then he rockets along it - get off the line; he skids
+  at the end: "HIT HIM!"), ERASER SWEEP (a pink strip across the paper, then
+  a giant eraser rubs it out - get off it), PAINT BUCKET (the grid square
+  you're in floods with paint - leave it), COPY-PASTE ("CTRL+C... CTRL+V!":
+  two ink clones chase you - a punch or two pops one) and UNDO (a giant Z key
+  pops up: punch it in time and he's stunned; miss it and "CTRL+Z!" - he
+  undoes your last few hits).
+- **ROUND 2, "BREAKING THE 4TH WALL"** at 55% health: he tears himself out of
+  the paper (red marker now) and a crack runs across your screen. THE CURSOR
+  (a giant mouse pointer hunts you, freezes and clicks - roll), BOSS BAR WHIP
+  (he rips his health bar off your screen and swings it round low - jump
+  it), ERROR POP-UPS (ERROR / 404 / LAG windows drop out of the sky and stand
+  as walls, then shatter) and LAG SPIKE (ghosts of him in a line to you, then
+  he skips from ghost to ghost - get off them).
+- **ROUND 3, "DELETE"** at 20%: he glitches into rainbow colours and keeps
+  trying to delete the floor. A giant "Delete FLOOR 9? YES / NO" box pops up
+  at the edge of the paper with a countdown while the paper is erased from
+  the edges in (a grey checkerboard - standing on it stings). Punch NO and he
+  crashes ("SCRIBBLE.EXE IS NOT RESPONDING": the big damage window, and the
+  paper comes back); miss it and the delete hits everyone hard (it never
+  kills - you're left on 1) and the paper stays smaller.
+- **The end:** he's crumpled into a paper ball and thrown into the recycle
+  bin. He pays Power only for now: his chest and gear are coming with the
+  loot rework (`Items.ByFloor[9]` is empty on purpose, so no chest is given).
+- **Where things are:** every number in `Config.Bosses[9]`; the floor in
+  `Config.Spire.Floors[9]`; his moves and his three-round brain in
+  `ServerScriptService/Bosses/Scribble.lua`; his body, warnings, clones, the
+  Z key, the DELETE box and the erased edge in
+  `ReplicatedStorage/BossBodies/Scribble.lua`; the paper's shape (its size,
+  the Paint Bucket's squares, where the DELETE box stands, how far it's been
+  erased) in `ReplicatedStorage/CanvasPlan.lua`; the arena in
+  `ServerScriptService/CanvasBuilder.lua`; his portrait and lines (with a
+  round-3 line) in `BossIntro`.
+- **Music:** a Sound named `Scribble Song` in SoundService (Oozark's plays until
+  you add it), and `Desktop Hum` for the arena's background loop. **Sounds**
+  (all optional; missing ones borrow Oozark's): Scribble Laugh, Pencil
+  Scratch, Ink Dash, Ink Skid, Eraser Rub, Paint Splash, Copy Paste, Clone
+  Swipe, Key Pop, Undo Rewind, Scribble Dizzy, Mouse Click, Bar Whip, Error
+  Pop, Lag Glitch, Delete Warning, Scribble Crash, Scribble Rip, Scribble
+  Glitch, Paper Crumple.
+- Previews: `Docs/scribble_preview.png` (the fight) and `Docs/scribble_poses.png`
+  (him, pose by pose).
+
 ## The look: modern retro
 
 `RetroUI` (StarterPlayerScripts) restyles every screen in the game without

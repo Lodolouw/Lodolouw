@@ -53,8 +53,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `knight_full` and `knight_attacks`, server and client - 4 for Kaze,
   `kaze_full` and `kaze_attacks`, 4 for Revvington, `car_full` and
   `car_attacks`, 4 for Gridlock, `grid_full` and `grid_attacks`, and 4
-  for Kongo, `kongo_full` and `kongo_attacks`, and 4 for Petalina,
-  `petal_full` and `petal_attacks`: 40 in all);
+  for Kongo, `kongo_full` and `kongo_attacks`, 4 for Petalina,
+  `petal_full` and `petal_attacks`, and 4 for Scribble, `scrib_full` and
+  `scrib_attacks`: 44 in all);
   `./golden.sh check`
   replays them and fails on any difference - the proof that a change to the
   boss code (like splitting it into one file per boss) changed nothing
@@ -222,6 +223,23 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `luau petalina_snaps.luau > s.txt` then
   `python3 render_snaps.py s.txt ../../Docs/petalina_preview.png --cols 3 --title "PETALINA|FLOOR 8  -  THE GLASSHOUSE GARDEN|RECOMMENDED LV 120"`;
   `-a poses` with `--cols 3 --title ""` the pose sheet (`Docs/petalina_poses.png`).
+- `test_scribble.luau` - SCRIBBLE (floor 9) on the real Canvas (CanvasBuilder,
+  CanvasPlan) with the real BossService and his own three-round brain (and,
+  with `client` at the end, the real BossClient drawing him, his warnings,
+  clones, the Z key, the DELETE box and the erased edge). Its pretend players
+  circle him, roll, jump, punch him, pop his clones and the Z key, and in
+  round 3 run to punch the DELETE box's NO button. `-a full`, `attacks`,
+  `reset`, `duo` and `timing` as for the others; `undo` checks the Z key
+  (broken: he's stunned and punches land; left alone: CTRL+Z gives back
+  exactly your last hits), `delete` the DELETE box (NO crashes him, costs him
+  health and brings the paper back; left alone it hits hard but never kills
+  and shrinks the paper; erased paper stings), `whip` that jumping clears the
+  Boss Bar Whip, and `clones` that the ink clones chase, slash, pop and
+  smudge away. It also checks he stays on the paper and floor 9 has no loot.
+- `scribble_snaps.luau` + `render_snaps.py` - Scribble's preview pictures:
+  `luau scribble_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/scribble_preview.png --cols 3 --title "SCRIBBLE|FLOOR 9  -  THE CANVAS|RECOMMENDED LV 135"`;
+  `-a poses` with `--cols 3 --title ""` the pose sheet (`Docs/scribble_poses.png`).
 - `test_vitals.luau` - THE HEART, THE POTION AND THE BOLT
   (ReplicatedStorage/Vitals): the three pixel pictures at the bottom of the
   screen. It starts the real module the way Hud does, with a pretend

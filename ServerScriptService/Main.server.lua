@@ -109,6 +109,10 @@ start("JungleBuilder", JungleBuilder and JungleBuilder.Build)
 local GreenhouseBuilder = load("GreenhouseBuilder", 3)
 start("GreenhouseBuilder", GreenhouseBuilder and GreenhouseBuilder.Build)
 
+-- The Spire's ninth floor, The Canvas (Scribble's arena): the same way
+local CanvasBuilder = load("CanvasBuilder", 3)
+start("CanvasBuilder", CanvasBuilder and CanvasBuilder.Build)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

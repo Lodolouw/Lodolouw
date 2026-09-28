@@ -15,6 +15,7 @@ local workspace = M.workspace
 -- every Spire arena's builder (a new floor's arena goes in this list)
 local BUILDERS = {
 	"DunesBuilder", "DigBuilder", "DojoBuilder", "SpeedwayBuilder", "GridBuilder", "JungleBuilder", "GreenhouseBuilder",
+	"CanvasBuilder",
 }
 
 local problems = {}

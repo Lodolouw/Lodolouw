@@ -909,6 +909,37 @@ Config.Spire = {
 				Volume = 0.35,
 			},
 		},
+		{
+			id = 9,
+			boss = "Scribble, the 4th-Dimensional Doodle",
+			area = "The Canvas",
+			level = 135,
+			blurb = "A giant sheet of graph paper inside a paint program, floating over a computer desktop. It belongs to a stick figure who knows he's inside a video game - and he'll use the whole game against you.",
+			color = Color3.fromRGB(0, 153, 219),
+			open = true,
+			-- inside a computer: bright, clean light, a pale blue haze, and
+			-- scraps of paper drifting past
+			ambience = {
+				ClockTime = 13,
+				Atmosphere = {
+					Density = 0.22,
+					Offset = 0.08,
+					Color = Color3.fromRGB(214, 234, 255),
+					Decay = Color3.fromRGB(140, 180, 230),
+					Glare = 0.2,
+					Haze = 1.0,
+				},
+				Tint = Color3.fromRGB(248, 252, 255),
+				Saturation = 0.1,
+				Contrast = 0.06,
+				Sand = Color3.fromRGB(255, 255, 255), -- (the "dust" here is scraps of paper)
+				Grains = 0.1,
+				Clouds = false,
+				Wind = Vector3.new(0.3, 0, 0.6),
+				Sound = "Desktop Hum", -- a quiet computer fan, looping, if you add one
+				Volume = 0.3,
+			},
+		},
 	},
 }
 
@@ -2293,6 +2324,170 @@ Config.Bosses = {
 			Spread = "Thorns Spread", -- round 2: the thorns creeping over the beds
 			Break = "Petalina Evil Laugh", -- round 2: her evil laugh
 			Death = "Petalina Wilt", -- wilting away at the end
+		},
+	},
+
+	[9] = {
+		Name = "Scribble, the 4th-Dimensional Doodle",
+		Short = "Scribble",
+		-- A stick figure drawn in blue pen who knows he's inside a video game
+		-- (his own name and look - no famous stick figure's), so he fights with
+		-- the game itself: round 1 with the drawing tools (a pencil dash, a
+		-- giant eraser, a paint bucket, copy-paste, undo), round 2 with your
+		-- SCREEN (the mouse cursor, his own health bar as a whip, error
+		-- windows, lag), and round 3 by trying to DELETE the whole floor. He's
+		-- fast and tricky. Three rounds: his own brain runs them (the shared
+		-- one with a third round); his moves: ServerScriptService/Bosses/
+		-- Scribble.lua. His body: ReplicatedStorage/BossBodies/Scribble.lua.
+		-- His arena: CanvasBuilder (the paper's shape: ReplicatedStorage/CanvasPlan).
+		Color = Color3.fromRGB(0, 153, 219), -- round 1: blue pen ink
+		InkDeep = Color3.fromRGB(18, 78, 137), -- the ink where it's thickest
+		MarkerColor = Color3.fromRGB(228, 59, 68), -- round 2: red marker
+		MarkerDeep = Color3.fromRGB(162, 38, 51),
+		PencilColor = Color3.fromRGB(254, 174, 52), -- the pencil behind his ear
+		EraserColor = Color3.fromRGB(246, 117, 122), -- its pink rubber, and the giant eraser's
+		CoreColor = Color3.fromRGB(24, 20, 37), -- his eyes and grin
+		DeepColor = Color3.fromRGB(18, 78, 137),
+		EyeColor = Color3.fromRGB(255, 255, 255),
+		Accent = Color3.fromRGB(0, 153, 219), -- the VS splash's colour
+
+		HealthPunches = 84, -- (three rounds, 3-4 minutes: the longest fight yet - about twice Petalina's)
+		PartyScale = 0.6,
+		StudioFairFight = true,
+
+		Size = 5, -- how wide he stands, for bumping into him (a thin stick figure)
+		Height = 16, -- how tall he is (you're about 5)
+		BodyRadius = 2.4, -- how thick he is, for your punches
+		WakeRange = 40, -- walk this close and he wakes up
+		WakeTime = 3.4, -- he draws himself onto the paper, line by line, and grins
+		WakeSoundLead = 0.3,
+		Leash = 85, -- (the paper is square, 60 each way: his own step keeps him on it, corners and all)
+		MoveSpeed = { 24, 28, 30 }, -- per round (you run at 20 in a fight)
+		TurnSpeed = { 420, 520, 600 }, -- degrees a second
+		Breather = { { 0.6, 1.0 }, { 0.45, 0.8 }, { 0.35, 0.65 } }, -- the pause between moves, per round
+
+		PhaseAt = 0.55, -- ROUND 2 ("breaking the 4th wall") at 55% health
+		BreakTime = 3.4, -- he tears himself out of the paper and turns red marker
+		BreakShove = 50,
+		BreakReach = 20,
+		Phase2Recovery = 0.85,
+		DesperateAt = 0.2,
+		DesperateRecovery = 0.75,
+
+		-- ROUND 3, "DELETE", at Round3At health: he glitches into rainbow
+		-- colours for GlitchTime seconds, then keeps trying to delete the floor.
+		-- A giant box pops up at the edge of the paper - "Delete FLOOR 9?
+		-- YES / NO" - with a Countdown, while the paper is erased from the
+		-- edges in. Punch NO (NoPunches punches) and he CRASHES: dizzy for Crash
+		-- seconds (hit him!), and the crash itself costs him CrashDamage of his
+		-- health. Miss it and the delete goes through: everyone takes
+		-- YesDamage (it never kills - you're left on 1) and the paper stays
+		-- Shrink studs smaller each side (never below MinPaper). A new box
+		-- comes Every seconds after the last one closes. Standing on erased
+		-- paper hurts (EdgeDamage every EdgeTick seconds).
+		Round3At = 0.2,
+		GlitchTime = 3.0,
+		Delete = { Countdown = 7, Every = 10, NoPunches = 3, Crash = 4.5, CrashDamage = 0.04, YesDamage = 38, Shrink = 10,
+			MinPaper = 30, EdgeDamage = 7, EdgeTick = 0.5 },
+
+		-- His moves. Tell = the wind-up you see before it hits (every one is at
+		-- least your roll's half a second). Recovery = how long he's open after
+		-- it. Range = { closest, furthest } he uses it from; Weight = how often;
+		-- Phase = the first round it's used in (UpTo = the last). A list like
+		-- { 1, 2, 2 } means { round 1, round 2, round 3 }.
+		Attacks = {
+			-- PENCIL DASH: a dotted line draws itself across the paper - from him,
+			-- through you, Past studs beyond - then he rockets along it as a
+			-- streak of ink (Speed studs a second). Get off the line! In later
+			-- rounds he chains a second dash (its line drawn Chain seconds
+			-- before). At the end he skids for Skid seconds: HIT HIM!
+			PencilDash = { Tell = 0.9, Count = { 1, 2, 2 }, Chain = 0.65, Speed = 95, Past = 14, Width = 5, Damage = 20, Knockback = 50,
+				Skid = 1.3, Phase = 1, Range = { 8, 200 }, Weight = 3 },
+			-- ERASER SWEEP: a pink strip across the whole paper glows under you,
+			-- then a giant eraser rubs it out for Time seconds. Standing in the
+			-- strip hurts (Damage when it starts, TickDamage every Tick after).
+			-- Get off the strip! (Later rounds: two strips, a cross.)
+			EraserSweep = { Tell = 1.0, Strips = { 1, 2, 2 }, Width = 10, Time = 3, Damage = 12, Knockback = 30, TickDamage = 6, Tick = 0.5,
+				Recovery = 0.5, Phase = 1, Range = { 0, 200 }, Weight = 2.5 },
+			-- PAINT BUCKET: the grid square you're in outlines and drips... then
+			-- floods with paint. Leave the square! The paint stays wet for Wet
+			-- seconds (WetDamage every Tick). Later rounds: Squares at once.
+			PaintBucket = { Tell = 1.1, Squares = { 1, 3, 3 }, Damage = 18, Knockback = 25, Wet = 2.5, WetDamage = 5, Tick = 0.5,
+				Recovery = 0.5, Phase = 1, Range = { 0, 200 }, Weight = 2.5 },
+			-- COPY-PASTE: "CTRL+C... CTRL+V!" - Clones ink copies of him peel off
+			-- and chase you (Speed studs a second - slower than you). Close up they
+			-- wind up a swipe (SwipeTell) and slash anyone within Reach. Punches
+			-- punches pop one; left alone they smudge away after Life seconds.
+			-- Never more than Max at once. (Rounds 1 and 2.)
+			CopyPaste = { Tell = 1.2, Clones = 2, Punches = 1.5, Speed = 15, Life = 14, Reach = 4.5, SwipeTell = 0.55, Damage = 14,
+				Knockback = 30, Rest = 1.2, Max = 3, Recovery = 0.3, Phase = 1, UpTo = 2, Range = { 0, 200 }, Weight = 1.6 },
+			-- UNDO: a giant Z key pops up in front of you. Punch it (Punches
+			-- punches) within Window seconds and he's STUNNED for Stun seconds -
+			-- hit him! Miss it and "CTRL+Z!": he undoes your last Hits hits (from
+			-- the last Memory seconds, at most Max of his health). He only does it
+			-- when you've been hitting him, and not twice within Cooldown
+			-- seconds. (Rounds 1 and 2.)
+			Undo = { Tell = 0.6, Window = 3.2, Punches = 2, Hits = 5, Memory = 10, Max = 0.07, Stun = 2.8, Cooldown = 22, Phase = 1, UpTo = 2,
+				Range = { 0, 200 }, Weight = 1.4 },
+			-- THE CURSOR (round 2): a giant mouse pointer hunts you - its shadow
+			-- follows you across the paper (Speed studs a second) for Hunt
+			-- seconds, freezes, and Lock seconds later it CLICKS there: roll! If
+			-- it catches you, it flings you (Fling). Clicks in a row per round.
+			Cursor = { Hunt = 2.0, Hunt2 = 1.2, Lock = 0.45, Clicks = { 1, 2, 2 }, Speed = 23, Radius = 4.5, Damage = 18, Fling = 70,
+				Recovery = 0.5, Phase = 2, Range = { 0, 200 }, Weight = 3 },
+			-- BOSS BAR WHIP (round 2): he rips his own health bar off the top of
+			-- your screen and swings it round himself as a giant red whip, low
+			-- over the floor (Length studs long, Turns turns, Spin seconds a
+			-- turn). JUMP it, or roll through it. The bar pops back afterwards.
+			BarWhip = { Tell = 1.0, Length = 34, Turns = { 1.25, 1.25, 1.75 }, Spin = 1.0, Height = 3, Damage = 20, Knockback = 45,
+				Recovery = 0.6, Phase = 2, Range = { 0, 30 }, Weight = 2.5 },
+			-- ERROR POP-UPS (round 2): ERROR, 404 and LAG windows drop out of the
+			-- sky (Windows of them, one every Gap seconds, each Fall seconds in
+			-- the air) - their shadows show where. Each lands standing up, Width
+			-- studs wide, and stays as a wall for Stay seconds, then shatters.
+			ErrorPopups = { Tell = 0.6, Windows = { 4, 5, 6 }, Gap = 0.28, Fall = 0.9, Spread = 12, Width = 12, Depth = 2, Stay = 4,
+				Damage = 20, Knockback = 35, Recovery = 0.6, Phase = 2, Range = { 0, 200 }, Weight = 2.5 },
+			-- LAG SPIKE (round 2): "LAG" flashes and ghosts of him appear in a line
+			-- towards you (Frames of them, the last where you're standing). Then
+			-- he skips from ghost to ghost, one every Step seconds - each skip
+			-- hits round it (Radius), the last one harder (LastRadius). Get off
+			-- the ghosts, or roll on the last frame.
+			LagSpike = { Tell = 0.8, Frames = 4, Step = 0.28, Radius = 3.5, Damage = 12, LastRadius = 5.5, LastDamage = 24, Knockback = 45,
+				Recovery = 0.7, Phase = 2, Range = { 10, 200 }, Weight = 2.5 },
+		},
+
+		Reward = { Power = 3.6, FirstClear = 9 },
+
+		-- the fight's music: add a Sound named "Scribble Song" to SoundService
+		-- (until you do, Oozark's plays instead)
+		Music = "Scribble Song",
+		MusicVolume = 0.8,
+		VictorySound = "Victory Is Ours (a) Sting",
+		Weather = "Clear",
+
+		-- His sounds: add Sounds with these names to SoundService whenever you
+		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient).
+		Sounds = {
+			Wake = "Scribble Laugh", -- drawing himself in, and his cheeky laugh
+			Draw = "Pencil Scratch", -- a pencil line scratching across the paper
+			Dash = "Ink Dash", -- him rocketing along the line
+			Skid = "Ink Skid", -- skidding to a stop
+			Erase = "Eraser Rub", -- the giant eraser rubbing
+			Paint = "Paint Splash", -- a square flooding with paint
+			Copy = "Copy Paste", -- CTRL+C, CTRL+V
+			Swipe = "Clone Swipe", -- an ink clone's slash
+			Key = "Key Pop", -- the Z key popping up
+			Undo = "Undo Rewind", -- CTRL+Z: your hits rewinding
+			Stun = "Scribble Dizzy", -- stunned (the key broken, the NO pressed)
+			Click = "Mouse Click", -- the giant cursor clicking
+			Whip = "Bar Whip", -- the health bar whooshing round
+			Popup = "Error Pop", -- an error window dropping in
+			Lag = "Lag Glitch", -- the lag spike stuttering
+			Delete = "Delete Warning", -- the DELETE box popping up
+			Crash = "Scribble Crash", -- pressing NO: he crashes
+			Break = "Scribble Rip", -- round 2: tearing himself out of the paper
+			Glitch = "Scribble Glitch", -- round 3: glitching into rainbow
+			Death = "Paper Crumple", -- crumpled into a ball at the end
 		},
 	},
 }

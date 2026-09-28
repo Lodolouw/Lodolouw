@@ -381,7 +381,11 @@ local SOUND_FALLBACK = { Dive = "Lunge", Crash = "Slam", Sweep = "Wave", Roar = 
 	-- (Petalina's: a flytrap sprouting like an eruption, its chomp like a
 	-- lunge, a petal like a wave, pollen like a spit, a giggle like a wail...)
 	Sprout = "Erupt", Chomp = "Lunge", Petal = "Wave", Pollen = "Spit", Stretch = "Lunge", Bite = "Slam",
-	Root = "Erupt", Giggle = "Wail", Thorn = "Wave", Rain = "Splat", Spread = "Erupt" }
+	Root = "Erupt", Giggle = "Wail", Thorn = "Wave", Rain = "Splat", Spread = "Erupt",
+	-- (Scribble's: a pencil scratch sounds like a spit, the eraser like a wave,
+	-- paint like a splat, the cursor's click and an error window like a slam...)
+	Draw = "Spit", Erase = "Wave", Paint = "Splat", Copy = "Wail", Swipe = "Lunge", Key = "Splat", Undo = "Wail",
+	Click = "Slam", Popup = "Slam", Lag = "Wave", Delete = "Wail", Glitch = "Wail" }
 
 local function playSound(def, key, at, volume)
 	local want = def.Sounds and def.Sounds[key]
@@ -918,8 +922,9 @@ local shownShare, chipShare, chipHoldUntil = 1, 1, 0
 local recentDamage, recentUntil = 0, 0
 
 -- A body file can draw its boss's bar its own way (barLook(B, now, share) ->
--- nil, or { name =, share =, color = }): Tuber has two bars, one per round,
--- each with its own name. Every other boss: one bar, its Config name.
+-- nil, or { name =, share =, color =, hidden = }): Tuber has two bars, one
+-- per round, each with its own name; Scribble's bar vanishes while he swings
+-- it at you (hidden). Every other boss: one bar, its Config name.
 local function barLook(B, now, share)
 	local f = B.mod.barLook
 	if not f then
@@ -958,6 +963,11 @@ local function stepBar(now, dt)
 	end
 	local share = clamp((B.model:GetAttribute("Health") or 0) / math.max(B.model:GetAttribute("MaxHealth") or 1, 1), 0, 1)
 	local look = barLook(B, now, share)
+	-- (a boss can take its bar off your screen for a moment: Scribble whips you with it)
+	local hidden = look ~= nil and look.hidden == true
+	if barHolder.Visible == hidden then
+		barHolder.Visible = not hidden
+	end
 	if look then
 		if look.share then
 			share = clamp(look.share, 0, 1)

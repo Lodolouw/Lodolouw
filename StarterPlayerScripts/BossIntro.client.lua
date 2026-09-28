@@ -294,6 +294,25 @@ local PORTRAITS = {
 		ink = { P = RGB(246, 117, 122), Y = RGB(254, 231, 97), K = RGB(24, 20, 37), W = RGB(255, 255, 255), R = RGB(228, 59, 68),
 			G = RGB(99, 199, 77) },
 	},
+	-- a stick figure's head in blue pen: a round white face, two dot eyes, a
+	-- big grin, the pencil behind his ear
+	Scribble = {
+		rows = {
+			"...BBBBBBB..P.",
+			"..BWWWWWWWB.Y.",
+			".BWWWWWWWWWBY.",
+			".BWWKWWWKWWBY.",
+			".BWWKWWWKWWB..",
+			".BWWWWWWWWWB..",
+			".BWKWWWWWKWB..",
+			".BWWKKKKKWWB..",
+			"..BWWWWWWWB...",
+			"...BBBBBBB....",
+			"......B.......",
+			"..BBBBBBBBB...",
+		},
+		ink = { B = RGB(0, 153, 219), W = RGB(255, 255, 255), K = RGB(24, 20, 37), Y = RGB(254, 174, 52), P = RGB(246, 117, 122) },
+	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
 		rows = {
@@ -648,6 +667,27 @@ local LINES = {
 		win = { "* Tee-hee! Another little pest in the compost!", "* Come back soon, sweetie! My flytraps miss you already~" },
 		lose = { "* My... my petals... I'm... wilting...", "* Water... I need... water... and a little sunshine..." },
 	},
+	-- a stick figure who knows he's in a video game: cheeky, chatty, and far
+	-- too pleased with himself for finding the delete button
+	Scribble = {
+		wake = {
+			"* Oh hey! A player! ...Wait, you can SEE me? Awesome!",
+			"* Hold on, let me draw myself in... There! Now let's play!",
+		},
+		idle = {
+			"* I'm just a doodle. A doodle who knows where the DELETE key is.",
+			"* Nice health bar. Be a shame if someone... erased it.",
+			"* Every time you blink, I redraw myself. Every. Single. Time.",
+			"* I read this fight's code. I know every move you'll make!",
+			"* CTRL+C, CTRL+V! Two of me means twice the fun!",
+			"* You play on a screen. I LIVE on one. Home advantage!",
+		},
+		hit = { "* Oops! Did I erase you a little?", "* Clicked! You've been clicked!", "* 404: dodge not found!" },
+		phase2 = { "* Enough doodling. Let me OUT of this paper!", "* Your screen? It's MY screen now." },
+		phase3 = { "* Delete FLOOR 9? ...YES. Definitely YES.", "* ERROR ERROR ERROR... I'm deleting EVERYTHING!" },
+		win = { "* GAME OVER! Press any key to try again!", "* Ha! Another player, undone. CTRL+Z!" },
+		lose = { "* Hey... you can't just... crumple me... up...", "* Scribble.exe has stopped working. ...Nice one." },
+	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {
 		wake = {
@@ -785,6 +825,10 @@ local function watchTalk(model)
 				say(def.Short, "phase2")
 				nextIdle = os.clock() + 12
 			end
+		elseif def and model:GetAttribute("Phase") == 3 then
+			-- (a boss with a third round: Scribble)
+			say(def.Short, "phase3")
+			nextIdle = os.clock() + 12
 		end
 	end)
 end
