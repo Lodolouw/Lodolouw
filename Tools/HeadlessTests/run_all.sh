@@ -28,6 +28,7 @@ run test_drink.luau
 # the test sword: its rules on the server, and how it looks on every screen
 run test_sword.luau
 run test_weaponfx.luau
+run test_swordanims.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

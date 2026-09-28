@@ -2623,9 +2623,17 @@ Config.Weapons = {
 		Sword = {
 			Window = 0.9, -- swing again within this to carry on the string
 			Swings = {
-				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75, Lunge = 3.5 }, -- a slash, right to left
-				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75, Lunge = 3.5 }, -- a backhand, left to right
-				{ Damage = 1.5, Lock = 0.75, Contact = 0.45, Cost = 14, Range = 11, Arc = 30, Lunge = 6 }, -- an overhead chop (the finisher: narrow)
+				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75, Lunge = 3.5 }, -- a flat forehand, right to left
+				{ Damage = 1.0, Lock = 0.5, Contact = 0.4, Cost = 10, Range = 10, Arc = 75, Lunge = 3.5 }, -- a rising backhand, left to right
+				{ Damage = 1.5, Lock = 0.75, Contact = 0.45, Cost = 14, Range = 11, Arc = 30, Lunge = 6 }, -- the finisher: a leaping spin
+			},
+			-- the uploaded animations (Tools/Animations: made in Blender for R6,
+			-- published from Studio). Empty ones fall back to the swings made in
+			-- code (WeaponFX.POSES). The sword is held by a Motor6D "Grip" (Right
+			-- Arm -> the sword's Handle), so they swing the blade too.
+			Animations = {
+				Idle = "rbxassetid://99655870498978",
+				Swings = { "rbxassetid://72648607435013", "rbxassetid://85757155370756", "rbxassetid://81267393019854" },
 			},
 			Sounds = { Swing = "Sword Swing", Hit = "Sword Hit" }, -- Sounds in SoundService (missing: the punch ones)
 			-- the hit feel (anime style): how long a hit freezes your swing
@@ -2643,6 +2651,9 @@ Config.Weapons = {
 			Name = "Iron Sword",
 			Type = "Sword",
 			Rarity = "Common",
+			-- the 3D model (Tools/Weapons, imported into ReplicatedStorage with
+			-- Studio's 3D Importer); missing: the blocky sword made in code
+			Model = "IronWarden",
 			Colors = {
 				Blade = Color3.fromRGB(192, 203, 220),
 				Edge = Color3.fromRGB(255, 255, 255),

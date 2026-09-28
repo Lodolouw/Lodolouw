@@ -576,6 +576,11 @@ local function all()
 	check(oh and oh.anim == nil, "...and an old swing counter doesn't make them swing")
 	other:SetAttribute("SwingN", "8:2")
 	step(0.05)
+	-- (an uploaded swing: Roblox sends theirs to your screen - test_swordanims -
+	-- so it's given a moment to arrive; here nothing plays animations, so it
+	-- never does, and it's drawn in code instead)
+	check(oh.anim == nil, "their swing: waiting a moment for their animation to arrive")
+	step(WeaponFX.REMOTE_WAIT)
 	check(oh.anim and oh.anim.kind == "swing" and oh.anim.n == 2, "their new swing plays on your screen")
 	step(1.2)
 	other:SetAttribute("AbilityN", "3:1")

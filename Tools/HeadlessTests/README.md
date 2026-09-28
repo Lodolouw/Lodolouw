@@ -325,6 +325,23 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   the blade gold; leaving the fight, dying mid-swing or letting go puts it
   away; a non-R6 body gets nothing. `-a poses` prints the joints for
   `render_sword.py` (`python3 render_sword.py s.txt ../../Docs/sword_preview.png`).
+  (Nothing plays animations there, so it's the swings made in code - what
+  every screen falls back to.)
+- `test_swordanims.luau` - the sword's UPLOADED ANIMATIONS and 3D MODEL
+  (WeaponFX with the ids in Config and the IronSword's Model), with a
+  pretend Animator playing pretend tracks: the 3D sword (a model in
+  ReplicatedStorage, as Studio's 3D Importer leaves it - here twice too big)
+  is held at its grip, tip along the Handle's -Z, scaled to 5 studs, its
+  glow Neon; the Grip is a Motor6D; standing, the idle plays and the body
+  and blade are left to it; walking, the idle stops and the code holds the
+  sword arm; a swing plays from the start, nothing drawn over it, the smear
+  between its animation's Cut and Through markers, one whoosh; chained
+  swings hand over at once; hit-stop freezes the track for a blink; a swing
+  that hasn't loaded is drawn in code (the last one stopped); the Whirlwind
+  stops a swing and isn't cut short; someone else's swing arrives by itself
+  (their idle and swing left alone), one that doesn't arrive in 0.15 s is
+  drawn in code, and code steps aside if it turns up late; leaving the fight
+  stops and throws the tracks away; no 3D model: the blocky sword.
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

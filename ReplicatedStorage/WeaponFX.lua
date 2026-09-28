@@ -3,9 +3,21 @@
 
 	How weapons look, on every screen. The feel we're after: swings with the
 	weight of Elden Ring, hits that pop like Hades, and Deepwoken as the proof
-	it can be done on a Roblox character. All of it is made in code on the R6
-	joints (both arms, both legs, the neck, the whole body) - no uploaded
-	animations.
+	it can be done on a Roblox character.
+
+	TWO WAYS A WEAPON MOVES:
+	  * UPLOADED ANIMATIONS (a type's Config Animations: made in Blender for
+	    R6 - Tools/Animations - and published from Studio): the idle standing
+	    still, and each swing of the string. Your own screen plays them on
+	    your own character and Roblox sends them on to everyone else's; every
+	    screen then leaves the body (and the blade: the Grip is a Motor6D) to
+	    them. The smear and the whoosh follow the swing's own time (its Cut and
+	    Through markers: ANIM_CUTS).
+	  * MADE IN CODE, on the R6 joints (both arms, both legs, the neck, the
+	    whole body): walking with the sword, the Whirlwind, and any swing
+	    whose animation isn't there or hasn't loaded (yours, or someone
+	    else's that doesn't arrive within REMOTE_WAIT) - so nothing ever
+	    swings as an empty arm. Everything below is about this part.
 
 	WHAT MAKES IT MOVE WELL (and not like a fencing dummy):
 	  * SPRINGS: no joint ever jumps to a pose. Each one is pulled towards
@@ -26,17 +38,22 @@
 
 	THE PIECES:
 	  * THE WEAPON: anyone holding one in a fight (the "Weapon" attribute
-	    CombatService sets) has it in their right hand - a chunky 8-bit sword
-	    with a glowing edge, built on this screen only. Out of a fight it's
-	    put away; while you drink a flask it's tucked away too.
+	    CombatService sets) has it in their right hand, built on this screen
+	    only: its 3D model (the weapon's Model in Config - a model in
+	    ReplicatedStorage from Studio's 3D Importer, held at its grip:
+	    MODELS), or else a chunky 8-bit sword with a glowing edge made of
+	    parts. Out of a fight it's put away; while you drink a flask it's
+	    tucked away too.
 	  * THE STANCE (Elden Ring's one-handed idle): relaxed, a little
 	    side-on, the blade held low and forward, breathing, the weight
 	    shifting now and then. Walking, your legs and free arm walk and the
 	    sword arm keeps the blade steady.
-	  * THE STRING: a diagonal slash from high right to low left, a rising
-	    backhand from low left to high right, and a leaping overhead
-	    finisher that slams down (with a shockwave on the ground). A bold
-	    glowing smear follows the blade through each cut.
+	  * THE STRING (uploaded): a flat forehand, right to left at chest
+	    height; a rising backhand, low left to high right; and a leaping spin
+	    finisher, all the way round. (Made in code, if they're missing: a
+	    diagonal slash, the backhand, and a leaping overhead chop that slams
+	    down with a shockwave.) A bold glowing smear follows the blade
+	    through each cut.
 	  * THE ABILITY (the Iron Sword's Whirlwind): a coil, then the body spins
 	    round with the arms out - once, twice or three times, by mastery.
 	  * HITS (CombatClient calls these): hit-stop - the whole body stops dead
@@ -47,7 +64,8 @@
 	    action animations plays (the roll), the sword code lets go of your
 	    body; in the air your legs are left alone; while you drink, your arm
 	    and head belong to the drink.
-	  * AWAKENED (mastery 100): the blade turns glowing gold.
+	  * AWAKENED (mastery 100): the blade turns glowing gold (a 3D model: its
+	    glowing pixels and smear turn gold, and it gives off a golden light).
 
 	Your own swings start the moment you press (CombatClient calls
 	WeaponFX.swing / WeaponFX.spin); everyone else's start when their SwingN
@@ -252,6 +270,7 @@ local function gripAt(tilt, roll)
 	return CFrame.new(0, -1, 0) * CFrame.Angles(rad(tilt), 0, 0) * CFrame.Angles(0, 0, rad(roll or 0))
 end
 WeaponFX.gripAt = gripAt
+local GRIP_HAND = CFrame.new(0, -1, 0) -- (the Grip's C0 when an animation holds the blade)
 
 ----------------------------------------------------------------------
 -- Sounds (by name from SoundService; capitals and spaces don't matter)
@@ -367,6 +386,138 @@ local function buildSword(def, golden)
 	return model, handle, trails, blade
 end
 
+-- the 3D weapons (Tools/Weapons: pixel sprites made 3D in Blender, imported
+-- into ReplicatedStorage with Studio's 3D Importer): how long each is (studs,
+-- pommel to tip), where its grip's middle is - how far up from the pommel
+-- (0 to 1) and across (0 to 1) - and the colour it glows (its glowing pixels,
+-- made Neon, and its smear). Straight from the sprites (Tools/Weapons/sprites.py).
+WeaponFX.MODELS = {
+	IronWarden = { Length = 5.0, GripUp = 0.16, GripAcross = 0.5, Glow = GLOW },
+	EmberCleaver = { Length = 5.2, GripUp = 0.163, GripAcross = 0.5, Glow = Color3.fromRGB(255, 120, 30) },
+	Tidefang = { Length = 5.1, GripUp = 0.157, GripAcross = 0.5, Glow = Color3.fromRGB(80, 255, 240) },
+	Voidstar = { Length = 5.8, GripUp = 0.13, GripAcross = 0.5, Glow = Color3.fromRGB(255, 170, 250) },
+}
+
+-- the weapon's 3D model, held by an invisible Handle at its grip (the blade
+-- along the Handle's -Z, like the blocky one), or nil if it isn't in the game
+local function buildModelSword(def, golden)
+	local name = def.Model
+	local geo = name and WeaponFX.MODELS[name]
+	local src = name and ReplicatedStorage:FindFirstChild(name)
+	if not (geo and src) then
+		return nil
+	end
+	local ok, model, handle = pcall(function()
+		local copy = src:Clone()
+		if copy:IsA("BasePart") then
+			-- (just the one mesh, not a model of them)
+			local wrap = Instance.new("Model")
+			copy.Parent = wrap
+			copy = wrap
+		end
+		local parts = {}
+		for _, d in ipairs(copy:GetDescendants()) do
+			if d:IsA("BasePart") then
+				parts[#parts + 1] = d
+			elseif d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("Script") or d:IsA("LocalScript") then
+				d:Destroy()
+			end
+		end
+		if #parts == 0 then
+			return nil
+		end
+		-- the box round it all: its longest side runs pommel to tip (the tip
+		-- up, as it was made), the middle one across the blade
+		local box, size = copy:GetBoundingBox()
+		local sides = { { size.X, box.RightVector }, { size.Y, box.UpVector }, { size.Z, box.LookVector } }
+		table.sort(sides, function(a, b)
+			return a[1] > b[1]
+		end)
+		local long, across = sides[1], sides[2]
+		local tipWay, acrossWay = long[2], across[2]
+		if tipWay.Y < -0.5 then
+			tipWay = -tipWay -- (it was made standing on its pommel, the tip up)
+		end
+		local gripPoint = box.Position + tipWay * (long[1] * (geo.GripUp - 0.5)) + acrossWay * (across[1] * (geo.GripAcross - 0.5))
+		local z = -tipWay
+		local y = acrossWay
+		local grip = CFrame.fromMatrix(gripPoint, y:Cross(z), y, z)
+		local scale = geo.Length / math.max(long[1], 0.01) -- (in case it came in bigger or smaller)
+		local out = Instance.new("Model")
+		out.Name = "HeldWeapon"
+		local h = Instance.new("Part")
+		h.Name = "Handle"
+		h.Size = Vector3.new(0.2, 0.2, 0.2)
+		h.Transparency = 1
+		h.CanCollide, h.CanTouch, h.CanQuery, h.CastShadow = false, false, false, false
+		h.Massless = true
+		h.Parent = out
+		for _, p in ipairs(parts) do
+			local offset = grip:ToObjectSpace(p.CFrame)
+			offset = offset - offset.Position + offset.Position * scale
+			p.Size = p.Size * scale
+			p.Anchored = false
+			p.CanCollide, p.CanTouch, p.CanQuery, p.CastShadow = false, false, false, false
+			p.Massless = true
+			if string.find(p.Name, "Glow") then
+				-- (the glowing pixels: made to shine)
+				p.Material = Enum.Material.Neon
+				p.Color = golden and GOLD or geo.Glow or GLOW
+			end
+			p.CFrame = h.CFrame * offset
+			local weld = Instance.new("Weld")
+			weld.Part0, weld.Part1 = h, p
+			weld.C0 = offset
+			weld.Parent = p
+			p.Parent = out
+		end
+		copy:Destroy()
+		if golden then
+			-- (its own colours are in its texture: the gold is a glow round it)
+			local light = Instance.new("PointLight")
+			light.Name = "Awakened"
+			light.Color = GOLD
+			light.Brightness = 2
+			light.Range = 7
+			light.Parent = h
+		end
+		return out, h
+	end)
+	if not (ok and model) then
+		return nil
+	end
+	-- the smears, along the blade (from just past the guard to the tip)
+	local reach = geo.Length * (1 - geo.GripUp)
+	local color = golden and GOLD or geo.Glow or GLOW
+	local function smear(trailName, from, to, see, life)
+		local a0 = Instance.new("Attachment")
+		a0.Name = trailName .. "Base"
+		a0.Position = Vector3.new(0, 0, -from)
+		a0.Parent = handle
+		local a1 = Instance.new("Attachment")
+		a1.Name = trailName .. "Tip"
+		a1.Position = Vector3.new(0, 0, -to)
+		a1.Parent = handle
+		local trail = Instance.new("Trail")
+		trail.Name = trailName
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
+		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, see), NumberSequenceKeypoint.new(0.55, 0.65), NumberSequenceKeypoint.new(1, 1) })
+		trail.LightEmission = 1
+		trail.Lifetime = life
+		trail.MinLength = 0.02
+		trail.WidthScale = NumberSequence.new(1, 0.35)
+		trail.Enabled = false
+		trail.Parent = handle
+		return trail
+	end
+	local trails = {
+		smear("SwingTrail", reach * 0.3, reach, 0, 0.2),
+		smear("SwingGlow", reach * 0.15, reach * 1.08, 0.5, 0.28),
+	}
+	return model, handle, trails, handle
+end
+
 ----------------------------------------------------------------------
 -- Hits: the slash mark ripping across what you hit, and the finisher's slam
 ----------------------------------------------------------------------
@@ -477,6 +628,179 @@ end
 local held = {} -- [player] = what we've built and are showing for them
 WeaponFX._held = held -- (for the headless tests)
 
+----------------------------------------------------------------------
+-- The uploaded animations (Config: the type's Animations)
+----------------------------------------------------------------------
+-- Only your own screen plays them, on your own character - Roblox sends them
+-- on to everyone else's screen by itself. Every screen then sees them
+-- playing and leaves the body to them (the swings are Action animations, so
+-- the sword code lets go just as it does for a roll; the idle is watched for
+-- by its id).
+local function animsOf(def)
+	local kind = def and W.Types[def.Type]
+	local a = kind and kind.Animations
+	if type(a) ~= "table" then
+		return nil
+	end
+	local function num(id)
+		return id and tonumber(string.match(tostring(id), "(%d+)%s*$"))
+	end
+	local out = { idle = num(a.Idle), swings = {} }
+	for n, id in ipairs(a.Swings or {}) do
+		out.swings[n] = num(id)
+	end
+	return out
+end
+
+-- (the times the blade cuts, and when the swing's whoosh plays, in each
+-- uploaded swing: its "Cut" and "Through" markers - Tools/Animations)
+WeaponFX.ANIM_CUTS = { { 0.13, 0.36 }, { 0.13, 0.36 }, { 0.24, 0.6 } }
+-- someone else's uploaded swing: how long to wait for it to arrive before
+-- drawing it in code instead (seconds)
+WeaponFX.REMOTE_WAIT = 0.15
+
+local function loadTracks(char, def)
+	local ids = animsOf(def)
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not (ids and hum and #ids.swings > 0) then
+		return nil
+	end
+	-- (Roblox puts an Animator in every character; one made here, on your own
+	-- screen, wouldn't send the animations on to anyone else)
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if not animator then
+		return nil
+	end
+	local ok, tracks = pcall(function()
+		local function load(id, priority, looped)
+			local a = Instance.new("Animation")
+			a.AnimationId = "rbxassetid://" .. id
+			local track = animator:LoadAnimation(a)
+			track.Priority = priority
+			track.Looped = looped
+			return track
+		end
+		local t = { swings = {} }
+		if ids.idle then
+			t.idle = load(ids.idle, Enum.AnimationPriority.Idle, true)
+		end
+		for n, id in ipairs(ids.swings) do
+			t.swings[n] = load(id, Enum.AnimationPriority.Action, false)
+		end
+		return t
+	end)
+	return ok and tracks or nil
+end
+
+-- the number in an animation's id
+local function idOf(track)
+	local ok, id = pcall(function()
+		return tonumber(string.match(tostring(track.Animation.AnimationId), "(%d+)%s*$"))
+	end)
+	return ok and id or nil
+end
+
+-- is this one of the weapon's own uploaded swings?
+local function isOurSwing(h, track)
+	local ids = h.animIds
+	if not ids then
+		return false
+	end
+	local id = idOf(track)
+	for _, sid in ipairs(ids.swings) do
+		if id == sid then
+			return true
+		end
+	end
+	return false
+end
+
+-- which of the weapon's uploaded animations are playing on this character
+-- (on any screen): the swing (its number, its track, how much it shows) and
+-- how much the idle shows. A track that's still loading - or couldn't load
+-- (say the game can't use that animation) - has no length yet, and doesn't
+-- count: the swings made in code stand in for it.
+local function animsPlaying(h)
+	local ids = h.animIds
+	local animator = ids and h.hum and h.hum:FindFirstChildOfClass("Animator")
+	if not animator then
+		return nil, nil, 0, 0
+	end
+	local ok, list = pcall(function()
+		return animator:GetPlayingAnimationTracks()
+	end)
+	if not ok or type(list) ~= "table" then
+		return nil, nil, 0, 0
+	end
+	local swingN, swingTrack, idleW, swingW = nil, nil, 0, 0
+	for _, track in ipairs(list) do
+		local id = idOf(track)
+		local fine, weight, length, playing = pcall(function()
+			return track.WeightCurrent, track.Length, track.IsPlaying
+		end)
+		if fine and id and (tonumber(length) or 0) > 0 then
+			weight = math.clamp(tonumber(weight) or 1, 0, 1)
+			if id == ids.idle then
+				idleW = math.max(idleW, weight)
+			elseif playing ~= false then
+				-- (a swing that's been stopped is only fading out: the next one has it)
+				for n, sid in ipairs(ids.swings) do
+					if id == sid and (not swingTrack or weight > swingW) then
+						swingN, swingTrack, swingW = n, track, weight
+					end
+				end
+			end
+		end
+	end
+	return swingN, swingTrack, idleW, swingW
+end
+
+local function loaded(track)
+	local ok, length = pcall(function()
+		return track.Length
+	end)
+	return ok and (tonumber(length) or 0) > 0
+end
+
+local function stopSwings(h, fade)
+	if h.tracks then
+		for _, track in ipairs(h.tracks.swings) do
+			if track.IsPlaying then
+				track:Stop(fade or 0.1)
+			end
+		end
+	end
+	if h.frozenTrack then
+		pcall(function()
+			h.frozenTrack:AdjustSpeed(1)
+		end)
+		h.frozenTrack = nil
+	end
+end
+
+-- done with them: stopped (eased out), then thrown away - a character can only
+-- have so many loaded, and every fight loads them again
+local function unloadTracks(tracks)
+	pcall(function()
+		for _, track in ipairs(tracks.swings) do
+			track:Stop(0.15)
+		end
+		if tracks.idle then
+			tracks.idle:Stop(0.25)
+		end
+	end)
+	task.delay(0.3, function()
+		pcall(function()
+			for _, track in ipairs(tracks.swings) do
+				track:Destroy()
+			end
+			if tracks.idle then
+				tracks.idle:Destroy()
+			end
+		end)
+	end)
+end
+
 local function fighting(plr)
 	local intro = plr:GetAttribute("Intro")
 	return plr:GetAttribute("SpireFloor") ~= nil or plr:GetAttribute("Colosseum") == true or intro == "Void" or intro == "Fight"
@@ -526,10 +850,14 @@ local function drop(plr)
 	if h.mem then
 		release(h)
 	end
+	if h.tracks then
+		unloadTracks(h.tracks)
+		h.tracks = nil
+	end
 	held[plr] = nil
 end
 
-local function hold(plr, char, id, def)
+local function hold(plr, char, id, def, tracks)
 	local torso = char:FindFirstChild("Torso")
 	local arm = char:FindFirstChild("Right Arm")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -551,10 +879,17 @@ local function hold(plr, char, id, def)
 		return held[plr]
 	end
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
-	local model, handle, trails, blade = buildSword(def, golden)
+	local model, handle, trails, blade = buildModelSword(def, golden)
+	if not model then
+		model, handle, trails, blade = buildSword(def, golden)
+	end
 	local g = WeaponFX.STANCE.Grip
 	handle.CFrame = arm.CFrame * gripAt(g[1], g[2])
-	local weld = Instance.new("Weld")
+	-- held by a Motor6D (Right Arm -> Handle), so the uploaded animations can
+	-- swing the blade too (they pose "Handle" under "Right Arm"). Made in
+	-- code, its C0 holds the grip; while an animation has it, C0 is just the
+	-- hand and the animation turns it.
+	local weld = Instance.new("Motor6D")
 	weld.Name = "Grip"
 	weld.Part0, weld.Part1 = arm, handle
 	weld.C0 = gripAt(g[1], g[2])
@@ -593,6 +928,9 @@ local function hold(plr, char, id, def)
 		clock = math.random() * 10,
 		swingN = plr:GetAttribute("SwingN"), -- (what was already there isn't a new swing)
 		abilityN = plr:GetAttribute("AbilityN"),
+		animIds = animsOf(def),
+		tracks = tracks or (plr == Players.LocalPlayer and loadTracks(char, def) or nil),
+		seen = setmetatable({}, { __mode = "k" }), -- the animation tracks we've whooshed for
 	}
 	return held[plr]
 end
@@ -683,8 +1021,9 @@ local function actionPlaying(h)
 		local fine, pri, weight = pcall(function()
 			return track.Priority, track.WeightTarget
 		end)
-		-- (a track played at no weight is just being warmed up: it doesn't count)
-		if fine and ACTION[pri] and track.IsPlaying ~= false and (tonumber(weight) or 1) > 0.05 then
+		-- (a track played at no weight is just being warmed up: it doesn't
+		-- count; nor do the weapon's own uploaded swings - see targetFor)
+		if fine and ACTION[pri] and track.IsPlaying ~= false and (tonumber(weight) or 1) > 0.05 and not isOurSwing(h, track) then
 			return true
 		end
 	end
@@ -752,6 +1091,45 @@ local function targetFor(plr, h, dt)
 		end
 		h.anim = nil
 	end
+	-- the uploaded animations: your own idle plays while you stand still with
+	-- nothing else going on; on every screen, while it or a swing plays, the
+	-- body and the grip are theirs (the Whirlwind, made in code, always wins)
+	local swingN, swingTrack, idleW, swingW = animsPlaying(h)
+	local spinning = h.anim ~= nil and h.anim.kind == "spin"
+	if spinning then
+		swingN, swingTrack, idleW, swingW = nil, nil, 0, 0
+	elseif swingTrack and h.anim and h.anim.n ~= swingN then
+		-- (an older uploaded swing still going: the newer one, drawn in code, has it)
+		swingN, swingTrack, swingW = nil, nil, 0
+	end
+	local idle = h.tracks and h.tracks.idle
+	if idle then
+		local wantIdle = not moving and not drinking and not spinning and not inAir(h) and loaded(idle)
+		if wantIdle and not idle.IsPlaying then
+			idle:Play(0.3)
+		elseif not wantIdle and idle.IsPlaying then
+			idle:Stop(0.25)
+		end
+	end
+	if swingTrack then
+		-- an uploaded swing has the body: the one made in code steps aside
+		-- (theirs arriving late, after we'd started drawing it ourselves)
+		h.anim = nil
+		if h.waitSwing and h.waitSwing.n == swingN then
+			h.waitSwing = nil
+		end
+		rolling = true -- (handed over quickly, like a roll)
+	end
+	-- (a swing or the Whirlwind made in code - say the uploaded swing hadn't
+	-- loaded yet - shows over the idle)
+	local drawn = h.anim ~= nil
+	if swingTrack or (idleW > 0.05 and not drawn) then
+		for key in pairs(want) do
+			want[key] = 0
+		end
+	end
+	-- how much the animations hold the blade (see stepOne)
+	h.animGrip = drawn and 0 or math.max(idleW, swingW)
 	local mode, turn, cutting = "idle", 0, false
 	local a = h.anim
 	if a then
@@ -811,6 +1189,26 @@ local function targetFor(plr, h, dt)
 			end
 		end
 	end
+	if swingTrack then
+		-- an uploaded swing: the smear between its Cut and Through, the whoosh as it cuts
+		local cut = WeaponFX.ANIM_CUTS[swingN] or WeaponFX.ANIM_CUTS[1]
+		local ok, tp = pcall(function()
+			return swingTrack.TimePosition
+		end)
+		tp = ok and tonumber(tp) or 0
+		local seen = h.seen[swingTrack]
+		if not seen or tp < seen.tp - 0.05 then
+			seen = { tp = tp, whooshed = false } -- (played again from the start)
+			h.seen[swingTrack] = seen
+		end
+		seen.tp = tp
+		cutting = tp >= cut[1] and tp <= cut[2]
+		if not seen.whooshed and tp >= cut[1] - 0.03 then
+			seen.whooshed = true
+			local kind = h.def and W.Types[h.def.Type]
+			playAt(kind and kind.Sounds and kind.Sounds.Swing, h.handle, (1.08 - 0.06 * swingN) * (0.96 + 0.08 * math.random()))
+		end
+	end
 	return stance, want, mode, turn, cutting, drinking, rolling
 end
 
@@ -819,12 +1217,18 @@ local function stepOne(plr, h, dt)
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
 	if golden ~= h.golden then
 		local char, id, def, anim, springs, weights, clock, freeze = h.char, h.id, h.def, h.anim, h.springs, h.weights, h.clock, h.freeze
+		local tracks, frozenTrack, trackFreeze = h.tracks, h.frozenTrack, h.trackFreeze
+		h.tracks = nil -- (kept: a swing that's playing carries on)
 		drop(plr)
-		h = hold(plr, char, id, def)
+		h = hold(plr, char, id, def, tracks)
 		if h.none then
+			if tracks then
+				unloadTracks(tracks)
+			end
 			return
 		end
 		h.anim, h.springs, h.weights, h.clock, h.freeze = anim, springs, weights, clock, freeze
+		h.frozenTrack, h.trackFreeze = frozenTrack, trackFreeze
 	end
 	-- everyone else's swings and abilities: when their counters change
 	if plr ~= Players.LocalPlayer then
@@ -832,8 +1236,24 @@ local function stepOne(plr, h, dt)
 		if sn ~= h.swingN then
 			h.swingN = sn
 			local n = tail(sn)
-			if n then
+			if n and h.animIds and h.animIds.swings[n] then
+				-- an uploaded swing: Roblox sends theirs to this screen by
+				-- itself. If it hasn't shown up in a moment (it couldn't load,
+				-- or it's slow), it's drawn in code instead
+				h.waitSwing = { n = n, t = 0 }
+			elseif n then
 				startSwing(h, n)
+			end
+		end
+		local ws = h.waitSwing
+		if ws then
+			ws.t = ws.t + dt
+			if ws.t >= WeaponFX.REMOTE_WAIT then
+				h.waitSwing = nil
+				startSwing(h, ws.n)
+				if h.anim then
+					h.anim.t = ws.t -- (caught up to where it should be by now)
+				end
 			end
 		end
 		local an = plr:GetAttribute("AbilityN")
@@ -908,7 +1328,25 @@ local function stepOne(plr, h, dt)
 		end
 	end
 	local g = pose.Grip
-	h.weld.C0 = gripAt(g[1], g[2])
+	local animHold = h.animGrip or 0
+	if animHold > 0.001 then
+		-- an animation turns the blade (the Grip's Transform): C0 hands over
+		-- to just the hand as it takes over (and back as it lets go)
+		h.weld.C0 = gripAt(g[1], g[2]):Lerp(GRIP_HAND, animHold)
+	else
+		h.weld.C0 = gripAt(g[1], g[2])
+		h.weld.Transform = CFrame.new()
+	end
+	-- hit-stop in an uploaded swing: it stops dead for a blink
+	if h.frozenTrack then
+		h.trackFreeze = h.trackFreeze - dt
+		if h.trackFreeze <= 0 then
+			pcall(function()
+				h.frozenTrack:AdjustSpeed(1)
+			end)
+			h.frozenTrack = nil
+		end
+	end
 	setSmear(h, cutting)
 	-- tucked away while you drink (the potion's in that hand)
 	local wantParent = (not drinking) and h.char or nil
@@ -963,6 +1401,23 @@ end
 function WeaponFX.swing(plr, n)
 	local h = held[plr]
 	if h and not h.none then
+		local track = h.tracks and h.tracks.swings[n]
+		if track and loaded(track) then
+			-- the uploaded swing. Chained, it hands over at once (each one
+			-- starts where the last one's follow-through is); from the stance
+			-- it eases in a touch more
+			local chained = false
+			for _, other in ipairs(h.tracks.swings) do
+				chained = chained or (other ~= track and other.IsPlaying)
+			end
+			stopSwings(h, 0.08)
+			track:Play(chained and 0.05 or 0.1)
+			track.TimePosition = 0
+			h.anim = nil
+			return
+		end
+		-- (not loaded - yet, or at all: the swing made in code)
+		stopSwings(h, 0.08)
 		startSwing(h, n)
 	end
 end
@@ -971,6 +1426,7 @@ end
 function WeaponFX.spin(plr, tierIndex)
 	local h = held[plr]
 	if h and not h.none then
+		stopSwings(h, 0.05)
 		startSpin(h, tierIndex)
 	end
 end
@@ -980,6 +1436,14 @@ function WeaponFX.hitStop(plr, seconds)
 	local h = held[plr]
 	if h and not h.none and h.anim then
 		h.freeze = math.max(h.freeze, seconds or 0.05)
+	end
+	local track = h and not h.none and h.tracks and select(2, animsPlaying(h))
+	if track and not (h.anim and h.anim.kind == "spin") then
+		pcall(function()
+			track:AdjustSpeed(0)
+		end)
+		h.frozenTrack = track
+		h.trackFreeze = math.max(h.trackFreeze or 0, seconds or 0.05)
 	end
 end
 
@@ -1021,6 +1485,19 @@ function WeaponFX.start()
 			local s = def.Ability and findSound(def.Ability.Sound)
 			if s then
 				list[#list + 1] = s
+			end
+		end
+		-- and the uploaded animations, so the first swing (yours or anyone's) plays at once
+		for _, kind in pairs(W.Types) do
+			local a = kind.Animations
+			if type(a) == "table" then
+				for _, id in ipairs({ a.Idle, table.unpack(a.Swings or {}) }) do
+					if id and id ~= "" then
+						local anim = Instance.new("Animation")
+						anim.AnimationId = id
+						list[#list + 1] = anim
+					end
+				end
 			end
 		end
 		if #list > 0 then

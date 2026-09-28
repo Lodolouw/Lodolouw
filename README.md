@@ -671,10 +671,10 @@ The game is moving from gear to **weapons** (see the new direction in
 **Iron Sword** (`Config.Weapons`). In Studio, open the dev console and press
 **DEV: Test Sword** (again: back to fists).
 
-- In a fight the punch button swings it instead: a **diagonal slash**, a
-  **rising backhand**, and a **leaping overhead finisher** that slams the
-  ground (1.5x, narrow, a little more reach). Each swing cuts **every enemy
-  in its arc**.
+- In a fight the punch button swings it instead: a **flat forehand** (right
+  to left at chest height), a **rising backhand**, and a **leaping spin
+  finisher** (1.5x, narrow, a little more reach). Each swing cuts **every
+  enemy in its arc**. No down slashes.
 - **F** (gamepad X, or the phone's crossed-swords button) is its ability,
   the **Whirlwind**: spin round cutting everything close to you (10 s
   cooldown, 20 stamina).
@@ -696,8 +696,19 @@ The game is moving from gear to **weapons** (see the new direction in
   everything dead for a blink (hit-stop), rip a slash mark across the enemy,
   and heavy ones flash the screen with speed lines. A combo counter climbs
   while you keep hitting.
-- Everyone sees it: drawn on every screen by `ReplicatedStorage/WeaponFX`,
-  in code on all the R6 joints. Preview: `Docs/sword_preview.png`.
+- **The sword and the swings:** the sword is the **Iron Warden**, a 3D model
+  made in Blender from a pixel sprite (`Tools/Weapons`) and imported into
+  **ReplicatedStorage** with Studio's 3D Importer (it must be there, named
+  `IronWarden`: the IronSword's `Model` in `Config.Weapons`). The idle and
+  the three swings are **uploaded animations** made in Blender for R6
+  (`Tools/Animations`, key poses in `Docs/animations/sword_key_poses.png`); their ids are in
+  `Config.Weapons.Types.Sword.Animations`. Swings follow through like a
+  tennis swing. Your screen plays them and Roblox shows them to everyone.
+  Walking with the sword and the Whirlwind are still made in code
+  (`ReplicatedStorage/WeaponFX`). Missing model: the old blocky sword. An
+  animation that can't load: that swing is drawn in code instead.
+- The animations only play in a game owned by whoever published them (you,
+  or your group if you publish them to the group).
 - Sounds (optional, in SoundService): **Sword Swing**, **Sword Hit**,
   **Whirlwind**. Until you add them the swings are silent and hits use the
   punch sounds.

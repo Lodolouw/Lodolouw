@@ -626,6 +626,7 @@ local CLASS_PARENT = {
 	LayerCollector = "Instance", TextLabel = "GuiObject", Frame = "GuiObject", GuiObject = "Instance",
 	ModuleScript = "Instance", Script = "Instance", Player = "Instance", Players = "Instance",
 	ControllerManager = "Instance", Beam = "Instance", Trail = "Instance",
+	Weld = "JointInstance", Motor6D = "JointInstance", JointInstance = "Instance",
 }
 local function isA(className, want)
 	local c = className
