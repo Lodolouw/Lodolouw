@@ -391,10 +391,14 @@ end
 -- pommel to tip), where its grip's middle is - how far up from the pommel
 -- (0 to 1) and across (0 to 1) - and the colour it glows (its glowing pixels,
 -- made Neon, and its smear). Straight from the sprites (Tools/Weapons/sprites.py).
+-- Roll turns it over round the blade (degrees): Tidefang's a curved sabre,
+-- so it swings with the back of its curve leading. (To fix one by hand in
+-- Studio, give its model in ReplicatedStorage a number attribute GripRoll
+-- - 180 turns it over - or a true/false GripFlip - the tip the other way.)
 WeaponFX.MODELS = {
 	IronWarden = { Length = 5.0, GripUp = 0.16, GripAcross = 0.5, Glow = GLOW },
 	EmberCleaver = { Length = 5.2, GripUp = 0.163, GripAcross = 0.5, Glow = Color3.fromRGB(255, 120, 30) },
-	Tidefang = { Length = 5.1, GripUp = 0.157, GripAcross = 0.5, Glow = Color3.fromRGB(80, 255, 240) },
+	Tidefang = { Length = 5.1, GripUp = 0.157, GripAcross = 0.5, Glow = Color3.fromRGB(80, 255, 240), Roll = 180 },
 	Voidstar = { Length = 5.8, GripUp = 0.13, GripAcross = 0.5, Glow = Color3.fromRGB(255, 170, 250) },
 }
 
@@ -438,10 +442,14 @@ local function buildModelSword(def, golden)
 		if tipWay.Y < -0.5 then
 			tipWay = -tipWay -- (it was made standing on its pommel, the tip up)
 		end
+		if src:GetAttribute("GripFlip") == true then
+			tipWay = -tipWay
+		end
 		local gripPoint = box.Position + tipWay * (long[1] * (geo.GripUp - 0.5)) + acrossWay * (across[1] * (geo.GripAcross - 0.5))
 		local z = -tipWay
 		local y = acrossWay
-		local grip = CFrame.fromMatrix(gripPoint, y:Cross(z), y, z)
+		local roll = tonumber(src:GetAttribute("GripRoll")) or geo.Roll or 0
+		local grip = CFrame.fromMatrix(gripPoint, y:Cross(z), y, z) * CFrame.Angles(0, 0, math.rad(roll))
 		local scale = geo.Length / math.max(long[1], 0.01) -- (in case it came in bigger or smaller)
 		local out = Instance.new("Model")
 		out.Name = "HeldWeapon"
