@@ -754,9 +754,10 @@ local function buildTalk()
 	}, bubble)
 	new("UIStroke", { Color = INK, Thickness = EDGE, LineJoinMode = Enum.LineJoinMode.Miter }, box)
 	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 9) }, box)
+	-- (sized to the whole line before it types - see fitWords - so the bubble
+	-- doesn't grow and re-wrap letter by letter)
 	words = new("TextLabel", {
 		Name = "Words",
-		AutomaticSize = Enum.AutomaticSize.XY,
 		Size = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Arcade,
@@ -859,6 +860,22 @@ local function boxSize()
 	return math.min(n, perLine) * 10 + 24, math.ceil(n / perLine) * 20 + 23
 end
 
+-- the words' size, laid out in full (wrapped at MAX_W)
+local function fitWords(text)
+	local ok, size = pcall(function()
+		return game:GetService("TextService"):GetTextSize(text, words.TextSize, words.Font, Vector2.new(MAX_W, 10000))
+	end)
+	local w, h
+	if ok and typeof(size) == "Vector2" then
+		w, h = size.X, size.Y
+	else
+		local n = utf8.len(text) or #text
+		local perLine = math.floor(MAX_W / 10)
+		w, h = math.min(n, perLine) * 10, math.ceil(n / perLine) * 20
+	end
+	words.Size = UDim2.fromOffset(math.ceil(w) + 2, math.ceil(h))
+end
+
 local function pointing(which)
 	for name, t in pairs(tails) do
 		t.Visible = name == which
@@ -953,6 +970,7 @@ local function say(short, kind, model)
 	tagText.TextColor3 = pale and INK or WHITE
 	tagText.TextStrokeTransparency = pale and 1 or 0
 	words.Text = text
+	fitWords(text)
 	words.MaxVisibleGraphemes = 0
 	talkGui.Enabled = true
 	placeBubble()

@@ -178,8 +178,12 @@ check(string.sub(words.Text, 1, 1) ~= "*" and #words.Text > 5, "the words should
 local tagText = tag:FindFirstChildOfClass("TextLabel")
 check(tagText and tagText.Text == "SCRIBBLE", "the tag should carry his name: " .. tostring(tagText and tagText.Text))
 check(tag.BackgroundColor3 == def.Color, "the tag should be his colour")
+local typingSize = words.Size
+check(words.AutomaticSize == nil or words.AutomaticSize == Enum.AutomaticSize.None, "the words shouldn't size themselves to the letters typed so far")
+check(typingSize.X.Offset > 40 and typingSize.Y.Offset >= 20, "the words should be sized to the whole line from the start: " .. tostring(typingSize.X.Offset) .. "x" .. tostring(typingSize.Y.Offset))
 step(2.5)
 check(words.MaxVisibleGraphemes == -1, "the words should be all typed out")
+check(words.Size == typingSize, "the bubble shouldn't change size while it types")
 
 -- 2) he walks: it follows his head
 head = Vector3.new(8, 16.8, -4)
