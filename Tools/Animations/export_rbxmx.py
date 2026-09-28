@@ -6,7 +6,12 @@ posed here - plus markers the game can listen for
 the moment the blade lands (the server's hit), "Through" at the end of the
 follow-through.
 
-    python3 export_rbxmx.py          -> out/SwordAnimations.rbxmx (all of them, in a folder)
+    python3 export_rbxmx.py          -> ServerStorage/SwordAnimations.rbxmx (all of them, in a folder)
+
+Rojo syncs that file into Studio (ServerStorage > SwordAnimations), so the
+animations show up by themselves - open one in the Animation Editor and
+publish it to get its ID. (ServerStorage, so the 1.4 MB never downloads to
+players.)
 
 The sword is animated too: its Motor6D ("Grip": Right Arm -> the sword's
 Handle, C0 = 1 stud down the arm) is posed as "Handle" under "Right Arm".
@@ -20,7 +25,7 @@ import anims  # noqa: E402
 import combo  # noqa: E402
 import r6  # noqa: E402
 
-OUT = os.path.join(HERE, 'out')
+OUT = os.path.join(HERE, '..', '..', 'ServerStorage')
 FPS = 60
 PRIORITY = {'Idle': 0, 'Movement': 1, 'Action': 2, 'Action2': 3, 'Action3': 4, 'Action4': 5}
 # when each swing's markers fall (seconds): the strike starting, the hit, the end of the cut
