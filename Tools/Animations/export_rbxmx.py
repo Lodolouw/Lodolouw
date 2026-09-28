@@ -27,7 +27,7 @@ PRIORITY = {'Idle': 0, 'Movement': 1, 'Action': 2, 'Action2': 3, 'Action3': 4, '
 MARKERS = {
     'SwordSwing1': [('Cut', 0.13), ('Hit', 0.20), ('Through', 0.36)],
     'SwordSwing2': [('Cut', 0.13), ('Hit', 0.20), ('Through', 0.36)],
-    'SwordSwing3': [('Cut', 0.26), ('Hit', 0.3375), ('Through', 0.50)],
+    'SwordSwing3': [('Cut', 0.24), ('Hit', 0.3375), ('Through', 0.60)],
 }
 
 _ref = [0]
