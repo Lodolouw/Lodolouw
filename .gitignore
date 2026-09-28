@@ -12,3 +12,6 @@ __pycache__/
 
 # Claude Code helpers work in temporary copies of the repo here
 .claude/worktrees/
+
+# made by Studio when it imports an .fbx (a copy of its texture)
+*.fbm/
