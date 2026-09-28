@@ -444,7 +444,8 @@ Every 5th wave (`Config.Colosseum.King.Every`) the King drops in alone. All his 
 - **Left alone on purpose:** the Pet Sanctuary (its bush pokes into the corner tower; it's getting redone later).
 
 ### Recent fixes (please verify in play)
-- Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches the lowest foot against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
+- Players sinking into the floor after reset/death. LobbyActivities `keepFeetUp` watches your feet against the floor, raises the ControllerManager's `GroundController.GroundOffset` (or R15 HipHeight) by the gap, and lifts the body. **The character uses Roblox's ControllerManager**, not classic Humanoid movement.
+- **Floating in arenas (I reported it in Kongo's arena):** that same `keepFeetUp` measured the lowest CORNER of any body part and only lifted, never lowered - so a sword lunge (the stance lowers you until the tilted legs' ends touch the floor, poking a foot's corner 0.38 in) or a roll looked "sunk" and raised you permanently. Now it only looks at the legs (the middle of their bottoms), only while you stand still with straight legs, lets you back down if you're floating after one of its own lifts (never below where it started), and never lifts more than 3 studs in all. `test_feet.luau` checks it (the old code fails its lunge and roll checks).
 - The gap behind the stands is filled (`StandFill` parts).
 
 ## The intro: Oozlet ✅

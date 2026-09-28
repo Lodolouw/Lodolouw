@@ -30,6 +30,8 @@ run test_sword.luau
 run test_weaponfx.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
+# feet on the floor: never sunk after a reset, never floating after lunges and rolls
+run test_feet.luau
 run test_intro.luau
 run test_intro.luau -a skip
 run test_intro.luau -a fail

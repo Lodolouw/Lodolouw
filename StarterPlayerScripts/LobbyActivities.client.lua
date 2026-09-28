@@ -2539,7 +2539,7 @@ ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(funct
 end)
 
 ----------------------------------------------------------------------
--- Never stuck in the floor after respawning
+-- Feet on the floor: never sunk into it, never floating over it
 ----------------------------------------------------------------------
 -- A body must never stand sunk into the floor (it kept happening after a
 -- reset or dying in the Colosseum). Your character is held up by Roblox's
@@ -2548,25 +2548,37 @@ end)
 -- your avatar (say, the body was set up before your avatar finished loading),
 -- the body settles with its legs in the ground.
 --
--- So, the whole time you're alive: if your lowest foot is under the top of
--- the floor right beneath it, twice in a row while you're standing still
--- (not jumping, falling or rolling), we raise the height the controller
--- holds you at by exactly that much, and lift you out. It learns the right
--- height from where your feet really are, so it works for any avatar size.
-local function lowestFootPart(char)
-	local best, low = nil, math.huge
-	for _, p in ipairs(char:GetChildren()) do
-		-- (body parts only: hats and hair are inside Accessories)
-		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
-			local cf, half = p.CFrame, p.Size / 2
-			local reach = math.abs(cf.RightVector.Y) * half.X + math.abs(cf.UpVector.Y) * half.Y + math.abs(cf.LookVector.Y) * half.Z
-			if cf.Position.Y - reach < low then
-				best, low = p, cf.Position.Y - reach
+-- So, the whole time you're alive, while you're STANDING STILL WITH STRAIGHT
+-- LEGS (not walking, jumping, falling, rolling or mid-swing - a leg swung
+-- out in a stride or a lunge pokes its corner down without being sunk):
+--   * your feet under the top of the floor beneath you, twice in a row: the
+--     controller holds you that much higher, and you're lifted out
+--   * your feet floating over it after an earlier lift, twice in a row: it
+--     holds you lower again - never lower than where it started
+-- It learns the right height from where your legs really end, so it works for
+-- any avatar size, and it never lifts you more than MAX_LIFT in all.
+local LEGS = { "Left Leg", "Right Leg", "LeftFoot", "RightFoot" }
+local MAX_LIFT = 3
+local STRAIGHT = 0.97 -- (how upright a leg must be to count as standing: about 14 degrees)
+
+-- how low your legs reach (the middle of their bottoms) if you're standing
+-- up straight - or nothing, mid-stride, mid-lunge, mid-roll
+local function feetBottom(char)
+	local low = nil
+	for _, name in ipairs(LEGS) do
+		local leg = char:FindFirstChild(name)
+		if leg and leg:IsA("BasePart") then
+			local cf = leg.CFrame
+			if cf.UpVector.Y < STRAIGHT then
+				return nil
 			end
+			local y = (cf * Vector3.new(0, -leg.Size.Y / 2, 0)).Y
+			low = low and math.min(low, y) or y
 		end
 	end
-	return best, low
+	return low
 end
+
 local function keepFeetUp(char)
 	local hum = char:WaitForChild("Humanoid", 10)
 	local root = char:WaitForChild("HumanoidRootPart", 10)
@@ -2576,50 +2588,61 @@ local function keepFeetUp(char)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.RespectCanCollide = true
-	local strikes = 0
+	local lifted = 0 -- how much higher than it started the controller holds you now
+	local startSearch = nil -- (the ground sensor's reach when you arrived)
+	local sunkStrikes, floatStrikes = 0, 0
+
+	-- hold the body `by` studs higher (or lower, if it's negative)
+	local function holdHigher(by)
+		local cm = char:FindFirstChildWhichIsA("ControllerManager", true)
+		if cm then
+			for _, c in ipairs(cm.Parent:GetDescendants()) do
+				if c:IsA("GroundController") then
+					pcall(function()
+						c.GroundOffset = c.GroundOffset + by
+					end)
+				end
+			end
+			-- (its ground sensor reaches that much further down too, to still find the floor)
+			pcall(function()
+				local sensor = cm.GroundSensor
+				if sensor and sensor.SearchDistance > 0 then
+					startSearch = startSearch or sensor.SearchDistance
+					sensor.SearchDistance = startSearch + lifted + by
+				end
+			end)
+		elseif hum.RigType == Enum.HumanoidRigType.R15 then
+			hum.HipHeight = hum.HipHeight + by
+		end
+		lifted = lifted + by
+	end
+
 	while char.Parent and hum.Health > 0 do
 		task.wait(0.2)
-		local foot, footY = lowestFootPart(char)
-		local sunk = 0
-		if foot and not root.Anchored and math.abs(root.AssemblyLinearVelocity.Y) < 3 then
+		-- how far your feet are over (+) or in (-) the floor straight under you
+		local gap = nil
+		local v = root.AssemblyLinearVelocity
+		local feet = feetBottom(char)
+		if feet and not root.Anchored and math.abs(v.Y) < 3 and Vector3.new(v.X, 0, v.Z).Magnitude < 2 then
 			params.FilterDescendantsInstances = { char }
-			-- the top of the floor straight under that foot (from above, so a foot
-			-- stuck inside the floor still finds its top)
-			local p = foot.Position
-			local hit = workspace:Raycast(Vector3.new(p.X, root.Position.Y + 2, p.Z), Vector3.new(0, footY - root.Position.Y - 8, 0), params)
+			local p = root.Position
+			-- (from inside your body, so a ceiling over your head is never taken for the floor)
+			local hit = workspace:Raycast(Vector3.new(p.X, p.Y + 2, p.Z), Vector3.new(0, feet - p.Y - 8, 0), params)
 			if hit then
-				sunk = hit.Position.Y - footY
+				gap = feet - hit.Position.Y
 			end
 		end
-		if sunk > 0.35 and sunk < 6 then
-			strikes = strikes + 1
-		else
-			strikes = 0
-		end
-		if strikes >= 2 then
-			strikes = 0
-			-- hold the body higher from now on...
-			local cm = char:FindFirstChildWhichIsA("ControllerManager", true)
-			if cm then
-				for _, c in ipairs(cm.Parent:GetDescendants()) do
-					if c:IsA("GroundController") then
-						pcall(function()
-							c.GroundOffset = c.GroundOffset + sunk
-						end)
-					end
-				end
-				pcall(function()
-					local sensor = cm.GroundSensor
-					if sensor and sensor.SearchDistance > 0 then
-						sensor.SearchDistance = sensor.SearchDistance + sunk
-					end
-				end)
-			elseif hum.RigType == Enum.HumanoidRigType.R15 then
-				hum.HipHeight = hum.HipHeight + sunk
-			end
-			-- ...and lift it out now
+		sunkStrikes = (gap and gap < -0.35 and gap > -6) and sunkStrikes + 1 or 0
+		floatStrikes = (gap and gap > 0.35 and lifted > 0) and floatStrikes + 1 or 0
+		if sunkStrikes >= 2 and lifted < MAX_LIFT then
+			sunkStrikes = 0
+			local by = math.min(-gap, MAX_LIFT - lifted)
+			holdHigher(by) -- ...from now on...
 			root.AssemblyLinearVelocity = Vector3.zero
-			char:PivotTo(char:GetPivot() + Vector3.new(0, sunk + 0.1, 0))
+			char:PivotTo(char:GetPivot() + Vector3.new(0, by + 0.1, 0)) -- ...and lifted out now
+		elseif floatStrikes >= 2 then
+			floatStrikes = 0
+			holdHigher(-math.min(gap, lifted)) -- (the controller lets you down onto the floor)
 		end
 	end
 end
