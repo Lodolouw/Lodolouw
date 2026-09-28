@@ -14,8 +14,12 @@ angry. The last boss before Nightmare / Eclipse / Doom.
   furious by round 3 ("NOBODY TAKES MY CROWN!").
 
 ## His look (blocky, like the other bosses)
-- A huge round king, about 3x a player: a fat barrel body in royal purple
-  with a gold belt, a white fur-trimmed red cape, stubby legs, big gloves.
+- A GOLIATH: about 6-7x a player's height, and FAT - a giant round belly
+  that wobbles when he moves, stubby tree-trunk legs, huge gloved fists,
+  royal purple with a straining gold belt, a white fur-trimmed red cape.
+  Players only reach his knees and belly: you fight around his feet while
+  he looms over you (the camera tilts up when he winds up). The ground
+  shakes with every step.
 - A tall, wonky **gold crown** with three coloured gems.
 - A small angry face with a bushy **moustache** that flaps when he shouts.
 - **The Gavel:** a giant wooden mallet with gold bands, taller than him.
@@ -37,7 +41,7 @@ He fights with the Gavel, slow and heavy. Each attack has a clear warning.
    a red circle warns first, then a **shockwave ring** rolls out (jump or roll
    through it).
 2. **Gavel Sweep:** a wide horizontal swing in front of him (roll behind him).
-3. **Belly Bounce:** hops up and belly-flops on you (shadow grows under you).
+3. **Belly Bounce:** hops up and belly-flops on you - his belly covers a huge circle (the shadow grows under you; the landing bounces nearby players off).
 4. **Royal Decree:** points at a player, "GUARDS!" - 2-3 small minions from
    the floors below (mini Oozlets / straw dummies) drop in.
 - **Opening:** after every Royal Smash the hammer is stuck in the floor for
