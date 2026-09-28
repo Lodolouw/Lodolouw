@@ -397,6 +397,17 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   films it with moving cameras and puts the boss bar, his name, hit pops and
   the freeze-frame ending on top (`--strip --at 5.2,6.5` draws just those
   moments, to check a shot).
+- `brute_cutscene.luau` + `render_brute_cutscene.py` - the same for THE BRUTE
+  (`Docs/youtube/brute_cutscene.mp4`): little Tuber punched, the power-up,
+  the root hop, the fight back, frozen as his spines blast the player away.
+- `burrowmore_cutscene.luau` + `render_burrowmore_cutscene.py` - the same
+  for KNIGHT BURROWMORE (`Docs/youtube/burrowmore_cutscene.mp4`, 11 seconds):
+  his wake-up and pose (his name slams on), a Shovel Drop (the red circle
+  chasing the player), punches while his shovel's stuck, a Charge Dash into
+  the edge of the dig, NO QUARTER!, and his Shovel Meteor in slow motion,
+  frozen as he plunges. The film's clock runs faster or slower than the
+  game's in places (the scene's header says where); `--sheet` draws a 3 x 3
+  contact sheet (`Docs/youtube/burrowmore_cutscene_frames.png`).
 
 Run them all with `./run_all.sh` (it ends with `./golden.sh check`) (needs the Luau tools from
 https://github.com/luau-lang/luau/releases; the pictures also need Python
