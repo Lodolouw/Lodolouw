@@ -6,3 +6,6 @@ Tools/HeadlessTests/snaps.txt
 
 # Rojo itself (downloaded, not part of the project)
 rojo.exe
+
+# Python leaves these next to scripts it imports
+__pycache__/

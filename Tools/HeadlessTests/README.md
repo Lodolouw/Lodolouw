@@ -312,6 +312,14 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   bits sticking up on the paths, and faces in the same spot (flicker).
 - `render_lobby.py` - draws the lobby from that dump from any camera
   (`--eye=x,y,z --look=x,y,z`, `--mark` circles spots in red).
+- `oozark_cutscene.luau` + `render_cutscene.py` - the 10-second Oozark
+  cutscene for YouTube (`Docs/youtube/oozark_cutscene.mp4`): the scene
+  script runs the real BossService and BossClient with his moves forced one
+  after another (rise, lunge, slam, wave) and a blocky player who walks in,
+  rolls, punches and jumps the wave, and prints every frame; the renderer
+  films it with moving cameras and puts the boss bar, his name, hit pops and
+  the freeze-frame ending on top (`--strip --at 5.2,6.5` draws just those
+  moments, to check a shot).
 
 Run them all with `./run_all.sh` (it ends with `./golden.sh check`) (needs the Luau tools from
 https://github.com/luau-lang/luau/releases; the pictures also need Python
