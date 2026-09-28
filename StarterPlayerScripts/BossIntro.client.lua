@@ -9,8 +9,10 @@
 	   shakes - and it all breaks away into the fight. About 2.4 seconds: the
 	   boss is still waking up the whole time (it can't attack while it does).
 
-	3) THE BOSSES TALK - an Undertale-style box under the boss bar with the
-	   boss's portrait: it greets you, mocks you, gloats, and has last words.
+	3) THE BOSSES TALK - a speech bubble over the boss's head (its name on a
+	   tag in its colour): it greets you, mocks you, gloats, and has last
+	   words. The bubble follows its head, and waits at the edge of your
+	   screen when its head is off it.
 
 	4) THE COLOSSEUM'S BOSS WAVE - the Giant Straw King gets the same VS
 	   splash (the first time you meet him each visit) and talks the same way
@@ -496,10 +498,11 @@ CollectionService:GetInstanceAddedSignal("Boss"):Connect(watchBoss)
 -- that - and YOU DIED shows in the middle; nothing more is needed here.)
 
 ----------------------------------------------------------------------
--- 3) THE BOSSES TALK (like Undertale's): a black box under the boss bar,
--- its little portrait beside the words, typed out with a blip. It greets
--- you, mocks you mid-fight, gloats when it hits you hard, changes its tune
--- in phase two, crows if you fall and gets the last word when it dies.
+-- 3) THE BOSSES TALK: a speech bubble over the boss's head - white, inked
+-- round the edge, its name on a tag in its colour - the words typed out
+-- with a blip. It greets you, mocks you mid-fight, gloats when it hits you
+-- hard, changes its tune in phase two, crows if you fall and gets the last
+-- word when it dies.
 ----------------------------------------------------------------------
 local LINES = {
 	-- a tyrant of jelly: pompous, royal and very pleased with himself
@@ -711,31 +714,224 @@ local LINES = {
 	},
 }
 
-local talkGui, talkBox, talkText, talkPortrait
-local speaking = nil
+-- The bubble follows the boss's head: BossClient measures where that is on
+-- your screen (the boss model's HeadAt, fresh while AimTime is); anything
+-- else that talks (the Straw King) is measured by its parts. It sits over
+-- the head, its tail pointing down at it - or, with no room up there (a tall
+-- boss's head up by the boss bar), beside the head, pointing sideways. With
+-- the head off your screen (off the top, a side, behind you) it waits at the
+-- edge nearest it, its tail tucked away. It never covers the boss bar. Last
+-- words stay where they were said (the boss may be melting, falling or
+-- flying off by then).
+local INK = RGB(24, 20, 37)
+local TAIL = 12 -- (how far the tail reaches: the bubble's point is its tip)
+local EDGE = 3 -- (the box's ink edge)
+local MAX_W = 320 -- (the words wrap past this)
+local BOTTOM_SAFE, SIDE = 110, 12 -- (the bottom of your screen, its sides: kept clear)
+local topSafe = 150 -- (under the boss bar: worked out when the bubble's made)
+local talkGui, bubble, box, words, tag, tagText, pop
+local tails = {} -- down / left / right: which way it points
+local speaking = nil -- the line up now: { model, spot (last words' fixed spot), last }
+
 local function buildTalk()
-	talkGui = new("ScreenGui", { Name = "BossTalk", ResetOnSpawn = false, DisplayOrder = 30 }, playerGui)
+	pcall(function()
+		-- (the boss bar sits 58 pixels under Roblox's top bar, 46 tall)
+		topSafe = game:GetService("GuiService"):GetGuiInset().Y + 58 + 46 + 10
+	end)
+	talkGui = new("ScreenGui", { Name = "BossTalk", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Enabled = false }, playerGui)
 	talkGui:SetAttribute("RetroSkip", true)
-	talkBox = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 118),
-		Size = UDim2.fromOffset(620, 86),
-		BackgroundColor3 = BLACK,
-		Visible = false,
-	}, talkGui)
-	new("UIStroke", { Color = WHITE, Thickness = 4, LineJoinMode = Enum.LineJoinMode.Miter }, talkBox)
-	talkText = label(talkBox, "", {
-		Position = UDim2.fromOffset(92, 12),
-		Size = UDim2.new(1, -108, 1, -24),
-		TextScaled = false,
-		TextSize = 24,
+	-- (placed by its point - the tip of its tail - with the box beside that)
+	bubble = new("Frame", { Name = "Bubble", BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 0) }, talkGui)
+	pop = new("UIScale", { Scale = 1 }, bubble)
+	box = new("Frame", {
+		Name = "Box",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromOffset(0, -TAIL),
+		AutomaticSize = Enum.AutomaticSize.XY,
+		Size = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+	}, bubble)
+	new("UIStroke", { Color = INK, Thickness = EDGE, LineJoinMode = Enum.LineJoinMode.Miter }, box)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 9) }, box)
+	words = new("TextLabel", {
+		Name = "Words",
+		AutomaticSize = Enum.AutomaticSize.XY,
+		Size = UDim2.fromOffset(0, 0),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Arcade,
+		TextSize = 20,
+		TextColor3 = INK,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
-		TextStrokeTransparency = 1,
+		Text = "",
+	}, box)
+	new("UISizeConstraint", { MaxSize = Vector2.new(MAX_W, math.huge) }, words)
+	-- its name, on a tag in its colour over the top-left corner (the box's
+	-- padding moves what's in it, so these offsets start inside that)
+	tag = new("Frame", {
+		Name = "Tag",
+		Position = UDim2.fromOffset(-12 + 8, -14 - 11),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 20),
+		BorderSizePixel = 0,
+		ZIndex = 3,
+	}, box)
+	new("UIStroke", { Color = INK, Thickness = 2, LineJoinMode = Enum.LineJoinMode.Miter }, tag)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, tag)
+	tagText = new("TextLabel", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromScale(0, 1),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Arcade,
+		TextSize = 16,
+		TextColor3 = WHITE,
+		TextStrokeColor3 = INK,
+		TextStrokeTransparency = 0,
+		ZIndex = 4,
+	}, tag)
+	-- the tails: a stepped 8-bit point, ink with white inside, cutting a gap
+	-- in the box's edge so the two are one shape. Each is drawn from its tip
+	-- (0, 0): pixels from x0,y0 to x1,y1.
+	local function tail(name, bars)
+		local t = new("Frame", { Name = name, BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 0), ZIndex = 5, Visible = false }, bubble)
+		for _, b in ipairs(bars) do
+			new("Frame", {
+				Position = UDim2.fromOffset(b[2], b[3]),
+				Size = UDim2.fromOffset(b[4] - b[2], b[5] - b[3]),
+				BackgroundColor3 = b[1],
+				BorderSizePixel = 0,
+				ZIndex = b[1] == WHITE and 2 or 1,
+			}, t)
+		end
+		return t
+	end
+	tails.down = tail("TailDown", {
+		{ INK, -2, -3, 2, 0 }, { INK, -5, -6, 5, -3 }, { WHITE, -2, -6, 2, -3 },
+		{ INK, -8, -9, 8, -6 }, { WHITE, -5, -9, 5, -6 }, { WHITE, -5, -TAIL - 1, 5, -9 },
+	})
+	tails.left = tail("TailLeft", { -- (the box to its right)
+		{ INK, 0, -2, 3, 2 }, { INK, 3, -5, 6, 5 }, { WHITE, 3, -2, 6, 2 },
+		{ INK, 6, -8, 9, 8 }, { WHITE, 6, -5, 9, 5 }, { WHITE, 9, -5, TAIL + 1, 5 },
+	})
+	tails.right = tail("TailRight", { -- (the box to its left)
+		{ INK, -3, -2, 0, 2 }, { INK, -6, -5, -3, 5 }, { WHITE, -6, -2, -3, 2 },
+		{ INK, -9, -8, -6, 8 }, { WHITE, -9, -5, -6, 5 }, { WHITE, -TAIL - 1, -5, -9, 5 },
 	})
 end
-local function say(short, kind)
+
+-- where to hang a talker's words: just over its head
+local function headOf(model)
+	if not (model and model.Parent) then
+		return nil
+	end
+	local head, stamp = model:GetAttribute("HeadAt"), model:GetAttribute("AimTime")
+	if typeof(head) == "Vector3" and type(stamp) == "number" and os.clock() - stamp < 0.5 then
+		return head + Vector3.new(0, 1.2, 0)
+	end
+	local ok, cf, size = pcall(function()
+		return model:GetBoundingBox()
+	end)
+	if ok and cf and size then
+		return cf.Position + Vector3.new(0, size.Y / 2 + 1.2, 0)
+	end
+	return nil
+end
+
+-- its colour, for the tag: a Spire boss's own, or the Straw King's gold
+local function colorOf(model)
+	local floor = model and model:GetAttribute("Floor")
+	local def = floor and Config.Bosses and Config.Bosses[floor]
+	return (def and def.Color) or RGB(254, 174, 52)
+end
+
+-- how big the box is, inside its ink edge (laid out by Roblox a frame late:
+-- until then, a guess from the words)
+local function boxSize()
+	local s = box.AbsoluteSize
+	if s and s.X > 1 then
+		local k = math.max(pop.Scale, 0.05) -- (not shrunk by its pop-in)
+		return s.X / k, s.Y / k
+	end
+	local n = utf8.len(words.Text) or #words.Text
+	local perLine = math.floor(MAX_W / 10)
+	return math.min(n, perLine) * 10 + 24, math.ceil(n / perLine) * 20 + 23
+end
+
+local function pointing(which)
+	for name, t in pairs(tails) do
+		t.Visible = name == which
+	end
+end
+
+-- every frame while it talks: by its head, kept on your screen
+local function placeBubble()
+	local line = speaking
+	local spot = line.spot or headOf(line.model)
+	if spot then
+		line.last = spot
+	else
+		spot = line.last
+	end
+	local cam = workspace.CurrentCamera
+	local screen = cam and cam.ViewportSize
+	if not (screen and spot) then
+		-- (no camera, or nothing to hang it on: it waits near the top)
+		bubble.Position = UDim2.new(0.5, 0, 0, topSafe + 90)
+		box.AnchorPoint = Vector2.new(0.5, 1)
+		box.Position = UDim2.fromOffset(0, -TAIL)
+		pointing(nil)
+		return
+	end
+	local vw, vh = screen.X, screen.Y
+	local w, h = boxSize()
+	local lowest = vh - BOTTOM_SAFE
+	local function keepX(cx)
+		local a = SIDE + EDGE + w / 2
+		return math.clamp(cx, a, math.max(a, vw - a))
+	end
+	local function keepY(cy)
+		local a = topSafe + EDGE + h / 2
+		return math.clamp(cy, a, math.max(a, lowest - h / 2))
+	end
+	local p = cam:WorldToViewportPoint(spot)
+	local x, y = p.X, p.Y
+	local seen = p.Z > 0 and x >= 0 and x <= vw and y <= lowest
+	if seen and y - TAIL - h - EDGE >= topSafe then
+		-- room over its head: the box on top, the tail pointing down at it
+		local cx = keepX(x)
+		bubble.Position = UDim2.fromOffset(x, y)
+		box.AnchorPoint = Vector2.new(0.5, 1)
+		box.Position = UDim2.fromOffset(cx - x, -TAIL)
+		pointing(math.abs(cx - x) <= w / 2 - 14 and "down" or nil)
+	elseif seen and y >= 0 then
+		-- its head's up by the boss bar: the box beside it, pointing at it
+		local toRight = x + TAIL + w + EDGE + SIDE <= vw or x < vw / 2
+		local cy = keepY(y)
+		bubble.Position = UDim2.fromOffset(x, y)
+		box.AnchorPoint = Vector2.new(toRight and 0 or 1, 0.5)
+		box.Position = UDim2.fromOffset(toRight and TAIL or -TAIL, cy - y)
+		pointing(math.abs(cy - y) <= h / 2 - 12 and (toRight and "left" or "right") or nil)
+	else
+		-- off your screen: at the edge nearest it (behind you: the side it's on)
+		if p.Z <= 0 then
+			local side = cam.CFrame.RightVector:Dot(spot - cam.CFrame.Position)
+			x, y = side >= 0 and vw or 0, vh * 0.45
+		end
+		bubble.Position = UDim2.fromOffset(keepX(x), keepY(y))
+		box.AnchorPoint = Vector2.new(0.5, 0.5)
+		box.Position = UDim2.fromOffset(0, 0)
+		pointing(nil)
+	end
+end
+RunService.RenderStepped:Connect(function()
+	if speaking and talkGui and talkGui.Enabled then
+		placeBubble()
+	end
+end)
+
+local function say(short, kind, model)
 	local set = LINES[short]
 	local list = set and set[kind]
 	if not list or R.BossTalk == false then
@@ -744,36 +940,45 @@ local function say(short, kind)
 	if not talkGui then
 		buildTalk()
 	end
-	local text = list[math.random(#list)]
-	if talkPortrait then
-		talkPortrait:Destroy()
-	end
-	local p = PORTRAITS[short]
-	if p then
-		talkPortrait = sprite(p.rows, p.ink, talkBox, { Position = UDim2.fromOffset(12, 11), Size = UDim2.fromOffset(64, 64) })
-	end
-	talkText.Text = text
-	talkText.MaxVisibleGraphemes = 0
-	talkBox.Visible = true
-	local me = {}
+	-- (the lines were written for a box, each starting with Undertale's star:
+	-- a bubble doesn't need it)
+	local text = (string.gsub(list[math.random(#list)], "^%*%s*", ""))
+	local me = { model = model, spot = kind == "lose" and headOf(model) or nil }
 	speaking = me
+	tagText.Text = string.upper(short)
+	local c = colorOf(model)
+	tag.BackgroundColor3 = c
+	-- (a pale colour - Kaze's white - gets dark letters)
+	local pale = c.R * 0.3 + c.G * 0.59 + c.B * 0.11 > 0.75
+	tagText.TextColor3 = pale and INK or WHITE
+	tagText.TextStrokeTransparency = pale and 1 or 0
+	words.Text = text
+	words.MaxVisibleGraphemes = 0
+	talkGui.Enabled = true
+	placeBubble()
+	pop.Scale = 0.3
+	tween(pop, 0.18, { Scale = 1 }, Enum.EasingStyle.Back)
 	task.spawn(function()
 		local n = utf8.len(text) or #text
 		for i = 1, n do
 			if speaking ~= me then
 				return
 			end
-			talkText.MaxVisibleGraphemes = i
+			words.MaxVisibleGraphemes = i
 			if i % 2 == 0 then
 				sound(R.TypeBlip or "UI Blip")
 			end
 			task.wait(1 / 32)
 		end
-		talkText.MaxVisibleGraphemes = -1
+		words.MaxVisibleGraphemes = -1
 		task.wait(3)
 		if speaking == me then
-			talkBox.Visible = false
-			speaking = nil
+			tween(pop, 0.14, { Scale = 0 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			task.wait(0.15)
+			if speaking == me then
+				talkGui.Enabled = false
+				speaking = nil
+			end
 		end
 	end)
 end
@@ -796,9 +1001,9 @@ local function watchTalk(model)
 		if st == "Waking" then
 			current = { model = model, short = def.Short }
 			nextIdle = os.clock() + 14
-			task.delay(2.6, say, def.Short, "wake") -- (just after the VS splash)
+			task.delay(2.6, say, def.Short, "wake", model) -- (just after the VS splash)
 		elseif st == "Dead" then
-			say((current and current.short) or def.Short, "lose")
+			say((current and current.short) or def.Short, "lose", model)
 			current = nil
 		elseif st == "Dormant" or st == "Resetting" then
 			current = nil
@@ -818,16 +1023,16 @@ local function watchTalk(model)
 				nextIdle = os.clock() + wait + 12
 				task.delay(wait, function()
 					if current and current.short == becomes then
-						say(becomes, "phase2")
+						say(becomes, "phase2", model)
 					end
 				end)
 			else
-				say(def.Short, "phase2")
+				say(def.Short, "phase2", model)
 				nextIdle = os.clock() + 12
 			end
 		elseif def and model:GetAttribute("Phase") == 3 then
 			-- (a boss with a third round: Scribble)
-			say(def.Short, "phase3")
+			say(def.Short, "phase3", model)
 			nextIdle = os.clock() + 12
 		end
 	end)
@@ -841,7 +1046,7 @@ CollectionService:GetInstanceAddedSignal("Boss"):Connect(watchTalk)
 RunService.Heartbeat:Connect(function()
 	if current and current.model:GetAttribute("State") == "Fighting" and os.clock() > nextIdle and not speaking then
 		nextIdle = os.clock() + 14 + math.random() * 8
-		say(current.short, "idle")
+		say(current.short, "idle", current.model)
 	end
 end)
 
@@ -856,12 +1061,12 @@ local function watchMyHealth(char)
 		local lost = last - h
 		last = h
 		if current and h > 0 and lost >= hum.MaxHealth * 0.2 and math.random() < 0.5 and not speaking then
-			say(current.short, "hit")
+			say(current.short, "hit", current.model)
 		end
 	end)
 	hum.Died:Connect(function()
 		if current then
-			say(current.short, "win")
+			say(current.short, "win", current.model)
 		end
 	end)
 end
@@ -924,12 +1129,12 @@ do
 							playing = false
 						end
 					end)
-					task.delay(2.6, say, kingDef.Short, "wake") -- (just after the VS splash)
+					task.delay(2.6, say, kingDef.Short, "wake", model) -- (just after the VS splash)
 				else
-					task.delay(0.4, say, kingDef.Short, "wake")
+					task.delay(0.4, say, kingDef.Short, "wake", model)
 				end
 			elseif st == "Dead" then
-				say(kingDef.Short, "lose")
+				say(kingDef.Short, "lose", model)
 				if current and current.model == model then
 					current = nil
 				end
@@ -937,13 +1142,13 @@ do
 		end)
 		model:GetAttributeChangedSignal("Phase"):Connect(function()
 			if model:GetAttribute("Phase") == 2 then
-				say(kingDef.Short, "phase2")
+				say(kingDef.Short, "phase2", model)
 				nextIdle = os.clock() + 12
 			end
 		end)
 		model:GetAttributeChangedSignal("Move"):Connect(function()
 			if model:GetAttribute("Move") == "Summon" and not speaking then
-				say(kingDef.Short, "summon")
+				say(kingDef.Short, "summon", model)
 				nextIdle = os.clock() + 10
 			end
 		end)

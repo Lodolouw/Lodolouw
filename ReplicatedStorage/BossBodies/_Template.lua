@@ -34,7 +34,10 @@
 	  * Optional (see BossBodies/Tuber.lua or BossBodies/Gridlock.lua, which use
 	    most of them): onTrack, onAction, lateBreak, calm, breaks, signs,
 	    runPose, glide, afterPose, senses, pushOut, everyFrame, and barLook
-	    (its own health bars), music (its own songs), stormWant (its storm).
+	    (its own health bars), music (its own songs), stormWant (its storm),
+	    aim (where your lock-on aims and its words hang - BossClient measures
+	    its drawn body for that already; aim(B) -> middle, head, size only if
+	    that's ever wrong).
 ]]
 
 local RGB = Color3.fromRGB

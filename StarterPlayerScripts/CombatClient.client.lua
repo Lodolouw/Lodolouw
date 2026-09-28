@@ -2264,7 +2264,29 @@ local function switchTag(key)
 end
 local tagQ, tagE = switchTag("Q"), switchTag("E")
 
+-- Where to aim at it (the camera, how far away it is): the middle of it, and
+-- how big it is. A boss is drawn on your screen by BossClient, and what's
+-- drawn can be far bigger than the small invisible Root the server moves
+-- (Scribble stands 16 studs tall on a 4-stud one), so BossClient measures
+-- it and says where its middle is (AimAt) and how big it looks (AimSize) -
+-- trusted while it's fresh (AimTime). The third answer is true then.
 local function targetPoint(model)
+	local aim, stamp = model:GetAttribute("AimAt"), model:GetAttribute("AimTime")
+	if typeof(aim) == "Vector3" and type(stamp) == "number" and os.clock() - stamp < 0.5 then
+		local s = tonumber(model:GetAttribute("AimSize")) or 4
+		-- (up in the air - a leap, a meteor - it's aimed at as if it still stood
+		-- under itself: your camera keeps the ground it'll land on in view, and
+		-- the lock doesn't let go because it's high up. The brackets follow it
+		-- up all the same: they read AimAt themselves.)
+		local root = model.PrimaryPart
+		if root then
+			local standing = root.Position.Y - root.Size.Y / 2 + s * 0.6
+			if aim.Y > standing then
+				aim = Vector3.new(aim.X, standing, aim.Z)
+			end
+		end
+		return aim, Vector3.new(s, s, s), true
+	end
 	local ok, cf, size = pcall(function()
 		return model:GetBoundingBox()
 	end)
@@ -2535,6 +2557,10 @@ local function stepMarkers(dt)
 	local grow = 64 + k * 8
 	lockDot.Size = UDim2.fromOffset(grow, grow)
 	lockArrow.Position = UDim2.new(0.5, 0, 0, -4 - k * 4)
+	-- (a boss: on the middle of its drawn body, every frame, as it moves)
+	local _, _, drawn = targetPoint(lockTarget)
+	local at, body = lockTarget:GetAttribute("AimAt"), lockDot.Adornee
+	lockDot.StudsOffsetWorldSpace = (drawn and body and body:IsA("BasePart")) and (at - body.Position) or Vector3.new(0, 0, 0)
 	markerTick = markerTick + dt
 	if markerTick < 0.15 then
 		return
@@ -2542,79 +2568,104 @@ local function stepMarkers(dt)
 	markerTick = 0
 	local q, e = neighbour(-1), neighbour(1)
 	local function place(tag, model)
-		local body = model and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart"))
-		tag.Adornee = body
-		tag.Enabled = body ~= nil
-		tag.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
+		local part = model and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart"))
+		tag.Adornee = part
+		tag.Enabled = part ~= nil
+		local offset = Vector3.new(0, 3, 0)
+		if part then
+			local spot, _, shown = targetPoint(model)
+			if shown then
+				offset = offset + (spot - part.Position) -- (a boss: over the middle of what's drawn)
+			end
+		end
+		tag.StudsOffsetWorldSpace = offset
 	end
 	place(tagQ, q)
 	place(tagE, e)
 end
 
 -- camera + facing while locked
-RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
-	if not lockTarget then
-		return
+-- (In a do-block: this script is close to Luau's limit on top-level locals.)
+do
+	-- Where your lock-on camera sits and looks, with you at `ppos` and your
+	-- target's middle at `tpos`, this big: behind you, framing you both -
+	-- further back and higher for a bigger one. A boss (`drawn`: measured by
+	-- BossClient) is looked at a little higher the taller it is, so a tall
+	-- one's head isn't up behind the boss bar.
+	local function lockView(ppos, tpos, tsize, drawn)
+		local flat = Vector3.new(tpos.X - ppos.X, 0, tpos.Z - ppos.Z)
+		if flat.Magnitude < 0.5 then
+			return nil
+		end
+		local dir = flat.Unit
+		local right = Vector3.new(-dir.Z, 0, dir.X)
+		local big = math.max(tsize.X, tsize.Y, tsize.Z)
+		local back = 12 + big * 0.35
+		local up = 4 + big * 0.12
+		local camPos = ppos - dir * back + Vector3.new(0, up, 0) + right * 1.5
+		local lookAt = ppos:Lerp(tpos, 0.55)
+		if drawn then
+			lookAt = lookAt + Vector3.new(0, math.max(0, big - 10) * 0.12, 0)
+		end
+		return camPos, lookAt
 	end
-	local hum, hrp, char = charParts()
-	local cam = workspace.CurrentCamera
-	if not (hum and hrp and cam) or not active then
-		unlock()
-		return
-	end
-	-- your target TELEPORTED (the Cursed Dummy's blink): the lock lets go of
-	-- everything, instead of whipping the camera round after it
-	if lockTarget:GetAttribute("Blinking") then
-		unlock()
-		return
-	end
-	if not lockable(lockTarget) then
-		-- your target died: straight on to the nearest one left (or let go)
-		local nextOne = nearestTarget(lockTarget)
-		if nextOne then
-			lockOn(nextOne)
+
+	RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
+		if not lockTarget then
+			return
+		end
+		local hum, hrp, char = charParts()
+		local cam = workspace.CurrentCamera
+		if not (hum and hrp and cam) or not active then
+			unlock()
+			return
+		end
+		-- your target TELEPORTED (the Cursed Dummy's blink): the lock lets go of
+		-- everything, instead of whipping the camera round after it
+		if lockTarget:GetAttribute("Blinking") then
+			unlock()
+			return
+		end
+		if not lockable(lockTarget) then
+			-- your target died: straight on to the nearest one left (or let go)
+			local nextOne = nearestTarget(lockTarget)
+			if nextOne then
+				lockOn(nextOne)
+			else
+				unlock()
+				return
+			end
+		end
+		local tpos, tsize, drawn = targetPoint(lockTarget)
+		if not tpos or (tpos - hrp.Position).Magnitude > LOCK_BREAK then
+			unlock()
+			return
+		end
+		-- out of sight for a moment lets go too (a pillar, the stands...)
+		if canSee(lockTarget, tpos) then
+			lostSightAt = nil
 		else
-			unlock()
+			lostSightAt = lostSightAt or os.clock()
+			if os.clock() - lostSightAt > 1.2 then
+				unlock()
+				return
+			end
+		end
+		stepMarkers(dt)
+		local ppos = hrp.Position + Vector3.new(0, 1.5, 0)
+		local camPos, lookAt = lockView(ppos, tpos, tsize, drawn)
+		if not camPos then
 			return
 		end
-	end
-	local tpos, tsize = targetPoint(lockTarget)
-	if not tpos or (tpos - hrp.Position).Magnitude > LOCK_BREAK then
-		unlock()
-		return
-	end
-	-- out of sight for a moment lets go too (a pillar, the stands...)
-	if canSee(lockTarget, tpos) then
-		lostSightAt = nil
-	else
-		lostSightAt = lostSightAt or os.clock()
-		if os.clock() - lostSightAt > 1.2 then
-			unlock()
-			return
-		end
-	end
-	stepMarkers(dt)
-	local ppos = hrp.Position + Vector3.new(0, 1.5, 0)
-	local flat = Vector3.new(tpos.X - ppos.X, 0, tpos.Z - ppos.Z)
-	if flat.Magnitude < 0.5 then
-		return
-	end
-	local dir = flat.Unit
-	local right = Vector3.new(-dir.Z, 0, dir.X)
-	-- pull the camera back further for bigger enemies
-	local big = math.max(tsize.X, tsize.Y, tsize.Z)
-	local back = 12 + big * 0.35
-	local up = 4 + big * 0.12
-	local camPos = ppos - dir * back + Vector3.new(0, up, 0) + right * 1.5
-	local lookAt = ppos:Lerp(tpos, 0.55)
-	local goal = CFrame.lookAt(camPos, lookAt)
-	cam.CFrame = cam.CFrame:Lerp(goal, math.min(1, dt * 10))
-	cam.Focus = CFrame.new(ppos)
-	-- which way you face is not this loop's job: the facing step owns that (it
-	-- runs once a frame, and two of us turning you at different rates is what
-	-- made punching while locked on look like a spinning top)
-	local _ = char
-end)
+		local goal = CFrame.lookAt(camPos, lookAt)
+		cam.CFrame = cam.CFrame:Lerp(goal, math.min(1, dt * 10))
+		cam.Focus = CFrame.new(ppos)
+		-- which way you face is not this loop's job: the facing step owns that (it
+		-- runs once a frame, and two of us turning you at different rates is what
+		-- made punching while locked on look like a spinning top)
+		local _ = char
+	end)
+end
 
 -- A boss's cutscene camera (BossClient's kit.shot: the Brute's power-up).
 -- This script still owns the camera: the boss's script sends the shot it

@@ -1221,7 +1221,93 @@ local function onAction(B, name, t0, now)
 	end
 end
 
+----------------------------------------------------------------------
+-- Where it really is: for your lock-on and its speech bubbles
+----------------------------------------------------------------------
+-- What's drawn is often far bigger than the small invisible Root the server
+-- moves about (Scribble stands 16 studs tall on a 4-stud Root), so once it's
+-- posed, its drawn body is measured - or its body file says itself
+-- (Body.aim(B) -> the middle of its body, just over its head, how big it
+-- looks: world positions and studs; nil to be measured). The answer goes on
+-- the boss model as attributes, on your screen only (the server never sees
+-- them): AimAt and HeadAt (where), AimSize (studs) and AimTime (when -
+-- older than half a second, it isn't to be trusted). CombatClient puts your
+-- lock-on's brackets on AimAt and frames AimSize; BossIntro hangs its words
+-- over HeadAt.
+local function measureBody(B, base, ground)
+	-- Its own parts only: the ones straight in its body's Model (a folder
+	-- inside that holds something else - Gridlock's tiles), showing, and
+	-- near it - not a shadow flat on the floor, nor what it has thrown or
+	-- spread about the arena (Tuber's audience lives in his body's Model too).
+	-- (The list is made again now and then: a body file can add parts as it goes.)
+	local clock = os.clock()
+	if not B.aimParts or clock > B.aimListAt then
+		local list = {}
+		for _, d in ipairs(B.body.folder:GetChildren()) do
+			if d:IsA("BasePart") then
+				list[#list + 1] = d
+			end
+		end
+		B.aimParts, B.aimListAt = list, clock + 1
+	end
+	local near = math.max(B.def.Size, 6)
+	local lo, hi = nil, nil
+	for _, p in ipairs(B.aimParts) do
+		local cf = p.CFrame
+		local at = cf.Position
+		if p.Transparency < 0.9 and p.Parent and V3(at.X - base.X, 0, at.Z - base.Z).Magnitude <= near then
+			-- (how far it reaches each way, however it's turned)
+			local s = p.Size / 2
+			local r, u, l = cf.RightVector, cf.UpVector, cf.LookVector
+			local reach = V3(
+				math.abs(r.X) * s.X + math.abs(u.X) * s.Y + math.abs(l.X) * s.Z,
+				math.abs(r.Y) * s.X + math.abs(u.Y) * s.Y + math.abs(l.Y) * s.Z,
+				math.abs(r.Z) * s.X + math.abs(u.Z) * s.Y + math.abs(l.Z) * s.Z
+			)
+			if not (reach.Y < 0.15 and at.Y - reach.Y < ground + 0.6) then -- (not a shadow flat on the floor)
+				lo = lo and lo:Min(at - reach) or at - reach
+				hi = hi and hi:Max(at + reach) or at + reach
+			end
+		end
+	end
+	if not lo then
+		return nil -- (nothing of it showing)
+	end
+	return V3(lo.X, math.max(lo.Y, ground), lo.Z), hi -- (from the floor: some sink into it)
+end
 
+local function publishAim(B, base, dt)
+	local m = B.model
+	local mid, head, size = nil, nil, nil
+	if B.mod.aim then
+		mid, head, size = B.mod.aim(B)
+	end
+	if not mid then
+		local lo, hi = measureBody(B, base, rootGround(B).Y)
+		if not lo then
+			return
+		end
+		-- (over where it stands - or over its body, if that's all off to one
+		-- side: fallen over, say)
+		local x, z = clamp(base.X, lo.X, hi.X), clamp(base.Z, lo.Z, hi.Z)
+		local height = math.max(hi.Y - lo.Y, 1)
+		mid = V3(x, lo.Y + height * 0.55, z)
+		head = V3(x, hi.Y, z)
+		size = math.max(B.def.Size, height)
+	end
+	-- Smoothed a touch, so a flailing arm doesn't shake your brackets - but
+	-- as offsets from where it's drawn, so it never lags behind a dash
+	local k = 1 - math.exp(-dt * 14)
+	local relMid, relHead = mid - base, head - base
+	B.aimRel = B.aimRel and B.aimRel:Lerp(relMid, k) or relMid
+	B.headRel = B.headRel and B.headRel:Lerp(relHead, k) or relHead
+	-- (its size slower still: it's how far back your camera sits)
+	B.aimSize = B.aimSize and B.aimSize + (size - B.aimSize) * (1 - math.exp(-dt * 3)) or size
+	m:SetAttribute("AimAt", base + B.aimRel)
+	m:SetAttribute("HeadAt", base + B.headRel)
+	m:SetAttribute("AimSize", B.aimSize)
+	m:SetAttribute("AimTime", os.clock())
+end
 
 local function stepBoss(B, now, dt)
 	local mod = B.mod
@@ -1348,6 +1434,9 @@ local function stepBoss(B, now, dt)
 	mod.pose(B, P, B.vpos + jolt, P.facing or B.vfacing, now, dt)
 	if mod.afterPose then
 		mod.afterPose(B) -- (its body file's extras once it's posed)
+	end
+	if player:GetAttribute("SpireFloor") == B.floor then
+		publishAim(B, B.vpos + jolt, dt) -- (for your lock-on and its words)
 	end
 	if B.def.Weather == "Sandstorm" then
 		stepStorm(B, dt)

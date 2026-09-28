@@ -1038,6 +1038,19 @@ function methods.GetBoundingBox(self)
 	local mid = (lo + hi) / 2
 	return cf(mid.X, mid.Y, mid.Z), hi - lo
 end
+-- a Camera's view: where a point lands on the screen (pixels from the top
+-- left, and how far in front of the camera it is), like Roblox's
+function methods.WorldToViewportPoint(self, point)
+	local view = self.__props.CFrame or cf(0, 0, 0)
+	local screen = self.__props.ViewportSize or { X = 1280, Y = 720 }
+	local rel = view:PointToObjectSpace(point)
+	local depth = -rel.Z
+	local d = math.abs(depth) < 1e-6 and 1e-6 or depth
+	local f = (screen.Y / 2) / math.tan(math.rad(self.__props.FieldOfView or 70) / 2)
+	local x = screen.X / 2 + rel.X / d * f
+	local y = screen.Y / 2 - rel.Y / d * f
+	return v3(x, y, depth), depth > 0 and x >= 0 and x <= screen.X and y >= 0 and y <= screen.Y
+end
 function methods.GetPivot(self)
 	if isA(self.__props.ClassName, "BasePart") then
 		return self.__props.CFrame * (self.__props.PivotOffset or cf(0, 0, 0))

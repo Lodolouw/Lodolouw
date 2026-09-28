@@ -6,7 +6,8 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 
 - `rbxmock.luau` - the pretend Roblox: Vector3, CFrame, Color3, Enum, parts,
   models, folders, events, services, a virtual clock (`task.wait`,
-  `task.spawn`, `task.delay`) and a flat sand floor for raycasts.
+  `task.spawn`, `task.delay`), a flat sand floor for raycasts and a camera's
+  `WorldToViewportPoint`.
 - `build_sources.py` - bundles the real game scripts into `sources.luau`
   (the Luau command line can't read files), plus the dummy builder cut out
   of LobbyBuilder. Every script is also bundled by its path in the project.
@@ -61,6 +62,12 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   boss code (like splitting it into one file per boss) changed nothing
   players can see. `./golden.sh check client_` runs only the client ones, and
   `./golden.sh record server_knight` re-records only those.
+  `test_bosses.luau -a <scenario> <seed> client aim` checks instead where
+  BossClient says the boss is - the middle and head it measures from what's
+  drawn (`AimAt`, `HeadAt`, `AimSize`, `AimTime`: your lock-on and its speech
+  bubbles use them) - against its own drawn parts every sample while it's
+  awake, and prints the lowest and highest head and middle per move (PASS if
+  they always matched; `run_all.sh` does every boss's `_attacks`).
 - `test_arenas_apart.luau` - EVERY ARENA IN ITS OWN SPOT: builds the lobby
   (with Oozark's hollow and the Colosseum) and every Spire arena together
   and fails if any two overlap, seen from above (`-a list` prints the ground
@@ -240,6 +247,27 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `luau scribble_snaps.luau > s.txt` then
   `python3 render_snaps.py s.txt ../../Docs/scribble_preview.png --cols 3 --title "SCRIBBLE|FLOOR 9  -  THE CANVAS|RECOMMENDED LV 135"`;
   `-a poses` with `--cols 3 --title ""` the pose sheet (`Docs/scribble_poses.png`).
+- `test_lockaim.luau` - WHERE YOUR LOCK-ON AIMS: CombatClient's own
+  `targetPoint` and `lockView`, cut out of it: a boss is aimed at the middle
+  BossClient measured while it's fresh (and as if still standing when it's
+  up in the air), anything else at the middle of its parts as before; the
+  camera's sums are unchanged except that a tall boss is looked at a little
+  higher.
+- `test_talk.luau` - THE BOSSES TALKING: the real BossIntro, a pretend boss
+  whose head BossClient has measured, and a camera. The speech bubble hangs
+  over the head with its tail pointing down at it; beside the head, pointing
+  sideways, when there's no room up there; at the nearest edge (tail tucked
+  away) with the head off the top, off a side or behind you; never over the
+  boss bar; last words stay where they were said; the old box's "* " is
+  gone; the tag carries the boss's name in its colour.
+- `talk_snaps.luau` + `render_talk.py` - the speech bubbles' preview
+  (`Docs/talk_preview.png`): each boss woken by a pretend player and seen
+  through the lock-on camera (CombatClient's own sums), its wake line in the
+  bubble exactly where BossIntro put it and the lock-on's brackets where
+  they'd be. `luau talk_snaps.luau -a <floor> [before] [distance]` prints
+  one floor (`before` adds how it looked before: the brackets on the Root,
+  the old black box); put several in one file and
+  `python3 render_talk.py talk_snaps.txt ../../Docs/talk_preview.png`.
 - `test_vitals.luau` - THE HEART, THE POTION AND THE BOLT
   (ReplicatedStorage/Vitals): the three pixel pictures at the bottom of the
   screen. It starts the real module the way Hud does, with a pretend

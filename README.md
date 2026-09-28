@@ -624,6 +624,30 @@ previews `Docs/vitals_preview.png` and `Docs/vitals_drink.png`):
 `CombatClient` tells `Vitals` your stamina and flasks (`Vitals.set`) and what
 just happened (`Vitals.fire`: a drink, a roll's invincibility, running out).
 
+## Bosses talking, and your lock-on on a boss
+
+- **Speech bubbles:** a boss's lines (its hello, taunts, gloating, its new
+  round, its last words) come up in a speech bubble by its head - white,
+  inked round the edge, its name on a tag in its colour, the words typed out
+  with a blip - instead of the black box that covered the top of your screen.
+  The bubble hangs over its head with its tail pointing down at it; with no
+  room up there (a tall boss's head up by the boss bar) it sits beside the
+  head, pointing sideways; with the head off your screen it waits at the
+  edge nearest it. It never covers the boss bar, and last words stay where
+  they were said (the boss may be melting or flying off). `BossIntro` (its
+  `LINES` are the words).
+- **Your lock-on on the boss's real body:** a boss is drawn on your screen far
+  bigger than the small invisible Root the server moves (Scribble stands 16
+  studs tall on a 4-stud Root), and the lock-on used to aim at that Root: the
+  brackets sat at your own feet and the camera cut the boss's head off. Now
+  `BossClient` measures what's drawn every frame and says where its middle
+  and head are (the boss model's `AimAt`, `HeadAt`, `AimSize` and `AimTime`,
+  on your screen only). `CombatClient` puts the brackets on its middle,
+  frames all of it (looking a little higher at a tall one), and when it leaps
+  aims at it as if it still stood under itself, so the camera keeps the
+  ground it'll land on in view. A body file can say for itself (`Body.aim`).
+- Preview: `Docs/talk_preview.png` (Scribble before and after, then every boss).
+
 ## Hit reactions (every hit that lands)
 
 Enemies react when a hit lands on them - fists or sword, yours or another

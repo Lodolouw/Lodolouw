@@ -12,9 +12,12 @@
 --     moved or recoloured), plus every camera kick
 -- The same output before and after a change to the boss code means the bosses
 -- behave, and look, exactly the same.
---   luau test_bosses.luau -a <scenario> <seed> [server|client] [detail]
+--   luau test_bosses.luau -a <scenario> <seed> [server|client] [detail|aim]
 -- ("detail" in client mode prints every drawn thing each sample, to find what
--- differs - too big to save)
+-- differs - too big to save. "aim" in client mode prints nothing but a check
+-- of where BossClient says the boss is - the AimAt / HeadAt / AimSize your
+-- lock-on and its speech bubbles use - against what's drawn, every sample
+-- while it's awake, and a summary per move: PASS if it always matched.)
 -- scenarios:
 --   slime_full    Oozark (floor 1) fought to the death by one player
 --   slime_duo     two players; both leave mid-fight (it resets), then return and win
@@ -49,6 +52,7 @@ local SCENARIO = args[1] or "slime_full"
 local SEED = tonumber(args[2]) or 1
 local MODE = args[3] or "server"
 local DETAIL = args[4] == "detail"
+local AIM = args[4] == "aim" and MODE == "client"
 
 local Vector3, CFrame, Instance = M.Vector3, M.CFrame, M.Instance
 local CollectionService = M.services.CollectionService or game:GetService("CollectionService")
@@ -106,6 +110,9 @@ end
 local T = 0 -- virtual time
 local lines = 0
 local function log(...)
+	if AIM then
+		return -- (aim mode: only its own check is printed)
+	end
 	local parts = { string.format("%8.3f", T) }
 	for i = 1, select("#", ...) do
 		parts[#parts + 1] = show((select(i, ...)))
@@ -596,8 +603,115 @@ local function describe(inst)
 	end
 	return table.concat(parts, " ")
 end
+-- aim mode's check (see the top): every sample while it's awake and Alpha
+-- is in its arena, the attributes must be there and fresh, the middle inside
+-- its body and the head at its top. "Its body" is what BossClient measures:
+-- the parts straight in its body's Model, showing, near it and not a shadow
+-- on the floor. (Smoothing lets them trail a fast move a little, so they're
+-- checked against this sample's body and the one before together.) Per
+-- move, the lowest and highest head and middle are noted, to read.
+local aimStats, aimOrder, aimFails, aimChecked = {}, {}, {}, 0
+local aimPrev = nil
+local function aimFail(msg)
+	if #aimFails < 12 then
+		aimFails[#aimFails + 1] = string.format("%8.3f %s", T, msg)
+	end
+	aimFails.n = (aimFails.n or 0) + 1
+end
+local function ownBody()
+	local fx = workspace:FindFirstChild("BossFX")
+	local body = fx and fx:FindFirstChild(def.Short .. "Body")
+	local root = model.PrimaryPart
+	if not (body and root) then
+		return nil
+	end
+	local ground = root.Position.Y - root.Size.Y / 2
+	local near = math.max(def.Size, 6) + 1.5 -- (BossClient measures from where it's drawn, a touch off the Root)
+	local lo, hi = nil, nil
+	for _, d in ipairs(body:GetChildren()) do
+		if d:IsA("BasePart") and d.Transparency < 0.9 then
+			local c, s = d.CFrame, d.Size / 2
+			local reach = math.abs(c.RightVector.Y) * s.X + math.abs(c.UpVector.Y) * s.Y + math.abs(c.LookVector.Y) * s.Z
+			local flatOnFloor = reach < 0.3 and c.Position.Y - reach < ground + 0.6
+			local far = Vector3.new(c.Position.X - root.Position.X, 0, c.Position.Z - root.Position.Z).Magnitude
+			if not flatOnFloor and far <= near then
+				for _, sx in ipairs({ -1, 1 }) do
+					for _, sy in ipairs({ -1, 1 }) do
+						for _, sz in ipairs({ -1, 1 }) do
+							local w = c * Vector3.new(s.X * sx, s.Y * sy, s.Z * sz)
+							lo = lo and lo:Min(w) or w
+							hi = hi and hi:Max(w) or w
+						end
+					end
+				end
+			end
+		end
+	end
+	if not lo then
+		return nil
+	end
+	return lo, Vector3.new(hi.X, hi.Y, hi.Z), ground
+end
+local function aimSample()
+	local me = people[1]
+	local st = model:GetAttribute("State")
+	if not (me and inArena[me]) or not (st == "Waking" or st == "Fighting" or st == "Transition") then
+		aimPrev = nil
+		return
+	end
+	local at, head = model:GetAttribute("AimAt"), model:GetAttribute("HeadAt")
+	local size, stamp = model:GetAttribute("AimSize"), model:GetAttribute("AimTime")
+	if M.typeof(at) ~= "Vector3" or M.typeof(head) ~= "Vector3" or type(size) ~= "number" or type(stamp) ~= "number" then
+		aimFail("no aim attributes")
+		return
+	end
+	if M.now() - stamp > 0.2 then
+		aimFail("stale aim: " .. num(M.now() - stamp) .. "s old")
+	end
+	local lo, hi, ground = ownBody()
+	if not lo then
+		aimPrev = nil
+		return -- (nothing of it showing: gone, or not drawn yet)
+	end
+	aimChecked += 1
+	-- (this sample's body and the last one's together)
+	local ulo, uhi = lo, hi
+	if aimPrev then
+		ulo, uhi = lo:Min(aimPrev[1]), hi:Max(aimPrev[2])
+	end
+	local topLow = aimPrev and math.min(hi.Y, aimPrev[2].Y) or hi.Y
+	aimPrev = { lo, hi }
+	local action = model:GetAttribute("Action") or "?"
+	local SLACK = 2.5
+	local bottom = math.max(ulo.Y, ground)
+	if at.Y < bottom - SLACK or at.Y > uhi.Y + SLACK or at.X < ulo.X - SLACK or at.X > uhi.X + SLACK or at.Z < ulo.Z - SLACK or at.Z > uhi.Z + SLACK then
+		aimFail(action .. ": the middle " .. show(at) .. " is outside its body " .. show(ulo) .. "-" .. show(uhi))
+	end
+	if head.Y < topLow - SLACK or head.Y > uhi.Y + SLACK then
+		aimFail(action .. ": the head is at " .. num(head.Y - floorY) .. " but its top at " .. num(topLow - floorY) .. "-" .. num(uhi.Y - floorY))
+	end
+	if size < def.Size - 0.01 or size > 80 or size ~= size then
+		aimFail(action .. ": a strange size " .. num(size))
+	end
+	local r = aimStats[action]
+	if not r then
+		r = { head = { math.huge, -math.huge }, mid = { math.huge, -math.huge }, size = { math.huge, -math.huge }, n = 0 }
+		aimStats[action] = r
+		aimOrder[#aimOrder + 1] = action
+	end
+	r.n += 1
+	for key, v in pairs({ head = head.Y - floorY, mid = at.Y - floorY, size = size }) do
+		r[key][1] = math.min(r[key][1], v)
+		r[key][2] = math.max(r[key][2], v)
+	end
+end
+
 local lastDraw = nil
 function clientSample()
+	if AIM then
+		aimSample()
+		return
+	end
 	local total, count = 0, 0
 	local detail = DETAIL and {} or nil
 	for _, inst in ipairs(created) do
@@ -831,6 +945,20 @@ else
 	error("unknown scenario " .. SCENARIO)
 end
 
+if AIM then
+	print(string.format("AIM %s: %d samples checked", def.Short, aimChecked))
+	for _, action in ipairs(aimOrder) do
+		local r = aimStats[action]
+		print(string.format("  %-14s n=%-4d head %6.1f-%-6.1f middle %6.1f-%-6.1f size %5.1f-%-5.1f", action, r.n,
+			r.head[1], r.head[2], r.mid[1], r.mid[2], r.size[1], r.size[2]))
+	end
+	for _, f in ipairs(aimFails) do
+		print("!! " .. f)
+	end
+	if (aimFails.n or 0) > 0 or aimChecked == 0 then
+		table.insert(M.errors, (aimFails.n or 0) .. " aim checks failed (of " .. aimChecked .. ")")
+	end
+end
 note("time", num(T))
 note("errors", #M.errors)
 print("SUMMARY " .. table.concat(summary, " "))
