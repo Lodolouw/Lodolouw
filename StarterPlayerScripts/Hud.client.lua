@@ -1705,7 +1705,7 @@ do
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -52),
-		Size = UDim2.fromOffset(150, 334),
+		Size = UDim2.fromOffset(150, 376),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = root,
@@ -1726,7 +1726,7 @@ do
 	end)
 	-- the weapon test: hold the test sword (again: back to fists), and level its
 	-- mastery up a quarter at a time (25, 50, 75, 100, then back to 1)
-	for i, what in ipairs({ { "DEV: Test Sword", "DevTestWeapon" }, { "DEV: Mastery +25", "DevMastery" } }) do
+	for i, what in ipairs({ { "DEV: Test Sword", "DevTestWeapon" }, { "DEV: Mastery +25", "DevMastery" }, { "DEV: Next Sword", "DevNextWeapon" } }) do
 		local b = button({
 			LayoutOrder = 6 + i,
 			Size = UDim2.fromOffset(150, 36),

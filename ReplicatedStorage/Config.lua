@@ -2688,7 +2688,29 @@ Config.Weapons = {
 		},
 	},
 	Test = "IronSword", -- what "DEV: Test Sword" gives you
+	-- what "DEV: Next Sword" goes through, one press at a time (then back to fists)
+	TestList = { "IronSword", "EmberCleaver", "Tidefang", "Voidstar" },
 }
+
+-- The other 3D swords (Tools/Weapons), to try them in hand: for now they're
+-- Iron Swords in everything but their looks (the same swings and Whirlwind).
+-- Their models must be in ReplicatedStorage (EmberCleaver, Tidefang, Voidstar).
+do
+	local L = Config.Weapons.List
+	local function sword(name, rarity, model, blade, guard, grip)
+		return {
+			Name = name,
+			Type = "Sword",
+			Rarity = rarity,
+			Model = model,
+			Colors = { Blade = blade, Edge = Color3.fromRGB(255, 255, 255), Guard = guard, Grip = grip }, -- (the blocky one, if its model's missing)
+			Ability = L.IronSword.Ability,
+		}
+	end
+	L.EmberCleaver = sword("Ember Cleaver", "Rare", "EmberCleaver", Color3.fromRGB(255, 120, 30), Color3.fromRGB(60, 40, 40), Color3.fromRGB(120, 28, 30))
+	L.Tidefang = sword("Tidefang", "Epic", "Tidefang", Color3.fromRGB(80, 255, 240), Color3.fromRGB(30, 70, 58), Color3.fromRGB(52, 110, 84))
+	L.Voidstar = sword("Voidstar", "Legendary", "Voidstar", Color3.fromRGB(70, 40, 110), Color3.fromRGB(255, 170, 250), Color3.fromRGB(40, 25, 70))
+end
 
 -- The mastery level `points` mastery points make (1 to MasteryMax), and how far
 -- into that level they are (0 to 1)

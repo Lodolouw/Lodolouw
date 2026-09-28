@@ -363,6 +363,16 @@ me:SetAttribute("SpireFloor", 2)
 step(0.5)
 local ok3 = actions.DevTestWeapon(me, data)
 check(ok3 and me:GetAttribute("Weapon") == nil and me:GetAttribute("Mastery") == nil, "DEV: Test Sword again: back to fists")
+-- DEV: Next Sword: every sword in turn, then fists
+do
+	local seen = {}
+	for i = 1, 5 do
+		local fine, say = actions.DevNextWeapon(me, data)
+		seen[i] = fine and (me:GetAttribute("Weapon") or "fists") or ("failed: " .. tostring(say))
+	end
+	local got = table.concat(seen, ",")
+	check(got == "IronSword,EmberCleaver,Tidefang,Voidstar,fists", "DEV: Next Sword goes through every sword, then fists (" .. got .. ")")
+end
 healAll()
 step(1)
 fire("Punch", nil, 1)

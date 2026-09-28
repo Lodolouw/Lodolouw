@@ -669,7 +669,9 @@ player's. Preview: `Docs/hit_reactions.png`.
 The game is moving from gear to **weapons** (see the new direction in
 `Docs/HANDOFF_PROMPT.md`). The first one is in, to test the feel: the
 **Iron Sword** (`Config.Weapons`). In Studio, open the dev console and press
-**DEV: Test Sword** (again: back to fists).
+**DEV: Test Sword** (again: back to fists). **DEV: Next Sword** goes through
+all four 3D swords (Iron Sword, Ember Cleaver, Tidefang, Voidstar - for now
+the other three are Iron Swords in everything but their looks), then fists.
 
 - In a fight the punch button swings it instead: a **flat forehand** (right
   to left at chest height), a **rising backhand**, and a **leaping spin

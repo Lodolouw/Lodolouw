@@ -1186,6 +1186,30 @@ function CombatService.Start(playerService)
 			CombatService.Equip(player, W.Test)
 			return true, def.Name .. " in hand! It swings in fights - F is " .. (def.Ability and def.Ability.Name or "its ability") .. "."
 		end)
+		-- "DEV: Next Sword": fists -> each sword in Config.Weapons.TestList -> fists
+		PlayerService.AddAction("DevNextWeapon", function(player)
+			if not Config.isDev(player) then
+				return false, "Dev tools are only for the game's owner."
+			end
+			local list = W.TestList or { W.Test }
+			local now = player:GetAttribute("Weapon")
+			local nextId = list[1]
+			for i, id in ipairs(list) do
+				if id == now then
+					nextId = list[i + 1]
+				end
+			end
+			if not nextId then
+				CombatService.Equip(player, nil)
+				return true, "Back to your fists."
+			end
+			local def = W.List[nextId]
+			if not def then
+				return false, "There's no weapon " .. tostring(nextId) .. " in Config.Weapons."
+			end
+			CombatService.Equip(player, nextId)
+			return true, def.Name .. " in hand (" .. def.Rarity .. ") - swing it in a fight."
+		end)
 		PlayerService.AddAction("DevMastery", function(player)
 			if not Config.isDev(player) then
 				return false, "Dev tools are only for the game's owner."
