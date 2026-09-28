@@ -22,6 +22,10 @@
 	                              (CombatService): go round the back
 	      Cursed Dummy  (Lv 50) - vanishes and reappears BEHIND you, slamming
 	    Every kind shows its move before doing it, so it can always be dodged.
+	  * HITS LAND ON THEM: a dummy that's hit tips away from the blow and
+	    wobbles back upright like a punching bag, and is knocked back - a
+	    finisher sends it flying (see "Hit reactions"; the numbers are in
+	    Config.Combat.HitReact).
 	  * EVERYONE FARMS ON THEIR OWN: your dummies carry your UserId (Owner).
 	    Only you can hit them, they only go for you, and other players' screens
 	    hide them (LobbyActivities). Other players are just there with you.
@@ -67,6 +71,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
@@ -224,11 +229,65 @@ local PARKED = 200 -- how high up a new dummy waits, out of sight, before it dro
 local function footOf(model)
 	return model:GetAttribute("Foot") or FOOT
 end
+
+-- Being hit (see "Hit reactions" below): a dummy flinches - tips away from
+-- the blow and wobbles back upright - and is knocked back. That's laid on
+-- top of wherever its brain puts it, so the brain never has to know: its
+-- moves carry on exactly as planned, the reaction rides on top, and the
+-- knock-back becomes where it really is when the brain next looks.
+local placed = setmetatable({}, { __mode = "k" }) -- [model] = where its brain last put its feet
+local react = setmetatable({}, { __mode = "k" }) -- [model] = the reaction to a hit playing on it
+
+-- how far along the ground a reaction has knocked it back, `now` (out
+-- fast, then it stops), and how far through its knock-back it is (0-1)
+local function knockAt(r, now)
+	local k = math.clamp((now - r.t0) / r.slide, 0, 1)
+	local eased = 1 - (1 - k) ^ 3
+	return r.carry + r.push * (eased - r.baked), k, eased
+end
+
+-- how far a reaction has moved it and tipped it over, `now`
+local function reactionAt(r, now)
+	local t = now - r.t0
+	local shift, k = knockAt(r, now)
+	local up = r.rise * 4 * k * (1 - k) -- (a finisher arcs through the air)
+	-- the flinch: tips away from the blow, then wobbles back upright like a punching bag
+	local tilt
+	if t < r.snap then
+		tilt = r.tilt * (1 - (1 - t / r.snap) ^ 2)
+	else
+		local u = t - r.snap
+		tilt = r.tilt * math.exp(-u * 7) * math.cos(u * 15)
+	end
+	return shift + Vector3.new(0, up, 0), tilt, t >= r.slide and t >= r.snap + 0.6
+end
+
+-- a spot pulled back inside the arena's wall if it's past it (same height)
+local function withinWall(p)
+	local d = flat(p - C.Center)
+	if d.Magnitude > C.Radius then
+		return p - d.Unit * (d.Magnitude - C.Radius)
+	end
+	return p
+end
+
+-- where a dummy really stands, and putting it somewhere (its brain's feet,
+-- with any reaction to a hit on top - which never carries it past the wall,
+-- whatever its brain is doing at the time)
 local function feet(model)
-	return model:GetPivot() * TURN * CFrame.new(0, -footOf(model), 0)
+	return placed[model] or model:GetPivot() * TURN * CFrame.new(0, -footOf(model), 0)
+end
+local function show(model, cf)
+	local r = react[model]
+	if r then
+		local offset, tilt = reactionAt(r, os.clock())
+		cf = CFrame.new(withinWall(cf.Position + offset)) * CFrame.fromAxisAngle(r.axis, tilt) * cf.Rotation
+	end
+	model:PivotTo(cf * CFrame.new(0, footOf(model), 0) * TURN)
 end
 local function place(model, cf)
-	model:PivotTo(cf * CFrame.new(0, footOf(model), 0) * TURN)
+	placed[model] = cf
+	show(model, cf)
 	-- (a shield only blocks from the front: CombatService needs to know which way that is)
 	if model:GetAttribute("ShieldArc") then
 		local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
@@ -263,6 +322,100 @@ local function inArena(pos, margin)
 	end
 	return sandAt(C.Center + d)
 end
+
+----------------------------------------------------------------------
+-- Hit reactions (the numbers are in Config.Combat.HitReact)
+----------------------------------------------------------------------
+local HR = (Config.Combat and Config.Combat.HitReact) or {}
+
+-- A hit landing on a dummy: it flinches away from the blow and is knocked
+-- back (`weight` 1-3, 3 being a finisher; `dir` the way the blow drives it).
+-- Heavy kinds (`heft`: bigger ones are heavier) budge less; the Straw King
+-- only flinches.
+local function hitReaction(e, weight, dir)
+	local model = e.model
+	local at = placed[model]
+	if not (model.Parent and at) then
+		return
+	end
+	weight = math.clamp(math.floor(tonumber(weight) or 1), 1, 3)
+	dir = typeof(dir) == "Vector3" and flat(dir) or Vector3.zero
+	if dir.Magnitude < 0.01 then
+		dir = -flat(at.LookVector) -- (no idea where it came from: straight back)
+	end
+	if dir.Magnitude < 0.01 then
+		return
+	end
+	dir = dir.Unit
+	local now = os.clock()
+	local old = react[model]
+	-- whatever the last hit already knocked it back stays (and it goes on from there)
+	local carry = old and knockAt(old, now) or Vector3.zero
+	local heft = (e.scale or 1) ^ 2 * (e.heft or 1)
+	local dist = e.king and 0 or ((HR.Push or { 1.4, 2, 7 })[weight] or 0) / heft
+	local push = Vector3.zero
+	if dist > 0.05 then
+		-- along the ground (never out of the arena: pushed up against the
+		-- wall, it stops there). Mid-hop it's knocked sideways only; standing
+		-- on the sand, it follows the sand up or down (the ring in the middle
+		-- stands a little higher).
+		local from = at.Position + carry
+		-- (a few studs short of the wall - or wherever it is already, if
+		-- that's nearer the wall: a blow never pulls it back towards you)
+		local limit = math.max(C.Radius - 3, flat(from - C.Center).Magnitude)
+		local to = inArena(from + dir * dist, C.Radius - limit)
+		local grounded = math.abs(from.Y - sandAt(from).Y) < 0.3
+		push = grounded and (to - from) or flat(to - from)
+	end
+	react[model] = {
+		t0 = now,
+		carry = carry,
+		push = push,
+		baked = 0,
+		slide = weight >= 3 and 0.32 or 0.14,
+		rise = (weight >= 3 and dist > 0.05) and (HR.Rise or 2.6) / heft or 0,
+		axis = Vector3.yAxis:Cross(dir).Unit, -- (its top tips the way the blow drives it)
+		-- (the giant King only rocks a little: he's so tall a small tip moves his head a long way)
+		tilt = math.rad((HR.Tilt or { 14, 18, 40 })[weight] or 14) / (e.king and heft or math.sqrt(heft)),
+		snap = weight >= 3 and 0.12 or 0.07,
+	}
+end
+
+-- Its brain is about to decide what to do next: from here on the knock-back
+-- is simply where it is (and the brain's next move starts from there).
+local function settle(model)
+	local r = react[model]
+	local at = placed[model]
+	if not (r and at) then
+		return
+	end
+	local now = os.clock()
+	local done, _, eased = knockAt(r, now)
+	placed[model] = CFrame.new(withinWall(at.Position + done)) * at.Rotation
+	r.carry = Vector3.zero
+	r.baked = eased
+	local _, _, over = reactionAt(r, now)
+	if over then
+		react[model] = nil -- (all played out, and now it's simply where it stands)
+	end
+end
+
+-- keeps each reaction moving while its dummy stands still between moves
+RunService.Heartbeat:Connect(function()
+	local now = os.clock()
+	for model, r in pairs(react) do
+		local at = placed[model]
+		if not (model.Parent and at) then
+			react[model] = nil
+		elseif not r.still then
+			local _, _, over = reactionAt(r, now)
+			show(model, at)
+			if over then
+				r.still = true -- (nothing more to move: it just keeps its knock-back until its brain settles it)
+			end
+		end
+	end
+end)
 
 -- how high a flat marker covering these spots must sit to show above all of them
 local function markerY(...)
@@ -1114,6 +1267,7 @@ local function brain(s, e)
 		if not root then
 			break
 		end
+		settle(e.model) -- (a knock-back is simply where it is now)
 		local pos = feet(e.model).Position
 		local to = flat(root.Position - pos)
 		local dist = to.Magnitude
@@ -1169,7 +1323,7 @@ local KIND = {
 	Straw = {},
 	Brute = { puff = Color3.fromRGB(115, 62, 57) },
 	Slinger = {},
-	Knight = { slow = 1.35, reach = 0.7, puff = Color3.fromRGB(139, 155, 180) }, -- (heavy: slower, shorter hops)
+	Knight = { slow = 1.35, reach = 0.7, puff = Color3.fromRGB(139, 155, 180), heft = 1.8 }, -- (heavy: slower, shorter hops, hard to knock back)
 	Cursed = { puff = Color3.fromRGB(181, 80, 136) },
 }
 local TYPE_BY_ID = {}
@@ -1281,7 +1435,7 @@ spawnDummy = function(s, kind, spot, level, opts)
 		land = land, -- (where it'll land when it drops in)
 		-- (a harder difficulty's dummies wait and hop for less time; the King
 		-- keeps his own pace)
-		slow = (K.slow or 1) * (kind == "King" and 1 or (D.pace or 1)), reach = K.reach, puff = K.puff,
+		slow = (K.slow or 1) * (kind == "King" and 1 or (D.pace or 1)), reach = K.reach, puff = K.puff, heft = K.heft,
 		slot = opts.slot or rng:NextNumber() * math.pi * 2,
 		minion = opts.minion,
 	}
@@ -1312,7 +1466,10 @@ spawnDummy = function(s, kind, spot, level, opts)
 			end
 		end)
 	end
-	onHit.Event:Connect(function(_, _, killed)
+	onHit.Event:Connect(function(_, damage, killed, weight, dir)
+		if (tonumber(damage) or 0) > 0 and e.alive then
+			hitReaction(e, weight, dir)
+		end
 		if killed and e.alive then
 			e.alive = false
 			s.enemies[model] = nil
@@ -1432,8 +1589,19 @@ local function crumble(model, e)
 		CombatService.SetTargetShape(model, nil) -- (forget his hit shape)
 	end
 	CollectionService:RemoveTag(model, "CombatTarget")
-	pcall(CombatService.Disintegrate, model, { Color = Color3.fromRGB(254, 174, 52) })
-	Debris:AddItem(model, 2.5)
+	local function toAsh()
+		react[model] = nil
+		pcall(CombatService.Disintegrate, model, { Color = Color3.fromRGB(254, 174, 52) })
+		Debris:AddItem(model, 2.5)
+	end
+	-- (knocked flying by the blow that finished it? it turns to ash as it lands)
+	local r = react[model]
+	local flying = r and (r.t0 + r.slide - os.clock()) or 0
+	if flying > 0.02 then
+		task.delay(flying, toAsh)
+	else
+		toAsh()
+	end
 	if e then
 		Debris:AddItem(e.fx, 1.5) -- (lets its last puff finish)
 	end
@@ -1891,5 +2059,20 @@ function ColosseumService.Start(combatService, playerService)
 		end
 	end)
 end
+
+-- (for the headless tests: the hit reactions, on dummies they place themselves)
+ColosseumService._test = {
+	place = function(...)
+		return place(...)
+	end,
+	feet = function(...)
+		return feet(...)
+	end,
+	spawnDummy = function(...)
+		return spawnDummy(...)
+	end,
+	sessions = sessions,
+	react = react,
+}
 
 return ColosseumService

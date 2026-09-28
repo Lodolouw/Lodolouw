@@ -2366,6 +2366,21 @@ Config.Combat = {
 		},
 	},
 
+	-- What an enemy does when a hit lands on it, on every screen. None of it
+	-- touches damage. The weight of a hit is 1, 2 or 3: which swing of the
+	-- string it was, 3 being the finisher (the last swing, or a crit).
+	HitReact = {
+		Flash = 0.1, -- seconds it flashes white (0: never)
+		-- the Colosseum's dummies tip away from the blow and wobble back upright
+		-- like punching bags, and get knocked back; a finisher sends them flying
+		-- (bigger, heavier kinds budge less; the Straw King doesn't budge at all)
+		Tilt = { 14, 18, 40 }, -- degrees they tip over, by weight
+		Push = { 1.4, 2, 7 }, -- studs they're knocked back, by weight
+		Rise = 2.6, -- how high a finisher throws them
+		-- bosses are too big to shove: they jolt back a little from each hit
+		BossJolt = { 0.35, 0.5, 1.1 }, -- studs, by weight
+	},
+
 	Combo = {
 		Window = 0.85, -- punch again within this of the last one to continue the string
 		Steps = { 1, 1.3, 1.7 }, -- how far each swing carries you (x the base step)

@@ -1951,6 +1951,68 @@ do
 end
 
 ----------------------------------------------------------------------
+-- Enemies flash white the moment a hit lands on them - anyone's hit: the
+-- server marks it on the enemy ("HitFx"), so everyone sees it. (Bosses do
+-- their own blanch and jolt: BossClient. The Colosseum's dummies also tip
+-- over and get knocked back: ColosseumService does that.)
+----------------------------------------------------------------------
+do
+	local HR = CC.HitReact or {}
+	local CollectionService = game:GetService("CollectionService")
+	local watched = setmetatable({}, { __mode = "k" })
+	local function flash(model)
+		local seconds = HR.Flash or 0.1
+		if seconds <= 0 or not model.Parent or model:GetAttribute("Boss") then
+			return
+		end
+		-- (one drawn by another script is invisible here: nothing to flash)
+		local visible = false
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") and d.Transparency < 0.95 then
+				visible = true
+				break
+			end
+		end
+		if not visible then
+			return
+		end
+		local glow = model:FindFirstChild("HitFlash")
+		if not (glow and glow:IsA("Highlight")) then
+			glow = Instance.new("Highlight")
+			glow.Name = "HitFlash"
+			glow.FillColor = Color3.new(1, 1, 1)
+			glow.OutlineTransparency = 1
+			glow.DepthMode = Enum.HighlightDepthMode.Occluded
+			glow.Parent = model
+		end
+		-- pure white, then fading out fast
+		local token = (glow:GetAttribute("Token") or 0) + 1
+		glow:SetAttribute("Token", token)
+		glow.FillTransparency = 0
+		glow.Enabled = true
+		TweenService:Create(glow, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { FillTransparency = 1 }):Play()
+		task.delay(seconds + 0.03, function()
+			if glow.Parent and glow:GetAttribute("Token") == token then
+				glow.Enabled = false
+			end
+		end)
+	end
+	local function watch(model)
+		if watched[model] or not model:IsA("Model") then
+			return
+		end
+		watched[model] = true
+		model:GetAttributeChangedSignal("HitFx"):Connect(function()
+			flash(model)
+		end)
+	end
+	for _, m in ipairs(CollectionService:GetTagged("CombatTarget")) do
+		watch(m)
+	end
+	CollectionService:GetInstanceAddedSignal("CombatTarget"):Connect(watch)
+end
+
+----------------------------------------------------------------------
 -- Damage numbers
 ----------------------------------------------------------------------
 -- Getting hurt, and being nearly dead.

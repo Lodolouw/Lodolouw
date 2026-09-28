@@ -1135,6 +1135,7 @@ local function track(model)
 		slotsDone = 0,
 		lastHealth = model:GetAttribute("Health") or 0,
 		wobbles = {},
+		jolts = {}, -- (each blow knocks it back a touch: see the frame below)
 	}
 	-- what its attacks are made of (its body file says: slime you can see
 	-- into, sand and rock...)
@@ -1147,6 +1148,17 @@ local function track(model)
 	if mod.onTrack then
 		mod.onTrack(B) -- (its body file's own start)
 	end
+	-- a hit landing on it - anyone's: the server says which way the blow
+	-- drove it ("HitFx" = "count:weight:x:z") - jolts it back a little
+	model:GetAttributeChangedSignal("HitFx"):Connect(function()
+		local _, w, x, z = string.match(tostring(model:GetAttribute("HitFx") or ""), "^(%d+):(%d+):([%-%d%.]+):([%-%d%.]+)$")
+		local dir = V3(tonumber(x) or 0, 0, tonumber(z) or 0)
+		if dir.Magnitude > 0.01 then
+			local HR = Config.Combat and Config.Combat.HitReact or {}
+			local amps = HR.BossJolt or { 0.35, 0.5, 1.1 }
+			table.insert(B.jolts, { t0 = os.clock(), dir = dir.Unit, amp = amps[clamp(tonumber(w) or 1, 1, 3)] or 0.35 })
+		end
+	end)
 	bosses[model] = B
 	model.AncestryChanged:Connect(function()
 		if not model.Parent and bosses[model] then
@@ -1309,7 +1321,21 @@ local function stepBoss(B, now, dt)
 		B.vfacing = blended.Magnitude > 0.01 and blended.Unit or look.Unit
 	end
 
-	mod.pose(B, P, B.vpos, P.facing or B.vfacing, now, dt)
+	-- and each blow jolts it back a touch (out fast, then it springs back:
+	-- a boss is far too big to actually knock back)
+	local jolt = V3(0, 0, 0)
+	for i = #B.jolts, 1, -1 do
+		local j = B.jolts[i]
+		local t = os.clock() - j.t0
+		if t > 0.6 then
+			table.remove(B.jolts, i)
+		else
+			local k = t < 0.05 and (1 - (1 - t / 0.05) ^ 2) or math.exp(-(t - 0.05) * 9) * math.cos((t - 0.05) * 13)
+			jolt = jolt + j.dir * (j.amp * k)
+		end
+	end
+
+	mod.pose(B, P, B.vpos + jolt, P.facing or B.vfacing, now, dt)
 	if mod.afterPose then
 		mod.afterPose(B) -- (its body file's extras once it's posed)
 	end

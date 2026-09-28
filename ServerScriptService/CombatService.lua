@@ -38,6 +38,12 @@
 	Level (you hit it as hard as you'd hit a boss of that level).
 	Anything tagged "CombatTarget" (a Model with Health / MaxHealth attributes)
 	can be punched; see the practice slime in the arena.
+	Every hit that lands and does damage is marked on the target as "HitFx"
+	("count:weight:x:z" - weight 1-3, 3 a finisher; x, z the way the blow
+	drove it): every screen flashes it white and it flinches (CombatClient,
+	BossClient). Its OnHit BindableEvent, if it has one, hears
+	(player, damage, killed, weight, direction) - the Colosseum knocks its
+	dummies back with that.
 ]]
 
 local Players = game:GetService("Players")
@@ -715,6 +721,20 @@ local function hitTarget(player, model, damage, weight)
 	local killed = hp <= 0
 	weight = math.clamp(weight or 1, 1, 3)
 	send(player, "Hit", cf and cf.Position or Vector3.new(), damage, killed, weight)
+	-- which way the blow drives it (flat, away from you), and every screen
+	-- sees it land: "HitFx" = "count:weight:x:z" - the enemy flashes white and
+	-- flinches away (CombatClient, BossClient); the Colosseum's dummies are
+	-- knocked back too (ColosseumService hears it through OnHit below)
+	local push = Vector3.new(0, 0, 0)
+	if at and root0 then
+		local d = at - root0.Position
+		push = Vector3.new(d.X, 0, d.Z)
+		push = push.Magnitude > 0.01 and push.Unit or Vector3.new(0, 0, 0)
+	end
+	if damage > 0 then
+		local count = (tonumber(string.match(tostring(model:GetAttribute("HitFx") or ""), "^(%d+)")) or 0) + 1
+		model:SetAttribute("HitFx", string.format("%d:%d:%.3f:%.3f", count, weight, push.X, push.Z))
+	end
 	-- the shockwave, where the punch actually met them
 	local _, root = charParts(player)
 	if cf and root then
@@ -728,7 +748,7 @@ local function hitTarget(player, model, damage, weight)
 	-- let a boss script react (it can listen to this BindableEvent)
 	local onHit = model:FindFirstChild("OnHit")
 	if onHit and onHit:IsA("BindableEvent") then
-		onHit:Fire(player, damage, killed)
+		onHit:Fire(player, damage, killed, weight, push)
 	end
 	if killed and model:GetAttribute("Practice") then
 		setTargetVisible(model, false)

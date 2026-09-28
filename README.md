@@ -567,6 +567,22 @@ previews `Docs/vitals_preview.png` and `Docs/vitals_drink.png`):
 `CombatClient` tells `Vitals` your stamina and flasks (`Vitals.set`) and what
 just happened (`Vitals.fire`: a drink, a roll's invincibility, running out).
 
+## Hit reactions (every hit that lands)
+
+Enemies react when a hit lands on them - fists or sword, yours or another
+player's. Preview: `Docs/hit_reactions.png`.
+
+- **A white flash:** the enemy goes pure white for a blink.
+- **The Colosseum's dummies** tip away from the blow and wobble back upright
+  like punching bags, and get knocked back: a little by a normal hit, sent
+  flying by a finisher (the last swing of a string, or a crit) - even the
+  killing blow, which turns them to ash as they land. Heavier kinds budge
+  less, the Straw King only flinches, and nothing is ever knocked past the wall.
+- **Bosses** squash and blanch when hit, and each blow jolts them back a touch.
+- The numbers are in `Config.Combat.HitReact` (how long the flash lasts, how
+  far dummies tip and get pushed, how high a finisher throws them, how far a
+  boss jolts).
+
 ## Weapons (being built: the test sword)
 
 The game is moving from gear to **weapons** (see the new direction in

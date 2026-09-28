@@ -102,6 +102,7 @@ check(CombatService.IsFighting(me), "the player is fighting")
 
 -- punchable targets: name, where (x, z), health
 local targets = {}
+local heard = {} -- [target] = what its OnHit was last fired with
 local function target(name, x, z)
 	local m = Instance.new("Model")
 	m.Name = name
@@ -118,6 +119,13 @@ local function target(name, x, z)
 	m.Parent = M.workspace
 	CollectionService:AddTag(m, "CombatTarget")
 	targets[name] = m
+	-- (what a boss or the Colosseum would hear when it's hit)
+	local onHit = Instance.new("BindableEvent")
+	onHit.Name = "OnHit"
+	onHit.Parent = m
+	onHit.Event:Connect(function(...)
+		heard[m] = table.pack(...)
+	end)
 	return m
 end
 local function lost(m)
@@ -174,6 +182,7 @@ check(me:GetAttribute("Mastery") == 1 and me:GetAttribute("MasteryProgress") == 
 -- Swings: every enemy in the arc, nothing behind
 ----------------------------------------------------------------------
 step(1)
+local hitsBefore = tonumber(string.match(tostring(targets.FrontLeft:GetAttribute("HitFx") or ""), "^(%d+)")) or 0
 swingAndWait(1)
 check(lost(targets.FrontLeft) > 0 and lost(targets.FrontRight) > 0, "a slash cuts both enemies in front")
 check(lost(targets.Behind) == 0, "...but not the one behind you")
@@ -182,6 +191,22 @@ check(math.abs(lost(targets.FrontLeft) - math.floor(punch * SWINGS[1].Damage)) <
 	("a slash at mastery 1 hits as hard as a punch (%d vs %d)"):format(lost(targets.FrontLeft), punch))
 local sn = me:GetAttribute("SwingN")
 check(sn ~= nil and string.match(sn, ":1$"), "everyone's screen is told it's swing 1 (" .. tostring(sn) .. ")")
+-- every screen sees each hit land ("HitFx" = "count:weight:x:z": the enemy
+-- flashes and flinches away from you), and the enemy's own script hears
+-- how hard and which way (the Colosseum knocks its dummies back with it)
+local function hitFx(m)
+	local n, w, x, z = string.match(tostring(m:GetAttribute("HitFx") or ""), "^(%d+):(%d+):([%-%d%.]+):([%-%d%.]+)$")
+	return tonumber(n), tonumber(w), Vector3.new(tonumber(x) or 0, 0, tonumber(z) or 0)
+end
+local root0 = me.Character.HumanoidRootPart.Position
+local n1, w1, d1 = hitFx(targets.FrontLeft)
+local away = Vector3.new(-4.5 - root0.X, 0, -5 - root0.Z).Unit
+check(n1 == hitsBefore + 1 and w1 == 1, ("a slash that lands shows on the enemy as a light hit (%s)"):format(tostring(targets.FrontLeft:GetAttribute("HitFx"))))
+check((d1 - away).Magnitude < 0.05, ("...driving it straight away from you (%.2f, %.2f)"):format(d1.X, d1.Z))
+check(targets.Behind:GetAttribute("HitFx") == nil, "...and nothing shows on an enemy it missed")
+local h = heard[targets.FrontLeft]
+check(h and h[1] == me and h[2] > 0 and h[3] == false and h[4] == 1 and M.typeof(h[5]) == "Vector3" and (h[5] - away).Magnitude < 0.05,
+	"the enemy's own script hears who hit it, how hard, the weight and which way")
 healAll()
 
 -- the chop (swing 3): 1.5x, reaches a little further, narrower
@@ -190,6 +215,13 @@ check(lost(targets.Far) > 0, "the chop reaches the enemy at 10.5 studs")
 check(math.abs(lost(targets.Far) - math.floor(punch * SWINGS[3].Damage)) <= 1,
 	("the chop hits 1.5x (%d vs %d)"):format(lost(targets.Far), math.floor(punch * 1.5)))
 check(lost(targets.FrontLeft) == 0 and lost(targets.FrontRight) == 0, "the chop's arc is narrow (it misses the ones off to the sides)")
+local nF, wF = hitFx(targets.Far)
+check(nF == 1 and wF == 3, ("the chop, the finisher, lands as the heaviest hit (%s)"):format(tostring(targets.Far:GetAttribute("HitFx"))))
+-- a blow that does nothing (it can't be hurt right now) doesn't make it flinch
+targets.Far:SetAttribute("Invulnerable", true)
+swingAndWait(3)
+check(hitFx(targets.Far) == 1, "a hit on an enemy that can't be hurt doesn't make it flinch")
+targets.Far:SetAttribute("Invulnerable", nil)
 healAll()
 
 -- timing: a second swing too soon is ignored

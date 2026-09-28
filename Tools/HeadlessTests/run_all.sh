@@ -16,7 +16,7 @@ run() {
 	fi
 }
 for seed in 1 2 3 4 5 6; do run test_colosseum.luau -a full $seed; done
-for sc in cursed clearleave leave die oldbuilder kite kitejump nextrun locked; do run test_colosseum.luau -a $sc 3; done
+for sc in cursed clearleave leave die oldbuilder kite kitejump nextrun locked react; do run test_colosseum.luau -a $sc 3; done
 for seed in 1 2 3; do run test_colosseum.luau -a hard $seed; run test_colosseum.luau -a nightmare $seed; done
 run test_client.luau
 run test_builder.luau
@@ -28,6 +28,8 @@ run test_drink.luau
 # the test sword: its rules on the server, and how it looks on every screen
 run test_sword.luau
 run test_weaponfx.luau
+# enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
+run test_hitflash.luau
 run test_intro.luau
 run test_intro.luau -a skip
 run test_intro.luau -a fail

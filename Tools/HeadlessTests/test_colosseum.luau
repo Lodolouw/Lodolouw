@@ -8,7 +8,10 @@
 -- hard / nightmare (a whole run on that difficulty, picked in the pop-up at
 -- the door), nextrun (a new pick mid-run waits for the next run), locked
 -- (going in on a locked difficulty or from too far away, and picks that
--- aren't allowed)
+-- aren't allowed), react (hits landing on dummies: they tip away from the
+-- blow and wobble back upright, and get knocked back - a finisher sends
+-- them flying, heavier kinds budge less, the King not at all, never past
+-- the wall, and a finisher that kills one throws it before it crumbles)
 local M = require("./rbxmock")
 local S = require("./sources")
 local args = { ... }
@@ -594,7 +597,7 @@ local function playerBrain()
 				if bestD > reach then
 					local go = flat(feetOf(best).Position - root.Position)
 					move = go.Unit * math.min(SPEED * dt, bestD - reach + 0.5)
-				elseif M.now() - lastPunch >= 0.5 then
+				elseif SCENARIO ~= "react" and M.now() - lastPunch >= 0.5 then
 					lastPunch = M.now()
 					punch(best)
 				end
@@ -609,6 +612,169 @@ local function playerBrain()
 	end
 end
 M.task.spawn(playerBrain)
+
+-- REACT: hits landing on dummies that stand still (their brains do nothing,
+-- so every move is the hit's)
+if SCENARIO == "react" then
+	M.task.spawn(function()
+		local T = Colosseum._test
+		repeat
+			M.task.wait(0.2)
+		until T.sessions[player] and stats.firstWaveAt
+		M.task.wait(3)
+		local s = T.sessions[player]
+		local R = {}
+		stats.react = R
+		local function check(ok, msg)
+			if not ok then
+				table.insert(R, msg)
+				print("!! react: " .. msg)
+			end
+		end
+		local function standing(kind, spot, setup, attributes)
+			local m = T.spawnDummy(s, kind, spot, LEVEL, { brain = function() end, setup = setup, attributes = attributes })
+			T.place(m, CFrame.new(Vector3.new(spot.X, sandY(spot.X, spot.Z), spot.Z)))
+			return m
+		end
+		local function at(m)
+			return feetOf(m).Position
+		end
+		local function tipped(m) -- (degrees from upright)
+			return math.deg(math.acos(math.clamp(m:GetPivot().UpVector.Y, -1, 1)))
+		end
+		local function hit(m, weight, dir, killed)
+			m:FindFirstChild("OnHit"):Fire(player, 1, killed == true, weight, dir)
+		end
+		local EAST = Vector3.new(1, 0, 0)
+		local HR = Config.Combat.HitReact
+
+		-- a normal hit: it tips away from the blow, is knocked back a little, and wobbles back upright
+		local straw = standing("Straw", C.Center + Vector3.new(-20, 0, 40))
+		M.task.wait(0.2)
+		local start = at(straw)
+		hit(straw, 1, EAST)
+		M.task.wait(0.07)
+		check(straw:GetPivot().UpVector.X > math.sin(math.rad(6)), ("a hit tips it away from the blow (up %.2f)"):format(straw:GetPivot().UpVector.X))
+		M.task.wait(0.3)
+		local moved = at(straw) - start
+		check(math.abs(moved.X - HR.Push[1]) < 0.15 and math.abs(moved.Z) < 0.05 and math.abs(moved.Y) < 0.05,
+			("...and knocks it back %.1f studs the way the blow went (moved %.2f, %.2f, %.2f)"):format(HR.Push[1], moved.X, moved.Y, moved.Z))
+		M.task.wait(1)
+		check(tipped(straw) < 1.5, ("then it wobbles back upright (%.1f degrees off)"):format(tipped(straw)))
+		check(math.abs((at(straw) - start).X - HR.Push[1]) < 0.15, "...and stays where it was knocked to")
+
+		-- a finisher: sent flying - up in an arc and well back
+		start = at(straw)
+		local highest, mostTip = 0, 0
+		hit(straw, 3, EAST)
+		for _ = 1, 30 do
+			M.task.wait(1 / 60)
+			highest = math.max(highest, at(straw).Y - start.Y)
+			mostTip = math.max(mostTip, tipped(straw))
+		end
+		M.task.wait(0.4)
+		moved = at(straw) - start
+		check(highest > 1.5 and highest < HR.Rise + 0.2, ("a finisher throws it up in an arc (%.1f studs high)"):format(highest))
+		check(math.abs(moved.X - HR.Push[3]) < 0.3 and math.abs(moved.Y) < 0.05, ("...and %.0f studs back (it went %.1f)"):format(HR.Push[3], moved.X))
+		check(mostTip > 25, ("...tipping right over (%.0f degrees)"):format(mostTip))
+
+		-- a string of hits carries on from wherever the last one knocked it
+		start = at(straw)
+		hit(straw, 1, EAST)
+		M.task.wait(0.1)
+		hit(straw, 2, EAST)
+		M.task.wait(0.1)
+		hit(straw, 3, EAST)
+		M.task.wait(0.6)
+		moved = at(straw) - start
+		local want = HR.Push[1] + HR.Push[2] + HR.Push[3]
+		check(math.abs(moved.X - want) < 0.6, ("a whole string knocks it back about %.1f studs (it went %.1f)"):format(want, moved.X))
+
+		-- heavier kinds budge less; the King doesn't budge at all (but still flinches)
+		local knight = standing("Knight", C.Center + Vector3.new(-20, 0, -40))
+		M.task.wait(0.2)
+		start = at(knight)
+		hit(knight, 3, EAST)
+		M.task.wait(0.8)
+		local kd = (at(knight) - start).X
+		check(kd > 1.5 and kd < HR.Push[3] * 0.6, ("an Iron Knight is knocked back less (%.1f studs)"):format(kd))
+		local bigKing = standing("King", C.Center + Vector3.new(40, 0, -30), function(e)
+			e.king = true
+		end, { NoBar = true, Invulnerable = true }) -- (as the real King arrives)
+		M.task.wait(0.2)
+		start = at(bigKing)
+		hit(bigKing, 3, EAST)
+		M.task.wait(0.1)
+		check(tipped(bigKing) > 2, ("the Straw King flinches (%.1f degrees)"):format(tipped(bigKing)))
+		M.task.wait(0.6)
+		check((at(bigKing) - start).Magnitude < 0.01, "...but isn't knocked back at all")
+
+		-- never past the wall
+		local edge = standing("Straw", C.Center + Vector3.new(C.Radius - 1.5, 0, 0))
+		M.task.wait(0.2)
+		local was = flat(at(edge) - C.Center).Magnitude
+		local furthest, nearest = 0, math.huge
+		hit(edge, 3, EAST)
+		for _ = 1, 50 do
+			M.task.wait(1 / 60)
+			local r = flat(at(edge) - C.Center).Magnitude
+			furthest, nearest = math.max(furthest, r), math.min(nearest, r)
+		end
+		check(furthest <= C.Radius + 0.01, ("knocked against the wall, it stops there (%.2f from the middle; the wall is at %d)"):format(furthest, C.Radius))
+		check(nearest >= was - 0.01, ("...and isn't pulled back towards you either (%.2f, was %.2f)"):format(nearest, was))
+
+		-- the finisher that kills it throws it, and it crumbles as it lands
+		local goner = standing("Straw", C.Center + Vector3.new(-40, 0, 0))
+		M.task.wait(0.2)
+		start = at(goner)
+		local kills = stats.kills or 0
+		hit(goner, 3, EAST, true)
+		M.task.wait(0.05)
+		check(not goner:GetAttribute("Disintegrating"), "a killing finisher doesn't crumble it on the spot...")
+		check((stats.kills or 0) == kills + 1, "...(though the kill counts at once)")
+		M.task.wait(0.15)
+		check((at(goner) - start).X > 3 and not goner:GetAttribute("Disintegrating"), "...it flies back first")
+		M.task.wait(0.25)
+		check(goner:GetAttribute("Disintegrating") == true, "...and crumbles as it lands")
+
+		-- (with "snap": the parts of a dummy taking a hit, at a few moments, for render_snaps.py)
+		if args[3] == "snap" then
+			local function dump(m, name, flash)
+				local c0 = at(m)
+				print(string.format("RSNAP %s", name))
+				for _, d in ipairs(m:GetDescendants()) do
+					if d:IsA("BasePart") and d.Transparency < 1 then
+						local comps = { d.CFrame:GetComponents() }
+						for i, v in ipairs(comps) do
+							comps[i] = string.format("%.4f", v)
+						end
+						local col = flash and M.Color3.new(1, 1, 1) or d.Color
+						print(string.format('{"n":"%s","c":"%s","s":[%.3f,%.3f,%.3f],"cf":[%s],"col":[%d,%d,%d],"m":"%s","sh":"%s","t":%.2f}',
+							d.Name, d.ClassName, d.Size.X, d.Size.Y, d.Size.Z, table.concat(comps, ","),
+							math.floor(col.R * 255 + 0.5), math.floor(col.G * 255 + 0.5), math.floor(col.B * 255 + 0.5),
+							flash and "Neon" or d.Material.Name, d.Shape and d.Shape.Name or "Block", d.Transparency))
+					end
+				end
+				print(string.format("FEET %.3f %.3f %.3f", c0.X, c0.Y, c0.Z))
+			end
+			local posed = standing("Straw", C.Center + Vector3.new(-50, 0, 30))
+			M.task.wait(0.3)
+			dump(posed, "ready")
+			hit(posed, 1, EAST)
+			M.task.wait(0.05)
+			dump(posed, "hit", true)
+			M.task.wait(0.35)
+			dump(posed, "knocked")
+			M.task.wait(1)
+			hit(posed, 3, EAST)
+			M.task.wait(0.16)
+			dump(posed, "flying")
+			M.task.wait(0.5)
+			dump(posed, "landed")
+		end
+		stats.reactDone = true
+	end)
+end
 -- the jumping player watches the shockwave roll in and jumps just before it
 -- reaches them (about a fifth of a second early), 30 times a second
 if SCENARIO == "kitejump" then
@@ -715,10 +881,13 @@ end
 local kingSeenAt = nil
 local t = 0
 local endAt = (SCENARIO == "cursed" or SCENARIO == "hard" or SCENARIO == "nightmare") and 900
-	or (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420 or 300
+	or (SCENARIO == "full" or SCENARIO == "oldbuilder" or SCENARIO == "clearleave") and 420
+	or SCENARIO == "react" and 40 or 300
 while t < endAt do
-	t += 0.1
+	local dt = (SCENARIO == "react") and 1 / 60 or 0.1
+	t += dt
 	M.run(t)
+	M.services.RunService.Heartbeat:Fire(dt) -- (like Roblox: every frame)
 	checkWorld()
 	if SNAP and king and king.Parent then
 		local mv = king:GetAttribute("Move")
@@ -984,6 +1153,10 @@ if SCENARIO == "kitejump" then
 end
 if SCENARIO == "oldbuilder" then
 	assert(stats.kingSpawns == 0 and stats.maxWave >= 6, "without the King template the waves should just carry on")
+end
+if SCENARIO == "react" then
+	assert(stats.reactDone, "the hit reaction checks should have run")
+	assert(#stats.react == 0, #stats.react .. " hit reaction checks failed")
 end
 local shapesLeft = 0
 for m, fn in pairs(shapes) do
