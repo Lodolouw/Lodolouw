@@ -451,6 +451,13 @@ local function buildModelSword(def, golden)
 		local roll = tonumber(src:GetAttribute("GripRoll")) or geo.Roll or 0
 		local grip = CFrame.fromMatrix(gripPoint, y:Cross(z), y, z) * CFrame.Angles(0, 0, math.rad(roll))
 		local scale = geo.Length / math.max(long[1], 0.01) -- (in case it came in bigger or smaller)
+		pcall(function()
+			if RunService:IsStudio() then
+				-- (in Studio: how it's held, in the Output - for sorting out a model that sits wrong)
+				print(string.format("[WeaponFX] %s held: came in %.0f long, scaled x%.3f, tip %s, GripRoll %s, GripFlip %s (code v3)",
+					name, long[1], scale, tostring(tipWay), tostring(roll), tostring(src:GetAttribute("GripFlip"))))
+			end
+		end)
 		local out = Instance.new("Model")
 		out.Name = "HeldWeapon"
 		local h = Instance.new("Part")
