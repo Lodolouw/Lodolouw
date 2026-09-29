@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GUI Sketch</title>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#fbf8f1; --ink:#2b2b3a; --soft:#8a8aa0; --gold:#e0a922; --red:#d8465a; --blue:#3f8fe0; --green:#3fae6a; --note:#c2410c; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:Kalam, cursive; }
+  main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:34px; margin:0 0 4px; }
+  h2 { font-size:26px; margin:36px 0 8px; }
+  p.lead { margin:0 0 8px; font-size:19px; color:#555; }
+  svg { width:100%; height:auto; display:block; }
+  .screen text { font-family:Kalam, cursive; }
+  ul { font-size:18px; line-height:1.5; padding-left:22px; }
+  li b { color:var(--note); }
+</style>
+</head>
+<body>
+<main>
+<h1>GUI sketch: the lobby and a boss fight</h1>
+<p class="lead">The same layout on both screens. Lobby things live along the edges, and the fight takes over the top and the bottom middle. Orange notes say what each piece is.</p>
+
+<h2>1 · In the lobby</h2>
+<svg class="screen" viewBox="0 0 1000 560" role="img" aria-label="Lobby screen sketch">
+  <defs><filter id="rough"><feTurbulence baseFrequency="0.03" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter></defs>
+  <g filter="url(#rough)" fill="none" stroke="#2b2b3a" stroke-width="2.5">
+    <rect x="10" y="10" width="980" height="540" rx="14"/>
+    <!-- hint banner -->
+    <rect x="330" y="40" width="340" height="34" rx="8" fill="#2b2b3a22"/>
+    <!-- player list -->
+    <rect x="840" y="30" width="130" height="110" rx="6" stroke-dasharray="6 5"/>
+    <!-- left buttons -->
+    <rect x="32" y="215" width="74" height="74" rx="12" fill="#3f8fe033"/>
+    <rect x="116" y="215" width="74" height="74" rx="12" fill="#3fae6a33"/>
+    <rect x="32" y="299" width="74" height="74" rx="12" fill="#e0a92233"/>
+    <!-- stats -->
+    <rect x="30" y="420" width="190" height="30" rx="6" fill="#2b2b3a18"/>
+    <rect x="30" y="456" width="190" height="30" rx="6" fill="#2b2b3a18"/>
+    <rect x="30" y="492" width="190" height="30" rx="6" fill="#2b2b3a18"/>
+    <circle cx="46" cy="435" r="11" fill="#e0a92299"/>
+    <circle cx="46" cy="471" r="11" fill="#d8465a88"/>
+    <circle cx="46" cy="507" r="11" fill="#3f8fe088"/>
+    <!-- goal bar -->
+    <rect x="310" y="500" width="380" height="34" rx="10" fill="#e0a92244"/>
+    <rect x="310" y="500" width="230" height="34" rx="10" fill="#e0a92299"/>
+    <!-- toast -->
+    <rect x="390" y="440" width="220" height="30" rx="8" stroke-dasharray="5 4"/>
+    <!-- player -->
+    <circle cx="500" cy="290" r="18"/><path d="M500 308 v55 M500 325 l-24 20 M500 325 l24 20 M500 363 l-18 36 M500 363 l18 36"/>
+  </g>
+  <g font-size="17" fill="#2b2b3a">
+    <text x="500" y="63" text-anchor="middle">"Walk up to the Spire to fight!"</text>
+    <text x="905" y="90" text-anchor="middle" fill="#8a8aa0">Roblox list</text>
+    <text x="69" y="258" text-anchor="middle">STATS</text>
+    <text x="153" y="258" text-anchor="middle">GEAR</text>
+    <text x="69" y="342" text-anchor="middle">PRESTIGE</text>
+    <text x="64" y="441">12,450 coins</text>
+    <text x="64" y="477">Power 38</text>
+    <text x="64" y="513">Backpack 14/20</text>
+    <text x="330" y="523">Beat 5 Waves</text><text x="670" y="523" text-anchor="end">3 / 5</text>
+    <text x="500" y="461" text-anchor="middle" fill="#8a8aa0">+250 coins!</text>
+  </g>
+  <g font-size="16" fill="#c2410c">
+    <text x="500" y="28" text-anchor="middle">hint: one line, what to do next</text>
+    <text x="210" y="250">← the big buttons, down the left side</text>
+    <text x="232" y="470">← your numbers, bottom left</text>
+    <text x="500" y="552" text-anchor="middle">goal bar: the current quest</text>
+    <text x="625" y="461">← pop-up messages fade out</text>
+  </g>
+</svg>
+
+<h2>2 · In a boss fight</h2>
+<svg class="screen" viewBox="0 0 1000 560" role="img" aria-label="Boss fight screen sketch">
+  <g filter="url(#rough)" fill="none" stroke="#2b2b3a" stroke-width="2.5">
+    <rect x="10" y="10" width="980" height="540" rx="14"/>
+    <!-- boss bar -->
+    <rect x="240" y="50" width="520" height="26" rx="6" fill="#d8465a33"/>
+    <rect x="240" y="50" width="340" height="26" rx="6" fill="#d8465aaa"/>
+    <path d="M413 50 v26 M587 50 v26" stroke-dasharray="3 3"/>
+    <!-- special meter -->
+    <rect x="360" y="86" width="280" height="14" rx="5" fill="#3f8fe033"/>
+    <rect x="360" y="86" width="150" height="14" rx="5" fill="#3f8fe0aa"/>
+    <!-- boss -->
+    <ellipse cx="500" cy="250" rx="95" ry="80" fill="#2b2b3a10"/>
+    <circle cx="470" cy="228" r="7"/><circle cx="530" cy="228" r="7" fill="#e0a922"/>
+    <path d="M455 175 l15 -25 l15 20 l15 -25 l15 25 l15 -20 l15 25" />
+    <!-- lock-on brackets -->
+    <path d="M385 150 h24 M385 150 v24 M615 150 h-24 M615 150 v24 M385 350 h24 M385 350 v-24 M615 350 h-24 M615 350 v-24" stroke="#d8465a" stroke-width="3.5"/>
+    <!-- speech bubble -->
+    <path d="M620 120 h190 a12 12 0 0 1 12 12 v34 a12 12 0 0 1 -12 12 h-160 l-22 18 l4 -18 h-12 a12 12 0 0 1 -12 -12 v-34 a12 12 0 0 1 12 -12 z" fill="#fff"/>
+    <!-- other target with Q/E tag -->
+    <circle cx="170" cy="300" r="26" fill="#2b2b3a10"/>
+    <rect x="152" y="252" width="36" height="22" rx="5"/>
+    <!-- player -->
+    <circle cx="500" cy="395" r="15"/><path d="M500 410 v40 M500 422 l-20 16 M500 422 l20 16"/>
+    <!-- vitals -->
+    <path d="M500 520 l-34 -34 a20 20 0 0 1 34 -26 a20 20 0 0 1 34 26 z" fill="#d8465a88"/>
+    <rect x="410" y="478" width="26" height="40" rx="8" fill="#3fae6a66"/>
+    <path d="M580 470 l-14 26 h12 l-8 24 l22 -32 h-12 l10 -18 z" fill="#e0a92299"/>
+    <circle cx="660" cy="498" r="26" fill="#3f8fe022"/>
+    <path d="M660 472 a26 26 0 0 1 24 16" stroke="#3f8fe0" stroke-width="5"/>
+    <!-- lobby stuff faded -->
+    <rect x="30" y="480" width="150" height="26" rx="6" stroke="#8a8aa0" stroke-dasharray="4 4"/>
+  </g>
+  <g font-size="17" fill="#2b2b3a">
+    <text x="240" y="44">KING GAVELGRUNT</text><text x="760" y="44" text-anchor="end">-1,240</text>
+    <text x="716" y="152" text-anchor="middle">"ORDER! ORDER!"</text>
+    <text x="170" y="268" text-anchor="middle">Q</text>
+    <text x="423" y="535" text-anchor="middle" font-size="14">x3</text>
+    <text x="660" y="504" text-anchor="middle" font-size="15">F</text>
+    <text x="105" y="498" text-anchor="middle" fill="#8a8aa0">coins (faded)</text>
+  </g>
+  <g font-size="16" fill="#c2410c">
+    <text x="500" y="122" text-anchor="middle">only if the boss has one: Kaze's KI, Gridlock's %, Tuber's 2nd bar</text>
+    <text x="770" y="68">← phase lines</text>
+    <text x="630" y="345">← lock-on corners</text>
+    <text x="630" y="363">   (grow with huge bosses)</text>
+    <text x="70" y="235">other targets: Q/E tag,</text>
+    <text x="70" y="252">none on the one you're locked on</text>
+    <text x="380" y="545" text-anchor="end">flask ↗</text>
+    <text x="620" y="548">↖ stamina</text>
+    <text x="700" y="500">← sword ability,</text>
+    <text x="700" y="518">   cooldown ring</text>
+    <text x="200" y="530">lobby numbers fade, goal bar hides</text>
+    <text x="500" y="300" text-anchor="middle" font-size="30" fill="#c2410c55">ATTEMPT 3 / K.O. / LEVEL COMPLETE</text>
+    <text x="500" y="322" text-anchor="middle">big screens show in the middle, then clear</text>
+  </g>
+</svg>
+
+<h2>The rules I'd stick to</h2>
+<ul>
+  <li><b>The middle stays clear.</b> Nothing sits where you're aiming, apart from the lock-on corners and the brief big words.</li>
+  <li><b>The top belongs to the boss:</b> his name, his health with phase lines, the damage you just did, and one extra meter only when his fight needs it.</li>
+  <li><b>The bottom middle belongs to you:</b> the heart, the flask to its left, stamina to its right, and the sword ability after that. Your eyes only go to one spot.</li>
+  <li><b>Lobby things step back in a fight.</b> Coins and power fade to about 30%, and the goal bar and big buttons hide, so the fight screen looks clean.</li>
+  <li><b>One look everywhere:</b> the chunky outlined font, dark rounded panels, and gold for rewards. A boss's own screens (the race screen, ATTEMPT) sit on top in his style and then clear.</li>
+  <li><b>Phones:</b> everything already scales with screen height. The touch buttons go bottom right, clear of the sword ability.</li>
+</ul>
+</main>
+</body>
+</html>
