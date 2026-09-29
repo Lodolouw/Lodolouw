@@ -3112,4 +3112,30 @@ function Config.isDev(player)
 	return false
 end
 
+-- UPLOADED SOUNDS: name -> Roblox audio ID. When the game starts, the server
+-- makes a Sound in SoundService for each one that isn't there yet, so you
+-- don't have to drag them in by hand. Add new uploads here.
+Config.SoundIds = {
+	["Gridlock Wake"] = 124621958011681,
+	["Cube Hop"] = 133657713861136,
+	["Cube Slam"] = 122356354040834,
+	["Spikes Up"] = 90258458987927,
+	["Portal Whoosh"] = 100712036939696,
+	["Ship Thrust"] = 118239455654163,
+	["Bomb Drop"] = 92028192585506,
+	["Ship Dive"] = 123096415709603,
+	["UFO Burst"] = 124981384720696,
+	["Orb Land"] = 119623153835788,
+	["Wave Zoom"] = 107082153634457,
+	["Drop Build"] = 116841049720508,
+	["The Drop"] = 70533779267743,
+	["Gridlock Stun"] = 104242748637460,
+	["Gravity Flip"] = 100607897272133,
+	["Jump Pad"] = 137308430368505,
+	["Gridlock Break"] = 121424067026249,
+	["Gridlock Shatter"] = 121001153471952,
+	["Attempt Start"] = 111633764060334,
+	["Level Complete"] = 126251365588787,
+}
+
 return Config

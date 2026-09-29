@@ -65,6 +65,25 @@ local function start(name, fn, ...)
 end
 
 -- the world first (the shops' prompts have to exist before player data hooks them)
+-- The uploaded sounds (Config.SoundIds): make a Sound in SoundService for
+-- each one that isn't there already, before anything tries to play them.
+pcall(function()
+	local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Config"))
+	local SoundService = game:GetService("SoundService")
+	local have = {}
+	for _, s in ipairs(SoundService:GetChildren()) do
+		have[squash((string.gsub(s.Name, "_", "")))] = true
+	end
+	for name, id in pairs(Config.SoundIds or {}) do
+		if not have[squash(name)] then
+			local s = Instance.new("Sound")
+			s.Name = name
+			s.SoundId = "rbxassetid://" .. tostring(id)
+			s.Parent = SoundService
+		end
+	end
+end)
+
 local LobbyBuilder = load("LobbyBuilder")
 start("LobbyBuilder", LobbyBuilder and LobbyBuilder.Build)
 
