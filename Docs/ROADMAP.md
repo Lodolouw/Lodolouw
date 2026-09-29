@@ -32,7 +32,7 @@ sound effects.
 
 ## 3. The arcade machines
 
-- [ ] **A row of cabinets in the lobby**, one per boss, painted like its boss.
+- [ ] **A row of cabinets in the lobby**, painted like their bosses: 5 at launch (floors 1, 3, 5, 7, 9), with room for the other 5.
 - [ ] **The ROLL button opens the Arcade menu from anywhere**: one card per machine, showing every drop with its rarity and **odds in %**, the pity bar, the price, and Roll x1 / Roll x10.
   - Locked machines still show their drops, greyed out with "Beat X to unlock".
   - A "pack of the week" card at the top with boosted odds.
