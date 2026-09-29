@@ -9,12 +9,31 @@
 	  * Stacks: little pips over their head (the weapon's stacks)
 	  * PowerN (changes when an ability is used): a quick ring bursting out
 	    at their feet
+	  * AuraStyle: the look of their weapon's aura (ReplicatedStorage/MoveFX
+	    STYLES: slime dripping off them, flames, leaves, skid marks...)
+	And each weapon ability's own effects: the server tells every screen when
+	someone's move starts, where it picks its spot, and a building block's
+	moments (CombatRemotes.AbilityFx) - ReplicatedStorage/MoveFX draws them.
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local MoveFX = require(ReplicatedStorage:WaitForChild("MoveFX"))
+
+-- the server's word on every ability (see MoveFX.told)
+task.spawn(function()
+	local remotes = ReplicatedStorage:WaitForChild("CombatRemotes", 60)
+	local fx = remotes and remotes:WaitForChild("AbilityFx", 60)
+	if fx then
+		fx.OnClientEvent:Connect(function(player, id, count, step, point, extra)
+			MoveFX.told(player, id, count, step, point, extra)
+		end)
+	end
+end)
 
 local RGB = Color3.fromRGB
 local MAX_PIPS = 5
@@ -59,7 +78,7 @@ local function ring(root, color)
 	end)
 end
 
-local function update(plr, look)
+local function update(plr, look, dt)
 	local char = plr.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then
@@ -99,6 +118,11 @@ local function update(plr, look)
 		-- (fading out in its last half second)
 		local left = untilT - now
 		look.aura.FillTransparency = left < 0.5 and 0.8 + (0.5 - left) * 0.4 or 0.8
+		-- the weapon's own aura on top (slime dripping off, flames, leaves...)
+		local style = plr:GetAttribute("AuraStyle")
+		if type(style) == "string" then
+			MoveFX.aura(plr, char, style, dt or 1 / 60)
+		end
 	else
 		if look.aura then
 			look.aura:Destroy()
@@ -168,14 +192,14 @@ local function update(plr, look)
 	end
 end
 
-RunService.Heartbeat:Connect(function()
+RunService.Heartbeat:Connect(function(dt)
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local look = looks[plr]
 		if not look then
 			look = { powerN = plr:GetAttribute("PowerN") }
 			looks[plr] = look
 		end
-		update(plr, look)
+		update(plr, look, dt)
 	end
 end)
 

@@ -1,6 +1,6 @@
 """Makes the voxel weapons (packs/*.py, built with voxel.py) into Roblox models
 with Blender, renders a preview of each pack, and writes the list the game
-reads (ReplicatedStorage/WeaponModels.lua).
+reads (ReplicatedStorage/WeaponModelInfo.lua).
 
     python3 make_models.py                      every pack: models, previews, list
     python3 make_models.py --pack Slime         just one pack (the list is always all)
@@ -14,13 +14,13 @@ Out:
     out/models/<Key>.fbx      one per weapon: a mesh per material + three tiny
                               markers (GripMark, TipMark, UpMark) that tell the
                               game exactly how it's held. Uploaded by
-                              upload_assets.bat (Open Cloud) - or import one by
-                              hand with Studio's 3D Importer into
-                              ReplicatedStorage > WeaponModels.
+                              Tools/Upload/upload_assets.bat (Open Cloud) - or
+                              import one by hand with Studio's 3D Importer into
+                              ReplicatedStorage > WeaponModels (a Folder).
     out/tiles/<Key>.png       each weapon on its own
     ../../Docs/weapons/<pack>.png   each pack's sheet
-    ../../Docs/weapons/all.png      every weapon
-    ../../ReplicatedStorage/WeaponModels.lua   what the game needs to know
+    ../../Docs/weapons/all.png      every weapon (once there's more than one pack)
+    ../../ReplicatedStorage/WeaponModelInfo.lua   what the game needs to know
                               about each model: its parts' colours and
                               materials, its smears, its glow
 """
@@ -38,8 +38,10 @@ OUT = os.path.join(HERE, 'out')
 MODELS = os.path.join(OUT, 'models')
 TILES = os.path.join(OUT, 'tiles')
 DOCS = os.path.join(ROOT, 'Docs', 'weapons')
-MANIFEST = os.path.join(ROOT, 'ReplicatedStorage', 'WeaponModels.lua')
-PACKS = ['slime', 'knight', 'speedway', 'jungle', 'canvas']
+MANIFEST = os.path.join(ROOT, 'ReplicatedStorage', 'WeaponModelInfo.lua')
+# the packs being made (the other launch packs are drafts in packs/later: we're
+# doing one pack at a time - see packs/later/README.md)
+PACKS = ['slime']
 
 RARITY = {
     'Common': (235, 235, 240), 'Rare': (0, 153, 219), 'Epic': (170, 100, 255),
@@ -139,6 +141,9 @@ def manifest_entry(weapon, pack, vox, mats, extra):
         return '{ %s, %s, %s }' % tuple(lua_num(c) for c in h)
     lines.append('\t\tSmear = { %s, %s }, -- (the handle\'s own space: -Z up the weapon)' % (vec(smear[0]), vec(smear[1])))
     lines.append('\t\tSmearWide = { %s, %s },' % (vec(wide[0]), vec(wide[1])))
+    top = (hi[2] + 0.5) * r
+    head = extra.get('head') or ((0, 0, top - 0.7) if kind == 'Hammer' else (0, 0, 0.6) if kind == 'Fists' else (0, 0, top))
+    lines.append('\t\tHead = %s, -- (the business end: a hammer\'s head, a blade\'s tip)' % vec(head))
     if extra.get('hold'):
         lines.append('\t\tHold = "%s",' % extra['hold'])
     lines.append('\t\tParts = {')
@@ -161,8 +166,9 @@ def write_manifest(entries):
         '-- the grip), TipMark (Tip studs up the weapon) and UpMark (Up studs to',
         '-- its front: the handle\'s +Y) - so the game holds it exactly like the',
         '-- blocky stand-in. The models themselves come in by upload',
-        '-- (Tools/Weapons/upload_assets.bat: their ids go in Config.Weapons.ModelIds)',
-        '-- or by hand (Studio\'s 3D Importer, into ReplicatedStorage > WeaponModels).',
+        '-- (Tools/Upload/upload_assets.bat: their ids go in ReplicatedStorage/AssetIds,',
+        '-- and the server loads them into ReplicatedStorage > WeaponModels) or by',
+        '-- hand (Studio\'s 3D Importer, into that WeaponModels folder).',
         '-- Parts: how each mesh is coloured (Role "metal" turns gold when the',
         '-- weapon awakens at mastery 100, "glow" is Neon in the smear\'s colour).',
         'return {',
@@ -407,7 +413,8 @@ def overview(packs, path):
     H = len(packs) * (th + 60) + 110
     img = Image.new('RGB', (W, H), (26, 24, 40))
     d = ImageDraw.Draw(img)
-    d.text((W // 2, 48), 'THE 30 LAUNCH WEAPONS', font=ImageFont.truetype(BOLD, 40), fill=(254, 231, 97), anchor='mm')
+    count = sum(len(p['weapons']) for p in packs)
+    d.text((W // 2, 48), 'THE %d WEAPONS SO FAR' % count, font=ImageFont.truetype(BOLD, 40), fill=(254, 231, 97), anchor='mm')
     f = ImageFont.truetype(BOLD, 15)
     for r, pack in enumerate(packs):
         y0 = 100 + r * (th + 60)
@@ -466,7 +473,8 @@ def main():
             ws = [(w, tiles.get(w[0]) or os.path.join(TILES, w[0] + '.png')) for w in pack['weapons']]
             if any(w[0] in tiles for w in pack['weapons']):
                 sheet(pack, ws, os.path.join(DOCS, pack['id'].lower() + '.png'))
-        overview(packs, os.path.join(DOCS, 'all.png'))
+        if len(packs) > 1:
+            overview(packs, os.path.join(DOCS, 'all.png'))
 
 
 if __name__ == '__main__':

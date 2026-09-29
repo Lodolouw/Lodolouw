@@ -55,6 +55,7 @@ local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Items = require(ReplicatedStorage:WaitForChild("Items"))
+local Moves = require(ReplicatedStorage:WaitForChild("Moves"))
 
 local CombatService = {}
 
@@ -683,7 +684,7 @@ local function impact(position, dir, weight)
 	Debris:AddItem(holder, 1.2)
 end
 
-local function hitTarget(player, model, damage, weight)
+local function hitTarget(player, model, damage, weight, remote)
 	-- A boss can be untouchable (rising, breaking its shell, dying), and can
 	-- hold a floor under its health so a big hit can't skip a phase change.
 	if model:GetAttribute("Invulnerable") then
@@ -746,14 +747,19 @@ local function hitTarget(player, model, damage, weight)
 		local count = (tonumber(string.match(tostring(model:GetAttribute("HitFx") or ""), "^(%d+)")) or 0) + 1
 		model:SetAttribute("HitFx", string.format("%d:%d:%.3f:%.3f", count, weight, push.X, push.Z))
 	end
-	-- the shockwave, where the punch actually met them
+	-- the shockwave, where the punch actually met them (an ability's hit from
+	-- further away - `remote` - lands right on them, and no fist streak)
 	local _, root = charParts(player)
 	if cf and root then
 		local toward = cf.Position - root.Position
-		local hitAt = root.Position + Vector3.new(toward.X, 0, toward.Z).Unit * math.min(toward.Magnitude, CC.PunchRange * 0.7)
-		impact(Vector3.new(hitAt.X, cf.Position.Y, hitAt.Z), toward, weight)
-		if player.Character then
-			fistStreak(player.Character, toward, weight)
+		if remote then
+			impact(cf.Position, toward, weight)
+		else
+			local hitAt = root.Position + Vector3.new(toward.X, 0, toward.Z).Unit * math.min(toward.Magnitude, CC.PunchRange * 0.7)
+			impact(Vector3.new(hitAt.X, cf.Position.Y, hitAt.Z), toward, weight)
+			if player.Character then
+				fistStreak(player.Character, toward, weight)
+			end
 		end
 	end
 	-- let a boss script react (it can listen to this BindableEvent)
@@ -921,6 +927,16 @@ local function serverNow()
 	return workspace:GetServerTimeNow()
 end
 
+-- every screen draws abilities (ReplicatedStorage/MoveFX): "AbilityFx" says
+-- (player, weapon id, count, step, point, extra) - step 0 when a move starts,
+-- a step's number when it picks a spot, or a name for a moment a building
+-- block has (a stack bursting, a next hit landing, a crit, a lifesteal)
+local function tell(player, id, count, step, point, extra)
+	if remotes.AbilityFx then
+		remotes.AbilityFx:FireAllClients(player, id, count, step, point, extra)
+	end
+end
+
 -- an effect still running on this fighter (nil once it's worn off)
 local function buff(st, name, now)
 	local b = st.buffs and st.buffs[name]
@@ -984,6 +1000,8 @@ local function applyEffects(player, st, effects, scale, color)
 	if longest > 0 then
 		player:SetAttribute("Aura", color or Color3.fromRGB(255, 255, 255))
 		player:SetAttribute("AuraUntil", serverNow() + longest)
+		local move = Moves.of(player:GetAttribute("Weapon"))
+		player:SetAttribute("AuraStyle", move and move.Style or nil)
 	end
 	showBuffs(player, st, now)
 end
@@ -999,6 +1017,9 @@ local function boostHit(player, st, target, dmg, crit)
 	if critUp and not crit and blockRng:NextNumber() < critUp.amount then
 		crit = true
 		dmg = dmg * Items.CritMultiplier
+		if target then
+			tell(player, player:GetAttribute("Weapon"), 0, "Crit", aimAt(target, target:GetPivot().Position))
+		end
 	end
 	-- stacks (usually a Passive): each hit adds one; at Max, this hit bursts
 	local stacks = passive(player, "Stacks") or (buff(st, "Stacks", now) and buff(st, "Stacks", now).e)
@@ -1008,6 +1029,9 @@ local function boostHit(player, st, target, dmg, crit)
 			st.stacks = 0
 			dmg = dmg * (1 + (stacks.Amount or 0.5))
 			crit = true
+			if target then
+				tell(player, player:GetAttribute("Weapon"), 0, "Stacks", aimAt(target, target:GetPivot().Position))
+			end
 		end
 		player:SetAttribute("Stacks", st.stacks)
 	end
@@ -1017,6 +1041,9 @@ local function boostHit(player, st, target, dmg, crit)
 		st.buffs.NextHit = nil
 		dmg = dmg * (1 + nextHit.amount)
 		crit = true
+		if target then
+			tell(player, player:GetAttribute("Weapon"), 0, "NextHit", aimAt(target, target:GetPivot().Position))
+		end
 		if nextHit.e.Mark and target and target.Parent then
 			target:SetAttribute("MarkedAmount", nextHit.e.Mark)
 			target:SetAttribute("MarkedUntil", serverNow() + (nextHit.e.MarkTime or 3))
@@ -1030,13 +1057,16 @@ local function boostHit(player, st, target, dmg, crit)
 end
 
 -- after a hit lands: lifesteal and stamina back
-local function afterHit(player, st, weight)
+local function afterHit(player, st, weight, target)
 	local now = os.clock()
 	local steal = buff(st, "Lifesteal", now)
 	if steal then
 		local hum = charParts(player)
 		if hum then
 			hum.Health = math.min(hum.MaxHealth, hum.Health + hum.MaxHealth * steal.amount * (weight or 1))
+		end
+		if target and target.Parent then
+			tell(player, player:GetAttribute("Weapon"), 0, "Lifesteal", aimAt(target, target:GetPivot().Position))
 		end
 	end
 	local back = buff(st, "StaminaOnHit", now)
@@ -1082,7 +1112,7 @@ local function burst(player, st, def, id, spec, scale)
 		local dmg, crit = CombatService.DamageAgainst(player, target)
 		dmg, crit = boostHit(player, st, target, dmg * mult, crit)
 		hitTarget(player, target, dmg, crit and 3 or 2)
-		afterHit(player, st, 1.5)
+		afterHit(player, st, 1.5, target)
 		count = count + 1
 	end
 	addMastery(player, id, (W.MasteryPerHit or 1) * count)
@@ -1113,6 +1143,279 @@ local function useBuffAbility(player, st, def, id, now)
 	end
 end
 
+----------------------------------------------------------------------
+-- MOVES (ReplicatedStorage/Moves): a weapon ability done step by step - hit
+-- round a spot, in a cone, along the path you dashed; leave a patch on the
+-- floor that keeps hurting; throw things; switch on a special for a while.
+-- Your own screen moves you (dashes, leaps) and plays the animation; the
+-- server trusts where you end up and does the hitting at each step's time.
+-- Every screen is told when a move starts (AbilityFx: player, weapon, count,
+-- 0) and where any spot it picks is (step number, the spot), and draws it
+-- (ReplicatedStorage/MoveFX).
+----------------------------------------------------------------------
+local zones = {} -- the patches on the floor that keep hurting
+local moveCount = {} -- [player] = how many moves they've made (tells them apart)
+
+-- where you are and the way you face, flat
+local function flatFrame(root)
+	local look = root.CFrame.LookVector
+	local f = Vector3.new(look.X, 0, look.Z)
+	f = f.Magnitude > 0.01 and f.Unit or Vector3.new(0, 0, -1)
+	return CFrame.lookAt(root.Position, root.Position + f)
+end
+
+-- every enemy of yours whose body comes within `radius` of a spot (flat)
+local function targetsNear(point, player, radius)
+	local list = {}
+	for model in pairs(targets) do
+		if model.Parent and (model:GetAttribute("Health") or 0) > 0 and mine(model, player) then
+			local cf, r = aimAt(model, point)
+			if cf then
+				local d = Vector3.new(cf.X - point.X, 0, cf.Z - point.Z).Magnitude - r
+				if d <= radius and math.abs(cf.Y - point.Y) < 14 then
+					list[#list + 1] = model
+				end
+			end
+		end
+	end
+	return list
+end
+
+-- every enemy within width/2 of the path a -> b (flat)
+local function targetsOnLine(a, b, player, width)
+	local list = {}
+	local ab = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+	local len2 = ab:Dot(ab)
+	for model in pairs(targets) do
+		if model.Parent and (model:GetAttribute("Health") or 0) > 0 and mine(model, player) then
+			local mid = a:Lerp(b, 0.5)
+			local cf, r = aimAt(model, mid)
+			if cf then
+				local ap = Vector3.new(cf.X - a.X, 0, cf.Z - a.Z)
+				local t = len2 > 1e-6 and math.clamp(ap:Dot(ab) / len2, 0, 1) or 0
+				local closest = Vector3.new(a.X, 0, a.Z) + ab * t
+				local d = (Vector3.new(cf.X, 0, cf.Z) - closest).Magnitude - r
+				if d <= width / 2 and math.abs(cf.Y - a.Y) < 14 then
+					list[#list + 1] = model
+				end
+			end
+		end
+	end
+	return list
+end
+
+-- hit a list of enemies with a move (dmg: x your hit, like a swing's Damage)
+local function moveHits(player, st, def, id, list, dmg, weight, scale, remote)
+	if #list == 0 then
+		return 0
+	end
+	local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1) * (dmg or 1) * (scale or 1)
+	for _, target in ipairs(list) do
+		local d, crit = CombatService.DamageAgainst(player, target)
+		d, crit = boostHit(player, st, target, d * mult, crit)
+		hitTarget(player, target, d, crit and 3 or (weight or 2), remote)
+		afterHit(player, st, math.min(dmg or 1, 1.5), target)
+	end
+	addMastery(player, id, (W.MasteryPerHit or 1) * #list)
+	return #list
+end
+
+-- the spot a move picks: the enemy you're locked on to (in range), else the
+-- nearest one in front of you, else `ahead` studs in front
+local function pickPoint(player, root, range, ahead, locked)
+	local here = root.Position
+	if typeof(locked) == "Instance" and targets[locked] and locked.Parent and (locked:GetAttribute("Health") or 0) > 0 and mine(locked, player) then
+		local cf, r = aimAt(locked, here)
+		if cf and Vector3.new(cf.X - here.X, 0, cf.Z - here.Z).Magnitude - r <= range then
+			return Vector3.new(cf.X, here.Y, cf.Z), locked
+		end
+	end
+	local frame = flatFrame(root)
+	local best, bestD, bestModel = nil, math.huge, nil
+	for model in pairs(targets) do
+		if model.Parent and (model:GetAttribute("Health") or 0) > 0 and mine(model, player) then
+			local cf, r = aimAt(model, here)
+			if cf then
+				local flat = Vector3.new(cf.X - here.X, 0, cf.Z - here.Z)
+				local d = flat.Magnitude - r
+				local front = flat.Magnitude < 0.01 or frame.LookVector:Dot(flat.Unit) >= math.cos(math.rad(60))
+				if d <= range and front and math.abs(cf.Y - here.Y) < 14 and d < bestD then
+					best, bestD, bestModel = Vector3.new(cf.X, here.Y, cf.Z), d, model
+				end
+			end
+		end
+	end
+	if best then
+		return best, bestModel
+	end
+	return (frame * CFrame.new(0, 0, -(ahead or 8))).Position, nil
+end
+
+-- a hit shape, from the step and where things are
+local function shapeHit(player, st, def, id, spec, frame, marks, scale)
+	local list
+	if spec.Shape == "Arc" then
+		local _, root = charParts(player)
+		list = root and targetsInArc(root, player, spec.Radius or 10, spec.Arc or 60, st.moveLocked) or {}
+	elseif spec.Shape == "Line" then
+		local a = marks[spec.From or "Start"] or frame.Position
+		local b = spec.To and marks[spec.To] or frame.Position
+		local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+		dir = dir.Magnitude > 0.01 and dir.Unit or frame.LookVector
+		b = b + dir * (spec.Ahead or 0)
+		list = targetsOnLine(a, b, player, spec.Width or 6)
+	else -- Circle
+		local centre = spec.At and marks[spec.At] or (frame * CFrame.new(spec.Side or 0, 0, -(spec.Ahead or 0))).Position
+		list = targetsNear(centre, player, spec.Radius or 8)
+	end
+	return moveHits(player, st, def, id, list, spec.Damage, spec.Weight, scale, spec.Shape ~= "Arc")
+end
+
+-- a patch on the floor that hurts every Tick seconds for Time (and slows)
+local function addZone(player, st, def, id, spec, frame, marks, scale, at)
+	local z = { player = player, st = st, def = def, id = id, spec = spec, scale = scale,
+		untilT = os.clock() + (spec.Time or 3), nextT = os.clock() + (spec.Tick or 0.5) }
+	if spec.Strip then
+		z.a = marks[spec.From or "Start"] or frame.Position
+		z.b = spec.To and marks[spec.To] or frame.Position
+	else
+		z.centre = at or (spec.At and marks[spec.At]) or (frame * CFrame.new(spec.Side or 0, 0, -(spec.Ahead or 0))).Position
+	end
+	table.insert(zones, z)
+end
+
+local function stepZones()
+	local now = os.clock()
+	for i = #zones, 1, -1 do
+		local z = zones[i]
+		if now >= z.untilT or fighters[z.player] ~= z.st then
+			table.remove(zones, i)
+		elseif now >= z.nextT then
+			z.nextT = now + (z.spec.Tick or 0.5)
+			local list = z.centre and targetsNear(z.centre, z.player, z.spec.Radius or 6)
+				or targetsOnLine(z.a, z.b, z.player, z.spec.Width or 4)
+			if z.spec.Slow then
+				for _, target in ipairs(list) do
+					target:SetAttribute("SlowAmount", z.spec.Slow)
+					target:SetAttribute("SlowUntil", serverNow() + (z.spec.Tick or 0.5) + 0.25)
+				end
+			end
+			moveHits(z.player, z.st, z.def, z.id, list, z.spec.Damage or 0.2, 1, z.scale, true)
+		end
+	end
+end
+
+-- things thrown along the floor (barrels, globs, clods): each flies from you,
+-- hurts what it meets (once each), and bursts / leaves a patch where it ends
+local function throw(player, st, def, id, spec, frame, marks, scale)
+	local n = spec.Count or 1
+	for i = 1, n do
+		local angle
+		if spec.Around then
+			angle = (i - 1) / n * 360
+		else
+			angle = ((i - 1) - (n - 1) / 2) * (spec.Spread or 0)
+		end
+		local dir = (frame * CFrame.Angles(0, math.rad(angle), 0)).LookVector
+		local start = frame.Position + dir * 1.5
+		task.spawn(function()
+			local hit = {}
+			local travelled = 0
+			local range = spec.Range or 12
+			local speed = spec.Speed or 24
+			local pos = start
+			while travelled < range and fighters[player] == st do
+				local dt = task.wait(1 / 30)
+				travelled = math.min(range, travelled + speed * dt)
+				pos = start + dir * travelled
+				local fresh = {}
+				for _, target in ipairs(targetsNear(pos, player, spec.Radius or 3)) do
+					if not hit[target] then
+						hit[target] = true
+						fresh[#fresh + 1] = target
+					end
+				end
+				if #fresh > 0 then
+					moveHits(player, st, def, id, fresh, spec.Damage or 1, 2, scale, true)
+					if not spec.Pierce then
+						break
+					end
+				end
+			end
+			if fighters[player] ~= st then
+				return
+			end
+			if spec.Burst then
+				moveHits(player, st, def, id, targetsNear(pos, player, spec.Burst.Radius or 5), spec.Burst.Damage or 1, 3, scale, true)
+			end
+			if spec.Zone then
+				addZone(player, st, def, id, spec.Zone, frame, marks, scale, pos)
+			end
+		end)
+	end
+end
+
+-- a move's special (for Time seconds): see swingWeapon (ChopWave, Clones) and Roll (DashHits)
+local function special(st, spec, scale)
+	st.buffs = st.buffs or {}
+	st.buffs[spec.Special] = { untilT = os.clock() + (spec.Time or 5) * (1 + (scale - 1) * 0.5), amount = scale, e = spec }
+end
+
+-- a move: switch on its building blocks, then do each step when it's due
+local function useMove(player, st, def, id, move, now, locked)
+	local ab = def.Ability
+	if st.drinking or now < (st.abilityReadyAt or 0) or st.stamina < ab.Cost then
+		send(player, "Denied", "Ability")
+		return
+	end
+	local mastery = player:GetAttribute("Mastery") or 1
+	local scale = Config.blockScale(mastery)
+	st.abilityReadyAt = now + ab.Cooldown
+	st.busyUntil = now + (move.Time or 0.6)
+	spend(st, ab.Cost, now)
+	st.abilities = (st.abilities or 0) + 1
+	st.moveLocked = typeof(locked) == "Instance" and locked or nil
+	moveCount[player] = (moveCount[player] or 0) + 1
+	local count = moveCount[player]
+	player:SetAttribute("AuraStyle", move.Style)
+	send(player, "Ability", ab.Cooldown, 0)
+	applyEffects(player, st, ab.Effects, scale, ab.Aura)
+	tell(player, id, count, 0)
+	local marks = {}
+	for i, step in ipairs(move.Steps or {}) do
+		task.delay(step.At or 0, function()
+			if fighters[player] ~= st then
+				return
+			end
+			local _, root = charParts(player)
+			if not root then
+				return
+			end
+			local frame = flatFrame(root)
+			if step.Mark then
+				marks[step.Mark] = frame.Position
+			end
+			if step.Pick then
+				local point = pickPoint(player, root, step.Range or 20, step.Ahead or 8, st.moveLocked)
+				marks[step.Pick] = point
+				tell(player, id, count, i, point)
+			end
+			if step.Hit then
+				shapeHit(player, st, def, id, step.Hit, frame, marks, scale)
+			end
+			if step.Zone then
+				addZone(player, st, def, id, step.Zone, frame, marks, scale)
+			end
+			if step.Shot then
+				throw(player, st, def, id, step.Shot, frame, marks, scale)
+			end
+			if step.Buff and step.Buff.Special then
+				special(st, step.Buff, scale)
+			end
+		end)
+	end
+end
+
 -- One swing of a weapon: like a punch (it commits you, costs stamina and lands
 -- partway through), but it cuts every enemy in its arc, hits as hard as the
 -- weapon's rarity and mastery say, and every enemy it hits is mastery.
@@ -1135,8 +1438,26 @@ local function swingWeapon(player, st, def, kind, id, locked, swing, now)
 		if not atRoot then
 			return
 		end
-		local reach = buff(st, "Reach", os.clock())
+		local tnow = os.clock()
+		local reach = buff(st, "Reach", tnow)
 		local hit = targetsInArc(atRoot, player, s.Range + (reach and reach.amount or 0), s.Arc, locked)
+		-- a move's special still running: No Quarter's gold wave off every
+		-- chop, Copy-Paste's two ink copies swinging with you
+		local frame = flatFrame(atRoot)
+		local wave = buff(st, "ChopWave", tnow)
+		if wave then
+			local centre = (frame * CFrame.new(0, 0, -5)).Position
+			tell(player, id, 0, "ChopWave", centre)
+			moveHits(player, st, def, id, targetsNear(centre, player, 6), 0.5, 2, wave.amount, true)
+		end
+		local clones = buff(st, "Clones", tnow)
+		if clones then
+			tell(player, id, 0, "Clones", atRoot.Position, n)
+			for _, side in ipairs({ -5, 5 }) do
+				local centre = (frame * CFrame.new(side, 0, -s.Range * 0.5)).Position
+				moveHits(player, st, def, id, targetsNear(centre, player, s.Range * 0.55), s.Damage * 0.5, 2, 1, true)
+			end
+		end
 		if #hit == 0 then
 			for _, fn in ipairs(whiffListeners) do
 				pcall(fn, player, atRoot.Position)
@@ -1148,7 +1469,7 @@ local function swingWeapon(player, st, def, kind, id, locked, swing, now)
 			local dmg, crit = CombatService.DamageAgainst(player, target)
 			dmg, crit = boostHit(player, st, target, dmg * mult, crit)
 			hitTarget(player, target, dmg, (crit or n == #kind.Swings) and 3 or n)
-			afterHit(player, st, s.Damage)
+			afterHit(player, st, s.Damage, target)
 		end
 		addMastery(player, id, (W.MasteryPerHit or 1) * #hit)
 	end)
@@ -1158,9 +1479,14 @@ end
 -- The weapon's ability (the Iron Sword's Whirlwind: spin round, cutting
 -- everything close to you). What it does comes from its tier - the highest
 -- mastery you've reached (Config.Weapons.List[id].Ability.Tiers).
-local function useAbility(player, st, def, id, now)
+local function useAbility(player, st, def, id, now, locked)
 	local ab = def.Ability
 	if not ab then
+		return
+	end
+	local move = Moves.of(id)
+	if move and not ab.Tiers then
+		useMove(player, st, def, id, move, now, locked)
 		return
 	end
 	if not ab.Tiers then
@@ -1199,7 +1525,7 @@ local function useAbility(player, st, def, id, now)
 				local dmg, crit = CombatService.DamageAgainst(player, target)
 				dmg, crit = boostHit(player, st, target, dmg * mult * tier.Damage, crit)
 				hitTarget(player, target, dmg, (crit or last) and 3 or 2)
-				afterHit(player, st, 1)
+				afterHit(player, st, 1, target)
 			end
 			-- the shockwave off the last spin: what's a little further out
 			if last and tier.Ring then
@@ -1282,7 +1608,7 @@ local function onAction(player, action, arg, swing)
 		return
 	elseif action == "Ability" then
 		if weapon then
-			useAbility(player, st, weapon, weaponId, now)
+			useAbility(player, st, weapon, weaponId, now, arg)
 		end
 		return
 	end
@@ -1346,6 +1672,18 @@ local function onAction(player, action, arg, swing)
 		spend(st, CC.RollCost, now)
 		-- the client shows the window so you can learn the timing
 		send(player, "Iframes", CC.RollInvincible)
+		-- a move's special: every roll cuts through what it passes (Victory Lap)
+		local dash = buff(st, "DashHits", now)
+		if dash and weapon then
+			local from = root.Position
+			task.delay(CC.RollTime + 0.12, function()
+				local _, r2 = charParts(player)
+				if fighters[player] == st and r2 then
+					tell(player, weaponId, 0, "DashHit", r2.Position, from)
+					moveHits(player, st, weapon, weaponId, targetsOnLine(from, r2.Position, player, 7), 1.0, 2, dash.amount, true)
+				end
+			end)
+		end
 	elseif action == "Jump" then
 		-- jumping costs stamina in an arena, the same as everything else you do
 		if st.drinking or now - (st.lastJump or 0) < 0.25 or st.stamina < CC.JumpCost then
@@ -1412,9 +1750,14 @@ function CombatService.Start(playerService)
 	local event = Instance.new("RemoteEvent")
 	event.Name = "CombatEvent" -- server -> client: "State", "Hit", "Hurt", "Shove", "Iframes", "Dodged", "Drinking", "Healed", "Denied", "Died", "Stop", "Ability", "Mastery"
 	event.Parent = folder
+	local fx = Instance.new("RemoteEvent")
+	fx.Name = "AbilityFx" -- server -> every client: how abilities look (ReplicatedStorage/MoveFX)
+	fx.Parent = folder
 	folder.Parent = ReplicatedStorage
 	remotes.CombatAction = action
 	remotes.CombatEvent = event
+	remotes.AbilityFx = fx
+	RunService.Heartbeat:Connect(stepZones)
 
 	action.OnServerEvent:Connect(function(player, name, arg, swing)
 		if type(name) ~= "string" then

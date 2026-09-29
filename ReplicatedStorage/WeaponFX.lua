@@ -675,6 +675,208 @@ local function buildModelSword(def, golden)
 end
 
 ----------------------------------------------------------------------
+-- The voxel weapons (Tools/Weapons: built from little cubes in code, a mesh
+-- per colour). Their models come in by upload (the server loads them into
+-- ReplicatedStorage > WeaponModels: ServerScriptService/WeaponModelLoader) or
+-- by hand (Studio's 3D Importer, into that same folder, named after the
+-- weapon). ReplicatedStorage/WeaponModelInfo says how to colour each mesh,
+-- where the smears run and where its head is; three tiny marker meshes in
+-- the model (GripMark, TipMark, UpMark) say exactly where it's held, so it
+-- sits in the hand just like the blocky one - whatever size or way round
+-- it came in.
+----------------------------------------------------------------------
+local INFO = {}
+pcall(function()
+	local m = ReplicatedStorage:WaitForChild("WeaponModelInfo", 5)
+	INFO = m and require(m) or {}
+end)
+WeaponFX.INFO = INFO
+
+local function voxelSource(name)
+	local folder = ReplicatedStorage:FindFirstChild("WeaponModels")
+	return folder and folder:FindFirstChild(name) or nil
+end
+WeaponFX.voxelSource = voxelSource
+
+local function rgb(t, fallback)
+	if type(t) == "table" and #t >= 3 then
+		return Color3.fromRGB(t[1], t[2], t[3])
+	end
+	return fallback
+end
+local function vec(t)
+	return Vector3.new(t[1] or 0, t[2] or 0, t[3] or 0)
+end
+
+-- (a mesh's name, as the importer may have changed it: "goo", "GooGloves_goo", "goo.001")
+local function partKey(info, name, key)
+	if info.Parts[name] then
+		return name
+	end
+	local plain = string.gsub(name, "%.%d+$", "")
+	if info.Parts[plain] then
+		return plain
+	end
+	local prefix = key .. "_"
+	if string.sub(plain, 1, #prefix) == prefix and info.Parts[string.sub(plain, #prefix + 1)] then
+		return string.sub(plain, #prefix + 1)
+	end
+	return nil
+end
+
+local function buildVoxel(def, golden)
+	local key = def.Model
+	local info = key and INFO[key]
+	local src = info and voxelSource(key)
+	if not src then
+		return nil
+	end
+	local ok, model, handle, trails, head = pcall(function()
+		local copy = src:Clone()
+		local parts, marks = {}, {}
+		local all = copy:GetDescendants()
+		if copy:IsA("BasePart") then
+			table.insert(all, copy)
+		end
+		for _, d in ipairs(all) do
+			if d:IsA("BasePart") then
+				local name = string.gsub(d.Name, "%.%d+$", "")
+				if name == "GripMark" or name == "TipMark" or name == "UpMark" then
+					marks[name] = d
+				else
+					parts[#parts + 1] = d
+				end
+			elseif d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("LuaSourceContainer") then
+				d:Destroy()
+			end
+		end
+		local g, t, u = marks.GripMark, marks.TipMark, marks.UpMark
+		if not (g and t and u and #parts > 0) then
+			return nil
+		end
+		-- the grip, from the markers: +Z away from the tip, +Y to the front
+		local o = g.Position
+		local up = t.Position - o
+		if up.Magnitude < 1e-4 then
+			return nil
+		end
+		local scale = (info.Tip or 1) / up.Magnitude -- (in case it came in bigger or smaller)
+		local z = -up.Unit
+		local y = u.Position - o
+		y = y - z * y:Dot(z)
+		if y.Magnitude < 1e-4 then
+			return nil
+		end
+		y = y.Unit
+		local grip = CFrame.fromMatrix(o, y:Cross(z), y, z)
+		local out = Instance.new("Model")
+		out.Name = "HeldWeapon"
+		local h = Instance.new("Part")
+		h.Name = "Handle"
+		h.Size = Vector3.new(0.2, 0.2, 0.2)
+		h.Transparency = 1
+		h.CanCollide, h.CanTouch, h.CanQuery, h.CastShadow = false, false, false, false
+		h.Massless = true
+		h.Parent = out
+		for _, p in ipairs(parts) do
+			local offset = grip:ToObjectSpace(p.CFrame)
+			offset = offset - offset.Position + offset.Position * scale
+			p.Size = p.Size * scale
+			p.Anchored = false
+			p.CanCollide, p.CanTouch, p.CanQuery = false, false, false
+			p.CastShadow = false
+			p.Massless = true
+			local pk = partKey(info, p.Name, key)
+			local spec = pk and info.Parts[pk]
+			if spec then
+				pcall(function()
+					p.TextureID = "" -- (its colour is its Color, not a texture)
+				end)
+				local color = rgb(spec.Color, p.Color)
+				local mat = Enum.Material[spec.Material] or Enum.Material.SmoothPlastic
+				if golden and spec.Role == "metal" then
+					-- awakened: the metal turns gold (keeping how light or dark it was)
+					local v = math.max(color.R, color.G, color.B)
+					color = GOLD:Lerp(Color3.fromRGB(150, 96, 20), math.clamp(1 - v, 0, 1) * 0.8)
+				elseif golden and spec.Role == "glow" then
+					color = GOLD
+				end
+				p.Color = color
+				p.Material = mat
+				p.Transparency = spec.Transparency or 0
+				p.Name = pk
+			end
+			p.CFrame = h.CFrame * offset
+			local weld = Instance.new("Weld")
+			weld.Part0, weld.Part1 = h, p
+			weld.C0 = offset
+			weld.Parent = p
+			p.Parent = out
+		end
+		for _, m in pairs(marks) do
+			m:Destroy()
+		end
+		copy:Destroy()
+		-- the business end (for the finisher's slam and the ability effects)
+		local hd = Instance.new("Part")
+		hd.Name = "Head"
+		hd.Size = Vector3.new(0.2, 0.2, 0.2)
+		hd.Transparency = 1
+		hd.CanCollide, hd.CanTouch, hd.CanQuery, hd.CastShadow = false, false, false, false
+		hd.Massless = true
+		local hoff = CFrame.new(vec(info.Head or { 0, 0, -2 }))
+		hd.CFrame = h.CFrame * hoff
+		local hw = Instance.new("Weld")
+		hw.Part0, hw.Part1 = h, hd
+		hw.C0 = hoff
+		hw.Parent = hd
+		hd.Parent = out
+		if golden then
+			local light = Instance.new("PointLight")
+			light.Name = "Awakened"
+			light.Color = GOLD
+			light.Brightness = 2
+			light.Range = 7
+			light.Parent = h
+		end
+		return out, h, nil, hd
+	end)
+	if not (ok and model) then
+		return nil
+	end
+	-- the smears (from WeaponModelInfo: the handle's own space)
+	local color = golden and GOLD or rgb(info.Glow, GLOW)
+	local function smear(name, pts, see, life)
+		local a0 = Instance.new("Attachment")
+		a0.Name = name .. "Base"
+		a0.Position = vec(pts[1])
+		a0.Parent = handle
+		local a1 = Instance.new("Attachment")
+		a1.Name = name .. "Tip"
+		a1.Position = vec(pts[2])
+		a1.Parent = handle
+		local trail = Instance.new("Trail")
+		trail.Name = name
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
+		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, see), NumberSequenceKeypoint.new(0.55, 0.65), NumberSequenceKeypoint.new(1, 1) })
+		trail.LightEmission = 1
+		trail.Lifetime = life
+		trail.MinLength = 0.02
+		trail.WidthScale = NumberSequence.new(1, 0.35)
+		trail.Enabled = false
+		trail.Parent = handle
+		return trail
+	end
+	trails = {
+		smear("SwingTrail", info.Smear or { { 0, 0, -1 }, { 0, 0, -3 } }, 0, 0.2),
+		smear("SwingGlow", info.SmearWide or info.Smear or { { 0, 0, -1 }, { 0, 0, -3 } }, 0.5, 0.28),
+	}
+	return model, handle, trails, head
+end
+WeaponFX.buildVoxel = buildVoxel
+
+----------------------------------------------------------------------
 -- Hits: the slash mark ripping across what you hit, and the finisher's slam
 ----------------------------------------------------------------------
 -- a bright bar that tears across the spot, stretching out and fading, with a
@@ -1115,11 +1317,21 @@ local function hold(plr, char, id, def, tracks)
 		return held[plr]
 	end
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
-	local model, handle, trails, blade = buildModelSword(def, golden)
-	if not model then
-		local builder = BUILDERS[def.Type] or buildSword
-		model, handle, trails, blade = builder(def, golden)
+	-- the weapon: its voxel model, else its imported 3D sword, else the
+	-- blocky one made in code (and when its model turns up later - the
+	-- server's still loading it - it's swapped in: see "rebuild")
+	local function build()
+		local m, hd, tr, bl = buildVoxel(def, golden)
+		if not m then
+			m, hd, tr, bl = buildModelSword(def, golden)
+		end
+		if not m then
+			m, hd, tr, bl = (BUILDERS[def.Type] or buildSword)(def, golden)
+		end
+		return m, hd, tr, bl
 	end
+	local model, handle, trails, blade = build()
+	local waiting = def.Model ~= nil and INFO[def.Model] ~= nil and voxelSource(def.Model) == nil
 	-- the weapon type's baked animations, if it has them (and no uploaded ones)
 	local kind = W.Types[def.Type]
 	local ids = animsOf(def)
@@ -1131,7 +1343,7 @@ local function hold(plr, char, id, def, tracks)
 	local off = (clips and clips.offhand) or WeaponFX.OFFHAND[def.Type]
 	local leftArm = char:FindFirstChild("Left Arm")
 	if off and leftArm and BUILDERS[def.Type] then
-		local offModel, offHandle, offTrails = BUILDERS[def.Type](def, golden)
+		local offModel, offHandle, offTrails = build()
 		offHandle.CFrame = leftArm.CFrame * gripAt(off[1], off[2])
 		local w = Instance.new("Weld")
 		w.Name = "OffGrip"
@@ -1179,6 +1391,7 @@ local function hold(plr, char, id, def, tracks)
 		springs[key] = { p = table.clone(value), v = table.create(#value, 0) }
 	end
 	held[plr] = {
+		waiting = waiting, -- (its model isn't here yet: swapped in when it is)
 		char = char,
 		hum = char:FindFirstChildOfClass("Humanoid"),
 		id = id,
@@ -1606,7 +1819,7 @@ end
 local function stepOne(plr, h, dt)
 	-- awakened (mastery 100): the blade turns gold
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
-	if golden ~= h.golden then
+	if golden ~= h.golden or h.rebuild then
 		local char, id, def, anim, springs, weights, clock, freeze = h.char, h.id, h.def, h.anim, h.springs, h.weights, h.clock, h.freeze
 		local tracks, frozenTrack, trackFreeze = h.tracks, h.frozenTrack, h.trackFreeze
 		h.tracks = nil -- (kept: a swing that's playing carries on)
@@ -1877,6 +2090,36 @@ function WeaponFX.start()
 	RunService.Stepped:Connect(function(_, dt)
 		step(dt)
 	end)
+	-- a voxel weapon's model arriving (the server loads them as the game
+	-- starts): anyone holding the blocky stand-in for it gets the real one
+	local function watch(folder)
+		folder.ChildAdded:Connect(function(child)
+			for _, h in pairs(held) do
+				if h.waiting and h.def and h.def.Model == child.Name then
+					h.rebuild = true
+				end
+			end
+		end)
+	end
+	local folder = ReplicatedStorage:FindFirstChild("WeaponModels")
+	if folder then
+		watch(folder)
+	else
+		local conn
+		conn = ReplicatedStorage.ChildAdded:Connect(function(child)
+			if child.Name == "WeaponModels" and child:IsA("Folder") then
+				conn:Disconnect()
+				watch(child)
+				for _, m in ipairs(child:GetChildren()) do
+					for _, h in pairs(held) do
+						if h.waiting and h.def and h.def.Model == m.Name then
+							h.rebuild = true
+						end
+					end
+				end
+			end
+		end)
+	end
 	-- warm up the baked clips: unpack every type's now (one a frame), so the
 	-- first time anyone equips one there's no hitch
 	task.spawn(function()

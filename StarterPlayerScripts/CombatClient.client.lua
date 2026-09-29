@@ -51,6 +51,14 @@ local Vitals = require(ReplicatedStorage:WaitForChild("Vitals")) -- draws the bo
 -- the weapon in your hand (see "Weapon" below; how weapons look: ReplicatedStorage/WeaponFX)
 local Weapon = { fx = require(ReplicatedStorage:WaitForChild("WeaponFX")), readyAt = 0 }
 Weapon.fx.start()
+-- weapon abilities that are moves: what they do (ReplicatedStorage/Moves), how
+-- they look (MoveFX) and their uploaded animations (AssetIds)
+local Moves = require(ReplicatedStorage:WaitForChild("Moves"))
+local MoveFX = require(ReplicatedStorage:WaitForChild("MoveFX"))
+local AssetIds = {}
+pcall(function()
+	AssetIds = require(ReplicatedStorage:WaitForChild("AssetIds", 10)) or {}
+end)
 local CombatRemotes = ReplicatedStorage:WaitForChild("CombatRemotes")
 local CombatAction = CombatRemotes:WaitForChild("CombatAction")
 local CombatEvent = CombatRemotes:WaitForChild("CombatEvent")
@@ -1654,6 +1662,110 @@ do
 		return id and Config.Weapons and Config.Weapons.List[id] or nil
 	end
 
+	-- a move's animation (uploaded: AssetIds.Animations, by the move's Anim
+	-- or its weapon's id), or nil if it isn't there
+	local function moveTrack(id)
+		local move = Moves.of(id)
+		local key = move and (move.Anim or id)
+		local aid = key and AssetIds.Animations and AssetIds.Animations[key]
+		if not aid then
+			return nil
+		end
+		return trackFor(tostring(aid), Enum.AnimationPriority.Action3)
+	end
+	-- (warmed up the moment you pick the weapon up, so it plays right first time)
+	local function warmMove()
+		local track = moveTrack(player:GetAttribute("Weapon"))
+		if track then
+			pcall(function()
+				ContentProvider:PreloadAsync({ track.Animation })
+				track:Play(0, 0.0001, 1)
+				task.wait(0.1)
+				track:Stop(0)
+			end)
+		end
+	end
+	player:GetAttributeChangedSignal("Weapon"):Connect(function()
+		task.spawn(warmMove)
+	end)
+	task.spawn(warmMove)
+
+	-- a move's movement (Moves: Dash along the floor, Leap up and over - landing
+	-- right when its Time runs out - or a little Hop): your screen moves you,
+	-- the server trusts where you end up
+	local function doMove(spec)
+		local hum, hrp, char = charParts()
+		if not hum then
+			return
+		end
+		local look = hrp.CFrame.LookVector
+		local dir = Vector3.new(look.X, 0, look.Z)
+		dir = dir.Magnitude > 0.01 and dir.Unit or Vector3.new(0, 0, -1)
+		local dist = spec.Distance or 8
+		if spec.ToTarget and lockTarget then
+			local ok, cf = pcall(function()
+				return lockTarget:GetPivot()
+			end)
+			if ok and cf then
+				local flat = Vector3.new(cf.X - hrp.Position.X, 0, cf.Z - hrp.Position.Z)
+				if flat.Magnitude > 0.5 then
+					dir = flat.Unit
+					dist = math.clamp(flat.Magnitude - (spec.StopShort or 3), 0, dist * 1.4)
+				end
+			end
+		end
+		hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + dir)
+		local cm = manager(char)
+		if cm then
+			cm.FacingDirection = dir
+		end
+		local time = math.max(spec.Time or 0.3, 0.05)
+		local up = spec.Kind == "Dash" and 0 or (spec.Up or 4)
+		allowTripping(hum, false)
+		local steady = keepUpright(char, dir)
+		local att = hrp:FindFirstChild("RootAttachment") or hrp:FindFirstChildWhichIsA("Attachment")
+		if not att then
+			att = Instance.new("Attachment")
+			att.Name = "CombatAttachment"
+			att.Parent = hrp
+		end
+		local lv = Instance.new("LinearVelocity")
+		lv.Name = "CombatPush"
+		lv.Attachment0 = att
+		lv.MaxForce = math.huge
+		lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+		lv.RelativeTo = Enum.ActuatorRelativeTo.World
+		lv.VectorVelocity = dir * (dist / time) + Vector3.new(0, up > 0 and 4 * up / time or 0, 0)
+		lv.Parent = hrp
+		local t0 = os.clock()
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local t = os.clock() - t0
+			if t >= time or not lv.Parent or not hrp.Parent then
+				conn:Disconnect()
+				lv:Destroy()
+				if hrp.Parent then
+					local v = hrp.AssemblyLinearVelocity
+					hrp.AssemblyLinearVelocity = Vector3.new(0, math.min(v.Y, 0), 0)
+				end
+				task.delay(0.35, function()
+					steady:Disconnect()
+					local h = charParts()
+					if h then
+						if isTripped(h) then
+							h:ChangeState(Enum.HumanoidStateType.GettingUp)
+						end
+						allowTripping(h, true)
+					end
+				end)
+				return
+			end
+			-- (up then down: the height of an arc that peaks halfway and lands at Time)
+			local vy = up > 0 and (4 * up / time) * (1 - 2 * t / time) or 0
+			lv.VectorVelocity = dir * (dist / time) + Vector3.new(0, vy, 0)
+		end)
+	end
+
 	function Weapon.tryAbility()
 		if not active then
 			return
@@ -1682,9 +1794,36 @@ do
 		Weapon.readyAt = now + ab.Cooldown
 		spendLocal(ab.Cost)
 		renderStats()
-		CombatAction:FireServer("Ability")
+		CombatAction:FireServer("Ability", lockTarget)
 		if punchLockUntil > 0 then
 			releasePunchLock()
+		end
+		-- a move (Moves): its animation, its movement and its effects, straight away
+		local id = player:GetAttribute("Weapon")
+		local move = not tier and Moves.of(id)
+		if move then
+			commitToPunch(now, (move.Time or 0.6) / CC.PunchLock)
+			for otherId, other in pairs(tracks) do
+				if PUNCH_SET[otherId] and other.IsPlaying then
+					other:Stop(0.05)
+				end
+			end
+			local track = moveTrack(id)
+			if track then
+				track:Play(0.08, 1, 1)
+			end
+			MoveFX.begin(player, id, 0, true)
+			for _, step in ipairs(move.Steps or {}) do
+				if step.Move then
+					task.delay(step.At or 0, function()
+						if active then
+							doMove(step.Move)
+						end
+					end)
+				end
+			end
+			comboSwing = 0
+			return
 		end
 		if tier then
 			Weapon.fx.spin(player, tierIndex) -- (straight away: it's your own)

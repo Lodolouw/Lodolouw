@@ -6,8 +6,9 @@
 -- the grip), TipMark (Tip studs up the weapon) and UpMark (Up studs to
 -- its front: the handle's +Y) - so the game holds it exactly like the
 -- blocky stand-in. The models themselves come in by upload
--- (Tools/Weapons/upload_assets.bat: their ids go in Config.Weapons.ModelIds)
--- or by hand (Studio's 3D Importer, into ReplicatedStorage > WeaponModels).
+-- (Tools/Upload/upload_assets.bat: their ids go in ReplicatedStorage/AssetIds,
+-- and the server loads them into ReplicatedStorage > WeaponModels) or by
+-- hand (Studio's 3D Importer, into that WeaponModels folder).
 -- Parts: how each mesh is coloured (Role "metal" turns gold when the
 -- weapon awakens at mastery 100, "glow" is Neon in the smear's colour).
 return {
@@ -18,6 +19,7 @@ return {
 		Glow = { 110, 230, 90 },
 		Smear = { { 0, 0, 0.4 }, { 0, 0, -0.9 } }, -- (the handle's own space: -Z up the weapon)
 		SmearWide = { { 0, 0, 0.4 }, { 0, 0, -0.9 } },
+		Head = { 0, 0, -0.6 }, -- (the business end: a hammer's head, a blade's tip)
 		Parts = {
 			bubble = { Color = { 235, 255, 225 }, Material = "SmoothPlastic", Transparency = 0.5, Role = "body" },
 			core = { Color = { 26, 38, 22 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
@@ -36,6 +38,7 @@ return {
 		Glow = { 214, 255, 120 },
 		Smear = { { 0, 0, -1.2 }, { 0, 0, -4.6 } }, -- (the handle's own space: -Z up the weapon)
 		SmearWide = { { 0, 0, -0.9 }, { 0, 0, -4.8 } },
+		Head = { 0, 0, -4.75 }, -- (the business end: a hammer's head, a blade's tip)
 		Parts = {
 			bone = { Color = { 234, 212, 170 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
 			bubble = { Color = { 235, 255, 225 }, Material = "SmoothPlastic", Transparency = 0.5, Role = "body" },
@@ -57,6 +60,7 @@ return {
 		Glow = { 214, 255, 120 },
 		Smear = { { -1.3, 0, -3.8 }, { 1.3, 0, -3.8 } }, -- (the handle's own space: -Z up the weapon)
 		SmearWide = { { -1.5, 0, -3.8 }, { 1.5, 0, -3.8 } },
+		Head = { 0, 0, -3.95 }, -- (the business end: a hammer's head, a blade's tip)
 		Parts = {
 			bubble = { Color = { 235, 255, 225 }, Material = "SmoothPlastic", Transparency = 0.5, Role = "body" },
 			core = { Color = { 26, 38, 22 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
@@ -78,11 +82,12 @@ return {
 		Name = "Ooze Daggers", Type = "Daggers", Pack = "Slime", Rarity = "Legendary",
 		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
 		Size = { 0.3, 1.1, 3.2 }, -- (studs: across X, across Y, its length)
-		Glow = { 190, 255, 50 },
+		Glow = { 120, 255, 60 },
 		Smear = { { 0, 0, -0.6 }, { 0, 0, -2.5 } }, -- (the handle's own space: -Z up the weapon)
 		SmearWide = { { 0, 0, -0.4 }, { 0, 0, -2.6 } },
+		Head = { 0, 0, -2.55 }, -- (the business end: a hammer's head, a blade's tip)
 		Parts = {
-			acid = { Color = { 190, 255, 50 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			acid = { Color = { 120, 255, 60 }, Material = "Neon", Transparency = 0, Role = "glow" },
 			goo = { Color = { 105, 210, 70 }, Material = "SmoothPlastic", Transparency = 0.35, Role = "body" },
 			heart = { Color = { 214, 255, 120 }, Material = "Neon", Transparency = 0, Role = "glow" },
 			obsid = { Color = { 25, 60, 62 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
@@ -94,11 +99,12 @@ return {
 		Name = "Acid Scythe", Type = "Scythe", Pack = "Slime", Rarity = "Mythic",
 		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
 		Size = { 4.3, 0.5, 7.4 }, -- (studs: across X, across Y, its length)
-		Glow = { 190, 255, 50 },
+		Glow = { 120, 255, 60 },
 		Smear = { { 0.4, 0, -5.2 }, { 3.9, 0, -4 } }, -- (the handle's own space: -Z up the weapon)
 		SmearWide = { { 0.2, 0, -5.4 }, { 4.1, 0, -3.9 } },
+		Head = { 0, 0, -5.95 }, -- (the business end: a hammer's head, a blade's tip)
 		Parts = {
-			acid = { Color = { 190, 255, 50 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			acid = { Color = { 120, 255, 60 }, Material = "Neon", Transparency = 0, Role = "glow" },
 			goo = { Color = { 105, 210, 70 }, Material = "SmoothPlastic", Transparency = 0.35, Role = "body" },
 			heart = { Color = { 214, 255, 120 }, Material = "Neon", Transparency = 0, Role = "glow" },
 			iron = { Color = { 58, 68, 102 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
@@ -114,11 +120,12 @@ return {
 		Name = "Gelatinous Edge", Type = "Katana", Pack = "Slime", Rarity = "Secret",
 		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
 		Size = { 0.7, 0.9, 6.6 }, -- (studs: across X, across Y, its length)
-		Glow = { 190, 255, 50 },
+		Glow = { 120, 255, 60 },
 		Smear = { { 0, 0, -1.4 }, { 0, 0, -5.5 } }, -- (the handle's own space: -Z up the weapon)
 		SmearWide = { { 0, 0, -1 }, { 0, 0, -5.7 } },
+		Head = { 0, 0, -5.65 }, -- (the business end: a hammer's head, a blade's tip)
 		Parts = {
-			acid = { Color = { 190, 255, 50 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			acid = { Color = { 120, 255, 60 }, Material = "Neon", Transparency = 0, Role = "glow" },
 			bubble = { Color = { 235, 255, 225 }, Material = "SmoothPlastic", Transparency = 0.5, Role = "body" },
 			core = { Color = { 26, 38, 22 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
 			eyeglow = { Color = { 236, 255, 170 }, Material = "Neon", Transparency = 0, Role = "glow" },

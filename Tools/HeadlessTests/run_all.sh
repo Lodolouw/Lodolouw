@@ -28,6 +28,16 @@ run test_drink.luau
 # the test sword: its rules on the server, and how it looks on every screen
 run test_sword.luau
 run test_weaponfx.luau
+# the weapons: owning them, the types' swings, the voxel models held, the
+# abilities' building blocks, every ability move (the server's hits) and how
+# they all look (MoveFX)
+run test_weapon_save.luau
+run test_weapontypes.luau
+run test_swordanims.luau
+run test_voxelhold.luau
+run test_blocks.luau
+run test_moves.luau
+run test_movefx.luau
 run test_swordanims.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau

@@ -3119,8 +3119,8 @@ end
 -- THE LAUNCH WEAPONS (Docs/weapons_plan.md): one pack per Arcade Machine,
 -- on every second floor (1, 3, 5, 7, 9); the even floors' packs come in
 -- updates. Each pack has one weapon of each type, Common to Secret.
--- Commons and Rares are building blocks (above). Epic and up get their own
--- moves later (Todo says what): until then a Burst round you stands in.
+-- Commons and Rares are building blocks (above); Epic and up are moves
+-- (ReplicatedStorage/Moves). Every ability's look: ReplicatedStorage/MoveFX.
 do
 	local L = Config.Weapons.List
 	local RGB = Color3.fromRGB
@@ -3139,6 +3139,9 @@ do
 				Type = w[3],
 				Rarity = rarities[i],
 				Pack = id,
+				-- its voxel model (Tools/Weapons/packs; ReplicatedStorage/WeaponModelInfo):
+				-- until it's loaded, the blocky one made in code in these Colors
+				Model = w[1],
 				Colors = { Blade = main, Edge = WHITE, Guard = accent, Grip = grip },
 				Ability = w[4],
 				Passive = w[5],
@@ -3148,19 +3151,17 @@ do
 		table.insert(Config.Weapons.Packs, { Id = id, Floor = floor, Boss = boss, Color = main, Weapons = list })
 	end
 
-	-- a stand-in ability for Epic and up, until its own move is made: a burst
-	-- round you (bigger the rarer), plus a little effect, and what it'll be
-	local BURST = { Epic = { 10, 1.8 }, Legendary = { 11, 2.1 }, Mythic = { 12, 2.5 }, Secret = { 13, 3.0 } }
+	-- Epic and up: a move (ReplicatedStorage/Moves: what it does step by step -
+	-- dashes, leaps, slams, things thrown - and MoveFX, how it looks), plus any
+	-- building blocks it switches on when you press it
 	local function standIn(name, rarity, color, todo, effects)
-		local b = BURST[rarity]
 		return {
 			Name = name,
 			Cooldown = rarity == "Secret" and 16 or 14,
 			Cost = 25,
 			Aura = color,
 			Effects = effects or {},
-			Burst = { Radius = b[1], Damage = b[2], Delay = 0.15 },
-			Todo = todo,
+			Say = todo,
 		}
 	end
 	local function buffAbility(name, cooldown, color, effects)
