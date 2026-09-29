@@ -138,6 +138,128 @@ WeaponFX.POSES = {
 -- the Whirlwind: a coil back, then arms out and the body turns round on top of wide feet
 WeaponFX.SPIN_COIL = { Root = { 10, 0, -60 }, RS = { -10, -90, 70 }, LS = { -60, 0, -20 }, RH = { -10, 0, -10 }, LH = { -10, 0, -20 }, Neck = { 0, 0, 40 }, Grip = { -85, 0 }, Hop = { 0 } }
 WeaponFX.SPIN = { Root = { 12, 0, 0 }, RS = { -10, -85, 95 }, LS = { -80, 0, 0 }, RH = { -12, 0, 0 }, LH = { -12, 0, 0 }, Neck = { 0, 0, 0 }, Grip = { -85, 0 }, Hop = { 0 } }
+
+-- THE OTHER TYPES (drawn in code until they have uploaded animations). Each
+-- has its own stance, and its string's poses are written as changes to that
+-- stance (P fills in the rest), in the same degrees as above.
+local function P(base, over)
+	local out = {}
+	for key, value in pairs(base) do
+		out[key] = table.clone(over[key] or value)
+	end
+	return out
+end
+WeaponFX.STANCES = {
+	-- gauntlets: a boxer's guard, both fists up
+	Fists = { Root = { 8, 0, -15 }, RS = { -15, -25, 75 }, LS = { -15, 25, -75 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
+	-- the hammer: held across the body in both hands, head up, feet wide
+	Hammer = { Root = { 6, 0, -22 }, RS = { -15, -35, 45 }, LS = { -10, -40, 50 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 16 }, Grip = { -10, 0 }, Hop = { 0 } },
+	-- daggers: low and coiled, a blade forward in each hand
+	Daggers = { Root = { 14, 0, -6 }, RS = { -5, -10, 45 }, LS = { -5, 10, -45 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -80, 0 }, Hop = { 0 } },
+	-- the scythe: the long pole upright on the right, blade high over your shoulder
+	Scythe = { Root = { 4, 0, -24 }, RS = { -20, -20, 50 }, LS = { -10, -45, 60 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 14 }, Grip = { 10, 0 }, Hop = { 0 } },
+	-- the katana: a calm middle guard, blade forward
+	Katana = { Root = { 6, 0, -16 }, RS = { -10, -30, 60 }, LS = { -10, -35, 60 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 12 }, Grip = { -60, 0 }, Hop = { 0 } },
+}
+do
+	local F, H, D, S, K = WeaponFX.STANCES.Fists, WeaponFX.STANCES.Hammer, WeaponFX.STANCES.Daggers, WeaponFX.STANCES.Scythe, WeaponFX.STANCES.Katana
+	WeaponFX.POSES.Fists = {
+		{ -- a right jab
+			coil = P(F, { Root = { 4, 0, -28 }, RS = { -20, -15, 45 } }),
+			cut = P(F, { Root = { 12, 0, 22 }, RS = { -5, 10, 95 }, LS = { -15, 25, -60 }, Neck = { 5, 0, -5 } }),
+			follow = P(F, { Root = { 14, 0, 26 }, RS = { -5, 12, 92 }, LS = { -15, 25, -60 }, Neck = { 5, 0, -8 } }),
+		},
+		{ -- a left hook
+			coil = P(F, { Root = { 6, 0, 28 }, LS = { -45, -30, -60 }, RS = { -15, -25, 60 } }),
+			cut = P(F, { Root = { 12, 0, -30 }, LS = { -15, 45, -92 }, RS = { -15, -25, 60 }, Neck = { 5, 0, 25 } }),
+			follow = P(F, { Root = { 12, 0, -38 }, LS = { -10, 55, -86 }, RS = { -15, -25, 60 }, Neck = { 5, 0, 30 } }),
+		},
+		{ -- the uppercut: dip, then drive up off the floor
+			coil = P(F, { Root = { 22, 0, -25 }, RS = { 0, 0, -5 }, RH = { 0, 0, -30 }, LH = { 0, 0, -35 } }),
+			cut = P(F, { Root = { -12, 0, 18 }, RS = { -10, 15, 170 }, Neck = { -15, 0, 0 }, Hop = { 0.6 } }),
+			follow = P(F, { Root = { -10, 0, 20 }, RS = { -10, 15, 162 }, Neck = { -12, 0, 0 }, Hop = { 0.3 } }),
+		},
+	}
+	WeaponFX.POSES.Hammer = {
+		{ -- a heavy diagonal: from high over the right shoulder down across
+			coil = P(H, { Root = { -10, 0, -45 }, RS = { -40, -45, 170 }, LS = { -30, -30, 150 }, Neck = { 0, 0, 35 }, Grip = { -60, 0 } }),
+			cut = P(H, { Root = { 25, 0, 15 }, RS = { 0, 20, 85 }, LS = { -5, 10, 80 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Grip = { -80, 0 } }),
+			follow = P(H, { Root = { 32, 0, 42 }, RS = { 10, 50, 45 }, LS = { 5, 40, 40 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Neck = { 0, 0, -30 }, Grip = { -80, 15 } }),
+		},
+		{ -- a sweeping backhand at chest height
+			coil = P(H, { Root = { 10, 0, 50 }, RS = { 10, 70, 60 }, LS = { 0, 60, 55 }, Neck = { 0, 0, -35 }, Grip = { -80, 20 } }),
+			cut = P(H, { Root = { 12, 0, -10 }, RS = { -20, -30, 92 }, LS = { -20, -20, 85 }, Grip = { -80, 0 } }),
+			follow = P(H, { Root = { 5, 0, -58 }, RS = { -15, -65, 95 }, LS = { -15, -55, 88 }, Neck = { -5, 0, 38 }, Grip = { -75, -10 } }),
+		},
+		{ -- the overhead slam: up with a little leap, and everything comes down with it
+			coil = P(H, { Root = { -20, 0, -8 }, RS = { 0, 0, 205 }, LS = { 0, 0, 195 }, Neck = { -20, 0, 5 }, Grip = { -40, 0 }, Hop = { 0.7 } }),
+			cut = P(H, { Root = { 42, 0, 0 }, RS = { 0, 5, 82 }, LS = { 0, -5, 78 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 15, 0, 0 }, Grip = { -80, 0 } }),
+			follow = P(H, { Root = { 36, 0, 0 }, RS = { 0, 5, 72 }, LS = { 0, -5, 68 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 20, 0, 0 }, Grip = { -80, 0 } }),
+		},
+	}
+	WeaponFX.POSES.Daggers = {
+		{ -- a right stab
+			coil = P(D, { Root = { 10, 0, -25 }, RS = { -10, -25, 20 } }),
+			cut = P(D, { Root = { 18, 0, 18 }, RS = { 0, 5, 95 }, Neck = { -6, 0, -8 } }),
+			follow = P(D, { Root = { 18, 0, 20 }, RS = { 0, 8, 92 }, Neck = { -6, 0, -8 } }),
+		},
+		{ -- a left stab
+			coil = P(D, { Root = { 10, 0, 25 }, LS = { -10, 25, -20 } }),
+			cut = P(D, { Root = { 18, 0, -18 }, LS = { 0, -5, -95 }, Neck = { -6, 0, 12 } }),
+			follow = P(D, { Root = { 18, 0, -20 }, LS = { 0, -8, -92 }, Neck = { -6, 0, 12 } }),
+		},
+		{ -- a right slash across
+			coil = P(D, { Root = { 8, 0, -40 }, RS = { -30, -70, 110 }, Neck = { -6, 0, 30 } }),
+			cut = P(D, { Root = { 16, 0, 10 }, RS = { 0, 25, 92 } }),
+			follow = P(D, { Root = { 18, 0, 40 }, RS = { 10, 65, 60 }, Neck = { -6, 0, -25 } }),
+		},
+		{ -- both blades crossing, with a hop in
+			coil = P(D, { Root = { 0, 0, 0 }, RS = { -30, -40, 150 }, LS = { -30, 40, -150 }, Hop = { 0.35 } }),
+			cut = P(D, { Root = { 24, 0, 0 }, RS = { 0, 40, 82 }, LS = { 0, -40, -82 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 } }),
+			follow = P(D, { Root = { 24, 0, 0 }, RS = { 10, 60, 50 }, LS = { 10, -60, -50 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 } }),
+		},
+	}
+	WeaponFX.POSES.Scythe = {
+		{ -- a wide sweep, right to left, blade low
+			coil = P(S, { Root = { 0, 0, -65 }, RS = { -50, -80, 80 }, LS = { -40, -60, 70 }, Neck = { 0, 0, 40 }, Grip = { -80, 0 } }),
+			cut = P(S, { Root = { 12, 0, 0 }, RS = { -40, 0, 90 }, LS = { -35, 10, 85 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Grip = { -85, 0 } }),
+			follow = P(S, { Root = { 16, 0, 62 }, RS = { -30, 70, 80 }, LS = { -30, 70, 75 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Neck = { 0, 0, -35 }, Grip = { -85, 10 } }),
+		},
+		{ -- sweeping back, left to right
+			coil = P(S, { Root = { 10, 0, 58 }, RS = { -30, 70, 70 }, LS = { -30, 65, 68 }, Neck = { 0, 0, -38 }, Grip = { -85, 10 } }),
+			cut = P(S, { Root = { 8, 0, -5 }, RS = { -40, -10, 90 }, LS = { -35, -5, 85 }, Grip = { -85, 0 } }),
+			follow = P(S, { Root = { 2, 0, -62 }, RS = { -45, -80, 85 }, LS = { -40, -70, 80 }, Neck = { 0, 0, 40 }, Grip = { -80, 0 } }),
+		},
+		{ -- a full turn with the blade out
+			coil = P(S, { Root = { 8, 0, -90 }, RS = { -55, -85, 80 }, LS = { -45, -70, 70 }, Neck = { 0, 0, 45 }, Grip = { -85, 0 } }),
+			cut = P(S, { Root = { 14, 0, 40 }, RS = { -45, 0, 90 }, LS = { -40, 0, 85 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Grip = { -90, 0 } }),
+			follow = P(S, { Root = { 16, 0, 160 }, RS = { -40, 30, 88 }, LS = { -35, 30, 82 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Neck = { 0, 0, -40 }, Grip = { -90, 0 } }),
+		},
+	}
+	WeaponFX.POSES.Katana = {
+		{ -- a fast flat cut, right to left
+			coil = P(K, { Root = { 0, 0, -45 }, RS = { -35, -60, 110 }, LS = { -30, -50, 100 }, Neck = { 0, 0, 32 }, Grip = { -80, 0 } }),
+			cut = P(K, { Root = { 14, 0, 12 }, RS = { -10, 20, 92 }, LS = { -10, 25, 88 }, Grip = { -82, 0 } }),
+			follow = P(K, { Root = { 18, 0, 45 }, RS = { 0, 60, 70 }, LS = { 0, 60, 66 }, Neck = { 0, 0, -30 }, Grip = { -80, 15 } }),
+		},
+		{ -- a rising cut, low left to high right
+			coil = P(K, { Root = { 14, 0, 38 }, RS = { 15, 65, 45 }, LS = { 10, 60, 42 }, Neck = { 0, 0, -32 }, Grip = { -70, 25 } }),
+			cut = P(K, { Root = { 8, 0, -8 }, RS = { -12, -10, 108 }, LS = { -12, -5, 104 }, Grip = { -78, 0 } }),
+			follow = P(K, { Root = { -4, 0, -45 }, RS = { -8, -25, 128 }, LS = { -8, -20, 124 }, Neck = { -8, 0, 35 }, Grip = { -60, -10 } }),
+		},
+		{ -- the dashing thrust
+			coil = P(K, { Root = { -5, 0, -35 }, RS = { -10, -15, 55 }, LS = { -10, -20, 55 }, RH = { 0, 0, 10 }, Grip = { -88, 0 } }),
+			cut = P(K, { Root = { 32, 0, 0 }, RS = { 0, 0, 96 }, LS = { 0, -5, 94 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -90, 0 } }),
+			follow = P(K, { Root = { 26, 0, 8 }, RS = { 0, 0, 92 }, LS = { 0, -5, 90 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -90, 0 } }),
+		},
+	}
+end
+
+-- a weapon's stance (its type's, or the sword's)
+local function stanceOf(def)
+	return WeaponFX.STANCES[def and def.Type or ""] or WeaponFX.STANCE
+end
+WeaponFX.stanceOf = stanceOf
 WeaponFX.JOINTS = { "Root", "RS", "LS", "RH", "LH", "Neck" }
 -- the springs: how quickly each part follows (the first number) and how much
 -- it's allowed to overshoot (the second: 1 = none, lower = more bounce)
@@ -385,6 +507,133 @@ local function buildSword(def, golden)
 	}
 	return model, handle, trails, blade
 end
+
+-- THE OTHER TYPES as chunky blocks, the same way: a Handle that's held, the
+-- rest welded to it along its -Z. Each gives back the model, the handle, its
+-- two smears and the part they follow.
+local function blockKit(def, golden)
+	local c = def.Colors or {}
+	local model = Instance.new("Model")
+	model.Name = "HeldWeapon"
+	local kit = {
+		model = model,
+		metal = golden and GOLD or (c.Blade or Color3.fromRGB(192, 203, 220)),
+		shine = golden and Enum.Material.Neon or Enum.Material.SmoothPlastic,
+		accent = c.Guard or GOLD,
+		grip = c.Grip or Color3.fromRGB(115, 62, 57),
+		glow = golden and GOLD or GLOW,
+	}
+	function kit.piece(name, size, offset, color, material, parentModel)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.Material = material or Enum.Material.SmoothPlastic
+		p.CanCollide, p.CanTouch, p.CanQuery, p.CastShadow = false, false, false, false
+		p.Massless = true
+		if kit.handle then
+			p.CFrame = kit.handle.CFrame * offset
+			local weld = Instance.new("Weld")
+			weld.Part0, weld.Part1 = kit.handle, p
+			weld.C0 = offset
+			weld.Parent = p
+		end
+		p.Parent = parentModel or model
+		return p
+	end
+	-- a smear following `part` between two points on it (its own space)
+	function kit.smear(part, name, from, to, color, see, life)
+		local a0 = Instance.new("Attachment")
+		a0.Name = name .. "Base"
+		a0.Position = from
+		a0.Parent = part
+		local a1 = Instance.new("Attachment")
+		a1.Name = name .. "Tip"
+		a1.Position = to
+		a1.Parent = part
+		local trail = Instance.new("Trail")
+		trail.Name = name
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
+		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, see), NumberSequenceKeypoint.new(0.55, 0.65), NumberSequenceKeypoint.new(1, 1) })
+		trail.LightEmission = 1
+		trail.Lifetime = life
+		trail.MinLength = 0.02
+		trail.WidthScale = NumberSequence.new(1, 0.35)
+		trail.Enabled = false
+		trail.Parent = part
+		return trail
+	end
+	function kit.trails(part, from, to, wideFrom, wideTo)
+		return {
+			kit.smear(part, "SwingTrail", from, to, kit.glow, 0, 0.2),
+			kit.smear(part, "SwingGlow", wideFrom or from, wideTo or to, golden and GOLD or Color3.fromRGB(120, 200, 255), 0.5, 0.28),
+		}
+	end
+	return kit
+end
+
+local BUILDERS = {}
+-- gauntlets: a big blocky glove round the fist (the second one, on the left
+-- hand, is made the same way: see OFFHAND)
+function BUILDERS.Fists(def, golden)
+	local k = blockKit(def, golden)
+	k.handle = k.piece("Handle", Vector3.new(1.2, 1.2, 1.25), CFrame.new(), k.metal, k.shine)
+	k.piece("Cuff", Vector3.new(1.3, 1.3, 0.35), CFrame.new(0, 0, 0.7), k.accent)
+	k.piece("Knuckles", Vector3.new(1.25, 0.35, 0.5), CFrame.new(0, 0.1, -0.55) * CFrame.new(0, 0, 0), k.glow, Enum.Material.Neon)
+	return k.model, k.handle, k.trails(k.handle, Vector3.new(0, 0, 0.6), Vector3.new(0, 0, -0.8)), k.handle
+end
+-- the hammer: a long handle and a big blocky head across the end of it
+function BUILDERS.Hammer(def, golden)
+	local k = blockKit(def, golden)
+	k.handle = k.piece("Handle", Vector3.new(0.4, 0.4, 1.2), CFrame.new(), k.grip)
+	k.piece("Shaft", Vector3.new(0.34, 0.34, 3.4), CFrame.new(0, 0, -2.2), k.grip)
+	k.piece("Pommel", Vector3.new(0.55, 0.55, 0.45), CFrame.new(0, 0, 0.75), k.accent)
+	local head = k.piece("Head", Vector3.new(2.8, 1.5, 1.5), CFrame.new(0, 0, -4.4), k.metal, k.shine)
+	k.piece("FaceL", Vector3.new(0.3, 1.7, 1.7), CFrame.new(-1.45, 0, -4.4), k.accent)
+	k.piece("FaceR", Vector3.new(0.3, 1.7, 1.7), CFrame.new(1.45, 0, -4.4), k.accent)
+	k.piece("Band", Vector3.new(2.9, 0.3, 1.6), CFrame.new(0, 0, -4.4), k.glow, Enum.Material.Neon)
+	return k.model, k.handle, k.trails(head, Vector3.new(0, 0, 0.8), Vector3.new(0, 0, -0.8), Vector3.new(0, 0, 2), Vector3.new(0, 0, -1)), head
+end
+-- a dagger: a short blade (one in each hand: see OFFHAND)
+function BUILDERS.Daggers(def, golden)
+	local k = blockKit(def, golden)
+	k.handle = k.piece("Handle", Vector3.new(0.3, 0.3, 0.7), CFrame.new(), k.grip)
+	k.piece("Guard", Vector3.new(0.9, 0.25, 0.25), CFrame.new(0, 0, -0.45), k.accent)
+	local blade = k.piece("Blade", Vector3.new(0.22, 0.5, 1.7), CFrame.new(0, 0, -1.4), k.metal, k.shine)
+	k.piece("Edge", Vector3.new(0.24, 0.12, 1.6), CFrame.new(0, 0.22, -1.4), k.glow, Enum.Material.Neon)
+	k.piece("Tip", Vector3.new(0.22, 0.3, 0.3), CFrame.new(0, 0.05, -2.35), k.metal, k.shine)
+	return k.model, k.handle, k.trails(blade, Vector3.new(0, 0, 0.6), Vector3.new(0, 0, -0.9), Vector3.new(0, 0, 0.9), Vector3.new(0, 0, -1.2)), blade
+end
+-- the scythe: a long pole and a curved blade off its end
+function BUILDERS.Scythe(def, golden)
+	local k = blockKit(def, golden)
+	k.handle = k.piece("Handle", Vector3.new(0.34, 0.34, 1.2), CFrame.new(), k.grip)
+	k.piece("Pole", Vector3.new(0.3, 0.3, 5.4), CFrame.new(0, 0, -2.4), k.grip)
+	k.piece("Butt", Vector3.new(0.45, 0.45, 0.4), CFrame.new(0, 0, 0.75), k.accent)
+	k.piece("Collar", Vector3.new(0.5, 0.5, 0.5), CFrame.new(0, 0, -5.1), k.accent)
+	-- the blade sweeps out to the right (+X) and curves back towards you
+	local blade = k.piece("Blade", Vector3.new(2.4, 0.18, 0.7), CFrame.new(1.3, 0, -5.1), k.metal, k.shine)
+	k.piece("Blade2", Vector3.new(1.4, 0.18, 0.55), CFrame.new(2.9, 0, -4.75) * CFrame.Angles(0, math.rad(-28), 0), k.metal, k.shine)
+	k.piece("Point", Vector3.new(0.7, 0.18, 0.35), CFrame.new(3.75, 0, -4.2) * CFrame.Angles(0, math.rad(-55), 0), k.metal, k.shine)
+	k.piece("Edge", Vector3.new(2.4, 0.2, 0.14), CFrame.new(1.3, 0, -4.78), k.glow, Enum.Material.Neon)
+	return k.model, k.handle, k.trails(blade, Vector3.new(-1.1, 0, 0), Vector3.new(2.4, 0, 0.6), Vector3.new(-1.1, 0, 0.2), Vector3.new(2.9, 0, 0.9)), blade
+end
+-- the katana: a long, slim blade, a round guard, a wrapped grip
+function BUILDERS.Katana(def, golden)
+	local k = blockKit(def, golden)
+	k.handle = k.piece("Handle", Vector3.new(0.3, 0.34, 1.3), CFrame.new(0, 0, 0.1), k.grip)
+	k.piece("Guard", Vector3.new(0.85, 0.85, 0.16), CFrame.new(0, 0, -0.62), k.accent)
+	local blade = k.piece("Blade", Vector3.new(0.16, 0.42, 4.4), CFrame.new(0, 0, -2.95), k.metal, k.shine)
+	k.piece("Edge", Vector3.new(0.18, 0.1, 4.3), CFrame.new(0, 0.2, -2.95), k.glow, Enum.Material.Neon)
+	k.piece("Tip", Vector3.new(0.16, 0.3, 0.4), CFrame.new(0, 0.1, -5.3) * CFrame.Angles(math.rad(-15), 0, 0), k.metal, k.shine)
+	return k.model, k.handle, k.trails(blade, Vector3.new(0, 0, 1.2), Vector3.new(0, 0, -2.1), Vector3.new(0, 0, 1.8), Vector3.new(0, 0, -2.6)), blade
+end
+-- the types that hold a second one in the left hand, and how it's held
+WeaponFX.OFFHAND = {
+	Fists = { -90, 0 },
+	Daggers = { -80, 0 },
+}
 
 -- the 3D weapons (Tools/Weapons: pixel sprites made 3D in Blender, imported
 -- into ReplicatedStorage with Studio's 3D Importer): how long each is (studs,
@@ -896,9 +1145,31 @@ local function hold(plr, char, id, def, tracks)
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
 	local model, handle, trails, blade = buildModelSword(def, golden)
 	if not model then
-		model, handle, trails, blade = buildSword(def, golden)
+		local builder = BUILDERS[def.Type] or buildSword
+		model, handle, trails, blade = builder(def, golden)
 	end
-	local g = WeaponFX.STANCE.Grip
+	-- a second one in the left hand (gauntlets, daggers): held still at the
+	-- hand; the string's poses swing the left arm for its blows
+	local off = WeaponFX.OFFHAND[def.Type]
+	local leftArm = char:FindFirstChild("Left Arm")
+	if off and leftArm and BUILDERS[def.Type] then
+		local offModel, offHandle, offTrails = BUILDERS[def.Type](def, golden)
+		offHandle.CFrame = leftArm.CFrame * gripAt(off[1], off[2])
+		local w = Instance.new("Weld")
+		w.Name = "OffGrip"
+		w.Part0, w.Part1 = leftArm, offHandle
+		w.C0 = gripAt(off[1], off[2])
+		w.Parent = offHandle
+		for _, t in ipairs(offTrails) do
+			table.insert(trails, t)
+		end
+		for _, child in ipairs(offModel:GetChildren()) do
+			child.Parent = model
+		end
+		offModel:Destroy()
+	end
+	local base = stanceOf(def)
+	local g = base.Grip
 	handle.CFrame = arm.CFrame * gripAt(g[1], g[2])
 	-- held by a Motor6D (Right Arm -> Handle), so the uploaded animations can
 	-- swing the blade too (they pose "Handle" under "Right Arm"). Made in
@@ -917,7 +1188,7 @@ local function hold(plr, char, id, def, tracks)
 	end
 	-- the springs start where the stance is
 	local springs = {}
-	for key, value in pairs(WeaponFX.STANCE) do
+	for key, value in pairs(base) do
 		springs[key] = { p = table.clone(value), v = table.create(#value, 0) }
 	end
 	held[plr] = {
@@ -967,7 +1238,7 @@ local function startSwing(h, n)
 	if not (s and keys and keys[n]) then
 		return
 	end
-	h.anim = { kind = "swing", t = 0, swing = s, m = WeaponFX.swingMoments(s), keys = keys[n], n = n, sound = kind.Sounds and kind.Sounds.Swing, from = h.springs and whereNow(h) }
+	h.anim = { kind = "swing", t = 0, swing = s, m = WeaponFX.swingMoments(s), keys = keys[n], n = n, slam = kind.SlamSwing == n, sound = kind.Sounds and kind.Sounds.Swing, from = h.springs and whereNow(h) }
 	h.freeze = 0
 end
 
@@ -1074,7 +1345,7 @@ local function targetFor(plr, h, dt)
 	-- the stance, breathing, and slowly shifting its weight from foot to foot
 	local breathe = math.sin(h.clock * 1.7)
 	local shift = 0.75 * math.sin(h.clock * 0.6) + 0.25 * math.sin(h.clock * 1.35 + 1.1)
-	local stance = copyPose(WeaponFX.STANCE)
+	local stance = copyPose(stanceOf(h.def))
 	stance.Root[1] = stance.Root[1] + 1.2 * breathe
 	stance.Root[2] = stance.Root[2] + 1.2 * shift
 	stance.Root[3] = stance.Root[3] + 3 * shift
@@ -1183,7 +1454,7 @@ local function targetFor(plr, h, dt)
 					-- the whoosh, as the cut starts (a touch different every time, so a string never sounds canned)
 					playAt(a.sound, h.handle, (1.08 - 0.06 * a.n) * (0.96 + 0.08 * math.random()))
 				end
-				if a.n == 3 and not a.slammed and a.t >= m.contact then
+				if a.slam and not a.slammed and a.t >= m.contact then
 					a.slammed = true
 					a.slamNow = true -- (the finisher hits the floor: see stepOne)
 				end

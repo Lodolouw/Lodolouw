@@ -2927,6 +2927,76 @@ Config.Weapons = {
 			HeavyHitStop = 0.12, -- the finisher, a crit, the last spin
 			ImpactFrames = true,
 			ComboCounter = true, -- "12 HITS" climbing while you keep hitting
+			SlamSwing = 3, -- (the finisher's blade hits the floor: a shockwave)
+		},
+		-- (the types below have no uploaded animations yet: their swings are
+		-- drawn in code - WeaponFX.POSES / STANCES - until they do)
+		Fists = { -- gauntlets: fast and short - a jab, a hook, an uppercut
+			Window = 0.7,
+			Swings = {
+				{ Damage = 1.0, Lock = 0.38, Contact = 0.45, Cost = 7, Range = 6.5, Arc = 45, Lunge = 2.5 }, -- a right jab
+				{ Damage = 1.0, Lock = 0.38, Contact = 0.45, Cost = 7, Range = 6.5, Arc = 55, Lunge = 2.5 }, -- a left hook
+				{ Damage = 1.5, Lock = 0.55, Contact = 0.5, Cost = 11, Range = 7, Arc = 45, Lunge = 4 }, -- a rising uppercut
+			},
+			Sounds = { Swing = "Fist Swing", Hit = "Sword Hit" },
+			HitStop = 0.05,
+			HeavyHitStop = 0.11,
+			ImpactFrames = true,
+			ComboCounter = true,
+		},
+		Hammer = { -- slow and heavy: two big swings and an overhead slam
+			Window = 1.1,
+			Swings = {
+				{ Damage = 1.35, Lock = 0.75, Contact = 0.55, Cost = 14, Range = 10, Arc = 70, Lunge = 2.5 }, -- a heavy diagonal
+				{ Damage = 1.35, Lock = 0.75, Contact = 0.55, Cost = 14, Range = 10, Arc = 75, Lunge = 2.5 }, -- a sweeping backhand
+				{ Damage = 2.2, Lock = 1.0, Contact = 0.6, Cost = 20, Range = 11, Arc = 45, Lunge = 4 }, -- the overhead slam
+			},
+			Sounds = { Swing = "Hammer Swing", Hit = "Hammer Hit" },
+			HitStop = 0.09,
+			HeavyHitStop = 0.18,
+			ImpactFrames = true,
+			ComboCounter = true,
+			SlamSwing = 3,
+		},
+		Daggers = { -- fast stabs, one in each hand: four quick cuts, the last a crossing slash
+			Window = 0.65,
+			Swings = {
+				{ Damage = 0.7, Lock = 0.3, Contact = 0.45, Cost = 6, Range = 7, Arc = 50, Lunge = 3 }, -- a right stab
+				{ Damage = 0.7, Lock = 0.3, Contact = 0.45, Cost = 6, Range = 7, Arc = 50, Lunge = 3 }, -- a left stab
+				{ Damage = 0.7, Lock = 0.3, Contact = 0.45, Cost = 6, Range = 7, Arc = 60, Lunge = 3 }, -- a right slash
+				{ Damage = 1.2, Lock = 0.5, Contact = 0.5, Cost = 10, Range = 8, Arc = 60, Lunge = 5 }, -- both blades crossing
+			},
+			Sounds = { Swing = "Dagger Swing", Hit = "Sword Hit" },
+			HitStop = 0.04,
+			HeavyHitStop = 0.1,
+			ImpactFrames = true,
+			ComboCounter = true,
+		},
+		Scythe = { -- wide, slow sweeps that cut everything round you
+			Window = 1.0,
+			Swings = {
+				{ Damage = 1.1, Lock = 0.65, Contact = 0.5, Cost = 12, Range = 12, Arc = 110, Lunge = 2 }, -- a wide sweep
+				{ Damage = 1.1, Lock = 0.65, Contact = 0.5, Cost = 12, Range = 12, Arc = 110, Lunge = 2 }, -- sweeping back
+				{ Damage = 1.8, Lock = 0.9, Contact = 0.55, Cost = 18, Range = 13, Arc = 180, Lunge = 2 }, -- a full turn
+			},
+			Sounds = { Swing = "Scythe Swing", Hit = "Sword Hit" },
+			HitStop = 0.06,
+			HeavyHitStop = 0.13,
+			ImpactFrames = true,
+			ComboCounter = true,
+		},
+		Katana = { -- fast, light slashes and a dashing thrust
+			Window = 0.8,
+			Swings = {
+				{ Damage = 0.9, Lock = 0.4, Contact = 0.4, Cost = 8, Range = 10, Arc = 55, Lunge = 4 }, -- a fast flat cut
+				{ Damage = 0.9, Lock = 0.4, Contact = 0.4, Cost = 8, Range = 10, Arc = 55, Lunge = 4 }, -- a rising cut
+				{ Damage = 1.4, Lock = 0.6, Contact = 0.45, Cost = 12, Range = 11, Arc = 40, Lunge = 8 }, -- the dashing thrust
+			},
+			Sounds = { Swing = "Katana Swing", Hit = "Sword Hit" },
+			HitStop = 0.05,
+			HeavyHitStop = 0.12,
+			ImpactFrames = true,
+			ComboCounter = true,
 		},
 	},
 
@@ -3034,8 +3104,6 @@ end
 -- updates. Each pack has one weapon of each type, Common to Secret.
 -- Commons and Rares are building blocks (above). Epic and up get their own
 -- moves later (Todo says what): until then a Burst round you stands in.
--- (Weapons of a type that isn't in Config.Weapons.Types yet can be owned but
--- swing like fists until that type's moveset is in.)
 do
 	local L = Config.Weapons.List
 	local RGB = Color3.fromRGB
