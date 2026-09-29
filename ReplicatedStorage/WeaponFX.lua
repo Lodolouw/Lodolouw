@@ -1122,7 +1122,8 @@ local function hold(plr, char, id, def, tracks)
 	end
 	-- the weapon type's baked animations, if it has them (and no uploaded ones)
 	local kind = W.Types[def.Type]
-	local clips = not (kind and kind.Animations) and WeaponFX.clipsFor(def.Type) or nil
+	local ids = animsOf(def)
+	local clips = not (ids and #ids.swings > 0) and WeaponFX.clipsFor(def.Type) or nil
 	-- a second one in the left hand (gauntlets, daggers): held still at the
 	-- hand; the string's poses swing the left arm for its blows
 	local off = (clips and clips.offhand) or WeaponFX.OFFHAND[def.Type]
@@ -1468,7 +1469,8 @@ local function targetFor(plr, h, dt)
 	end
 	if swingTrack then
 		-- an uploaded swing: the smear between its Cut and Through, the whoosh as it cuts
-		local cut = WeaponFX.ANIM_CUTS[swingN] or WeaponFX.ANIM_CUTS[1]
+		local kindCuts = h.def and W.Types[h.def.Type] and W.Types[h.def.Type].AnimCuts
+		local cut = (kindCuts or WeaponFX.ANIM_CUTS)[swingN] or WeaponFX.ANIM_CUTS[1]
 		local ok, tp = pcall(function()
 			return swingTrack.TimePosition
 		end)

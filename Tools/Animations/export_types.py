@@ -121,6 +121,7 @@ def main():
 
     if '--rbxmx' in sys.argv:
         import export_rbxmx as ex
+        ex.FPS = 30  # (half the sword's keyframes: the file's big enough)
         for kind, names in wt.STRINGS.items():
             for name in names[1:]:
                 s = wt.ANIMS[name]

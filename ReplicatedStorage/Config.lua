@@ -2932,6 +2932,11 @@ Config.Weapons = {
 		-- (the types below have no uploaded animations yet: their swings are
 		-- drawn in code - WeaponFX.POSES / STANCES - until they do)
 		Fists = { -- gauntlets: fast and short - a jab, a hook, an uppercut
+			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
+			-- then publish FistsIdle, FistsSwing1.. from Studio like the sword's and paste the ids;
+			-- until then the baked clips play)
+			Animations = { Idle = "", Swings = { "", "", "" } },
+			AnimCuts = { { 0.1, 0.24 }, { 0.1, 0.26 }, { 0.18, 0.36 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 0.7,
 			Swings = {
 				{ Damage = 1.0, Lock = 0.38, Contact = 0.45, Cost = 7, Range = 6.5, Arc = 45, Lunge = 2.5 }, -- a right jab
@@ -2945,6 +2950,11 @@ Config.Weapons = {
 			ComboCounter = true,
 		},
 		Hammer = { -- slow and heavy: two big swings and an overhead slam
+			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
+			-- then publish HammerIdle, HammerSwing1.. from Studio like the sword's and paste the ids;
+			-- until then the baked clips play)
+			Animations = { Idle = "", Swings = { "", "", "" } },
+			AnimCuts = { { 0.3, 0.56 }, { 0.3, 0.56 }, { 0.46, 0.72 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 1.1,
 			Swings = {
 				{ Damage = 1.35, Lock = 0.75, Contact = 0.55, Cost = 14, Range = 10, Arc = 70, Lunge = 2.5 }, -- a heavy diagonal
@@ -2959,6 +2969,11 @@ Config.Weapons = {
 			SlamSwing = 3,
 		},
 		Daggers = { -- fast stabs, one in each hand: four quick cuts, the last a crossing slash
+			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
+			-- then publish DaggersIdle, DaggersSwing1.. from Studio like the sword's and paste the ids;
+			-- until then the baked clips play)
+			Animations = { Idle = "", Swings = { "", "", "", "" } },
+			AnimCuts = { { 0.08, 0.2 }, { 0.08, 0.2 }, { 0.07, 0.22 }, { 0.16, 0.34 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 0.65,
 			Swings = {
 				{ Damage = 0.7, Lock = 0.3, Contact = 0.45, Cost = 6, Range = 7, Arc = 50, Lunge = 3 }, -- a right stab
@@ -2973,6 +2988,11 @@ Config.Weapons = {
 			ComboCounter = true,
 		},
 		Scythe = { -- wide, slow sweeps that cut everything round you
+			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
+			-- then publish ScytheIdle, ScytheSwing1.. from Studio like the sword's and paste the ids;
+			-- until then the baked clips play)
+			Animations = { Idle = "", Swings = { "", "", "" } },
+			AnimCuts = { { 0.22, 0.48 }, { 0.22, 0.48 }, { 0.36, 0.8 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 1.0,
 			Swings = {
 				{ Damage = 1.1, Lock = 0.65, Contact = 0.5, Cost = 12, Range = 12, Arc = 110, Lunge = 2 }, -- a wide sweep
@@ -2986,6 +3006,11 @@ Config.Weapons = {
 			ComboCounter = true,
 		},
 		Katana = { -- fast, light slashes and a dashing thrust
+			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
+			-- then publish KatanaIdle, KatanaSwing1.. from Studio like the sword's and paste the ids;
+			-- until then the baked clips play)
+			Animations = { Idle = "", Swings = { "", "", "" } },
+			AnimCuts = { { 0.1, 0.32 }, { 0.1, 0.32 }, { 0.18, 0.36 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 0.8,
 			Swings = {
 				{ Damage = 0.9, Lock = 0.4, Contact = 0.4, Cost = 8, Range = 10, Arc = 55, Lunge = 4 }, -- a fast flat cut
