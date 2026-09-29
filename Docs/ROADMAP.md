@@ -94,6 +94,7 @@ weapons plan.
 
 ## 5. The new screen and the cuts
 
+- [ ] **The window look everywhere** (you asked for old-computer windows, made loud): `ReplicatedStorage/WindowKit` - the Arcade has it (`Docs/arcade_screens.png`); next the HUD, the Weapons panel, the Quest Board, the Spire menu and the pop-ups.
 - [ ] **The new GUI** (sketch: `Previews/gui_sketch.html`):
   - a top bar with level + XP, coins and **Arcade Tokens [+]**
   - four buttons: **ROLL, BAG, SHOP, QUESTS**, with red dots

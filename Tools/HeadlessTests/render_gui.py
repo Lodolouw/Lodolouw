@@ -8,6 +8,8 @@ puts them on a 1280x720 screen - laid out in a grid with captions.
 
   --bg FILE      a picture of the world behind the screen (else dark)
   --font FILE    the game's font (FredokaOne); DejaVu Sans Bold if not given
+  --pixel FILE   the pixel font (Press Start 2P: Roblox's "Arcade"), for text
+                 that uses it; the game font if not given
   --extra FILE "CAPTION"   one more panel: a ready-made picture
   --only N,M     just those snapshots (1 = the first)
 A ViewportFrame with a "SnapImage" attribute gets that weapon's picture from
@@ -26,6 +28,7 @@ ap.add_argument("snaps")
 ap.add_argument("out")
 ap.add_argument("--bg", default="")
 ap.add_argument("--font", default="")
+ap.add_argument("--pixel", default="")
 ap.add_argument("--cols", type=int, default=2)
 ap.add_argument("--panel", type=int, default=800)  # each panel's width in the picture
 ap.add_argument("--title", default="")
@@ -37,6 +40,8 @@ SW, SH = 1280, 720
 SS = 2  # drawn this much bigger, then shrunk (smooth edges)
 BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT = args.font if args.font and os.path.exists(args.font) else BOLD
+PIXEL = args.pixel if args.pixel and os.path.exists(args.pixel) else FONT
+PIXEL_FONTS = {"Arcade", "PressStart2P"}
 
 _fonts = {}
 
@@ -52,24 +57,26 @@ def font(path, size):
 _has = {}
 
 
-def has_glyph(ch):
-    if FONT == BOLD:
+def has_glyph(ch, main=None):
+    main = main or FONT
+    if main == BOLD:
         return True
-    if ch not in _has:
-        f = font(FONT, 40)
+    if (main, ch) not in _has:
+        f = font(main, 40)
 
         def look(c):
             m = f.getmask(c)
             return (m.size, bytes(m))
 
-        _has[ch] = ch.isspace() or look(ch) != look(chr(0xFFFF))
-    return _has[ch]
+        _has[(main, ch)] = ch.isspace() or look(ch) != look(chr(0xFFFF))
+    return _has[(main, ch)]
 
 
-def runs(text):
+def runs(text, main=None):
+    main = main or FONT
     out = []
     for ch in text:
-        path = FONT if has_glyph(ch) else BOLD
+        path = main if has_glyph(ch, main) else BOLD
         if out and out[-1][0] == path:
             out[-1][1] += ch
         else:
@@ -77,17 +84,17 @@ def runs(text):
     return out
 
 
-def text_width(text, size):
-    return sum(font(p, size).getlength(t) for p, t in runs(text))
+def text_width(text, size, main=None):
+    return sum(font(p, size).getlength(t) for p, t in runs(text, main))
 
 
-def wrap(text, size, width):
+def wrap(text, size, width, main=None):
     lines = []
     for para in text.split("\n"):
         words, line = para.split(" "), ""
         for w in words:
             test = (line + " " + w) if line else w
-            if text_width(test, size) <= width or not line:
+            if text_width(test, size, main) <= width or not line:
                 line = test
             else:
                 lines.append(line)
@@ -96,17 +103,17 @@ def wrap(text, size, width):
     return lines
 
 
-def fit(text, box, size, wrapped):
+def fit(text, box, size, wrapped, main=None):
     """(font size, lines) so the words fit the box (TextScaled when size is None)"""
     w, h = box[2] - box[0], box[3] - box[1]
     if size is not None:
-        return size, (wrap(text, size, w) if wrapped else text.split("\n"))
+        return size, (wrap(text, size, w, main) if wrapped else text.split("\n"))
     lo, hi, best = 4, max(4, int(h * 1.02)), (4, [text])
     while lo <= hi:
         mid = (lo + hi) // 2
-        lines = wrap(text, mid, w) if wrapped else text.split("\n")
+        lines = wrap(text, mid, w, main) if wrapped else text.split("\n")
         tall = len(lines) * mid * 1.05
-        wide = max(text_width(l, mid) for l in lines)
+        wide = max(text_width(l, mid, main) for l in lines)
         if tall <= h and wide <= w:
             best = (mid, lines)
             lo = mid + 1
@@ -194,7 +201,8 @@ def draw_text(layer, item):
     box = [v * SS for v in item["box"]]
     size = item.get("size")
     size = size * SS if size is not None else None
-    fsize, lines = fit(item["s"], box, size, item.get("wrap", False))
+    main = PIXEL if item.get("f") in PIXEL_FONTS else FONT
+    fsize, lines = fit(item["s"], box, size, item.get("wrap", False), main)
     line_h = fsize * 1.05
     total = line_h * len(lines)
     ya = item.get("ya", "C")
@@ -206,10 +214,10 @@ def draw_text(layer, item):
     d = ImageDraw.Draw(layer)
     md = ImageDraw.Draw(mask) if mask else None
     for line in lines:
-        wide = text_width(line, fsize)
+        wide = text_width(line, fsize, main)
         xa = item.get("xa", "C")
         x = box[0] if xa == "L" else (box[2] - wide if xa == "R" else (box[0] + box[2]) / 2 - wide / 2)
-        for path, part in runs(line):
+        for path, part in runs(line, main):
             f = font(path, fsize)
             top = y + (fsize * 0.05)
             if outline:
@@ -237,7 +245,8 @@ def clipped(layer, it):
     if not c:
         return layer
     m = Image.new("L", layer.size, 0)
-    ImageDraw.Draw(m).rectangle([c[0] * SS, c[1] * SS, c[2] * SS - 1, c[3] * SS - 1], fill=255)
+    if c[2] > c[0] and c[3] > c[1]:  # (a clip box can be empty: all of it is cut away)
+        ImageDraw.Draw(m).rectangle([c[0] * SS, c[1] * SS, max(c[0] * SS, c[2] * SS - 1), max(c[1] * SS, c[3] * SS - 1)], fill=255)
     a = layer.getchannel("A")
     layer.putalpha(Image.composite(a, Image.new("L", layer.size, 0), m))
     return layer

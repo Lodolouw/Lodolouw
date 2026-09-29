@@ -318,6 +318,7 @@ return function(root, caption, SW, SH)
 					xa = obj.TextXAlignment and string.sub(obj.TextXAlignment.Name, 1, 1) or "C",
 					ya = obj.TextYAlignment and string.sub(obj.TextYAlignment.Name, 1, 1) or "C",
 					wrap = obj.TextWrapped == true or obj.TextScaled == true,
+					f = obj.Font and obj.Font.Name or nil,
 					outline = outline,
 					grad = grad,
 				}))

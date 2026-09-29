@@ -3,7 +3,8 @@
 
 	THE ARCADE on your screen (the spins themselves are decided by the
 	server: ArcadeService; the numbers: Config.Arcade; the building:
-	ArcadeBuilder).
+	ArcadeBuilder), drawn in the old-computer window look
+	(ReplicatedStorage/WindowKit).
 
 	  * THE MENU: walk into the Arcade and it opens (once - close it and it
 	    stays closed until you walk out and back in), or press the ROLL
@@ -109,8 +110,6 @@ local NIGHT = RGB(38, 43, 68)
 local SLATE = RGB(58, 68, 102)
 local PURPLE = RGB(104, 56, 108)
 local MAGENTA = RGB(181, 80, 136)
-local PINK = RGB(255, 0, 68)
-local CYAN = RGB(44, 232, 245)
 local YELLOW = RGB(254, 231, 97)
 local GOLD = RGB(254, 174, 52)
 local GREEN = RGB(99, 199, 77)
@@ -168,33 +167,6 @@ local function stroke(parent, color, thickness)
 end
 local function corner(parent, r)
 	return new("UICorner", { CornerRadius = UDim.new(0, r or 8) }, parent)
-end
-local function button(parent, label, color, props)
-	local b = new("TextButton", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AutoButtonColor = false,
-		Font = FONT,
-		Text = label,
-		TextColor3 = WHITE,
-		TextScaled = true,
-		TextStrokeColor3 = INK,
-		TextStrokeTransparency = 0.3,
-	}, parent)
-	for k, v in pairs(props or {}) do
-		b[k] = v
-	end
-	stroke(b, INK, 3)
-	corner(b, 8)
-	new("UIPadding", { PaddingTop = UDim.new(0.12, 0), PaddingBottom = UDim.new(0.12, 0), PaddingLeft = UDim.new(0.04, 0), PaddingRight = UDim.new(0.04, 0) }, b)
-	local sc = new("UIScale", {}, b)
-	b.MouseEnter:Connect(function()
-		tween(sc, 0.1, { Scale = 1.05 })
-	end)
-	b.MouseLeave:Connect(function()
-		tween(sc, 0.1, { Scale = 1 })
-	end)
-	return b
 end
 -- a round purple token with a gold rim and a star
 local function tokenIcon(parent, size, props)
@@ -306,24 +278,27 @@ local function hush(c, seconds)
 end
 -- what you hear when a spin lands, by rarity (Config.Arcade.LandSounds: up
 -- to the jackpots; the older sounds until those are uploaded)
-local LAND_OLD = {
-	Common = { "Orb Land", "UI Blip" },
-	Rare = { "Orb Land", "UI Blip" },
-	Epic = { "Level Complete", "Orb Land" },
-	Legendary = { "Legendary Reveal", "Level Complete" },
-	Mythic = { "Legendary Reveal", "Level Complete" },
-	Secret = { "Legendary Reveal", "Level Complete" },
-}
-local function landSounds(rarity)
-	local list = {}
-	local new = (A.LandSounds or {})[rarity]
-	if new then
-		table.insert(list, new)
+local landSounds
+do
+	local LAND_OLD = {
+		Common = { "Orb Land", "UI Blip" },
+		Rare = { "Orb Land", "UI Blip" },
+		Epic = { "Level Complete", "Orb Land" },
+		Legendary = { "Legendary Reveal", "Level Complete" },
+		Mythic = { "Legendary Reveal", "Level Complete" },
+		Secret = { "Legendary Reveal", "Level Complete" },
+	}
+	function landSounds(rarity)
+		local list = {}
+		local new = (A.LandSounds or {})[rarity]
+		if new then
+			table.insert(list, new)
+		end
+		for _, name in ipairs(LAND_OLD[rarity] or LAND_OLD.Common) do
+			table.insert(list, name)
+		end
+		return list
 	end
-	for _, name in ipairs(LAND_OLD[rarity] or LAND_OLD.Common) do
-		table.insert(list, name)
-	end
-	return list
 end
 
 local function inLobby()
@@ -475,29 +450,53 @@ local rollBadge = text(rollBtn, {
 corner(rollBadge, 12)
 stroke(rollBadge, INK, 2.5)
 
--- THE WINDOW
-local dim = new("TextButton", { Name = "Dim", Text = "", AutoButtonColor = false, BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 1 }, scaler)
-local win = new("Frame", { Name = "Window", BackgroundColor3 = INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(980, 680), Visible = false, ZIndex = 2, Active = true }, scaler)
-stroke(win, CYAN, 4)
-new("UIGradient", { Rotation = 90, Color = ColorSequence.new(RGB(58, 32, 88), RGB(18, 14, 34)) }, win)
+-- THE WINDOW, in the old-computer window look (ReplicatedStorage/WindowKit):
+-- a lavender window with a magenta title bar and a hard shadow, over a
+-- purple grid
+local WK = require(ReplicatedStorage:WaitForChild("WindowKit"))
+local WC = WK.COLORS
+local dim = WK.backdrop(scaler, { Name = "Dim", Visible = false, ZIndex = 1 })
+local win, closeBtn
+do
+	local parts = WK.window(scaler, {
+		Name = "Window",
+		Title = "THE ARCADE",
+		Icon = tokenIcon(nil, 32),
+		Color = WC.Magenta,
+		BarHeight = 44,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(980, 680),
+		ZIndex = 1,
+		Visible = false,
+	})
+	win, closeBtn = parts.frame, parts.close
+end
 local winScale = new("UIScale", {}, win)
-local title = text(win, { Name = "Title", Text = "ARCADE", Position = UDim2.fromOffset(28, 14), Size = UDim2.fromOffset(260, 56), TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
-new("UIStroke", { Color = PINK, Thickness = 3 }, title)
-local tokenPill = new("Frame", { Name = "Tokens", BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.new(1, -470, 0, 20), Size = UDim2.fromOffset(170, 46), ZIndex = 3 }, win)
-corner(tokenPill, 23)
-stroke(tokenPill, GOLD, 3)
-tokenIcon(tokenPill, 38, { Position = UDim2.fromOffset(4, 4), ZIndex = 4 })
-local tokenText = text(tokenPill, { Text = "0", Position = UDim2.fromOffset(48, 6), Size = UDim2.new(1, -58, 1, -12), TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
-local getBtn = button(win, "+ GET TOKENS", GREEN, { Position = UDim2.new(1, -290, 0, 20), Size = UDim2.fromOffset(170, 46), ZIndex = 3 })
-local closeBtn = button(win, "X", RED, { Position = UDim2.new(1, -72, 0, 18), Size = UDim2.fromOffset(50, 50), ZIndex = 3 })
-text(win, { -- (the footer)
+-- the toolbar: your tokens (like an address bar) and GET TOKENS
+local tokenPill = WK.panel(win, { Name = "Tokens", Position = UDim2.fromOffset(20, 60), Size = UDim2.fromOffset(280, 46), ZIndex = 3 })
+tokenIcon(tokenPill, 36, { Position = UDim2.fromOffset(6, 5), ZIndex = 4 })
+WK.label(tokenPill, { Text = "ARCADE TOKENS", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 11, TextColor3 = WC.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(52, 5), Size = UDim2.new(1, -60, 0, 14), ZIndex = 4 })
+local tokenText = WK.label(tokenPill, { Text = "0", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(52, 20), Size = UDim2.new(1, -60, 0, 22), ZIndex = 4 })
+local getBtn = WK.button(win, "+ GET TOKENS", WC.Teal, { Name = "GetTokens", Position = UDim2.fromOffset(316, 60), Size = UDim2.fromOffset(230, 46), ZIndex = 4 })
+WK.label(win, { -- (a note beside them)
+	Text = "Every drop's real chance is shown. No tricks!",
+	TextColor3 = WC.Muted,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	Position = UDim2.new(1, -420, 0, 70),
+	Size = UDim2.fromOffset(400, 26),
+	ZIndex = 3,
+})
+-- the status bar along the bottom: the rules, or what just happened
+local footer = new("Frame", { Name = "StatusBar", BackgroundColor3 = WC.Sunken, BorderSizePixel = 0, Position = UDim2.new(0, 12, 1, -44), Size = UDim2.new(1, -24, 0, 32), ZIndex = 3 }, win)
+WK.outline(footer, WC.Ink, 2)
+footer = WK.label(footer, {
 	Text = "The odds shown are the real chances. Your first spin is Rare or better, and a Legendary or better is guaranteed within "
 		.. A.Pity .. " spins on a machine.",
-	Position = UDim2.new(0, 28, 1, -34),
-	Size = UDim2.new(1, -56, 0, 20),
-	TextColor3 = GREY,
-	TextStrokeTransparency = 1,
-	ZIndex = 3,
+	TextColor3 = WC.Muted,
+	Position = UDim2.fromOffset(12, 5),
+	Size = UDim2.new(1, -24, 1, -10),
+	ZIndex = 4,
 })
 
 -- the machines, down the left
@@ -505,56 +504,58 @@ local list = new("ScrollingFrame", {
 	Name = "Machines",
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
-	Position = UDim2.fromOffset(24, 86),
-	Size = UDim2.fromOffset(270, 510),
+	Position = UDim2.fromOffset(20, 120),
+	Size = UDim2.fromOffset(282, 506),
 	CanvasSize = UDim2.new(),
 	AutomaticCanvasSize = Enum.AutomaticSize.Y,
-	ScrollBarThickness = 6,
+	ScrollBarThickness = 10,
+	ScrollBarImageColor3 = WC.Magenta,
 	ZIndex = 3,
 }, win)
-new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, list)
 
--- the chosen machine, on the right
-local detail = new("Frame", { Name = "Detail", BackgroundTransparency = 1, Position = UDim2.fromOffset(312, 86), Size = UDim2.fromOffset(644, 510), ZIndex = 3 }, win)
-local dTitle = text(detail, { Text = "", Size = UDim2.fromOffset(644, 44), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
-local dSub = text(detail, { Text = "", Position = UDim2.fromOffset(0, 44), Size = UDim2.fromOffset(644, 24), TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 4 })
+-- the chosen machine, on the right: a box with a strip in the machine's colour
+local detail = WK.panel(win, { Name = "Detail", Position = UDim2.fromOffset(318, 120), Size = UDim2.fromOffset(642, 506), ZIndex = 3 }, GREEN, 42)
+local detailStrip = detail:FindFirstChild("Strip")
+local dTitle = WK.label(detail, { Text = "", Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(16, 0), Size = UDim2.new(1, -32, 0, 42), ZIndex = 5 })
+local dSub = WK.label(detail, { Text = "", TextColor3 = WC.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(16, 50), Size = UDim2.new(1, -32, 0, 22), ZIndex = 4 })
 local rows = {}
 for i = 1, 6 do
-	local r = new("Frame", { BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 76 + (i - 1) * 46), Size = UDim2.fromOffset(644, 40), ZIndex = 4 }, detail)
-	corner(r, 6)
-	local bar = new("Frame", { BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.fromOffset(10, 40), ZIndex = 5 }, r)
-	corner(bar, 4)
+	local r = new("Frame", { BackgroundColor3 = WHITE, BorderSizePixel = 0, Position = UDim2.fromOffset(14, 80 + (i - 1) * 44), Size = UDim2.fromOffset(614, 38), ZIndex = 4 }, detail)
+	WK.outline(r, WC.Ink, 2)
+	local bar = new("Frame", { BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.fromOffset(10, 38), ZIndex = 5 }, r)
 	rows[i] = {
 		frame = r,
 		bar = bar,
-		rarity = text(r, { Position = UDim2.fromOffset(20, 7), Size = UDim2.fromOffset(122, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
-		icon = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Position = UDim2.fromOffset(142, 2), Size = UDim2.fromOffset(36, 36), ScaleType = Enum.ScaleType.Fit, ZIndex = 5, Visible = false }, r),
-		gem = new("Frame", { Name = "Gem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(160, 20), Size = UDim2.fromOffset(16, 16), Rotation = 45, BorderSizePixel = 0, ZIndex = 5 }, r),
-		name = text(r, { Position = UDim2.fromOffset(184, 7), Size = UDim2.fromOffset(178, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
-		kind = text(r, { Position = UDim2.fromOffset(364, 9), Size = UDim2.fromOffset(82, 22), TextScaled = false, TextSize = 17, TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 5 }),
-		odds = text(r, { Position = UDim2.fromOffset(446, 7), Size = UDim2.fromOffset(62, 26), TextScaled = false, TextSize = 22, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
-		owned = text(r, { Position = UDim2.fromOffset(516, 9), Size = UDim2.fromOffset(120, 22), TextScaled = false, TextSize = 16, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
+		rarity = WK.label(r, { Font = WK.TITLE_FONT, BackgroundTransparency = 0, Position = UDim2.fromOffset(18, 6), Size = UDim2.fromOffset(112, 26), ZIndex = 5 }),
+		icon = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Position = UDim2.fromOffset(138, 1), Size = UDim2.fromOffset(36, 36), ScaleType = Enum.ScaleType.Fit, ZIndex = 5, Visible = false }, r),
+		gem = new("Frame", { Name = "Gem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(156, 19), Size = UDim2.fromOffset(16, 16), Rotation = 45, BorderSizePixel = 0, ZIndex = 5 }, r),
+		name = WK.label(r, { Position = UDim2.fromOffset(182, 6), Size = UDim2.fromOffset(170, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
+		kind = WK.label(r, { Position = UDim2.fromOffset(354, 8), Size = UDim2.fromOffset(80, 22), TextScaled = false, TextSize = 16, TextColor3 = WC.Muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
+		odds = WK.label(r, { Position = UDim2.fromOffset(432, 6), Size = UDim2.fromOffset(62, 26), TextScaled = false, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
+		owned = WK.label(r, { Position = UDim2.fromOffset(500, 8), Size = UDim2.fromOffset(106, 22), TextScaled = false, TextSize = 15, TextColor3 = RGB(46, 140, 46), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
 	}
+	rows[i].pillEdge = WK.outline(rows[i].rarity, WC.Ink, 2)
+	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, rows[i].rarity)
 	stroke(rows[i].gem, INK, 2)
 end
-local pityLabel = text(detail, { Text = "", Position = UDim2.fromOffset(0, 356), Size = UDim2.fromOffset(644, 24), TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
-local pityBack = new("Frame", { BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 384), Size = UDim2.fromOffset(644, 12), ZIndex = 4 }, detail)
-corner(pityBack, 6)
-local pityFill = new("Frame", { BackgroundColor3 = GOLD, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), ZIndex = 5 }, pityBack)
-corner(pityFill, 6)
-local firstLabel = text(detail, { Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Position = UDim2.fromOffset(0, 404), Size = UDim2.fromOffset(644, 26), TextColor3 = YELLOW, ZIndex = 4, Visible = false })
-rainbow(firstLabel)
-local spin1 = button(detail, "SPIN x1", PINK, { Position = UDim2.fromOffset(0, 438), Size = UDim2.fromOffset(312, 66), ZIndex = 4 })
-local spin10 = button(detail, "SPIN x10", MAGENTA, { Position = UDim2.fromOffset(332, 438), Size = UDim2.fromOffset(312, 66), ZIndex = 4 })
+local pityLabel = WK.label(detail, { Text = "", Position = UDim2.fromOffset(16, 344), Size = UDim2.new(1, -32, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+local pityBar = WK.progress(detail, { Name = "Pity", Color = WC.Magenta, Position = UDim2.fromOffset(16, 366), Size = UDim2.new(1, -32, 0, 20), ZIndex = 4 })
+local pityBack = pityBar.frame
+local firstLabel = WK.label(detail, { Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Font = WK.TITLE_FONT, BackgroundTransparency = 0, BackgroundColor3 = WC.Orange, TextColor3 = WHITE, TextStrokeTransparency = 0, Position = UDim2.fromOffset(16, 392), Size = UDim2.new(1, -32, 0, 26), ZIndex = 4, Visible = false })
+WK.outline(firstLabel, WC.Ink, 2)
+new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, firstLabel)
+local spin1 = WK.button(detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(16, 436), Size = UDim2.fromOffset(294, 56), ZIndex = 5 })
+local spin10 = WK.button(detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.fromOffset(326, 436), Size = UDim2.fromOffset(294, 56), ZIndex = 5 })
 -- (ten cost less than ten ones: the ribbon says how many are free)
-local freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 10, 0, -16), Size = UDim2.fromOffset(92, 26), Rotation = 8,
-	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 6 })
-corner(freeTag, 6)
+local freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 24, 0, -16), Size = UDim2.fromOffset(122, 28), Rotation = 8,
+	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 7 })
 stroke(freeTag, INK, 2.5)
-local lockLabel = text(detail, { Text = "", Position = UDim2.fromOffset(0, 438), Size = UDim2.fromOffset(644, 66), TextColor3 = WHITE, BackgroundTransparency = 0, BackgroundColor3 = NIGHT, ZIndex = 4, Visible = false })
-corner(lockLabel, 8)
-new("UIPadding", { PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, lockLabel)
-local message = text(win, { Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -72), Size = UDim2.fromOffset(900, 26), TextColor3 = WHITE, ZIndex = 6 })
+local lockLabel = WK.label(detail, { Text = "", BackgroundTransparency = 0, BackgroundColor3 = WC.Sunken, Position = UDim2.fromOffset(16, 436), Size = UDim2.fromOffset(604, 56), ZIndex = 5, Visible = false })
+WK.outline(lockLabel, WC.Ink, 2)
+new("UIPadding", { PaddingTop = UDim.new(0.22, 0), PaddingBottom = UDim.new(0.22, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, lockLabel)
+-- what just happened, in the status bar (over the rules while it's showing)
+local message = WK.label(win, { Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -39), Size = UDim2.new(1, -48, 0, 22), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 6 })
 
 local selected = MACHINES[1] and MACHINES[1].id or nil
 local cards = {} -- [id] = the card on the left
@@ -562,11 +563,17 @@ local cards = {} -- [id] = the card on the left
 local function say(textValue, color)
 	message.Text = textValue or ""
 	message.TextColor3 = color or WHITE
-	message.TextTransparency = 0
+	message.TextTransparency, message.TextStrokeTransparency = 0, 0
+	footer.Visible = (textValue or "") == ""
 	local mine = textValue
 	task.delay(3.5, function()
 		if message.Text == mine then
-			tween(message, 0.4, { TextTransparency = 1 })
+			tween(message, 0.4, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			task.delay(0.4, function()
+				if message.Text == mine then
+					footer.Visible = true
+				end
+			end)
 		end
 	end)
 end
@@ -578,14 +585,17 @@ local refresh -- (below)
 
 for i, e in ipairs(MACHINES) do
 	local color = e.machine and e.machine.Light or GREY
-	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundColor3 = NIGHT, BorderSizePixel = 0, Size = UDim2.new(1, -10, 0, 76), LayoutOrder = i, ZIndex = 4 }, list)
-	corner(card, 8)
-	local edge = stroke(card, INK, 3)
-	local band = new("Frame", { BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(0, 12, 1, 0), ZIndex = 5 }, card)
-	corner(band, 6)
-	local name = text(card, { Text = string.upper(e.id), Position = UDim2.fromOffset(22, 8), Size = UDim2.new(1, -30, 0, 32), TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 })
-	local sub = text(card, { Text = "", Position = UDim2.fromOffset(22, 42), Size = UDim2.new(1, -30, 0, 22), TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 5 })
-	cards[e.id] = { card = card, edge = edge, name = name, sub = sub }
+	-- (a little window: a strip in the machine's colour with its name; the
+	-- button itself is see-through, holding the face and its hard shadow)
+	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.new(1, -14, 0, 84), LayoutOrder = i, ZIndex = 4 }, list)
+	new("Frame", { Name = "Shadow", BackgroundColor3 = WC.Ink, BorderSizePixel = 0, Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -5, 1, -5), ZIndex = 4 }, card)
+	local face = new("Frame", { Name = "Face", BackgroundColor3 = WC.Panel, BorderSizePixel = 0, Size = UDim2.new(1, -5, 1, -5), ZIndex = 5 }, card)
+	local edge = WK.outline(face, WC.Ink, 3)
+	local strip = new("Frame", { Name = "Strip", BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 6 }, face)
+	new("Frame", { BackgroundColor3 = WC.Ink, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 2), ZIndex = 6 }, strip)
+	local name = WK.label(face, { Text = string.upper(e.id), Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, TextScaled = false, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 0, 30), ZIndex = 7 })
+	local sub = WK.label(face, { Text = "", TextColor3 = WC.Muted, TextScaled = false, TextSize = 18, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 36), Size = UDim2.new(1, -20, 0, 36), ZIndex = 6 })
+	cards[e.id] = { card = card, face = face, edge = edge, name = name, sub = sub }
 	card.Activated:Connect(function()
 		selected = e.id
 		play({ "UI Blip" }, 1.1, 0.6)
@@ -607,8 +617,10 @@ refresh = function()
 			local open = Config.arcadeOpen(state or {}, e.id)
 			c.sub.Text = open and (e.machine.Price .. (e.machine.Price == 1 and " token a spin" or " tokens a spin")) or ("Beat " .. e.pack.Boss .. " to open")
 		end
-		c.edge.Color = e.id == selected and YELLOW or INK
-		c.card.BackgroundColor3 = e.id == selected and SLATE or NIGHT
+		local picked = e.id == selected
+		c.edge.Color = picked and WC.Magenta or WC.Ink
+		c.edge.Thickness = picked and 4 or 3
+		c.face.BackgroundColor3 = picked and RGB(255, 232, 250) or WC.Panel
 	end
 	local e = machineEntry(selected)
 	if not e then
@@ -616,7 +628,9 @@ refresh = function()
 	end
 	local light = e.machine and e.machine.Light or GREY
 	dTitle.Text = string.upper(e.id) .. " MACHINE"
-	dTitle.TextColor3 = light
+	if detailStrip then
+		detailStrip.BackgroundColor3 = light
+	end
 	if e.soon then
 		dSub.Text = e.soon.Boss .. "'s pack - coming in an update!"
 	else
@@ -630,7 +644,20 @@ refresh = function()
 			local col = rarityColor(d.rarity)
 			r.bar.BackgroundColor3 = col
 			r.rarity.Text = string.upper(d.rarity)
-			r.rarity.TextColor3 = col
+			-- (a pill in its colour: white words on the strong colours)
+			r.rarity.BackgroundColor3 = col
+			local strong = d.rarity == "Rare" or d.rarity == "Epic" or d.rarity == "Mythic"
+			r.rarity.TextColor3 = strong and WHITE or INK
+			r.rarity.TextStrokeTransparency = strong and 0 or 1
+			if d.rarity == "Secret" and not r.rainbow then
+				r.rainbow = rainbow(r.pillEdge) -- (its outline runs through the rainbow)
+				r.pillEdge.Thickness = 3
+			elseif d.rarity ~= "Secret" and r.rainbow then
+				r.pillEdge.Thickness = 2
+				rainbows[r.rainbow] = nil
+				r.rainbow:Destroy()
+				r.rainbow = nil
+			end
 			r.name.Text = d.def and d.def.Name or d.id
 			local icon = iconFor(d.def, d.id)
 			r.icon.Image = icon or ""
@@ -648,7 +675,7 @@ refresh = function()
 	pityLabel.Visible = not e.soon
 	pityBack.Visible = not e.soon
 	pityLabel.Text = "A LEGENDARY OR BETTER IN " .. left .. (left == 1 and " SPIN" or " SPINS") .. " (at most)"
-	pityFill.Size = UDim2.fromScale(math.clamp(pity / A.Pity, 0, 1), 1)
+	pityBar:set(pity / A.Pity)
 	firstLabel.Visible = not e.soon and spins == 0
 	-- what the buttons can do
 	local open, why = false, nil
@@ -665,13 +692,13 @@ refresh = function()
 	lockLabel.Text = why or ""
 	if open then
 		local m = e.machine
-		spin1.Text = "SPIN x1  -  " .. m.Price .. (m.Price == 1 and " TOKEN" or " TOKENS")
-		spin10.Text = "SPIN x10  -  " .. m.Ten .. " TOKENS"
+		spin1.Text = "SPIN x1\n" .. m.Price .. (m.Price == 1 and " TOKEN" or " TOKENS")
+		spin10.Text = "SPIN x10\n" .. m.Ten .. " TOKENS"
 		local free = math.floor((m.Price * 10 - m.Ten) / m.Price)
 		freeTag.Visible = free > 0
 		freeTag.Text = free .. " FREE!"
-		spin1.BackgroundColor3 = t >= m.Price and PINK or SLATE
-		spin10.BackgroundColor3 = t >= m.Ten and MAGENTA or SLATE
+		spin1.BackgroundColor3 = t >= m.Price and WC.Magenta or WC.Off
+		spin10.BackgroundColor3 = t >= m.Ten and WC.Violet or WC.Off
 	end
 end
 
@@ -801,22 +828,27 @@ local function floatOver(c, line, color, isSecret)
 end
 
 -- the banner on every screen when anyone spins a Secret
-local banner = new("Frame", { Name = "SecretBanner", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -90), Size = UDim2.fromOffset(820, 72), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 20 }, scaler)
-corner(banner, 12)
-local bannerEdge = stroke(banner, WHITE, 4)
-rainbow(bannerEdge)
-local bannerText = text(banner, { Text = "", Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -32, 1, -16), ZIndex = 21 })
-rainbow(bannerText)
+-- (a little window, its title bar running through the rainbow)
+local banner, bannerText
+do
+	local parts = WK.window(scaler, { Name = "SecretBanner", Title = "★ SECRET! ★", Color = WHITE, BarHeight = 36, TitleSize = 16, Buttons = false, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -130), Size = UDim2.fromOffset(820, 90), ZIndex = 20 })
+	banner = parts.frame
+	banner.Active = false
+	rainbow(parts.bar)
+	parts.title.TextXAlignment = Enum.TextXAlignment.Center
+	parts.title.Position, parts.title.Size = UDim2.fromOffset(16, 0), UDim2.new(1, -32, 0, 36)
+	bannerText = WK.label(banner, { Text = "", Position = UDim2.fromOffset(16, 45), Size = UDim2.new(1, -32, 0, 36), ZIndex = 23 })
+end
 local function secretBanner(line, mine)
 	bannerText.Text = line
-	banner.Position = UDim2.new(0.5, 0, 0, -90)
+	banner.Position = UDim2.new(0.5, 0, 0, -130)
 	tween(banner, 0.5, { Position = UDim2.new(0.5, 0, 0, 18) }, Enum.EasingStyle.Back)
 	if not mine then -- (with its jackpot, straight to the smash; yours you heard already)
 		play({ (A.LandSounds or {}).Secret or "Jackpot Secret", "Legendary Reveal", "Level Complete" }, 1, 0.7, findSound((A.LandSounds or {}).Secret or "Jackpot Secret") and 0.6 or 0)
 	end
 	task.delay(6, function()
 		if bannerText.Text == line then
-			tween(banner, 0.4, { Position = UDim2.new(0.5, 0, 0, -90) })
+			tween(banner, 0.4, { Position = UDim2.new(0.5, 0, 0, -130) })
 		end
 	end)
 end
@@ -1062,56 +1094,63 @@ end)
 ----------------------------------------------------------------------
 local show = new("Frame", { Name = "Show", BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10, Active = true }, scaler)
 local flash = new("Frame", { Name = "Flash", BackgroundColor3 = WHITE, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 30 }, show)
--- the machine's screen
-local screenFrame = new("Frame", { Name = "Screen", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(840, 300), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 11 }, show)
-corner(screenFrame, 14)
-local screenEdge = stroke(screenFrame, GREEN, 8)
-local screenTitle = text(screenFrame, { Text = "", Position = UDim2.fromOffset(20, 10), Size = UDim2.new(1, -40, 0, 50), ZIndex = 12 })
-local window = new("Frame", { Name = "Strip", Position = UDim2.fromOffset(30, 80), Size = UDim2.fromOffset(780, 180), BackgroundColor3 = NIGHT, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 12 }, screenFrame)
-corner(window, 8)
-local strip = new("Frame", { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.fromOffset(10, 180), ZIndex = 13 }, window)
-new("Frame", { Name = "Marker", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(6, 180), BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 16 }, window)
-local markerTop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(28, 28), Rotation = 45, BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 16 }, screenFrame)
+-- the machine's screen: a window with the machine's name on its title bar
+-- (in the machine's colour), the strip racing across a dark screen inside
+local screenFrame, screenBar, screenTitle
+do
+	local parts = WK.window(show, { Name = "Screen", Title = "", Color = GREEN, BarHeight = 44, TitleSize = 22, Buttons = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(840, 270), ZIndex = 11 })
+	screenFrame, screenBar, screenTitle = parts.frame, parts.bar, parts.title
+end
+local window = new("Frame", { Name = "Strip", Position = UDim2.fromOffset(30, 64), Size = UDim2.fromOffset(780, 180), BackgroundColor3 = NIGHT, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 14 }, screenFrame)
+WK.outline(window, WC.Ink, 3)
+local strip = new("Frame", { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.fromOffset(10, 180), ZIndex = 15 }, window)
+new("Frame", { Name = "Marker", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(6, 180), BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 18 }, window)
+local markerTop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 60), Size = UDim2.fromOffset(28, 28), Rotation = 45, BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 18 }, screenFrame)
 stroke(markerTop, INK, 3)
-local skipHint = text(show, { Text = "TAP TO SKIP", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.42, 170), Size = UDim2.fromOffset(300, 26), TextColor3 = GREY, ZIndex = 12 })
--- the reveal card
-local card = new("Frame", { Name = "Card", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(560, 560), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 20, Visible = false }, show)
-corner(card, 16)
-local cardEdge = stroke(card, WHITE, 6)
+local skipHint = text(show, { Text = "TAP TO SKIP", Font = WK.TITLE_FONT, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.42, 150), Size = UDim2.fromOffset(300, 24), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 12 })
+-- the reveal card: a window whose title bar says the rarity, in its colour
+local card, cardBar, cardRarity, cardClose
+do
+	local parts = WK.window(show, { Name = "Card", Title = "", Color = WHITE, BarHeight = 50, TitleSize = 24, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(560, 560), ZIndex = 20, Visible = false })
+	card, cardBar, cardRarity, cardClose = parts.frame, parts.bar, parts.title, parts.close
+end
 local cardEdgeRainbow = nil
 local cardScale = new("UIScale", {}, card)
+-- (the rays shine out from behind the window)
 local rays = new("Frame", { Name = "Rays", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.38), Size = UDim2.fromOffset(10, 10), BackgroundTransparency = 1, ZIndex = 19 }, card)
 for i = 1, 10 do
-	new("Frame", { Name = "Ray", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(34, 900), Rotation = i * 18, BackgroundColor3 = YELLOW, BackgroundTransparency = 0.8, BorderSizePixel = 0, ZIndex = 19 }, rays)
+	new("Frame", { Name = "Ray", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(34, 900), Rotation = i * 18, BackgroundColor3 = YELLOW, BackgroundTransparency = 0.6, BorderSizePixel = 0, ZIndex = 19 }, rays)
 end
-local cardRarity = text(card, { Text = "", Position = UDim2.fromOffset(20, 14), Size = UDim2.new(1, -40, 0, 56), ZIndex = 22 })
 local cardRarityRainbow = nil
-local view = new("ViewportFrame", { Name = "View", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 76), Size = UDim2.fromOffset(280, 260), BackgroundTransparency = 1, ZIndex = 22, LightColor = WHITE, Ambient = RGB(200, 200, 210) }, card)
+local view = new("ViewportFrame", { Name = "View", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 64), Size = UDim2.fromOffset(280, 260), BackgroundTransparency = 1, ZIndex = 23, LightColor = WHITE, Ambient = RGB(200, 200, 210) }, card)
 local viewCam = new("Camera", { FieldOfView = 40 }, view)
 view.CurrentCamera = viewCam
 local cardGem = nil -- (the rarity's gem, while the weapon's model isn't to hand)
-local cardName = text(card, { Text = "", Position = UDim2.fromOffset(20, 342), Size = UDim2.new(1, -40, 0, 50), ZIndex = 22 })
-local cardType = text(card, { Text = "", Position = UDim2.fromOffset(20, 392), Size = UDim2.new(1, -40, 0, 26), TextColor3 = GREY, TextStrokeTransparency = 1, ZIndex = 22 })
-local cardNote = text(card, { Text = "", Position = UDim2.fromOffset(20, 422), Size = UDim2.new(1, -40, 0, 34), TextColor3 = GREEN, ZIndex = 22 })
-local CARD_BUTTON = { TextScaled = false, TextSize = 24, Size = UDim2.fromOffset(164, 64), ZIndex = 22 }
+local cardName = WK.label(card, { Text = "", Position = UDim2.fromOffset(20, 330), Size = UDim2.new(1, -40, 0, 46), ZIndex = 23 })
+local cardType = WK.label(card, { Text = "", Position = UDim2.fromOffset(20, 378), Size = UDim2.new(1, -40, 0, 24), TextColor3 = WC.Muted, ZIndex = 23 })
+local cardNote = WK.label(card, { Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 412), Size = UDim2.fromOffset(400, 38), BackgroundTransparency = 0, BackgroundColor3 = GREEN, TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 23 })
+WK.outline(cardNote, WC.Ink, 2.5)
+new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, cardNote)
+local CARD_BUTTON = { TextScaled = false, TextSize = 14, Size = UDim2.fromOffset(164, 62), ZIndex = 24 }
 local function cardButton(label, color, x)
-	local b = button(card, label, color, CARD_BUTTON)
+	local b = WK.button(card, label, color, CARD_BUTTON)
 	b.Position = UDim2.fromOffset(x, 474)
 	return b
 end
-local equipBtn = cardButton("EQUIP", GREEN, 20)
-local againBtn = cardButton("SPIN AGAIN", PINK, 198)
-local doneBtn = cardButton("DONE", SLATE, 376)
--- ten at once: a grid
-local grid = new("Frame", { Name = "Grid", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UDim2.fromOffset(900, 520), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 20, Visible = false }, show)
-corner(grid, 16)
-stroke(grid, CYAN, 5)
-local gridTitle = text(grid, { Text = "", Position = UDim2.fromOffset(20, 10), Size = UDim2.new(1, -40, 0, 44), TextColor3 = YELLOW, ZIndex = 21 })
+local equipBtn = cardButton("EQUIP", WC.Teal, 20)
+local againBtn = cardButton("SPIN AGAIN", WC.Magenta, 198)
+local doneBtn = cardButton("DONE", nil, 376)
+-- ten at once: a grid, in a window of its own
+local grid, gridTitle, gridClose
+do
+	local parts = WK.window(show, { Name = "Grid", Title = "", Color = WC.Violet, BarHeight = 48, TitleSize = 20, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UDim2.fromOffset(900, 540), ZIndex = 20, Visible = false })
+	grid, gridTitle, gridClose = parts.frame, parts.title, parts.close
+end
 -- (five across, two down: each tile has what it gave under it, in the gap)
-local gridCells = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(31, 64), Size = UDim2.fromOffset(838, 364), ZIndex = 21 }, grid)
+local gridCells = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(31, 70), Size = UDim2.fromOffset(838, 364), ZIndex = 22 }, grid)
 new("UIGridLayout", { CellSize = UDim2.fromOffset(TILE_SIZE, TILE_SIZE), CellPadding = UDim2.fromOffset(22, 34), SortOrder = Enum.SortOrder.LayoutOrder }, gridCells)
-local gridAgain = button(grid, "SPIN x10 AGAIN", PINK, { Position = UDim2.new(0.5, -310, 1, -76), Size = UDim2.fromOffset(300, 60), ZIndex = 22 })
-local gridDone = button(grid, "DONE", SLATE, { Position = UDim2.new(0.5, 10, 1, -76), Size = UDim2.fromOffset(300, 60), ZIndex = 22 })
+local gridAgain = WK.button(grid, "SPIN x10 AGAIN", WC.Magenta, { Position = UDim2.new(0.5, -310, 1, -82), Size = UDim2.fromOffset(300, 60), ZIndex = 23 })
+local gridDone = WK.button(grid, "DONE", nil, { Position = UDim2.new(0.5, 10, 1, -82), Size = UDim2.fromOffset(300, 60), ZIndex = 23 })
 
 local TILE, GAP = TILE_SIZE, 12
 local skipping = false
@@ -1162,12 +1201,14 @@ end
 -- the server already picked - nothing is faked.
 ----------------------------------------------------------------------
 local MUSIC = A.Music or {}
-local RISER_LENGTH = 3.3 -- (Spin Riser: timed to end as everything goes quiet)
-local QUIET = 0.45 -- seconds of silence before the strip lands...
-local HEART = 1.6 -- ...or of heartbeat, when it's a Legendary or better
-local SECRET_LEAD = 0.6 -- (Jackpot Secret's swell starts this long before the landing)
-local LAND_VOLUME = { Common = 0.7, Rare = 0.8, Epic = 0.9, Legendary = 1, Mythic = 1, Secret = 1 }
-local LAND_HOLD = { Common = 0.7, Rare = 1.2, Epic = 1.8, Legendary = 3.6, Mythic = 4.4, Secret = 5.8 } -- (then the song)
+local CUE = {
+	riser = 3.3, -- Spin Riser's length (timed to end as everything goes quiet)
+	quiet = 0.45, -- seconds of silence before the strip lands...
+	heart = 1.6, -- ...or of heartbeat, when it's a Legendary or better
+	secretLead = 0.6, -- (Jackpot Secret's swell starts this long before the landing)
+	volume = { Common = 0.7, Rare = 0.8, Epic = 0.9, Legendary = 1, Mythic = 1, Secret = 1 },
+	hold = { Common = 0.7, Rare = 1.2, Epic = 1.8, Legendary = 3.6, Mythic = 4.4, Secret = 5.8 }, -- (then the song)
+}
 
 local tune = {
 	sound = nil, -- the song playing (a copy of Music.Song)
@@ -1179,80 +1220,83 @@ local tune = {
 	quietUntil = 0, -- silent until then (a landing ringing out)
 	duck = 0, -- how far the lobby's song is turned down
 	ducked = false,
+	last = nil, -- the last spin's cue
 }
-local songTemplate, songLooked = nil, -10
-local function songSound()
-	if songTemplate and songTemplate.Parent then
+do
+	local songTemplate, songLooked = nil, -10
+	local function songSound()
+		if songTemplate and songTemplate.Parent then
+			return songTemplate
+		end
+		if os.clock() - songLooked > 2 then -- (until it's uploaded, a look every 2 seconds)
+			songLooked = os.clock()
+			songTemplate = findSound(MUSIC.Song or "Arcade Theme")
+		end
 		return songTemplate
 	end
-	if os.clock() - songLooked > 2 then -- (until it's uploaded, a look every 2 seconds)
-		songLooked = os.clock()
-		songTemplate = findSound(MUSIC.Song or "Arcade Theme")
+	local function musicGroup()
+		local g = SoundService:FindFirstChild("ArcadeMusic")
+		if not (g and g:IsA("SoundGroup")) then
+			g = Instance.new("SoundGroup")
+			g.Name = "ArcadeMusic"
+			g.Volume = (Config.Audio and Config.Audio.Music) or 0.7
+			g.Parent = SoundService
+		end
+		return g
 	end
-	return songTemplate
-end
-local function musicGroup()
-	local g = SoundService:FindFirstChild("ArcadeMusic")
-	if not (g and g:IsA("SoundGroup")) then
-		g = Instance.new("SoundGroup")
-		g.Name = "ArcadeMusic"
-		g.Volume = (Config.Audio and Config.Audio.Music) or 0.7
-		g.Parent = SoundService
-	end
-	return g
-end
-RunService.Heartbeat:Connect(function(dt)
-	local now = os.clock()
-	local template = songSound()
-	local want = template ~= nil and inLobby() and not player:GetAttribute("Intro") and (inArcade or win.Visible or show.Visible)
-	if want and not tune.sound then
-		tune.sound = template:Clone()
-		tune.sound.Name = "ArcadeSongPlaying"
-		tune.sound:SetAttribute("ArcadeCopy", true)
-		tune.sound.Looped = true
-		tune.sound.Volume = 0
-		tune.sound.SoundGroup = musicGroup()
-		tune.sound.Parent = SoundService
-		tune.sound:Play()
-		tune.playing = true
-	end
-	local silent = tune.cut or now < tune.quietUntil
-	local goal = (want and not silent) and 1 or 0
-	local rate = goal > tune.level and 1.2 or (silent and 12 or 1.6) -- (in over a second; out fast when it drops out)
-	tune.level = tune.level + (goal - tune.level) * math.min(1, dt * rate)
-	if silent then
-		tune.speed = 1 -- (it comes back at its own speed)
-	else
-		local fast = tune.spinning and (MUSIC.SpinSpeed or 1.25) or 1
-		tune.speed = tune.speed + (fast - tune.speed) * math.min(1, dt * 3)
-	end
-	local s = tune.sound
-	if s then
-		s.Volume = (tonumber(template and template.Volume) or 0.5) * (MUSIC.Volume or 0.6) * tune.level
-		s.PlaybackSpeed = (tonumber(template and template.PlaybackSpeed) or 1) * tune.speed
-		if not want and tune.level < 0.01 and tune.playing then
-			s:Pause() -- (it carries on where it left off next time)
-			tune.playing = false
-		elseif want and not tune.playing then
-			s:Resume()
+	RunService.Heartbeat:Connect(function(dt)
+		local now = os.clock()
+		local template = songSound()
+		local want = template ~= nil and inLobby() and not player:GetAttribute("Intro") and (inArcade or win.Visible or show.Visible)
+		if want and not tune.sound then
+			tune.sound = template:Clone()
+			tune.sound.Name = "ArcadeSongPlaying"
+			tune.sound:SetAttribute("ArcadeCopy", true)
+			tune.sound.Looped = true
+			tune.sound.Volume = 0
+			tune.sound.SoundGroup = musicGroup()
+			tune.sound.Parent = SoundService
+			tune.sound:Play()
 			tune.playing = true
 		end
-	end
-	-- the lobby's song (the "Music" SoundGroup) steps aside while ours is on
-	local duckGoal = (want and s) and 1 or 0
-	tune.duck = tune.duck + (duckGoal - tune.duck) * math.min(1, dt * 1.5)
-	local lobby = SoundService:FindFirstChild("Music")
-	if lobby and lobby:IsA("SoundGroup") then
-		local full = (Config.Audio and Config.Audio.Music) or 1
-		if tune.duck > 0.01 then
-			lobby.Volume = full * (1 - tune.duck)
-			tune.ducked = true
-		elseif tune.ducked then
-			lobby.Volume = full
-			tune.ducked = false
+		local silent = tune.cut or now < tune.quietUntil
+		local goal = (want and not silent) and 1 or 0
+		local rate = goal > tune.level and 1.2 or (silent and 12 or 1.6) -- (in over a second; out fast when it drops out)
+		tune.level = tune.level + (goal - tune.level) * math.min(1, dt * rate)
+		if silent then
+			tune.speed = 1 -- (it comes back at its own speed)
+		else
+			local fast = tune.spinning and (MUSIC.SpinSpeed or 1.25) or 1
+			tune.speed = tune.speed + (fast - tune.speed) * math.min(1, dt * 3)
 		end
-	end
-end)
+		local s = tune.sound
+		if s then
+			s.Volume = (tonumber(template and template.Volume) or 0.5) * (MUSIC.Volume or 0.6) * tune.level
+			s.PlaybackSpeed = (tonumber(template and template.PlaybackSpeed) or 1) * tune.speed
+			if not want and tune.level < 0.01 and tune.playing then
+				s:Pause() -- (it carries on where it left off next time)
+				tune.playing = false
+			elseif want and not tune.playing then
+				s:Resume()
+				tune.playing = true
+			end
+		end
+		-- the lobby's song (the "Music" SoundGroup) steps aside while ours is on
+		local duckGoal = (want and s) and 1 or 0
+		tune.duck = tune.duck + (duckGoal - tune.duck) * math.min(1, dt * 1.5)
+		local lobby = SoundService:FindFirstChild("Music")
+		if lobby and lobby:IsA("SoundGroup") then
+			local full = (Config.Audio and Config.Audio.Music) or 1
+			if tune.duck > 0.01 then
+				lobby.Volume = full * (1 - tune.duck)
+				tune.ducked = true
+			elseif tune.ducked then
+				lobby.Volume = full
+				tune.ducked = false
+			end
+		end
+	end)
+end
 
 -- (the sounds start downloading as soon as you join: a jackpot that's still
 -- loading when it lands would come in late)
@@ -1276,21 +1320,20 @@ end)
 
 -- a spin's music, timed from when it lands (`seconds` from now): faster,
 -- with the drum roll building under it
-local lastCue = nil
 local function spinCue(top, seconds)
-	if lastCue then
-		hush(lastCue.sting, 0.3) -- (the last landing, if it's still ringing)
+	if tune.last then
+		hush(tune.last.sting, 0.3) -- (the last landing, if it's still ringing)
 	end
 	local cue = { rarity = top.rarity, rank = RANK[top.rarity] or 1 }
 	cue.big = cue.rank >= 4
-	cue.quiet = cue.big and HEART or QUIET
-	cue.lead = (top.rarity == "Secret" and findSound((A.LandSounds or {}).Secret or "Jackpot Secret")) and SECRET_LEAD or 0
+	cue.quiet = cue.big and CUE.heart or CUE.quiet
+	cue.lead = (top.rarity == "Secret" and findSound((A.LandSounds or {}).Secret or "Jackpot Secret")) and CUE.secretLead or 0
 	tune.spinning, tune.cut = true, false
 	local run = seconds - cue.quiet
 	if run > 0.3 then
-		cue.riser = play({ MUSIC.Riser or "Spin Riser" }, 1, 0.7, math.max(0, RISER_LENGTH - run))
+		cue.riser = play({ MUSIC.Riser or "Spin Riser" }, 1, 0.7, math.max(0, CUE.riser - run))
 	end
-	lastCue = cue
+	tune.last = cue
 	return cue
 end
 -- as the strip goes (`left`: seconds until it lands): the silence, the
@@ -1301,24 +1344,24 @@ local function cueAt(cue, left)
 		tune.cut = true
 		hush(cue.riser, 0.06)
 		if cue.big then
-			cue.heart = play({ MUSIC.Heartbeat or "Heartbeat" }, 1, 1, math.max(0, HEART - left))
+			cue.heart = play({ MUSIC.Heartbeat or "Heartbeat" }, 1, 1, math.max(0, CUE.heart - left))
 		end
 	end
 	if cue.lead > 0 and not cue.sting and left <= cue.lead then
-		cue.sting = play(landSounds(cue.rarity), 1, LAND_VOLUME[cue.rarity], math.max(0, cue.lead - left))
+		cue.sting = play(landSounds(cue.rarity), 1, CUE.volume[cue.rarity], math.max(0, cue.lead - left))
 	end
 end
 -- it's landed (`skipped`: tapped through): its sound, then the song again
 -- once that's rung out
 local function landCue(cue, skipped)
 	tune.spinning, tune.cut = false, false
-	tune.quietUntil = os.clock() + (LAND_HOLD[cue.rarity] or 1)
+	tune.quietUntil = os.clock() + (CUE.hold[cue.rarity] or 1)
 	if skipped then
 		hush(cue.riser)
 		hush(cue.heart)
 	end
 	if not cue.sting then
-		cue.sting = play(landSounds(cue.rarity), 1, LAND_VOLUME[cue.rarity], cue.lead)
+		cue.sting = play(landSounds(cue.rarity), 1, CUE.volume[cue.rarity], cue.lead)
 	end
 end
 
@@ -1420,33 +1463,36 @@ end
 
 -- GLASS SMASHING (a Legendary or better landing, in time with its jackpot):
 -- a white flash and the machine's screen bursting into shards
-local shardRng = Random.new()
-local function shatter(color)
-	flashScreen(WHITE, 0)
-	for i = 1, 28 do
-		local size = shardRng:NextInteger(10, 36)
-		local shard = new("Frame", {
-			Name = "Shard",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, shardRng:NextInteger(-300, 300), 0.42, shardRng:NextInteger(-110, 110)),
-			Size = UDim2.fromOffset(size, math.floor(size * shardRng:NextNumber(0.25, 0.9))),
-			Rotation = shardRng:NextInteger(0, 359),
-			BackgroundColor3 = (i % 3 == 0) and color or WHITE,
-			BackgroundTransparency = 0.05,
-			BorderSizePixel = 0,
-			ZIndex = 29,
-		}, show)
-		local angle = shardRng:NextNumber(0, math.pi * 2)
-		local reach = shardRng:NextNumber(220, 620)
-		local p = shard.Position
-		tween(shard, 0.8, {
-			Position = UDim2.new(0.5, p.X.Offset + math.cos(angle) * reach, 0.42, p.Y.Offset + math.sin(angle) * reach + 160),
-			Rotation = shard.Rotation + shardRng:NextInteger(-540, 540),
-			BackgroundTransparency = 1,
-		}, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		task.delay(0.85, function()
-			shard:Destroy()
-		end)
+local shatter
+do
+	local shardRng = Random.new()
+	function shatter(color)
+		flashScreen(WHITE, 0)
+		for i = 1, 28 do
+			local size = shardRng:NextInteger(10, 36)
+			local shard = new("Frame", {
+				Name = "Shard",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, shardRng:NextInteger(-300, 300), 0.42, shardRng:NextInteger(-110, 110)),
+				Size = UDim2.fromOffset(size, math.floor(size * shardRng:NextNumber(0.25, 0.9))),
+				Rotation = shardRng:NextInteger(0, 359),
+				BackgroundColor3 = (i % 3 == 0) and color or WHITE,
+				BackgroundTransparency = 0.05,
+				BorderSizePixel = 0,
+				ZIndex = 29,
+			}, show)
+			local angle = shardRng:NextNumber(0, math.pi * 2)
+			local reach = shardRng:NextNumber(220, 620)
+			local p = shard.Position
+			tween(shard, 0.8, {
+				Position = UDim2.new(0.5, p.X.Offset + math.cos(angle) * reach, 0.42, p.Y.Offset + math.sin(angle) * reach + 160),
+				Rotation = shard.Rotation + shardRng:NextInteger(-540, 540),
+				BackgroundTransparency = 1,
+			}, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			task.delay(0.85, function()
+				shard:Destroy()
+			end)
+		end
 	end
 end
 
@@ -1458,7 +1504,7 @@ local function reveal(result, machineId, count)
 	card.Visible = true
 	cardScale.Scale = 0.3
 	tween(cardScale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
-	cardEdge.Color = col
+	cardBar.BackgroundColor3 = col
 	if cardEdgeRainbow then
 		cardEdgeRainbow:Destroy()
 		cardEdgeRainbow = nil
@@ -1468,23 +1514,20 @@ local function reveal(result, machineId, count)
 		cardRarityRainbow = nil
 	end
 	cardRarity.Text = string.upper(result.rarity) .. "!"
-	cardRarity.TextColor3 = col
 	if result.rarity == "Secret" then
-		cardEdgeRainbow = rainbow(cardEdge)
-		cardRarityRainbow = rainbow(cardRarity)
+		cardEdgeRainbow = rainbow(cardBar) -- (its title bar runs through the rainbow)
 	end
 	cardName.Text = def and def.Name or result.id
-	cardName.TextColor3 = col
 	cardType.Text = (def and def.Type or "") .. (def and def.Ability and def.Ability.Name and ("  -  F: " .. def.Ability.Name) or "")
 	if result.new then
 		cardNote.Text = "NEW WEAPON!"
-		cardNote.TextColor3 = GREEN
+		cardNote.BackgroundColor3 = GREEN
 	elseif result.refund then
 		cardNote.Text = "Already mastered: +1 TOKEN back"
-		cardNote.TextColor3 = GOLD
+		cardNote.BackgroundColor3 = GOLD
 	else
 		cardNote.Text = "You have it: +" .. tostring(result.mastery or 0) .. " MASTERY"
-		cardNote.TextColor3 = CYAN
+		cardNote.BackgroundColor3 = RGB(0, 153, 219)
 	end
 	-- the weapon itself, turning (or its type's icon, if its model isn't here yet)
 	for _, ch in ipairs(view:GetChildren()) do
@@ -1500,9 +1543,9 @@ local function reveal(result, machineId, count)
 	if not model then
 		local icon = iconFor(def, result.id, 420)
 		if icon then
-			cardGem = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Image = icon, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 206), Size = UDim2.fromOffset(230, 230), ZIndex = 21 }, card)
+			cardGem = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Image = icon, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 194), Size = UDim2.fromOffset(230, 230), ZIndex = 23 }, card)
 		else
-			cardGem = gem(card, result.rarity, 120, { Position = UDim2.new(0.5, 0, 0, 206), ZIndex = 21 })
+			cardGem = gem(card, result.rarity, 120, { Position = UDim2.new(0.5, 0, 0, 194), ZIndex = 23 })
 		end
 	end
 	if model then
@@ -1536,10 +1579,10 @@ local function reveal(result, machineId, count)
 				if not card.Visible then
 					break
 				end
-				cardEdge.Transparency = (i % 2 == 0) and 0 or 0.6
+				cardBar.BackgroundColor3 = (i % 2 == 0) and col or WHITE
 				task.wait(0.12)
 			end
-			cardEdge.Transparency = 0
+			cardBar.BackgroundColor3 = col
 		end)
 	end
 	-- the buttons
@@ -1601,9 +1644,8 @@ local function roll(machineId, count)
 	skipping = false -- (a tap from here on skips the strip)
 	local e = machineEntry(machineId)
 	local light = e and e.machine and e.machine.Light or GREEN
-	screenEdge.Color = light
+	screenBar.BackgroundColor3 = light
 	screenTitle.Text = string.upper(machineId) .. " MACHINE"
-	screenTitle.TextColor3 = light
 	show.Visible, show.BackgroundTransparency = true, 0.55
 	screenFrame.Visible, skipHint.Visible = true, true
 	card.Visible, grid.Visible = false, false
@@ -1632,9 +1674,12 @@ local function roll(machineId, count)
 			equipBtn.Visible, againBtn.Visible = false, false
 			doneBtn.Text = "SEE ALL 10"
 			doneBtn.Position = UDim2.fromOffset(198, 474)
-			doneBtn.BackgroundColor3 = GOLD
+			doneBtn.BackgroundColor3, doneBtn.TextColor3, doneBtn.TextStrokeTransparency = WC.Orange, WHITE, 0
 			local waiting = true
 			local conn = doneBtn.Activated:Connect(function()
+				waiting = false
+			end)
+			local conn2 = cardClose.Activated:Connect(function()
 				waiting = false
 			end)
 			local t0 = os.clock()
@@ -1642,11 +1687,12 @@ local function roll(machineId, count)
 				task.wait(0.05)
 			end
 			conn:Disconnect()
+			conn2:Disconnect()
 			card.Visible = false
 			againBtn.Visible = true
 			doneBtn.Text = "DONE"
 			doneBtn.Position = UDim2.fromOffset(376, 474)
-			doneBtn.BackgroundColor3 = SLATE
+			doneBtn.BackgroundColor3, doneBtn.TextColor3, doneBtn.TextStrokeTransparency = WC.Face, INK, 1
 		end
 		for _, ch in ipairs(gridCells:GetChildren()) do
 			if not ch:IsA("UIGridLayout") then
@@ -1696,7 +1742,7 @@ equipBtn.Activated:Connect(function()
 		return Action:InvokeServer("EquipWeapon", top.id)
 	end)
 	cardNote.Text = ok and tostring(msg or "") or "Couldn't reach the server."
-	cardNote.TextColor3 = (ok and success) and GREEN or RED
+	cardNote.BackgroundColor3 = (ok and success) and GREEN or RED
 	if ok and success then
 		equipBtn.Visible = false
 	end
@@ -1725,7 +1771,13 @@ doneBtn.Activated:Connect(function()
 		endShow()
 	end
 end)
+cardClose.Activated:Connect(function() -- (the window's X: DONE, or on to the grid)
+	if doneBtn.Text == "DONE" then
+		endShow()
+	end
+end)
 gridDone.Activated:Connect(endShow)
+gridClose.Activated:Connect(endShow)
 
 ----------------------------------------------------------------------
 -- Your data

@@ -437,9 +437,11 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /
   UIPadding worked out), and `render_gui.py` paints the snapshots in a grid
   with captions (`--bg` a picture of the world behind, `--font` the game's
-  FredokaOne if you have it). The Arcade's: `luau test_arcade_client.luau -a
-  snaps > s.txt`, then `python3 render_gui.py s.txt ../../Docs/arcade_screens.png
-  --bg inside.png --font FredokaOne.ttf`.
+  FredokaOne if you have it, `--pixel` Press Start 2P for words in Roblox's
+  "Arcade" pixel font - the window look's titles and buttons). The Arcade's:
+  `luau test_arcade_client.luau -a snaps > s.txt`, then `python3 render_gui.py
+  s.txt ../../Docs/arcade_screens.png --bg inside.png --font FredokaOne.ttf
+  --pixel PressStart2P.ttf`.
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,
