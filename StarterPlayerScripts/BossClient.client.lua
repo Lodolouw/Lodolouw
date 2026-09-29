@@ -320,7 +320,7 @@ end
 -- Finds a Sound in SoundService by name, ignoring capitals and spaces, so
 -- "Boss SPit", "boss spit" and "BossSpit" are all the same sound.
 local function squash(name)
-	return string.lower((string.gsub(name, "%s+", "")))
+	return string.lower((string.gsub(name, "[%s_]+", "")))
 end
 local soundCache = {}
 local function findSound(name)
