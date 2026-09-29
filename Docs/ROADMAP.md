@@ -57,23 +57,23 @@ its card picture for the Arcade menu.
 - [ ] **The Open Cloud uploader:** one command uploads every model and animation and writes all the IDs into the game - no copying 68 IDs by hand. (You'll need to make an API key once.)
 - [ ] **Starters:** Training Wraps (Fists) ✅ · Iron Sword ✅ (make it the free early-quest weapon)
 
-**Launch packs (4 packs = 24 weapons):**
+**Launch: a machine on every second floor (1, 3, 5, 7, 9) = 5 packs, 30 weapons.** Your first roll comes right after your first boss.
 
 - [ ] **Slime (Oozark):** Goo Gloves · Jellyblade · Gelatin Hammer · Ooze Daggers · Acid Scythe · *Gelatinous Edge* (Secret)
-- [ ] **Cactus (Tuber):** Prickle Blade · Barrel Cactus Maul · Spine Darts · Desert Reaper · Sandstorm Katana · *Brute Gauntlets*
 - [ ] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
-- [ ] **Dojo (Kaze):** Headband Daggers · Wind Sickle · Rooftop Katana · Ki Knuckles · Rising Dragon · *Super Hammer*
+- [ ] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
+- [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
+- [ ] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
 
 (Each pack is Common → Rare → Epic → Legendary → Mythic → Secret, in that
 order. One test weapon goes first so you can play-test a roll.)
 
-**Update packs (after launch, one per "NEW WEAPON PACK!" update):**
+**Updates after launch (the even floors, one "NEW WEAPON PACK!" update each; the Throne pack is the big one):**
 
-- [ ] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
+- [ ] **Cactus (Tuber):** Prickle Blade · Barrel Cactus Maul · Spine Darts · Desert Reaper · Sandstorm Katana · *Brute Gauntlets*
+- [ ] **Dojo (Kaze):** Headband Daggers · Wind Sickle · Rooftop Katana · Ki Knuckles · Rising Dragon · *Super Hammer*
 - [ ] **Neon (Gridlock):** Beat Katana · Cube Fists · Neon Blade · Drop Hammer · Wave Daggers · *Deadline*
-- [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
 - [ ] **Garden (Petalina):** Petal Blade · Flytrap Gauntlet · Thorn Katana · Harvest Scythe · Pollen Daggers · *Carnation Crusher*
-- [ ] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
 - [ ] **Throne (Gavelgrunt):** Tax Daggers · Royal Scythe · Decree Sword · Belly Bump Fists · Crown Katana · *The Final Gavel*
 
 **Event weapons (come with step 9, 2 per event boss = 16):** Ember Cleaver,
@@ -129,7 +129,7 @@ weapons plan.
 
 ## After launch
 
-- The 6 update weapon packs (above).
+- The 5 even-floor weapon packs (above).
 - Fishing for pet eggs, and pets.
 - Stronger event bosses.
 - Boss Rush and speedrun boards.

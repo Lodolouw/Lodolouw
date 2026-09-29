@@ -33,8 +33,7 @@ packs x 6) and 16 event weapons (8 event bosses x 2). 78 in all.
   or two effects; lifesteal 15% for 4-5 s; cooldowns 12-15 s. Mastery makes
   every ability a bit bigger or longer (Commons too - no weapon goes dead);
   mastery 100 awakens it (new look, stronger ability).
-- **Launch with 4 packs** (Slime, Cactus, Knight, Kaze = 24 weapons); the other
-  6 packs come in updates ("NEW WEAPON PACK!" updates and Shorts).
+- **Launch with 5 packs: every second floor** (1 Slime, 3 Knight, 5 Speedway, 7 Jungle, 9 Canvas = 30 weapons), so the first roll comes right after the first boss. The even floors' packs (Cactus, Dojo, Neon, Garden, Throne) come as "NEW WEAPON PACK!" updates.
 
 ## The starters (free)
 
@@ -65,7 +64,7 @@ packs x 6) and 16 event weapons (8 event bosses x 2). 78 in all.
 | Mythic | Sandstorm Katana | Katana | quick-draw releases a sand tornado that travels forward, hitting several times |
 | Secret | Brute Gauntlets | Fists | your arms become giant cactus fists for 6 s: every punch is a shockwave |
 
-### 3. Knight pack (Burrowmore) - launch
+### 3. Knight pack (Burrowmore)
 | Rarity | Weapon | Type | Ability |
 |---|---|---|---|
 | Common | Shovel Hammer | Hammer | your next hit is a dig slam: extra knockback and a burst of dirt |
@@ -75,7 +74,7 @@ packs x 6) and 16 event weapons (8 event bosses x 2). 78 in all.
 | Mythic | Anchor Fists | Fists | throw an anchor on a chain: it pulls you to the target for a slam |
 | Secret | No Quarter | Sword | your armour cracks gold for 8 s: bigger swings, a gold shockwave on each chop, a meteor finisher |
 
-### 4. Dojo pack (Kaze) - launch
+### 4. Dojo pack (Kaze)
 | Rarity | Weapon | Type | Ability |
 |---|---|---|---|
 | Common | Headband Daggers | Daggers | 3 s of faster attacks and a quicker roll |
