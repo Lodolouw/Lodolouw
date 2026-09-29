@@ -3,9 +3,8 @@
 
 	THE ARCADE, where the forge used to be (north-east of the fountain, at
 	Config.Stations.Arcade): open to the sky - a checkered floor with glowing
-	edges, and over the front a big pixel "ARCADE" sign on two posts, with
-	blinking marquee bulbs along it and a giant spinning token over it, so it
-	can be seen from the spawn. LobbyBuilder calls ArcadeBuilder.Build(lobby).
+	edges and a giant spinning token floating over the front (the big ARCADE
+	sign was taken down: too bright). LobbyBuilder calls ArcadeBuilder.Build(lobby).
 
 	Inside:
 	  * the MACHINES: one arcade cabinet per weapon pack along the back
@@ -22,7 +21,7 @@
 
 	Tagged for the screens: each cabinet is a Model tagged "ArcadeCabinet"
 	(attribute Machine = the pack's id) with a
-	"Screen" and a "Marquee" part; the bulbs are tagged "ArcadeBulb" (Index);
+	"Screen" and a "Marquee" part;
 	the pedestal "ArcadePrize" (Machine); the board "ArcadeWins"; the token
 	machine "ArcadeTokens". Everything is in the lobby's palette (RetroWorld).
 ]]
@@ -126,17 +125,6 @@ local function label(parent, name, text, color, pos, size, extra)
 	l.Parent = parent
 	return l
 end
-
-----------------------------------------------------------------------
--- The pixel letters of the sign (5 wide, 7 tall)
-----------------------------------------------------------------------
-local LETTERS = {
-	A = { ".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#" },
-	R = { "####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#" },
-	C = { ".####", "#....", "#....", "#....", "#....", "#....", ".####" },
-	D = { "####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####." },
-	E = { "#####", "#....", "#....", "####.", "#....", "#....", "#####" },
-}
 
 ----------------------------------------------------------------------
 -- A cabinet. `cf`: the middle of its foot on the floor, facing its players
@@ -270,7 +258,6 @@ function ArcadeBuilder.Build(parent)
 		return O * CFrame.new(x, y, z)
 	end
 	local HALF = 20 -- the floor is 40 x 40 studs
-	local SIGN_Y = 22.6 -- the middle of the ARCADE sign over the front
 
 	-- THE FLOOR: dark with purple checks, glowing edges, a mat to the path
 	part(m, "ArcadeFloor", V3(HALF * 2, 0.8, HALF * 2), at(0, 0.4, 0), INK)
@@ -287,46 +274,10 @@ function ArcadeBuilder.Build(parent)
 	neon(m, "FloorGlow", V3(0.4, 0.15, HALF * 2), at(HALF - 0.2, 0.82, 0), MAGENTA)
 	part(m, "EntryMat", V3(18, 0.6, 3), at(-4, 0.3, HALF + 1.5), NIGHT)
 
-	-- NO ROOF: open to the sky (I asked for the roof gone). Two posts at the
-	-- front corners hold up the sign.
-	for _, px in ipairs({ -19.2, 19.2 }) do
-		part(m, "SignPost", V3(1.6, SIGN_Y - 0.8, 1.6), at(px, 0.8 + (SIGN_Y - 0.8) / 2, HALF - 0.8), NIGHT)
-		neon(m, "SignPostGlow", V3(0.3, SIGN_Y - 5.8, 0.3), at(px - 0.8 * math.sign(px), 0.8 + (SIGN_Y - 5.8) / 2 + 0.6, HALF - 0.8), CYAN)
-	end
-
-	-- THE SIGN over the front: ARCADE in pixel letters, a different colour each
-	local signCf = at(0, SIGN_Y, HALF + 0.4)
-	part(m, "SignBoard", V3(38, 9.2, 1), signCf, INK)
-	neon(m, "SignEdge", V3(38.4, 0.4, 1.1), signCf * CFrame.new(0, 4.6, 0), CYAN)
-	neon(m, "SignEdge", V3(38.4, 0.4, 1.1), signCf * CFrame.new(0, -4.6, 0), CYAN)
-	neon(m, "SignEdge", V3(0.4, 9.2, 1.1), signCf * CFrame.new(-19, 0, 0), CYAN)
-	neon(m, "SignEdge", V3(0.4, 9.2, 1.1), signCf * CFrame.new(19, 0, 0), CYAN)
-	local word = "ARCADE"
-	local colors = { CYAN, PINK, YELLOW, GREEN, ORANGE, MAGENTA }
-	for li = 1, #word do
-		local rows = LETTERS[string.sub(word, li, li)]
-		local x0 = -17.5 + (li - 1) * 6
-		for r, row in ipairs(rows) do
-			for c = 1, 5 do
-				if string.sub(row, c, c) == "#" then
-					neon(m, "SignPixel", V3(0.9, 0.9, 0.4), signCf * CFrame.new(x0 + (c - 1) + 0.5, 3 - (r - 1), 0.62), colors[li])
-				end
-			end
-		end
-	end
-	-- marquee bulbs along its top and bottom (ArcadeClient runs lights along them)
-	local n = 0
-	for _, y in ipairs({ -5.05, 5.05 }) do
-		for x = -19, 19, 2 do
-			n = n + 1
-			local b = ball(m, "Bulb", 0.7, signCf * CFrame.new(x, y, 0.55), YELLOW, Mat.Neon)
-			b.CastShadow = false
-			b:SetAttribute("Index", n)
-			CollectionService:AddTag(b, "ArcadeBulb")
-		end
-	end
+	-- (no roof and no sign: the big ARCADE sign was too bright, I had it taken
+	-- down; the giant token still turns over the front)
 	-- the giant token over it, turning (LobbyFX spins it)
-	local coin = disc(m, "GiantToken", 0.9, 7, at(0, SIGN_Y + 9.2, HALF + 0.4), GOLD, Mat.SmoothPlastic)
+	local coin = disc(m, "GiantToken", 0.9, 7, at(0, 13, HALF + 0.4), GOLD, Mat.SmoothPlastic)
 	coin.CastShadow = false
 	for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
 		local g = screenGui(coin, face, 30)
