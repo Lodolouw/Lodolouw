@@ -10,8 +10,8 @@
 	end (he sleeps on it), four tall stone pillars at the diagonals (his big
 	moves break them), three low round podiums near the edge (stand on one
 	when he finds you GUILTY), battlements all round with his banners (a gold
-	crown on purple) and torches, a sea of storm clouds far below and dark
-	thunderheads all round. Everything is chunky and 8-bit, in the game's 32
+	crown on purple) and torches, rising out of a sea of storm cloud with a
+	wall of mist all round (like Oozark's hollow). Everything is chunky and 8-bit, in the game's 32
 	colours. (The rain and the lightning are drawn on each screen: see his
 	body file.)
 
@@ -79,7 +79,6 @@ local ORANGE = RGB(247, 118, 34)
 local WHITE = RGB(255, 255, 255)
 local STORM = RGB(90, 105, 136) -- storm clouds
 local STORM_DARK = RGB(58, 68, 102)
-local STORM_DEEP = RGB(38, 43, 68)
 local WOOD = RGB(184, 111, 80)
 local WOOD_DARK = RGB(115, 62, 57)
 local INK = RGB(24, 20, 37)
@@ -415,27 +414,70 @@ local function buildGate()
 end
 
 local function buildSky()
-	-- a sea of storm clouds far below, grey and blue
-	for _ = 1, 26 do
-		local a = rnd() * math.pi * 2
-		local d = between(WALL + 30, 360)
-		local w = between(40, 110)
-		local c = at(math.sin(a) * d, between(-70, -40), math.cos(a) * d)
-		part("CloudBank", V3(w, between(8, 16), w * between(0.5, 0.9)), CFrame.new(c) * CFrame.Angles(0, rnd() * 3, 0),
-			(rnd() < 0.35) and STORM_DARK or STORM, DECOR)
+	-- MIST hiding the void (like Oozark's hollow): the summit rises out of a
+	-- sea of storm cloud - two see-through layers over a solid cloud floor,
+	-- soft cloud puffs heaped evenly all round the battlements so there's
+	-- never a hard edge, and a drifting fog under the courtyard
+	local MIST = RGB(150, 160, 184)
+	local PUFF = { RGB(170, 180, 202), RGB(139, 155, 180), RGB(192, 203, 220) }
+	for _, layer in ipairs({ { -22, 0.7 }, { -40, 0.45 } }) do
+		part("SummitMist", V3(2048, 1, 2048), CFrame.new(at(0, layer[1], 0)), MIST,
+			merge(DECOR, { Transparency = layer[2], CanTouch = false }))
 	end
-	-- and dark thunderheads all round, towering up past the summit (the
-	-- lightning flashes among them)
-	for i = 1, 14 do
-		local a = (i + rnd() * 0.6) / 14 * math.pi * 2
-		local d = between(190, 300)
-		local w = between(70, 120)
-		local h = between(60, 120)
-		local c = at(math.sin(a) * d, between(-20, 30) + h / 2, math.cos(a) * d)
-		part("Thunderhead", V3(w, h, w * between(0.6, 0.9)), CFrame.new(c) * CFrame.Angles(0, rnd() * 3, 0),
-			(i % 3 == 0) and STORM or STORM_DEEP, DECOR)
-		part("ThunderheadTop", V3(w * 1.3, h * 0.25, w * 1.1), CFrame.new(c + V3(0, h * 0.55, 0)) * CFrame.Angles(0, rnd() * 3, 0),
-			STORM_DARK, DECOR)
+	part("SummitCloudFloor", V3(2048, 1, 2048), CFrame.new(at(0, -60, 0)), STORM, merge(DECOR, { CanTouch = false }))
+	-- three rings of puffs, evenly spread (each ring shifted so they don't line up)
+	for ring, r in ipairs({ { WALL + 16, 30, -14 }, { WALL + 60, 44, -24 }, { WALL + 120, 60, -34 } }) do
+		local n = 18 + ring * 6
+		for i = 0, n - 1 do
+			local ang = (i + (ring - 1) / 3 + rnd() * 0.4) / n * math.pi * 2
+			local d = r[1] + rnd() * 16
+			local size = r[2] * (0.75 + rnd() * 0.5)
+			part("CloudPuff", V3(size, size * 0.55, size), CFrame.new(at(math.sin(ang) * d, r[3] - rnd() * 8, math.cos(ang) * d)),
+				PUFF[(i + ring) % 3 + 1], merge(DECOR, { Shape = Enum.PartType.Ball, Transparency = 0.1 + rnd() * 0.2, CanTouch = false }))
+		end
+	end
+	local underFog = anchorPart("UnderFog", CFrame.new(at(0, -18, 0)))
+	underFog.Size = V3(360, 10, 360)
+	local uf = Instance.new("ParticleEmitter")
+	uf.Rate = 6
+	uf.Color = ColorSequence.new(RGB(192, 203, 220))
+	uf.LightEmission = 0.05
+	uf.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 50), NumberSequenceKeypoint.new(1, 90) })
+	uf.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 1) })
+	uf.Lifetime = NumberRange.new(16, 24)
+	uf.Speed = NumberRange.new(0.5, 2)
+	uf.SpreadAngle = Vector2.new(180, 8)
+	uf.Shape = Enum.ParticleEmitterShape.Box
+	uf.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	uf.Parent = underFog
+	-- A WALL OF MIST all the way round (like Oozark's): nothing out there can
+	-- be seen, just the storm. Panels meeting edge to edge, a muted storm grey.
+	local WALL_R, SEGS = 320, 72
+	local bottom, top = -62, 420
+	local apothem = WALL_R * math.cos(math.pi / SEGS)
+	local chord = 2 * WALL_R * math.sin(math.pi / SEGS)
+	for i = 0, SEGS - 1 do
+		local ang = (i + 0.5) / SEGS * math.pi * 2
+		local p = at(math.sin(ang) * apothem, (bottom + top) / 2, math.cos(ang) * apothem)
+		part("MistWall", V3(chord, top - bottom, 1), CFrame.lookAt(p, p + V3(math.sin(ang), 0, math.cos(ang))), RGB(96, 106, 130),
+			merge(DECOR, { Transparency = 0.08, CanTouch = false }))
+	end
+	-- soft fog drifting just inside it, so its edge never looks flat
+	for i = 0, 7 do
+		local ang = i / 8 * math.pi * 2
+		local f = anchorPart("EdgeFog", CFrame.new(at(math.sin(ang) * 280, 20, math.cos(ang) * 280)))
+		f.Size = V3(120, 60, 40)
+		local e = Instance.new("ParticleEmitter")
+		e.Rate = 2
+		e.Color = ColorSequence.new(RGB(150, 160, 184))
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 60), NumberSequenceKeypoint.new(1, 100) })
+		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.55), NumberSequenceKeypoint.new(1, 1) })
+		e.Lifetime = NumberRange.new(18, 26)
+		e.Speed = NumberRange.new(0.5, 1.5)
+		e.SpreadAngle = Vector2.new(180, 10)
+		e.Shape = Enum.ParticleEmitterShape.Box
+		e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		e.Parent = f
 	end
 	-- the Spire's top: the courtyard sits on a great stone cap
 	part("SummitCap", V3((WALL + 6) * 2, 18, (WALL + 6) * 2), CFrame.new(at(0, -13, 0)), STONE_DEEP, SCENERY)

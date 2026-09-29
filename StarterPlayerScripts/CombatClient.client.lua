@@ -2214,7 +2214,7 @@ for i, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
 	create("Frame", {
 		AnchorPoint = Vector2.new(c[1], c[2]),
 		Position = UDim2.fromScale(c[1], c[2]),
-		Size = UDim2.fromOffset(16, 4),
+		Size = UDim2.new(1, 0, 0, 4),
 		BackgroundColor3 = RGB(255, 255, 255),
 		BorderSizePixel = 0,
 		Parent = holder,
@@ -2222,7 +2222,7 @@ for i, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
 	create("Frame", {
 		AnchorPoint = Vector2.new(c[1], c[2]),
 		Position = UDim2.fromScale(c[1], c[2]),
-		Size = UDim2.fromOffset(4, 16),
+		Size = UDim2.new(0, 4, 1, 0),
 		BackgroundColor3 = RGB(255, 255, 255),
 		BorderSizePixel = 0,
 		Parent = holder,
@@ -2555,10 +2555,18 @@ local function stepMarkers(dt)
 	-- (8-bit: the brackets breathe in chunky steps, and the arrow hops)
 	local k = math.floor(os.clock() * 4) % 2
 	local grow = 64 + k * 8
-	lockDot.Size = UDim2.fromOffset(grow, grow)
+	-- (a big boss: the box grows with it, in studs - so it frames its body at
+	-- any distance instead of sitting as a little square on its belly)
+	local _, _, drawn = targetPoint(lockTarget)
+	local size = drawn and lockTarget:GetAttribute("AimSize")
+	local studs = type(size) == "number" and math.clamp((size - 12) * 0.45, 0, 22) or 0
+	lockDot.Size = UDim2.new(studs, grow, studs, grow)
+	local corner = studs > 0 and 22 or 16
+	for _, b in ipairs(brackets) do
+		b.frame.Size = UDim2.fromOffset(corner, corner)
+	end
 	lockArrow.Position = UDim2.new(0.5, 0, 0, -4 - k * 4)
 	-- (a boss: on the middle of its drawn body, every frame, as it moves)
-	local _, _, drawn = targetPoint(lockTarget)
 	local at, body = lockTarget:GetAttribute("AimAt"), lockDot.Adornee
 	lockDot.StudsOffsetWorldSpace = (drawn and body and body:IsA("BasePart")) and (at - body.Position) or Vector3.new(0, 0, 0)
 	markerTick = markerTick + dt
