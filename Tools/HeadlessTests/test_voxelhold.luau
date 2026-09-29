@@ -205,10 +205,37 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 			local tier = WeaponFX.RARITY_TIER[def.Rarity]
 			check(has.SwingTrail and has.SwingGlow, key .. ": the two smears every weapon has")
 			check((has.SwingFan == true) == (tier >= 2), key .. ": the wide crescent from Rare up (" .. def.Rarity .. ")")
-			check((has.SwingEdge == true and has.SwingSparks == true) == (tier >= 3), key .. ": the white-hot edge and sparkles from Epic up")
-			check((has.SwingHalo == true and has.SwingStars == true) == (tier >= 5), key .. ": the rainbow halo and stars on Mythic and Secret")
+			check((has.SwingEdge == true) == (tier >= 3), key .. ": the bright edge from Epic up")
+			check((has.SwingDeep == true) == (tier == 5), key .. ": Mythic's second crescent")
+			check((has.SwingJelly == true) == (tier >= 6), key .. ": Secret's body of jelly")
+			check(not has.SwingHalo and not has.SwingStars, key .. ": no rainbow")
 			local all = #h.trails
-			check(all == ({ 2, 3, 5, 5, 7, 7 })[tier] * (two and 2 or 1), key .. ": " .. all .. " swing effects, all switched with the smear")
+			check(all == ({ 2, 3, 4, 4, 5, 5 })[tier] * (two and 2 or 1), key .. ": " .. all .. " swing trails, all switched with the smear")
+			check((h.trails.fx ~= nil and h.trails.fx.fling ~= nil) == (tier >= 3), key .. ": goo off the tip from Epic up")
+			-- a cut, driven through the swing effects: the handle swept round
+			do
+				local start = h.handle.CFrame
+				WeaponFX._swingFx(h, true, true)
+				for f = 1, 12 do
+					-- (no frame step here: the game's own loop would end the cut)
+					h.handle.CFrame = start * CFrame.Angles(0, math.rad(f * 12), 0) + Vector3.new(0, 0, -f * 0.3)
+					WeaponFX._swingFx(h, true, false)
+				end
+				WeaponFX._swingFx(h, false, false)
+				local names = {}
+				local folder = M.workspace:FindFirstChild("SwingGoo")
+				for _, d in ipairs(folder and folder:GetDescendants() or {}) do
+					names[d.Name] = (names[d.Name] or 0) + 1
+				end
+				check(((names.Goo or 0) > 0) == (tier >= 3), key .. ": goo flies off the tip (" .. tostring(names.Goo or 0) .. ")")
+				check(((names.GooHeart or 0) > 0) == (tier >= 6), key .. ": glowing hearts in the goo only on the Secret")
+				check(((names.JellyWave or 0) > 0) == (tier >= 6), key .. ": the jelly wave only on the Secret")
+				check(((names.OozarkEye or 0) > 0) == (tier >= 6), key .. ": Oozark's eyes only on the Secret")
+				h.handle.CFrame = start
+				step(3)
+				local left = folder and #folder:GetChildren() or 0
+				check(left == 0 and #WeaponFX._goo == 0, key .. ": the goo lands, splats and is gone (" .. left .. " left)")
+			end
 		end
 		src:Destroy()
 		me:SetAttribute("Weapon", nil)

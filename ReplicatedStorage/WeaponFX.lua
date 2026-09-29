@@ -892,55 +892,18 @@ end
 WeaponFX.buildVoxel = buildVoxel
 
 ----------------------------------------------------------------------
--- Swing effects by rarity: the rarer the weapon, the bigger and brighter its
--- swings. On top of the two smears every weapon has, Rare and up sweep a
--- wide glowing crescent from the grip past the tip (colours shading round
--- the weapon's glow), Epic and up add a bright white-hot edge and sparkles
--- flying off the tip, Legendary and up burst sparkles as each cut starts,
--- and Mythic and Secret add a rainbow halo round the outside and stars.
+-- Swing effects by rarity: the rarer the weapon, the bigger its swings, in
+-- its pack's own theme (the Slime pack's are goo). On top of the two smears
+-- every weapon has: Rare and up a wide crescent from the grip past the tip,
+-- Epic and up a bright edge and goo flung off the tip that splats on the
+-- floor, Legendary and up a burst of goo and a flash as each cut starts,
+-- Mythic a second crescent hanging on (the Acid Scythe's glowing acid hisses
+-- where it lands), and Secret its own show: a lingering body of jelly, goo
+-- with glowing hearts, a wave of jelly flying off every cut and Oozark's eyes
+-- popping out of it.
 ----------------------------------------------------------------------
 local RARITY_TIER = { Common = 1, Uncommon = 1, Rare = 2, Epic = 3, Legendary = 4, Mythic = 5, Secret = 6 }
 WeaponFX.RARITY_TIER = RARITY_TIER
-
--- a colour turned round the colour wheel by `turn` (0-1), full strength
-local function hueTurn(c, turn, sat)
-	local r, g, b = c.R, c.G, c.B
-	local mx, mn = math.max(r, g, b), math.min(r, g, b)
-	local h = 0
-	if mx > mn then
-		local d = mx - mn
-		if mx == r then
-			h = ((g - b) / d) % 6
-		elseif mx == g then
-			h = (b - r) / d + 2
-		else
-			h = (r - g) / d + 4
-		end
-		h = h / 6
-	end
-	h = (h + turn) % 1
-	local s = sat or 1
-	local i = math.floor(h * 6)
-	local f = h * 6 - i
-	local p, q, t = 1 - s, 1 - f * s, 1 - (1 - f) * s
-	local rr, gg, bb
-	i = i % 6
-	if i == 0 then
-		rr, gg, bb = 1, t, p
-	elseif i == 1 then
-		rr, gg, bb = q, 1, p
-	elseif i == 2 then
-		rr, gg, bb = p, 1, t
-	elseif i == 3 then
-		rr, gg, bb = p, q, 1
-	elseif i == 4 then
-		rr, gg, bb = t, p, 1
-	else
-		rr, gg, bb = 1, p, q
-	end
-	return Color3.new(rr, gg, bb)
-end
-WeaponFX.hueTurn = hueTurn
 
 local function colors(list)
 	local keys = {}
@@ -957,8 +920,209 @@ local function fades(list)
 	return NumberSequence.new(keys)
 end
 
--- the extra trails and sparkles, along the same line as the weapon's own
--- smear (`trails[1]`), added to `trails` (so they switch on and off with it)
+-- THEMES: each pack's swings in its own colours and stuff (the Slime pack's
+-- are goo); a weapon from a pack without one uses its own glow colour.
+-- A theme's Mythic and Secret entries change what those two look like.
+local RGBc = Color3.fromRGB
+local SWING_THEMES = {
+	Slime = {
+		light = RGBc(190, 255, 120), main = RGBc(105, 210, 70), deep = RGBc(40, 110, 35),
+		blob = { RGBc(105, 210, 70), RGBc(150, 240, 95), RGBc(60, 160, 50) }, blobSee = 0.15,
+		-- the Acid Scythe: glowing acid that hisses where it lands
+		Mythic = {
+			light = RGBc(235, 255, 150), main = RGBc(120, 255, 60), deep = RGBc(45, 120, 20),
+			blob = { RGBc(120, 255, 60), RGBc(190, 255, 90) }, blobSee = 0, neon = true, sizzle = true,
+		},
+		-- Gelatinous Edge: Oozark's own jelly - see-through goo with glowing
+		-- hearts, a wave of jelly off every cut, his eyes popping out of it
+		Secret = {
+			light = RGBc(214, 255, 120), main = RGBc(105, 210, 70), deep = RGBc(26, 70, 24),
+			blob = { RGBc(105, 210, 70), RGBc(130, 225, 85) }, blobSee = 0.35, hearts = RGBc(214, 255, 120),
+			wave = true, eyes = true,
+		},
+	},
+}
+WeaponFX.SWING_THEMES = SWING_THEMES
+
+local function themeFor(def, glow, golden)
+	if golden then
+		return { light = RGBc(255, 250, 200), main = GOLD, deep = RGBc(200, 120, 20), blob = { GOLD, RGBc(255, 190, 60) }, blobSee = 0, neon = true }
+	end
+	local pack = def and def.Pack and SWING_THEMES[def.Pack]
+	if pack then
+		return pack[def.Rarity or ""] or pack
+	end
+	local c = glow or GLOW
+	return {
+		light = c:Lerp(RGBc(255, 255, 255), 0.4), main = c, deep = c:Lerp(RGBc(0, 0, 0), 0.55),
+		blob = { c, c:Lerp(RGBc(255, 255, 255), 0.3) }, blobSee = 0, neon = true,
+	}
+end
+WeaponFX.themeFor = themeFor
+
+-- how much each rarity throws: bits a second off the tip while cutting, their
+-- size, how many burst out as a cut starts
+local FLING = {
+	[3] = { rate = 22, size = 0.4, burst = 0 },
+	[4] = { rate = 38, size = 0.5, burst = 8 },
+	[5] = { rate = 50, size = 0.6, burst = 12 },
+	[6] = { rate = 60, size = 0.75, burst = 18 },
+}
+
+-- the goo in flight: one list, moved by one Heartbeat - each bit arcs down
+-- and splats flat on the floor (or hisses away, for acid)
+local goo = {}
+local gooConn = nil
+local function gooFolder()
+	local f = workspace:FindFirstChild("SwingGoo")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "SwingGoo"
+		f.Parent = workspace
+	end
+	return f
+end
+local function fxPart(name, size, cf, color, see, neon, shape)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored, p.CanCollide, p.CanTouch, p.CanQuery, p.CastShadow = true, false, false, false, false
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Transparency = see or 0
+	p.Material = neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
+	if shape then
+		p.Shape = shape
+	end
+	p.Parent = gooFolder()
+	return p
+end
+local function fadeAway(p, time, props)
+	props = props or {}
+	props.Transparency = 1
+	pcall(function()
+		TweenService:Create(p, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.In), props):Play()
+	end)
+	task.delay(time + 0.05, function()
+		p:Destroy()
+	end)
+end
+local function splat(b)
+	local t = b.theme
+	local r = b.size * (2.6 + math.random() * 1.6)
+	local disc = fxPart("Splat", Vector3.new(0.08, r, r), CFrame.new(b.pos.X, b.floor + 0.05, b.pos.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		t.deep:Lerp(t.main, 0.5), t.neon and 0.2 or 0.25, t.neon, Enum.PartType.Cylinder)
+	fadeAway(disc, 1.4, { Size = Vector3.new(0.08, r * 1.25, r * 1.25) })
+	if t.sizzle then
+		for _ = 1, 2 do
+			local puff = fxPart("Hiss", Vector3.new(0.5, 0.5, 0.5), CFrame.new(b.pos.X + math.random() - 0.5, b.floor + 0.3, b.pos.Z + math.random() - 0.5),
+				t.light, 0.3, true, Enum.PartType.Ball)
+			fadeAway(puff, 0.6, { Size = Vector3.new(1.4, 1.4, 1.4), CFrame = puff.CFrame + Vector3.new(0, 2.2, 0) })
+		end
+	end
+end
+local function stepGoo(dt)
+	for i = #goo, 1, -1 do
+		local b = goo[i]
+		b.vel = b.vel - Vector3.new(0, 55 * dt, 0)
+		b.pos = b.pos + b.vel * dt
+		b.age = b.age + dt
+		local landed = b.pos.Y <= b.floor + b.size * 0.4
+		if landed or b.age > 2 or not b.part.Parent then
+			if landed and b.part.Parent then
+				splat(b)
+			end
+			b.part:Destroy()
+			if b.core then
+				b.core:Destroy()
+			end
+			table.remove(goo, i)
+		else
+			-- (stretched along the way it's flying, like a drop)
+			local stretch = math.clamp(b.vel.Magnitude / 30, 0, 1)
+			local cf = CFrame.lookAt(b.pos, b.pos + b.vel)
+			b.part.CFrame = cf
+			b.part.Size = Vector3.new(b.size * (1 - stretch * 0.25), b.size * (1 - stretch * 0.25), b.size * (1 + stretch))
+			if b.core then
+				b.core.CFrame = cf
+			end
+		end
+	end
+	if #goo == 0 and gooConn then
+		gooConn:Disconnect()
+		gooConn = nil
+	end
+end
+local function flingGoo(theme, pos, vel, size, floor)
+	if #goo > 160 then
+		return
+	end
+	local c = theme.blob[math.random(1, #theme.blob)]
+	local part = fxPart("Goo", Vector3.new(size, size, size), CFrame.new(pos), c, theme.blobSee, theme.neon, Enum.PartType.Ball)
+	local core = nil
+	if theme.hearts then
+		core = fxPart("GooHeart", Vector3.new(size * 0.4, size * 0.4, size * 0.4), CFrame.new(pos), theme.hearts, 0, true, Enum.PartType.Ball)
+	end
+	table.insert(goo, { part = part, core = core, pos = pos, vel = vel, size = size, floor = floor, age = 0, theme = theme })
+	if not gooConn then
+		gooConn = RunService.Heartbeat:Connect(stepGoo)
+	end
+end
+WeaponFX.flingGoo = flingGoo
+WeaponFX._goo = goo -- (for the headless tests)
+
+-- the Secret's wave: the arc the tip just drew, in jelly, flying out from you
+-- and wobbling away
+local function jellyWave(theme, path, centre)
+	if #path < 3 then
+		return
+	end
+	for i = 1, #path - 1 do
+		local a, b = path[i], path[i + 1]
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude
+		if len > 0.05 then
+			local out = Vector3.new(mid.X - centre.X, 0, mid.Z - centre.Z)
+			out = out.Magnitude > 0.1 and out.Unit or Vector3.new(0, 0, -1)
+			local u = i / #path
+			local fat = 0.4 + 1.4 * math.sin(math.pi * u)
+			local cf = CFrame.lookAt(mid, b)
+			local body = fxPart("JellyWave", Vector3.new(fat, 0.3, len * 1.15), cf, theme.main, 0.35, false)
+			local rim = fxPart("JellyRim", Vector3.new(fat * 0.3, 0.35, len * 1.15), cf * CFrame.new(fat * 0.4, 0.05, 0), theme.light, 0, true)
+			local push = out * 7 + Vector3.new(0, 0.6, 0)
+			fadeAway(body, 0.45, { CFrame = cf + push, Size = Vector3.new(fat * 1.8, 0.2, len * 1.4) })
+			fadeAway(rim, 0.35, { CFrame = cf * CFrame.new(fat * 0.4, 0.05, 0) + push })
+		end
+	end
+end
+
+-- the Secret's eyes: Oozark's eyes pop out of the arc, blink at you, and
+-- burst into goo
+local function oozarkEyes(theme, at, floor)
+	local look = CFrame.new(at) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	for _, x in ipairs({ -0.45, 0.45 }) do
+		local cf = look * CFrame.new(x, 0, 0)
+		local eye = fxPart("OozarkEye", Vector3.new(0.1, 0.1, 0.1), cf, RGBc(236, 255, 170), 0, true, Enum.PartType.Ball)
+		local pupil = fxPart("OozarkPupil", Vector3.new(0.05, 0.05, 0.05), cf * CFrame.new(0, 0, -0.3), RGBc(24, 20, 37), 0, false, Enum.PartType.Ball)
+		pcall(function()
+			TweenService:Create(eye, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.8, 0.8, 0.8) }):Play()
+			TweenService:Create(pupil, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.35, 0.35, 0.35) }):Play()
+		end)
+		task.delay(0.35, function()
+			if eye.Parent then
+				for _ = 1, 3 do
+					flingGoo(theme, eye.Position, Vector3.new(math.random() * 10 - 5, 6 + math.random() * 5, math.random() * 10 - 5), 0.35, floor)
+				end
+			end
+			eye:Destroy()
+			pupil:Destroy()
+		end)
+	end
+end
+
+-- the extra trails along the same line as the weapon's own smear
+-- (`trails[1]`), added to `trails` so they switch on and off with it; what
+-- the swing throws is kept in `trails.fx` (see setSmear)
 local function dressTrails(trails, def, glow, golden)
 	local tier = RARITY_TIER[def and def.Rarity or ""] or 1
 	local base = trails and trails[1]
@@ -966,16 +1130,14 @@ local function dressTrails(trails, def, glow, golden)
 	if tier < 2 or not (a0 and a1 and base.Parent) then
 		return trails
 	end
+	local theme = themeFor(def, glow, golden)
 	local part = base.Parent
 	local p0, p1 = a0.Position, a1.Position
 	local along = p1 - p0
 	local function at(u)
 		return p0 + along * u
 	end
-	local c1 = golden and GOLD or glow
-	local c2 = golden and Color3.fromRGB(255, 160, 40) or hueTurn(c1, 0.1)
-	local c3 = golden and Color3.fromRGB(255, 250, 200) or hueTurn(c1, -0.12)
-	local white = Color3.fromRGB(255, 255, 255)
+	local white = RGBc(255, 255, 255)
 	local function attach(name, pos)
 		local a = Instance.new("Attachment")
 		a.Name = name
@@ -989,7 +1151,7 @@ local function dressTrails(trails, def, glow, golden)
 		t.Attachment0, t.Attachment1 = attach(name .. "Base", at(u0)), attach(name .. "Tip", at(u1))
 		t.Color = cs
 		t.Transparency = see
-		t.LightEmission = 1
+		t.LightEmission = 0.7
 		t.Lifetime = life
 		t.MinLength = 0.02
 		t.WidthScale = width
@@ -998,63 +1160,88 @@ local function dressTrails(trails, def, glow, golden)
 		table.insert(trails, t)
 		return t
 	end
-	-- the wide crescent: from near the grip to past the tip, shading from white
-	-- through the glow into its neighbours on the colour wheel
-	trail("SwingFan", -0.35, 1.18, colors({ white, c1, c2, c3 }),
-		fades({ { 0, 0.15 }, { 0.35, 0.45 }, { 1, 1 } }), 0.16 + 0.035 * tier, NumberSequence.new(1, 0.55))
+	-- the crescent: from near the grip to past the tip, in the theme's own colours
+	local fan = trail("SwingFan", -0.35, 1.18, colors({ theme.light, theme.main, theme.deep }),
+		fades({ { 0, 0.05 }, { 0.4, 0.3 }, { 1, 1 } }), 0.16 + 0.035 * tier, NumberSequence.new(1, 0.55))
 	if tier >= 3 then
-		-- the white-hot edge along the outside
-		trail("SwingEdge", 0.82, 1.3, colors({ white, white, c1, c2 }),
-			fades({ { 0, 0 }, { 0.5, 0.35 }, { 1, 1 } }), 0.2 + 0.05 * tier, NumberSequence.new(1, 0.3))
-		-- sparkles flying off the tip
-		local sparks = Instance.new("ParticleEmitter")
-		sparks.Name = "SwingSparks"
-		sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		sparks.Color = colors({ white, c1, c2 })
-		sparks.LightEmission = 1
-		sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35 + 0.08 * tier), NumberSequenceKeypoint.new(1, 0) })
-		sparks.Transparency = NumberSequence.new(0, 1)
-		sparks.Lifetime = NumberRange.new(0.25, 0.5 + 0.05 * tier)
-		sparks.Speed = NumberRange.new(2, 5 + tier)
-		sparks.SpreadAngle = Vector2.new(180, 180)
-		sparks.Drag = 4
-		sparks.Rate = 25 * tier
-		sparks.LockedToPart = false
-		sparks.Enabled = false
-		sparks.Parent = attach("SwingSparkTip", at(1.05))
-		table.insert(trails, sparks)
+		-- the bright edge along the outside (only a thin line of white)
+		trail("SwingEdge", 0.9, 1.3, colors({ white, theme.light, theme.main }),
+			fades({ { 0, 0 }, { 0.5, 0.3 }, { 1, 1 } }), 0.2 + 0.05 * tier, NumberSequence.new(1, 0.3))
 	end
-	if tier >= 5 then
-		-- a rainbow halo round the outside, turning from the glow's own colour
-		local bow = {}
-		for i = 0, 5 do
-			bow[i + 1] = hueTurn(c1, i / 6)
-		end
-		trail("SwingHalo", 1.2, 1.5 + 0.05 * tier, colors(bow),
-			fades({ { 0, 0.1 }, { 0.6, 0.5 }, { 1, 1 } }), 0.4 + 0.05 * tier, NumberSequence.new(1, 0.2))
-		-- and stars
-		local stars = Instance.new("ParticleEmitter")
-		stars.Name = "SwingStars"
-		stars.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		stars.Color = colors({ white, c3, c2 })
-		stars.LightEmission = 1
-		stars.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(0.3, 1.2), NumberSequenceKeypoint.new(1, 0) })
-		stars.Transparency = NumberSequence.new(0, 1)
-		stars.Lifetime = NumberRange.new(0.4, 0.8)
-		stars.Speed = NumberRange.new(1, 4)
-		stars.Rotation = NumberRange.new(0, 360)
-		stars.RotSpeed = NumberRange.new(-200, 200)
-		stars.SpreadAngle = Vector2.new(180, 180)
-		stars.Drag = 3
-		stars.Rate = 18 * (tier - 3)
-		stars.LockedToPart = false
-		stars.Enabled = false
-		stars.Parent = attach("SwingStarTip", at(0.9))
-		table.insert(trails, stars)
+	if tier == 5 then
+		-- Mythic: a second, darker crescent hanging on behind
+		trail("SwingDeep", 0.1, 1.25, colors({ theme.main, theme.deep }),
+			fades({ { 0, 0.35 }, { 1, 1 } }), 0.5, NumberSequence.new(1, 0.4))
+	elseif tier >= 6 then
+		-- Secret: a thick body of see-through jelly that lingers
+		trail("SwingJelly", -0.1, 1.4, colors({ theme.light, theme.main, theme.deep }),
+			fades({ { 0, 0.25 }, { 0.5, 0.5 }, { 1, 1 } }), 0.6, NumberSequence.new(1, 0.7))
 	end
+	trails.fx = {
+		tier = tier,
+		theme = theme,
+		fling = FLING[math.min(tier, 6)],
+		tip = fan.Attachment1,
+		part = part,
+	}
 	return trails
 end
 WeaponFX.dressTrails = dressTrails
+
+-- while a cut's on: goo off the tip (Epic and up), a burst and a flash as
+-- it starts (Legendary and up), and when it ends the Secret's jelly wave and
+-- Oozark's eyes along the arc it drew
+local function swingFx(h, on, starting)
+	local fx = h.trails and h.trails.fx
+	if not (fx and fx.fling and fx.part and fx.part.Parent) then
+		return
+	end
+	local now = os.clock()
+	local tipPos = (fx.part.CFrame * CFrame.new(fx.tip.Position)).Position
+	local hrp = h.char and h.char:FindFirstChild("HumanoidRootPart")
+	local floor = hrp and hrp.Position.Y - 3 or tipPos.Y - 4
+	if starting then
+		fx.path = {}
+		fx.last, fx.lastT, fx.acc = tipPos, now, 0
+		for _ = 1, fx.fling.burst do
+			flingGoo(fx.theme, tipPos, Vector3.new(math.random() * 16 - 8, 6 + math.random() * 8, math.random() * 16 - 8), fx.fling.size, floor)
+		end
+		if fx.tier >= 4 then
+			local light = Instance.new("PointLight")
+			light.Color = fx.theme.main
+			light.Range = 10 + fx.tier * 2
+			light.Brightness = 3
+			light.Parent = fx.part
+			fadeAway(light, 0.35, { Brightness = 0 })
+		end
+	end
+	if on then
+		local dt = math.max(now - (fx.lastT or now), 1 / 240)
+		local vel = (tipPos - (fx.last or tipPos)) / dt
+		fx.last, fx.lastT = tipPos, now
+		fx.acc = (fx.acc or 0) + fx.fling.rate * dt
+		while fx.acc >= 1 do
+			fx.acc -= 1
+			local spread = Vector3.new(math.random() * 8 - 4, 4 + math.random() * 6, math.random() * 8 - 4)
+			local v = vel.Magnitude > 60 and vel.Unit * 60 or vel
+			flingGoo(fx.theme, tipPos, v * 0.3 + spread, fx.fling.size * (0.6 + math.random() * 0.6), floor)
+		end
+		if fx.path and #fx.path < 60 then
+			table.insert(fx.path, tipPos)
+		end
+	elseif fx.path then
+		-- the cut's over
+		local path = fx.path
+		fx.path = nil
+		if fx.theme.wave and hrp then
+			jellyWave(fx.theme, path, hrp.Position)
+		end
+		if fx.theme.eyes and #path >= 4 then
+			oozarkEyes(fx.theme, path[math.floor(#path * 0.4) + 1], floor)
+			oozarkEyes(fx.theme, path[math.floor(#path * 0.8)], floor)
+		end
+	end
+end
 
 ----------------------------------------------------------------------
 -- Hits: the slash mark ripping across what you hit, and the finisher's slam
@@ -1071,6 +1258,7 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 	local info = def and def.Model and INFO[def.Model]
 	local tier = RARITY_TIER[def and def.Rarity or ""] or 1
 	local color = golden and GOLD or (info and rgb(info.Glow, GLOW)) or GLOW
+	local theme = themeFor(def, color, golden)
 	local holder = Instance.new("Folder")
 	holder.Name = "SlashMark"
 	holder.Parent = workspace
@@ -1080,7 +1268,7 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 		bar.Name = "Slash"
 		bar.Anchored, bar.CanCollide, bar.CanTouch, bar.CanQuery, bar.CastShadow = true, false, false, false, false
 		bar.Material = Enum.Material.Neon
-		bar.Color = i == 1 and Color3.fromRGB(255, 255, 255) or (i == 3 and hueTurn(color, 0.1) or color)
+		bar.Color = i == 1 and Color3.fromRGB(255, 255, 255) or (i == 3 and theme.light or theme.main)
 		local long = (heavy and 11 or 7) * (1 + 0.08 * (tier - 1))
 		bar.Size = Vector3.new(0.35, 0.35, 1)
 		local tilt = ({ 30, -40, 75 })[i] + math.random(-10, 10)
@@ -1109,7 +1297,7 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 	sparks.Parent = holder
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	emitter.Color = tier >= 3 and colors({ Color3.fromRGB(255, 255, 255), color, hueTurn(color, 0.1), hueTurn(color, -0.12) })
+	emitter.Color = tier >= 3 and colors({ Color3.fromRGB(255, 255, 255), theme.light, theme.main, theme.deep })
 		or ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
 	emitter.LightEmission = 1
 	emitter.Size = NumberSequence.new((heavy and 0.7 or 0.45) * (1 + 0.12 * (tier - 1)), 0)
@@ -1121,14 +1309,14 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 	emitter.Parent = sparks
 	emitter:Emit(math.floor((heavy and 26 or 14) * (1 + 0.35 * (tier - 1))))
 	if tier >= 5 then
-		-- a ring of every colour bursting out round the hit
-		for k = 0, 5 do
+		-- rings bursting out round the hit, in the theme's colours
+		for k = 0, 2 do
 			local ring = Instance.new("Part")
 			ring.Name = "HitRing"
 			ring.Shape = Enum.PartType.Cylinder
 			ring.Anchored, ring.CanCollide, ring.CanTouch, ring.CanQuery, ring.CastShadow = true, false, false, false, false
 			ring.Material = Enum.Material.Neon
-			ring.Color = hueTurn(color, k / 6)
+			ring.Color = ({ theme.light, theme.main, theme.deep })[k + 1]
 			ring.Size = Vector3.new(0.12, 1, 1)
 			ring.CFrame = CFrame.lookAt(position, position + dir) * CFrame.Angles(0, math.rad(90), 0)
 			ring.Transparency = 0.2
@@ -1138,6 +1326,14 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 				TweenService:Create(ring, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 					{ Size = Vector3.new(0.05, grow, grow), Transparency = 1 }):Play()
 			end)
+		end
+	end
+	-- Legendary and up: goo splatters off what you hit
+	if tier >= 4 then
+		local fling = FLING[math.min(tier, 6)]
+		for _ = 1, (heavy and 10 or 6) + tier do
+			flingGoo(theme, position, Vector3.new(math.random() * 20 - 10, 8 + math.random() * 10, math.random() * 20 - 10),
+				fling.size * (0.6 + math.random() * 0.5), position.Y - 3)
 		end
 	end
 	task.delay(0.8, function()
@@ -1686,21 +1882,18 @@ local function tail(value)
 	return tonumber(string.match(tostring(value), ":(%d+)$"))
 end
 
+WeaponFX._swingFx = swingFx -- (for the headless tests)
+
 local function setSmear(h, on)
 	local starting = on and not h.smearOn
 	h.smearOn = on
-	local tier = RARITY_TIER[h.def and h.def.Rarity or ""] or 1
 	for _, t in ipairs(h.trails) do
 		if t.Enabled ~= on then
 			t.Enabled = on
 		end
-		-- (Legendary and up: a burst of sparkles as each cut starts)
-		if starting and tier >= 4 and t:IsA("ParticleEmitter") then
-			pcall(function()
-				t:Emit(6 * tier)
-			end)
-		end
 	end
+	-- (the rarer ones throw goo and more: see "Swing effects by rarity")
+	swingFx(h, on, starting)
 end
 
 -- a spring pulling `s` towards `target`
