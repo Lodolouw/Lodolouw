@@ -153,6 +153,8 @@ I decided to make the game **simple, like Blox Fruits**: few things to understan
 
 ### The arcade spin (how a roll looks - decided)
 
+- **Buying (decided 29 Sep):** the ROLL button opens the Arcade menu from anywhere (every drop + odds, pity, price, x1/x10; locked machines greyed with "Beat X to unlock"). Pressing Roll flies the camera to that machine in the lobby, the spin plays on its screen, then the camera flies back with "Equip now?". Outside the lobby: view only. **The full remaining plan: `Docs/ROADMAP.md`.**
+
 - A **CS:GO-crate-style strip**, but on the **screen of an arcade cabinet**: pixel weapon tiles fly past and slow down, a coin-slot "clunk" when a token goes in.
 - **Rarity colours** on each tile's border: grey (Common), green (Uncommon), blue (Rare), purple (Epic), gold (Legendary), red (Mythic), rainbow (Secret).
 - **The landing reacts to rarity:** a small beep for Common; flashing marquee lights for Epic+; a full-screen reveal for Legendary+; a **server-wide banner** for a Secret ("X just rolled a SECRET weapon!").
