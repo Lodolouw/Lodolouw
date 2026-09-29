@@ -3305,7 +3305,8 @@ do
 			Jungle = { Price = 4, Ten = 36, Body = RGB(38, 92, 66), Side = RGB(115, 62, 57), Light = RGB(254, 231, 97) },
 			Canvas = { Price = 5, Ten = 45, Body = RGB(234, 212, 170), Side = RGB(38, 43, 68), Light = RGB(0, 153, 219) },
 		},
-		-- the update packs' machines, still under covers ("coming soon")
+		-- the update packs, listed in the menu as "coming soon" (their machines
+		-- are built when their packs come)
 		Soon = {
 			{ Id = "Cactus", Boss = "Tuber" },
 			{ Id = "Dojo", Boss = "Kaze" },

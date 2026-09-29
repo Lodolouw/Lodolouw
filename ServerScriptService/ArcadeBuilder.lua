@@ -11,7 +11,7 @@
 	  * the MACHINES: one arcade cabinet per weapon pack along the back
 	    (Config.Arcade.Machines), each painted like its boss with a topper
 	    (Oozark's slime, a shovel, a tyre, a banana, a pencil); the update
-	    packs' cabinets stand under covers down the sides ("coming soon")
+	    packs' machines join them when their packs come (the sides are open)
 	  * the TOKEN MACHINE (the Robux shop, later) at the front right
 	  * the PRIZE PEDESTAL in the middle (the Slime machine's Secret weapon
 	    floats and turns over it: ArcadeClient puts it there)
@@ -21,7 +21,7 @@
 	    "Arcade"): walking in opens the Arcade menu (ArcadeClient)
 
 	Tagged for the screens: each cabinet is a Model tagged "ArcadeCabinet"
-	(attribute Machine = the pack's id, Soon = true under a cover) with a
+	(attribute Machine = the pack's id) with a
 	"Screen" and a "Marquee" part; the bulbs are tagged "ArcadeBulb" (Index);
 	the pedestal "ArcadePrize" (Machine); the board "ArcadeWins"; the token
 	machine "ArcadeTokens". Everything is in the lobby's palette (RetroWorld).
@@ -243,27 +243,6 @@ local function cabinet(parent, cf, id, machine, pack)
 	return m, screen, foot
 end
 
--- an update pack's cabinet, waiting under a cover (just its shape: nothing
--- under the sheet is built)
-local function coveredCabinet(parent, cf, soon)
-	local m = Instance.new("Model")
-	m.Name = "Cabinet_" .. soon.Id
-	local foot = part(m, "Foot", V3(4.6, 0.6, 3.6), cf * CFrame.new(0, 0.3, 0), INK)
-	m.PrimaryPart = foot
-	local cover = part(m, "Cover", V3(5.0, 9.4, 5.0), cf * CFrame.new(0, 5.0, -0.7), RGB(90, 105, 136), Mat.Fabric)
-	part(m, "CoverTop", V3(4.2, 0.6, 4.2), cf * CFrame.new(0, 10.0, -0.7), RGB(90, 105, 136), Mat.Fabric)
-	part(m, "CoverTie", V3(5.1, 0.35, 5.1), cf * CFrame.new(0, 2.2, -0.7), INK)
-	m:SetAttribute("Machine", soon.Id)
-	m:SetAttribute("Soon", true)
-	CollectionService:AddTag(m, "ArcadeCabinet")
-	m.Parent = parent
-	local g = screenGui(cover, Enum.NormalId.Front, 30)
-	label(g, "Mark", "?", YELLOW, UDim2.fromScale(0.25, 0.18), UDim2.fromScale(0.5, 0.34))
-	label(g, "Soon", "COMING SOON", WHITE, UDim2.fromScale(0.08, 0.56), UDim2.fromScale(0.84, 0.1))
-	label(g, "Name", string.upper(soon.Id), CYAN, UDim2.fromScale(0.12, 0.68), UDim2.fromScale(0.76, 0.09))
-	return m
-end
-
 ----------------------------------------------------------------------
 -- The whole building
 ----------------------------------------------------------------------
@@ -374,19 +353,8 @@ function ArcadeBuilder.Build(parent)
 	for i, p in ipairs(packs) do
 		cabinet(m, at(first + (i - 1) * spacing, 0.8, -14) * CFrame.Angles(0, math.pi, 0), p.Id, A.Machines[p.Id], p)
 	end
-	-- the update packs' machines, covered, down the sides (three west, two east)
-	local sidePlaces = {
-		at(-16.5, 0.8, -6) * CFrame.Angles(0, -math.pi / 2, 0),
-		at(-16.5, 0.8, 1) * CFrame.Angles(0, -math.pi / 2, 0),
-		at(-16.5, 0.8, 8) * CFrame.Angles(0, -math.pi / 2, 0),
-		at(16.5, 0.8, -6) * CFrame.Angles(0, math.pi / 2, 0),
-		at(16.5, 0.8, 1) * CFrame.Angles(0, math.pi / 2, 0),
-	}
-	for i, soon in ipairs(A.Soon or {}) do
-		if sidePlaces[i] then
-			coveredCabinet(m, sidePlaces[i], soon)
-		end
-	end
+	-- (the update packs' machines come with their packs: the sides stay open
+	-- until then - covered ones there crowded the room)
 
 	-- THE TOKEN MACHINE: gold, a big glowing coin slot (the Robux shop, later)
 	do

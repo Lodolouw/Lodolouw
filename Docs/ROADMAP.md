@@ -35,7 +35,7 @@ sound effects.
 
 ## 3. The arcade machines
 
-- [x] **The Arcade** where the forge and waterwheel were: 5 machines at launch (floors 1, 3, 5, 7, 9), painted like their packs, and the other 5 under covers; the token machine, the prize pedestal and the BIG WINS board (`Docs/arcade.png`).
+- [x] **The Arcade** where the forge and waterwheel were: 5 machines at launch (floors 1, 3, 5, 7, 9), painted like their packs (the other 5 are listed as coming soon; their machines come with their packs); the token machine, the prize pedestal and the BIG WINS board (`Docs/arcade.png`).
 - [x] **The ROLL button opens the Arcade menu from anywhere**: one card per machine, showing every drop with its rarity and **odds in %**, the pity bar, the price, and Spin x1 / Spin x10.
   - [x] Locked machines still show their drops, with "Beat X to open".
   - [ ] A "pack of the week" card at the top with boosted odds.

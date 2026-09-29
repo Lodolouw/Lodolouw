@@ -311,7 +311,12 @@ for _ = 1, 40 do
 end
 check(sawInsert, "the Slime machine's screen blinks INSERT TOKEN")
 check(status("Knight") == "LOCKED", "the Knight machine's says LOCKED (got " .. status("Knight") .. ")")
-check(status("Cactus") ~= "LOCKED", "a covered machine doesn't")
+local count, covered = 0, 0
+for id, m in pairs(cabinets) do
+	count += 1
+	covered += m:GetAttribute("Soon") and 1 or 0
+end
+check(count == 5 and covered == 0, "five machines, none under covers crowding the room (" .. count .. ", " .. covered .. ")")
 
 -- the prize: the Slime machine's Secret weapon, standing over the pedestal
 local prize = workspace:FindFirstChild("PrizeWeapon")
