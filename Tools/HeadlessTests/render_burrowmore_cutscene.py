@@ -16,6 +16,8 @@ freeze frame as he plunges out of the sky: CAN YOU BEAT BURROWMORE?
     python3 render_burrowmore_cutscene.py burrowmore.txt ../../Docs/youtube/burrowmore_cutscene.mp4
     python3 render_burrowmore_cutscene.py burrowmore.txt sheet.png --sheet      (9 frames in a 3 x 3 contact sheet)
     python3 render_burrowmore_cutscene.py burrowmore.txt strip.png --strip --at 2.9,5.2   (just those moments)
+    python3 render_burrowmore_cutscene.py burrowmore.txt thumb.png --poster --scale 1     (the Short's thumbnail)
+    python3 render_burrowmore_cutscene.py burrowmore.txt pick.png --poster --variants --scale 2   (camera choices)
 
 The drawing is render_cutscene.py's (flat colours lit by one sun, thin dark
 edges: the game's 8-bit look), so it shows the game's real shapes and
@@ -40,6 +42,9 @@ ap.add_argument('--at', default='', help='with --strip / --sheet: the moments to
 ap.add_argument('--thumb', type=int, default=270, help='with --strip: how wide each frame is (pixels)')
 ap.add_argument('--workers', type=int, default=4)
 ap.add_argument('--scale', type=int, default=2, help='draw at 1/scale size, then blow up (chunkier, faster)')
+ap.add_argument('--poster', action='store_true', help="the Short's thumbnail: a hero shot of him with his name (a PNG)")
+ap.add_argument('--variants', action='store_true', help='with --poster: every camera choice side by side')
+ap.add_argument('--pick', type=int, default=2, help='with --poster: which camera choice')
 args = ap.parse_args()
 
 OUT_W, OUT_H, FPS = 1080, 1920, 30
@@ -740,8 +745,65 @@ def frame_image(index):
     return img
 
 
+# THE THUMBNAIL (like Oozark's): a close hero shot of him in his pose - low,
+# looking up at his helmet and glowing eyes, the shovel raised - the boss bar
+# on top and his name big in the lower third.
+POSTER_CAMS = [  # (the camera, and where it looks, from his face: across, up, out; lens)
+    ((3.5, -2.5, 17.5), (-1.5, -0.5, 0), 60),
+    ((6.0, -1.5, 18.0), (-1.2, -0.8, 0), 58),
+    ((2.5, -3.5, 16.0), (-1.2, -0.2, 0), 64),
+    ((4.5, -2.0, 20.0), (-1.5, -1.0, 0), 54),
+]
+
+
+def poster_image(pick):
+    t = T_POSE + 0.45
+    index = frame_near(t)
+    fr = frames[index]
+    # (no particle puffs: on a still picture they read as smudges)
+    parts = [static_by_index[i] if i not in fr['over'] else fr['over'][i] for i in static_by_index] + fr['parts']
+    # his face: between his glowing eyes (his parts near him - never the player's)
+    B = fr['boss']
+    eyes = [np.array(p['cf'][0:3]) for p in fr['parts'] if p['n'] == 'Eye' and np.linalg.norm(np.array(p['cf'][0:3]) - B) < 20]
+    face = np.mean(eyes, axis=0) if eyes else V(B[0], FLOOR + 11, B[2])
+    (ex, ey, ez), (lx, ly, lz), fov = POSTER_CAMS[pick]
+    eye1, _, _ = shots(fr)
+    toward = unit(flat(eye1 - face))  # (the way he faces the opening shot's camera)
+    side = np.cross(UP, toward)
+    eye = face + toward * ez + side * ex + V(0, ey, 0)
+    look = face + toward * lz + side * lx + V(0, ly, 0)
+    img, _ = render(parts, eye, look, fov)
+    img = img.resize((OUT_W, OUT_H), Image.NEAREST).convert('RGB')
+    # a dark fade up from the bottom, so his name stands out
+    shade = Image.new('L', (OUT_W, OUT_H), 0)
+    ds = ImageDraw.Draw(shade)
+    for y in range(1260, OUT_H):
+        ds.line([(0, y), (OUT_W, y)], fill=int(175 * min(1, (y - 1260) / 480)))
+    img = Image.composite(Image.new('RGB', img.size, (10, 8, 24)), img, shade).convert('RGBA')
+    if fr['bar']:
+        boss_bar(img, fr['bar'][0], 1.0)
+    cx = OUT_W / 2
+    paste_text(img, "KNIGHT", cx, 1395, 10, fill=WHITE, shadow=(30, 30, 60))
+    paste_text(img, "BURROWMORE", cx, 1520, 14, fill=YEL, shadow=DEEP_BLUE)
+    paste_text(img, "THE HONOURABLE DIGGER", cx, 1672, 5.5, fill=GOLD, shadow=(30, 30, 60))
+    return img.convert('RGB')
+
+
 if __name__ == '__main__':
     import multiprocessing as mp
+    if args.poster:
+        if args.variants:
+            with mp.Pool(args.workers) as pool:
+                imgs = pool.map(poster_image, range(len(POSTER_CAMS)))
+            tw, th, gap = 360, 640, 12
+            sheet = Image.new('RGB', (len(imgs) * (tw + gap) + gap, th + 2 * gap), (15, 15, 15))
+            for i, im in enumerate(imgs):
+                sheet.paste(im.resize((tw, th), Image.LANCZOS), (gap + i * (tw + gap), gap))
+            sheet.save(args.out)
+        else:
+            poster_image(args.pick).save(args.out)
+        print('saved', args.out)
+        sys.exit(0)
     if args.strip or args.sheet:
         default = (0.3, 1.1, 2.2, 2.95, 3.9, 4.9, 5.9, 6.9, 7.8, 8.8, 9.7, 10.6) if args.strip else \
             (0.3, 1.2, 2.2, 3.05, 3.95, 5.1, 5.95, 6.75, 7.75)
