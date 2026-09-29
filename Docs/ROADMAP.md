@@ -46,6 +46,7 @@ sound effects.
   3. Tap to skip. Spin x10 shows a grid of 10 (a Legendary gets its own reveal first).
   4. The reveal: EQUIP / SPIN AGAIN / DONE, and the camera flies back.
 - [x] Other players see the machine light up and the result float over it, and a Secret sends a banner to the whole server.
+- [x] **The Arcade's own music** (`Tools/Sounds/arcade_sfx.py`): an 8-bit song that speeds up while the strip spins, silence (or a heartbeat, for a Legendary or better) just before it lands, a sound for each rarity and heart-racing jackpots (glass smashing, alarm bells, a siren, showers of coins). You: run the uploader and paste me the ids.
 - [x] Walking into the Arcade opens the menu. Outside the lobby you can view it but not spin. If you can't afford another spin, the button says "Get tokens".
 - [x] **Honest rules:** odds always shown, no fake near-misses, and the scroll strip is filled using the real odds.
 

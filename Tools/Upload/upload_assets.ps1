@@ -2,6 +2,7 @@
 #   * the voxel weapons' models  (Tools\Weapons\out\models\<key>.fbx)
 #   * the weapon abilities' animations  (Tools\Animations\abilities\<key>.rbxmx)
 #   * the weapons' sound effects  (Tools\Sounds\out\weapons\<name>.ogg)
+#   * the Arcade's music and sounds  (Tools\Sounds\out\arcade\<name>.ogg)
 #   * the weapons' icons  (Tools\Weapons\out\icons\<key>.png, as decals)
 # then copies ALL their ids (as ReplicatedStorage\AssetIds.lua) to your clipboard,
 # to paste to Claude. Run it by double-clicking upload_assets.bat.
@@ -34,10 +35,12 @@ if (Test-Path $anims) {
         $items += [pscustomobject]@{ Kind = 'Animation'; Key = $_.BaseName; Path = $_.FullName; Type = 'model/x-rbxm' }
     }
 }
-$sounds = Join-Path $tools 'Sounds\out\weapons'
-if (Test-Path $sounds) {
-    Get-ChildItem $sounds -Filter *.ogg | Sort-Object Name | ForEach-Object {
-        $items += [pscustomobject]@{ Kind = 'Audio'; Key = $_.BaseName; Path = $_.FullName; Type = 'audio/ogg' }
+foreach ($folder in @('Sounds\out\weapons', 'Sounds\out\arcade')) {
+    $sounds = Join-Path $tools $folder
+    if (Test-Path $sounds) {
+        Get-ChildItem $sounds -Filter *.ogg | Sort-Object Name | ForEach-Object {
+            $items += [pscustomobject]@{ Kind = 'Audio'; Key = $_.BaseName; Path = $_.FullName; Type = 'audio/ogg' }
+        }
     }
 }
 $icons = Join-Path $tools 'Weapons\out\icons'
@@ -90,7 +93,7 @@ if ($todo.Count -gt 0) {
         $request = @{
             assetType = $it.Kind
             displayName = $it.Key
-            description = $(if ($it.Kind -eq 'Decal') { 'Weapon icon' } else { 'Weapon ' + $it.Kind.ToLower() })
+            description = $(if ($it.Kind -eq 'Decal') { 'Weapon icon' } elseif ($it.Path -like '*\arcade\*') { 'Arcade sound' } else { 'Weapon ' + $it.Kind.ToLower() })
             creationContext = @{ creator = $creator }
         } | ConvertTo-Json -Depth 5 -Compress
         $op = $null

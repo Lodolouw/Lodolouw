@@ -15,8 +15,15 @@
 --     in the middle of its window), EQUIP, SPIN AGAIN, DONE (the camera comes
 --     back); tapping skips the strip; ten at once: a Legendary's reveal first,
 --     then all ten in a grid
+--   * THE MUSIC: the Arcade's own song while you're in there (the lobby's
+--     steps aside), faster while the strip spins over the drum roll, silent
+--     just before it lands (a heartbeat for a Legendary), the landing's sound
+--     (a jackpot, with the screen shattering), then the song again at its
+--     own speed; tapping through skips the heartbeat; the older sounds stand
+--     in until the new ones are uploaded
 --   * somebody else's spin: their machine lights up, their result floats
---     over it, a Secret puts a banner on your screen and goes on BIG WINS
+--     over it (heard from their machine), a Secret puts a banner on your
+--     screen (with its jackpot) and goes on BIG WINS
 --   * the HUD's token counter (ArcadeOpen) opens the menu; outside the lobby
 --     you can look but not spin; in the intro there's no ROLL button
 --   luau test_arcade_client.luau             the test
@@ -104,9 +111,10 @@ cam.Parent = workspace
 workspace.CurrentCamera = cam
 
 -- the sounds the game has (SoundLoader puts them in SoundService); every one
--- that plays is a copy put in SoundService
+-- that plays is a copy put in SoundService (or in a machine, heard from there)
 local played = {}
-for _, name in ipairs({ "UI Blip", "Token Clunk", "Roll Tick", "Orb Land", "Level Complete", "Legendary Reveal" }) do
+local NEW_SOUNDS = { "Arcade Theme", "Spin Riser", "Heartbeat", "Win Common", "Win Rare", "Win Epic", "Jackpot Legendary", "Jackpot Mythic", "Jackpot Secret" }
+for _, name in ipairs({ "UI Blip", "Token Clunk", "Roll Tick", "Orb Land", "Level Complete", "Legendary Reveal", table.unpack(NEW_SOUNDS) }) do
 	local snd = Instance.new("Sound")
 	snd.Name = name
 	snd.Volume, snd.PlaybackSpeed = 0.5, 1
@@ -115,6 +123,11 @@ end
 SoundService.ChildAdded:Connect(function(c)
 	played[c.Name] = (played[c.Name] or 0) + 1
 end)
+-- the lobby's song plays in the "Music" SoundGroup (BossClient)
+local lobbyMusic = Instance.new("SoundGroup")
+lobbyMusic.Name = "Music"
+lobbyMusic.Volume = 0.7
+lobbyMusic.Parent = SoundService
 
 -- messages between the "server" and the "screen"
 local invokes = {}
@@ -377,6 +390,11 @@ moveTo(me, inside)
 waitFor(function()
 	return win.Visible
 end, 1, "the menu to open after walking out and back in")
+step(2)
+local song = SoundService:FindFirstChild("ArcadeSongPlaying")
+check(song and song.Looped and song.SoundGroup and song.SoundGroup.Name == "ArcadeMusic", "in the Arcade its own song plays (looping, in its own group)")
+check(song and song.Volume > 0.15 and math.abs(song.PlaybackSpeed - 1) < 0.01, "at its own speed (" .. tostring(song and song.Volume) .. ")")
+check(lobbyMusic.Volume < 0.1, "and the lobby's song steps aside (" .. lobbyMusic.Volume .. ")")
 
 ----------------------------------------------------------------------
 -- The menu
@@ -474,6 +492,8 @@ waitFor(function()
 	return card.Visible
 end, 5, "the reveal card")
 check(r1.rarity ~= "Common", "the first spin was Rare or better (" .. tostring(r1.rarity) .. ")")
+check((played["Spin Riser"] or 0) >= 1, "a drum roll builds under the spin")
+check((played[A.LandSounds[r1.rarity]] or 0) >= 1, "it lands with the " .. tostring(r1.rarity) .. " sound")
 check(textOn(card, "^" .. string.upper(tostring(r1.rarity)) .. "!$") ~= nil, "the card says the rarity")
 check(textOn(card, "^" .. (W.List[r1.id] and string.gsub(W.List[r1.id].Name, "%-", "%%-") or "?") .. "$") ~= nil, "and the weapon")
 check(textOn(card, "NEW WEAPON") ~= nil, "and that it's new")
@@ -511,9 +531,15 @@ check(badge.Text == "9", "9 tokens left")
 -- tap to skip, then SPIN AGAIN
 press(spin1)
 step(0.5)
+played = {}
 UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1 }, false)
 step(0.6)
 check(card.Visible, "a tap skips straight to the card")
+local landed = 0
+for _, name in pairs(A.LandSounds) do
+	landed += played[name] or 0
+end
+check(landed == 1 and not played["Heartbeat"], "straight to its landing sound (" .. landed .. "), no heartbeat")
 invokes = {}
 press(button(card, "^SPIN AGAIN$"))
 step(0.2)
@@ -552,7 +578,7 @@ if SNAPS then
 	find("View", card):SetAttribute("SnapImage", W.List[result.results[1].id].Model)
 	snap("TEN AT ONCE|a Legendary or better gets its own reveal first (rays, a flash, a fanfare)")
 end
-check((played["Legendary Reveal"] or 0) >= 1, "and its big sound")
+check((played["Jackpot Legendary"] or 0) >= 1, "and its jackpot")
 press(button(card, "SEE ALL 10"))
 step(1.5)
 check(grid.Visible and not card.Visible, "then the grid")
@@ -572,9 +598,58 @@ check(not show.Visible and win.Visible and cam.CameraType == Enum.CameraType.Cus
 AS.rng = realRng
 
 ----------------------------------------------------------------------
+-- THE MUSIC through a whole spin (a Legendary, not skipped)
+----------------------------------------------------------------------
+step(5) -- (the last landing rings out)
+check(song.Parent and song.Volume > 0.15 and math.abs(song.PlaybackSpeed - 1) < 0.01, "the song is back at its own speed")
+AS.rng = { NextNumber = function()
+	return 0.93 -- (Legendary)
+end }
+local marks = {}
+local watch = SoundService.ChildAdded:Connect(function(c)
+	if not marks[c.Name] then
+		marks[c.Name] = { t = T, song = song.Volume, from = c.TimePosition }
+	end
+end)
+local t0, fastest, shards = T, 0, false
+press(spin1)
+waitFor(function()
+	fastest = math.max(fastest, song.PlaybackSpeed)
+	shards = shards or find("Shard", show) ~= nil
+	return card.Visible
+end, 8, "the Legendary's card")
+watch:Disconnect()
+AS.rng = realRng
+local riser, heart, jackpot = marks["Spin Riser"], marks["Heartbeat"], marks["Jackpot Legendary"]
+check(riser and riser.t - t0 < 0.6, "the drum roll starts with the spin")
+check(riser and math.abs((riser.from or 0) - 1.1) < 0.05, "timed to end as it goes quiet (from " .. tostring(riser and riser.from) .. ")")
+check(fastest > 1.2, "the song speeds up while it spins (" .. fastest .. ")")
+check(heart and jackpot and math.abs((jackpot.t - heart.t) - 1.6) < 0.1, "a heartbeat for the last 1.6 seconds (" .. tostring(heart and jackpot and jackpot.t - heart.t) .. ")")
+check(jackpot and jackpot.song < 0.01, "in silence: the song has dropped out (" .. tostring(jackpot and jackpot.song) .. ")")
+check(shards, "the screen shatters as the jackpot hits")
+check(not marks["Win Common"] and not marks["Legendary Reveal"], "just the one landing sound")
+step(1.5)
+check(song.Volume < 0.02, "the song waits while the jackpot rings out")
+step(3)
+check(song.Volume > 0.1 and math.abs(song.PlaybackSpeed - 1) < 0.01, "then comes back at its own speed")
+press(button(card, "^DONE$"))
+step(0.1)
+
+----------------------------------------------------------------------
 -- Somebody else's spin (a Secret), and BIG WINS
 ----------------------------------------------------------------------
+local slimeSounds = function()
+	local n = {}
+	for _, x in ipairs(cabinets.Slime.Screen:GetChildren()) do
+		if x.ClassName == "Sound" then
+			n[x.Name] = (n[x.Name] or 0) + 1
+		end
+	end
+	return n
+end
+played = {}
 step(8) -- (your own spins' announcements play out first)
+check(next(slimeSounds()) == nil and not played["Jackpot Legendary"], "your own spins' announcements are silent (you heard them)")
 local secretId = Config.arcadeWeapon("Slime", "Secret")
 local secretName = W.List[secretId].Name
 AS.rng = { NextNumber = function()
@@ -587,6 +662,7 @@ AS.rng = realRng
 check(ok, "Bravo spins")
 step(0.6)
 check(status("Slime") == "SPINNING!", "the Slime machine's screen lights up for everyone (" .. status("Slime") .. ")")
+check((slimeSounds()["Roll Tick"] or 0) >= 1, "ticking, heard from the machine")
 check(not textOn(cabinets.Slime.Marquee, "^Bravo"), "while it spins, the result isn't given away")
 step(1)
 check(status("Slime") == "SECRET!", "then the screen lands on SECRET!")
@@ -594,6 +670,7 @@ local floating = textOn(cabinets.Slime.Marquee, "^Bravo: SECRET " .. string.gsub
 check(floating ~= nil, "Bravo's result floats over it")
 local banner = find("SecretBanner")
 check(banner and textOn(banner, "Bravo just spun a SECRET") and banner.Position.Y.Offset > 0, "a Secret puts a banner on every screen")
+check((played["Jackpot Secret"] or 0) == 1, "with its jackpot, for everyone")
 snap("SOMEONE SPINS A SECRET|a banner on every screen (and it goes up on the BIG WINS board)")
 local board = CollectionService:GetTagged("ArcadeWins")[1]
 check(board and textOn(board, "^Bravo  %-  SECRET " .. string.gsub(secretName, "%-", "%%-")), "and it's up on BIG WINS")
@@ -626,6 +703,8 @@ for _ = 1, 200 do
 	end
 end
 check(table.concat(seen, " ") == "LEGENDARY! COMMON!", "one after the other (" .. table.concat(seen, " ") .. ")")
+local heard = slimeSounds()
+check(heard["Jackpot Legendary"] == 1 and heard["Win Common"] == 1, "each heard from the machine: a jackpot, then a plink")
 
 ----------------------------------------------------------------------
 -- Other ways in, and where you can't spin
@@ -647,9 +726,30 @@ check(win.Visible and string.find(message(), "Quests give a token"), "so does th
 me:SetAttribute("SpireFloor", 2)
 step(0.1)
 check(not spin1.Visible and textOn(detail, "Go to the Arcade in the lobby") ~= nil, "on a Spire floor you can look but not spin")
+step(3)
+check(song.Volume < 0.01 and math.abs(lobbyMusic.Volume - 0.7) < 1e-6, "away from the lobby the Arcade's song goes and the lobby's comes back (" .. lobbyMusic.Volume .. ")")
 me:SetAttribute("SpireFloor", nil)
 step(0.1)
 check(spin1.Visible, "back in the lobby: SPIN again")
+-- until the new sounds are uploaded, the older ones stand in
+for _, name in ipairs(NEW_SOUNDS) do
+	SoundService:FindFirstChild(name):Destroy()
+end
+bd.Tokens = 0
+d.Tokens = 5
+step(1)
+played = {}
+AS.rng = { NextNumber = function()
+	return 0.93
+end }
+press(spin1)
+step(0.5)
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1 }, false)
+step(0.6)
+AS.rng = realRng
+check(card.Visible and (played["Legendary Reveal"] or 0) == 1, "without them, a Legendary still gets the old fanfare")
+press(button(card, "^DONE$"))
+step(0.1)
 press(closeBtn)
 me:SetAttribute("Intro", "Void")
 step(0.1)

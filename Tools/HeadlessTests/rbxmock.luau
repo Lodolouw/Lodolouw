@@ -1109,6 +1109,8 @@ end
 function methods.Emit() end
 function methods.Play() end
 function methods.Stop() end
+function methods.Pause() end
+function methods.Resume() end
 function methods.Fire(self, ...)
 	fireSignal(self, "Event", ...)
 end

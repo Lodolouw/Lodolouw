@@ -7,6 +7,9 @@ API key, so nothing has to be published by hand:
 - the weapon abilities' animations (`Tools/Animations/abilities/*.rbxmx`)
 - the weapons' sound effects (`Tools/Sounds/out/weapons/*.ogg`, made by
   `Tools/Sounds/weapon_sfx.py`)
+- the Arcade's music and sounds (`Tools/Sounds/out/arcade/*.ogg`, made by
+  `Tools/Sounds/arcade_sfx.py`): its song, the spin's build-up, the
+  heartbeat, the landings and the jackpots
 - the weapons' icons (`Tools/Weapons/out/icons/*.png`, made by
   `Tools/Weapons/make_icons.py`), as decals - the Arcade and the Weapons panel
   show them (a brand-new decal can take a little while to pass Roblox's

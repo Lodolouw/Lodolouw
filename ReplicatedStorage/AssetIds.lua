@@ -8,8 +8,9 @@
 	    starts (ServerScriptService/WeaponModelLoader); WeaponFX holds them.
 	  * Animations: each weapon ability's animation (Tools/Animations, the
 	    abilities), by the ability's key.
-	  * Sounds: the weapons' sound effects (Tools/Sounds/weapon_sfx.py), by
-	    name with _ for spaces. ServerScriptService/SoundLoader puts each in
+	  * Sounds: the weapons' sound effects (Tools/Sounds/weapon_sfx.py) and
+	    the Arcade's music and sounds (Tools/Sounds/arcade_sfx.py), by name
+	    with _ for spaces. ServerScriptService/SoundLoader puts each in
 	    SoundService under its name ("Goo_Splat" -> "Goo Splat").
 	  * Icons: each weapon's icon (Tools/Weapons/make_icons.py, from its real
 	    picture), uploaded as a decal, by the weapon's key. The Arcade and the

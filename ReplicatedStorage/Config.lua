@@ -3325,6 +3325,24 @@ do
 		FirstClear = { [1] = 5, [2] = 5, [3] = 6, [4] = 6, [5] = 7, [6] = 7, [7] = 8, [8] = 8, [9] = 9, [10] = 10 },
 		-- a spin can't be asked for again sooner than this (seconds)
 		Gap = 0.4,
+		-- THE ARCADE'S MUSIC (made by Tools/Sounds/arcade_sfx.py; Sounds in
+		-- SoundService by these names): its own song while you're in the
+		-- Arcade, its menu or a spin (the lobby's song fades out under it),
+		-- playing `SpinSpeed` times faster while the strip spins; the
+		-- build-up under a spin; the heartbeat before a Legendary or better
+		Music = {
+			Song = "Arcade Theme",
+			Volume = 0.6, -- (1 = as loud as it was made)
+			SpinSpeed = 1.25,
+			Riser = "Spin Riser",
+			Heartbeat = "Heartbeat",
+		},
+		-- what you hear when a spin lands (the last three are the jackpots:
+		-- glass smashing, alarm bells, a casino siren, showers of coins)
+		LandSounds = {
+			Common = "Win Common", Rare = "Win Rare", Epic = "Win Epic",
+			Legendary = "Jackpot Legendary", Mythic = "Jackpot Mythic", Secret = "Jackpot Secret",
+		},
 		-- how a rarity looks on the machines and in the reveal
 		Colors = {
 			Common = RGB(192, 203, 220), Rare = RGB(0, 153, 219), Epic = RGB(181, 80, 136),

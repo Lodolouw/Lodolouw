@@ -20,11 +20,20 @@
 	    Epic, a full-screen reveal for a Legendary or better, rainbows for a
 	    Secret. Then your weapon turns in 3D, with EQUIP / SPIN AGAIN / DONE.
 	    Ten at once: a quick spin onto the best, then all ten in a grid.
+	  * THE MUSIC: the Arcade has its own 8-bit song (the lobby's steps aside
+	    while you're in there, in the menu or spinning). While the strip
+	    spins the song plays faster, like a slot machine's, over a drum roll
+	    that builds; just before it lands everything drops out (a heartbeat
+	    instead, when it's landing on a Legendary or better), then the
+	    landing: a plink for a Common up to the jackpots - glass smashing,
+	    alarm bells and a shower of coins - and the song comes back. It all
+	    follows the server's real result: no fake near-misses.
 	  * FOR EVERYONE: when anyone spins, that machine's screen lights up and
-	    their result floats over it; a Secret puts a banner on every screen;
-	    the BIG WINS board at the back lists the lobby's latest Legendary-or-
-	    better spins; the marquee bulbs chase; the Slime machine's Secret
-	    weapon turns over the prize pedestal.
+	    their result floats over it (and you hear it, if you're near); a
+	    Secret puts a banner on every screen, with its jackpot; the BIG WINS
+	    board at the back lists the lobby's latest Legendary-or-better
+	    spins; the Slime machine's Secret weapon turns over the prize
+	    pedestal.
 	  * THE TOKEN MACHINE: walk up to it for "Get Tokens" (the Robux shop,
 	    later; for now it says where free tokens come from).
 ]]
@@ -120,6 +129,7 @@ local RAINBOW = ColorSequence.new({
 local TILE_SIZE = 150 -- a weapon tile on the spinning strip and in the grid of ten
 local state = nil -- the latest snapshot of your data from the server
 local busy = false -- a spin is being asked for or shown
+local inArcade = false -- you're standing in the Arcade (the walk-in zones, at the bottom)
 
 ----------------------------------------------------------------------
 -- Small helpers
@@ -235,24 +245,85 @@ end
 local function squash(s)
 	return string.lower((string.gsub(tostring(s), "[%s_%-]", "")))
 end
--- a sound from SoundService by name (the first of `names` that's there; silent if none)
-local function play(names, pitch, volume)
+-- a Sound in SoundService by name (the first of `names` that's there), or
+-- nil (not the copies playing: they're marked)
+local function findSound(names)
 	for _, name in ipairs(type(names) == "table" and names or { names }) do
 		local want = squash(name)
 		for _, s in ipairs(SoundService:GetChildren()) do
-			if s:IsA("Sound") and squash(s.Name) == want then
-				local c = s:Clone()
-				c.PlaybackSpeed = (tonumber(s.PlaybackSpeed) or 1) * (pitch or 1)
-				c.Volume = (tonumber(s.Volume) or 0.5) * (volume or 1)
-				c.Parent = SoundService
-				c:Play()
-				task.delay(3, function()
-					c:Destroy()
-				end)
-				return
+			if s:IsA("Sound") and squash(s.Name) == want and not s:GetAttribute("ArcadeCopy") then
+				return s
 			end
 		end
 	end
+	return nil
+end
+-- plays a sound from SoundService by name (the first of `names` that's
+-- there; silent if none): the same wherever you are, or from a part in the
+-- world (`at`: quieter the further away you are). `from`: start this many
+-- seconds in. Returns the copy that's playing.
+local function play(names, pitch, volume, from, at)
+	local s = findSound(names)
+	if not s then
+		return nil
+	end
+	local c = s:Clone()
+	c:SetAttribute("ArcadeCopy", true)
+	c.Looped = false
+	c.PlaybackSpeed = (tonumber(s.PlaybackSpeed) or 1) * (pitch or 1)
+	c.Volume = (tonumber(s.Volume) or 0.5) * (volume or 1)
+	if from and from > 0 then
+		c.TimePosition = from
+	end
+	if at then
+		c.RollOffMode = Enum.RollOffMode.InverseTapered
+		c.RollOffMinDistance = 14
+		c.RollOffMaxDistance = 130
+	end
+	c.Parent = at or SoundService
+	c:Play()
+	c.Ended:Connect(function()
+		c:Destroy()
+	end)
+	task.delay(12, function()
+		c:Destroy()
+	end)
+	return c
+end
+-- stops a sound that play() started (fading it out over `seconds`)
+local function hush(c, seconds)
+	if not (c and c.Parent) then
+		return
+	end
+	if seconds and seconds > 0 then
+		tween(c, seconds, { Volume = 0 })
+		task.delay(seconds, function()
+			c:Destroy()
+		end)
+	else
+		c:Destroy()
+	end
+end
+-- what you hear when a spin lands, by rarity (Config.Arcade.LandSounds: up
+-- to the jackpots; the older sounds until those are uploaded)
+local LAND_OLD = {
+	Common = { "Orb Land", "UI Blip" },
+	Rare = { "Orb Land", "UI Blip" },
+	Epic = { "Level Complete", "Orb Land" },
+	Legendary = { "Legendary Reveal", "Level Complete" },
+	Mythic = { "Legendary Reveal", "Level Complete" },
+	Secret = { "Legendary Reveal", "Level Complete" },
+}
+local function landSounds(rarity)
+	local list = {}
+	local new = (A.LandSounds or {})[rarity]
+	if new then
+		table.insert(list, new)
+	end
+	for _, name in ipairs(LAND_OLD[rarity] or LAND_OLD.Common) do
+		table.insert(list, name)
+	end
+	return list
 end
 
 local function inLobby()
@@ -736,11 +807,13 @@ local bannerEdge = stroke(banner, WHITE, 4)
 rainbow(bannerEdge)
 local bannerText = text(banner, { Text = "", Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -32, 1, -16), ZIndex = 21 })
 rainbow(bannerText)
-local function secretBanner(line)
+local function secretBanner(line, mine)
 	bannerText.Text = line
 	banner.Position = UDim2.new(0.5, 0, 0, -90)
 	tween(banner, 0.5, { Position = UDim2.new(0.5, 0, 0, 18) }, Enum.EasingStyle.Back)
-	play({ "Legendary Reveal", "Level Complete" }, 1, 0.8)
+	if not mine then -- (with its jackpot, straight to the smash; yours you heard already)
+		play({ (A.LandSounds or {}).Secret or "Jackpot Secret", "Legendary Reveal", "Level Complete" }, 1, 0.7, findSound((A.LandSounds or {}).Secret or "Jackpot Secret") and 0.6 or 0)
+	end
 	task.delay(6, function()
 		if bannerText.Text == line then
 			tween(banner, 0.4, { Position = UDim2.new(0.5, 0, 0, -90) })
@@ -769,10 +842,15 @@ local event = nil
 -- A spin on a machine, as the lobby sees it: its screen flashes through the
 -- rarities, lands on the result, and the result floats up over it (a
 -- Secret: a banner on every screen too). Two spins on one machine take turns.
-local function announce(c, name, top)
+-- Somebody else's is heard from their machine too (ticking, then what they
+-- landed: a jackpot rings out across the Arcade); yours isn't - you've
+-- just heard it.
+local function announce(c, name, top, mine)
 	local def = W.List[top.id]
 	local weaponName = def and def.Name or top.id
 	local color = rarityColor(top.rarity)
+	local rank = RANK[top.rarity] or 1
+	local from = not mine and c.screen or nil
 	c.flashUntil = os.clock() + 6
 	for i = 1, 14 do
 		if c.back then
@@ -782,7 +860,13 @@ local function announce(c, name, top)
 				c.status.TextColor3 = WHITE
 			end
 		end
+		if from and i % 2 == 1 then
+			play({ "Roll Tick", "UI Blip" }, 0.9 + i * 0.03, 0.4, nil, from)
+		end
 		task.wait(0.09)
+	end
+	if from and top.rarity ~= "Secret" then -- (a Secret's is the banner's)
+		play(landSounds(top.rarity), 1, rank >= 4 and 0.9 or 0.6, nil, from)
 	end
 	if c.back then
 		c.back.BackgroundColor3 = INK
@@ -793,7 +877,7 @@ local function announce(c, name, top)
 	end
 	floatOver(c, tostring(name) .. ": " .. string.upper(top.rarity) .. " " .. weaponName .. "!", color, top.rarity == "Secret")
 	if top.rarity == "Secret" then
-		secretBanner("★ " .. tostring(name) .. " just spun a SECRET: " .. weaponName .. "! ★")
+		secretBanner("★ " .. tostring(name) .. " just spun a SECRET: " .. weaponName .. "! ★", mine)
 	end
 	c.flashUntil = os.clock() + 4 -- (the result stays up a while)
 end
@@ -806,14 +890,14 @@ local function onRoll(userId, name, machineId, shown)
 	-- (yours shows once your own spin has played; everyone else's straight away)
 	task.delay(userId == player.UserId and 4 or 0, function()
 		c.queue = c.queue or {}
-		table.insert(c.queue, { name = name, top = top })
+		table.insert(c.queue, { name = name, top = top, mine = userId == player.UserId })
 		if c.playing then
 			return
 		end
 		c.playing = true
 		while #c.queue > 0 do
 			local e = table.remove(c.queue, 1)
-			announce(c, e.name, e.top)
+			announce(c, e.name, e.top, e.mine)
 			if #c.queue > 0 then
 				task.wait(1.6) -- (a moment on each result before the next)
 			end
@@ -1067,6 +1151,177 @@ local function randomDrop(machineId)
 	return Config.arcadeWeapon(machineId, "Common"), "Common"
 end
 
+----------------------------------------------------------------------
+-- THE MUSIC (Config.Arcade.Music; the sounds are made by
+-- Tools/Sounds/arcade_sfx.py). The Arcade's own song plays while you're in
+-- the Arcade, in its menu or spinning (the lobby's song fades out under it).
+-- A spin: the song plays faster while the strip races, over a drum roll
+-- that builds; everything drops out just before it lands (into a heartbeat,
+-- when it's landing on a Legendary or better); then the landing's sound, and
+-- the song comes back once that's rung out. All of it follows the result
+-- the server already picked - nothing is faked.
+----------------------------------------------------------------------
+local MUSIC = A.Music or {}
+local RISER_LENGTH = 3.3 -- (Spin Riser: timed to end as everything goes quiet)
+local QUIET = 0.45 -- seconds of silence before the strip lands...
+local HEART = 1.6 -- ...or of heartbeat, when it's a Legendary or better
+local SECRET_LEAD = 0.6 -- (Jackpot Secret's swell starts this long before the landing)
+local LAND_VOLUME = { Common = 0.7, Rare = 0.8, Epic = 0.9, Legendary = 1, Mythic = 1, Secret = 1 }
+local LAND_HOLD = { Common = 0.7, Rare = 1.2, Epic = 1.8, Legendary = 3.6, Mythic = 4.4, Secret = 5.8 } -- (then the song)
+
+local tune = {
+	sound = nil, -- the song playing (a copy of Music.Song)
+	playing = false,
+	level = 0, -- how loud it is now (0 to 1)
+	speed = 1, -- how fast
+	spinning = false, -- the strip is racing: faster
+	cut = false, -- dropped out (it's about to land)
+	quietUntil = 0, -- silent until then (a landing ringing out)
+	duck = 0, -- how far the lobby's song is turned down
+	ducked = false,
+}
+local songTemplate, songLooked = nil, -10
+local function songSound()
+	if songTemplate and songTemplate.Parent then
+		return songTemplate
+	end
+	if os.clock() - songLooked > 2 then -- (until it's uploaded, a look every 2 seconds)
+		songLooked = os.clock()
+		songTemplate = findSound(MUSIC.Song or "Arcade Theme")
+	end
+	return songTemplate
+end
+local function musicGroup()
+	local g = SoundService:FindFirstChild("ArcadeMusic")
+	if not (g and g:IsA("SoundGroup")) then
+		g = Instance.new("SoundGroup")
+		g.Name = "ArcadeMusic"
+		g.Volume = (Config.Audio and Config.Audio.Music) or 0.7
+		g.Parent = SoundService
+	end
+	return g
+end
+RunService.Heartbeat:Connect(function(dt)
+	local now = os.clock()
+	local template = songSound()
+	local want = template ~= nil and inLobby() and not player:GetAttribute("Intro") and (inArcade or win.Visible or show.Visible)
+	if want and not tune.sound then
+		tune.sound = template:Clone()
+		tune.sound.Name = "ArcadeSongPlaying"
+		tune.sound:SetAttribute("ArcadeCopy", true)
+		tune.sound.Looped = true
+		tune.sound.Volume = 0
+		tune.sound.SoundGroup = musicGroup()
+		tune.sound.Parent = SoundService
+		tune.sound:Play()
+		tune.playing = true
+	end
+	local silent = tune.cut or now < tune.quietUntil
+	local goal = (want and not silent) and 1 or 0
+	local rate = goal > tune.level and 1.2 or (silent and 12 or 1.6) -- (in over a second; out fast when it drops out)
+	tune.level = tune.level + (goal - tune.level) * math.min(1, dt * rate)
+	if silent then
+		tune.speed = 1 -- (it comes back at its own speed)
+	else
+		local fast = tune.spinning and (MUSIC.SpinSpeed or 1.25) or 1
+		tune.speed = tune.speed + (fast - tune.speed) * math.min(1, dt * 3)
+	end
+	local s = tune.sound
+	if s then
+		s.Volume = (tonumber(template and template.Volume) or 0.5) * (MUSIC.Volume or 0.6) * tune.level
+		s.PlaybackSpeed = (tonumber(template and template.PlaybackSpeed) or 1) * tune.speed
+		if not want and tune.level < 0.01 and tune.playing then
+			s:Pause() -- (it carries on where it left off next time)
+			tune.playing = false
+		elseif want and not tune.playing then
+			s:Resume()
+			tune.playing = true
+		end
+	end
+	-- the lobby's song (the "Music" SoundGroup) steps aside while ours is on
+	local duckGoal = (want and s) and 1 or 0
+	tune.duck = tune.duck + (duckGoal - tune.duck) * math.min(1, dt * 1.5)
+	local lobby = SoundService:FindFirstChild("Music")
+	if lobby and lobby:IsA("SoundGroup") then
+		local full = (Config.Audio and Config.Audio.Music) or 1
+		if tune.duck > 0.01 then
+			lobby.Volume = full * (1 - tune.duck)
+			tune.ducked = true
+		elseif tune.ducked then
+			lobby.Volume = full
+			tune.ducked = false
+		end
+	end
+end)
+
+-- (the sounds start downloading as soon as you join: a jackpot that's still
+-- loading when it lands would come in late)
+task.spawn(function()
+	task.wait(3)
+	local list = {}
+	local names = { MUSIC.Song or "Arcade Theme", MUSIC.Riser or "Spin Riser", MUSIC.Heartbeat or "Heartbeat", "Token Clunk", "Roll Tick" }
+	for _, name in pairs(A.LandSounds or {}) do
+		table.insert(names, name)
+	end
+	for _, name in ipairs(names) do
+		local snd = findSound(name)
+		if snd then
+			table.insert(list, snd)
+		end
+	end
+	pcall(function()
+		game:GetService("ContentProvider"):PreloadAsync(list)
+	end)
+end)
+
+-- a spin's music, timed from when it lands (`seconds` from now): faster,
+-- with the drum roll building under it
+local lastCue = nil
+local function spinCue(top, seconds)
+	if lastCue then
+		hush(lastCue.sting, 0.3) -- (the last landing, if it's still ringing)
+	end
+	local cue = { rarity = top.rarity, rank = RANK[top.rarity] or 1 }
+	cue.big = cue.rank >= 4
+	cue.quiet = cue.big and HEART or QUIET
+	cue.lead = (top.rarity == "Secret" and findSound((A.LandSounds or {}).Secret or "Jackpot Secret")) and SECRET_LEAD or 0
+	tune.spinning, tune.cut = true, false
+	local run = seconds - cue.quiet
+	if run > 0.3 then
+		cue.riser = play({ MUSIC.Riser or "Spin Riser" }, 1, 0.7, math.max(0, RISER_LENGTH - run))
+	end
+	lastCue = cue
+	return cue
+end
+-- as the strip goes (`left`: seconds until it lands): the silence, the
+-- heartbeat, and a Secret's jackpot starting early (its swell)
+local function cueAt(cue, left)
+	if not cue.quieted and left <= cue.quiet then
+		cue.quieted = true
+		tune.cut = true
+		hush(cue.riser, 0.06)
+		if cue.big then
+			cue.heart = play({ MUSIC.Heartbeat or "Heartbeat" }, 1, 1, math.max(0, HEART - left))
+		end
+	end
+	if cue.lead > 0 and not cue.sting and left <= cue.lead then
+		cue.sting = play(landSounds(cue.rarity), 1, LAND_VOLUME[cue.rarity], math.max(0, cue.lead - left))
+	end
+end
+-- it's landed (`skipped`: tapped through): its sound, then the song again
+-- once that's rung out
+local function landCue(cue, skipped)
+	tune.spinning, tune.cut = false, false
+	tune.quietUntil = os.clock() + (LAND_HOLD[cue.rarity] or 1)
+	if skipped then
+		hush(cue.riser)
+		hush(cue.heart)
+	end
+	if not cue.sting then
+		cue.sting = play(landSounds(cue.rarity), 1, LAND_VOLUME[cue.rarity], cue.lead)
+	end
+end
+
 -- flies the camera to the machine (and back after)
 local camSaved, camTween = nil, nil
 local function cameraToMachine(machineId)
@@ -1103,12 +1358,14 @@ local function endShow()
 		end
 	end
 	cameraBack()
+	tune.spinning, tune.cut = false, false
 	busy = false
 	openMenu()
 end
 
--- the strip races past and slows onto `result`; returns when it's landed
-local function runStrip(machineId, result, seconds)
+-- the strip races past and slows onto `result` (the music following it:
+-- `cue`); returns when it's landed, and whether it was tapped through
+local function runStrip(machineId, result, seconds, cue)
 	for _, ch in ipairs(strip:GetChildren()) do
 		ch:Destroy()
 	end
@@ -1134,6 +1391,8 @@ local function runStrip(machineId, result, seconds)
 		local u = math.clamp((os.clock() - t0) / seconds, 0, 1)
 		if skipping then
 			u = 1
+		elseif cue then
+			cueAt(cue, seconds - (os.clock() - t0))
 		end
 		local k = 1 - (1 - u) ^ 4 -- (fast, then slowing right down)
 		local x = startX + (endX - startX) * k
@@ -1150,12 +1409,45 @@ local function runStrip(machineId, result, seconds)
 		end
 		RunService.RenderStepped:Wait()
 	end
+	return skipping
 end
 
 local function flashScreen(color, alpha)
 	flash.BackgroundColor3 = color
 	flash.BackgroundTransparency = alpha or 0.2
 	tween(flash, 0.6, { BackgroundTransparency = 1 })
+end
+
+-- GLASS SMASHING (a Legendary or better landing, in time with its jackpot):
+-- a white flash and the machine's screen bursting into shards
+local shardRng = Random.new()
+local function shatter(color)
+	flashScreen(WHITE, 0)
+	for i = 1, 28 do
+		local size = shardRng:NextInteger(10, 36)
+		local shard = new("Frame", {
+			Name = "Shard",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, shardRng:NextInteger(-300, 300), 0.42, shardRng:NextInteger(-110, 110)),
+			Size = UDim2.fromOffset(size, math.floor(size * shardRng:NextNumber(0.25, 0.9))),
+			Rotation = shardRng:NextInteger(0, 359),
+			BackgroundColor3 = (i % 3 == 0) and color or WHITE,
+			BackgroundTransparency = 0.05,
+			BorderSizePixel = 0,
+			ZIndex = 29,
+		}, show)
+		local angle = shardRng:NextNumber(0, math.pi * 2)
+		local reach = shardRng:NextNumber(220, 620)
+		local p = shard.Position
+		tween(shard, 0.8, {
+			Position = UDim2.new(0.5, p.X.Offset + math.cos(angle) * reach, 0.42, p.Y.Offset + math.sin(angle) * reach + 160),
+			Rotation = shard.Rotation + shardRng:NextInteger(-540, 540),
+			BackgroundTransparency = 1,
+		}, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		task.delay(0.85, function()
+			shard:Destroy()
+		end)
+	end
 end
 
 -- the big reveal of one result
@@ -1230,15 +1522,12 @@ local function reveal(result, machineId, count)
 	for _, r in ipairs(rays:GetChildren()) do
 		r.BackgroundColor3 = col
 	end
+	-- (its sound played as the strip landed: landCue)
 	if rank >= 4 then
 		flashScreen(col, 0.1)
 		show.BackgroundTransparency = 0.25
-		play({ "Legendary Reveal", "Level Complete" }, 1, 1)
 	elseif rank == 3 then
 		flashScreen(col, 0.45)
-		play({ "Level Complete", "Orb Land" }, 1.1, 0.9)
-	else
-		play({ "Orb Land", "UI Blip" }, rank == 2 and 1.2 or 1, 0.8)
 	end
 	if rank >= 3 then
 		task.spawn(function()
@@ -1326,7 +1615,13 @@ local function roll(machineId, count)
 		endShow()
 		return
 	end
-	runStrip(machineId, top, count == 10 and 2.2 or 3.8)
+	local seconds = count == 10 and 2.2 or 3.8
+	local cue = spinCue(top, seconds)
+	local skipped = runStrip(machineId, top, seconds, cue)
+	landCue(cue, skipped)
+	if (RANK[top.rarity] or 0) >= 4 then
+		shatter(rarityColor(top.rarity))
+	end
 	skipHint.Visible = false
 	task.wait(0.25)
 	screenFrame.Visible = false
@@ -1490,6 +1785,7 @@ do
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		if not root or player:GetAttribute("Intro") then
 			here, settle = false, true
+			inArcade = false
 			return
 		end
 		local isIn = false
@@ -1499,6 +1795,7 @@ do
 				break
 			end
 		end
+		inArcade = isIn -- (for the music)
 		if settle then
 			-- (arriving inside it - a respawn - doesn't pop it open)
 			settle = false
