@@ -97,9 +97,10 @@ run test_scribble.luau -a delete 1 client
 # the tax coins, the feast, the crown, GUILTY! and the podiums, the pillars,
 # and him on screen
 for seed in 1 2 3; do run test_gavelgrunt.luau -a full $seed; done
-for sc in attacks reset duo timing toe coins feast crown guilty pillars final; do run test_gavelgrunt.luau -a $sc 1; done
+for sc in attacks reset duo timing toe coins feast crown guilty pillars final entrance; do run test_gavelgrunt.luau -a $sc 1; done
 run test_gavelgrunt.luau -a full 2 client
 run test_gavelgrunt.luau -a attacks 1 client
+run test_gavelgrunt.luau -a entrance 1 client
 # where your lock-on aims and where the bosses' words hang: every boss's
 # measured middle and head (AimAt / HeadAt) checked against what's drawn
 # through every move; the lock-on's own sums; the speech bubbles

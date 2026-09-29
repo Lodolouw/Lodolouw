@@ -4,14 +4,16 @@
 	Builds the Spire's tenth and last floor: THE THRONE SUMMIT, King
 	Gavelgrunt's arena.
 
-	The very top of the Spire, above the clouds at sunset. A round stone
-	courtyard paved with big square flagstones, a purple carpet running from
-	the gate in the south wall up to a giant golden throne at the north end,
-	four tall stone pillars at the diagonals (his big moves break them), three
-	low round podiums near the edge (stand on one when he finds you GUILTY),
-	battlements all round with his banners (a gold crown on purple) and
-	torches, and a sea of clouds far below. Everything is chunky and 8-bit,
-	in the game's 32 colours.
+	The very top of the Spire, above the clouds in a thunderstorm. A round
+	stone courtyard paved with big square flagstones, a purple carpet running
+	from the gate in the south wall up to a giant golden throne at the north
+	end (he sleeps on it), four tall stone pillars at the diagonals (his big
+	moves break them), three low round podiums near the edge (stand on one
+	when he finds you GUILTY), battlements all round with his banners (a gold
+	crown on purple) and torches, a sea of storm clouds far below and dark
+	thunderheads all round. Everything is chunky and 8-bit, in the game's 32
+	colours. (The rain and the lightning are drawn on each screen: see his
+	body file.)
 
 	The courtyard's shape comes from ReplicatedStorage/ThronePlan (the same
 	numbers his moves and every screen use).
@@ -75,8 +77,9 @@ local GOLD = RGB(254, 174, 52)
 local YELLOW = RGB(254, 231, 97)
 local ORANGE = RGB(247, 118, 34)
 local WHITE = RGB(255, 255, 255)
-local CLOUD = RGB(234, 212, 170)
-local CLOUD_PINK = RGB(246, 117, 122)
+local STORM = RGB(90, 105, 136) -- storm clouds
+local STORM_DARK = RGB(58, 68, 102)
+local STORM_DEEP = RGB(38, 43, 68)
 local WOOD = RGB(184, 111, 80)
 local WOOD_DARK = RGB(115, 62, 57)
 local INK = RGB(24, 20, 37)
@@ -217,7 +220,7 @@ local function buildFloor()
 		part("Rim", V3(2 * (R + 1.2) * math.sin(math.pi / N) + 0.3, 0.12, 2.4), facingCentre(p), STONE_DEEP, DECOR)
 	end
 	-- THE ROYAL CARPET: from the gate to the throne's steps, purple with a gold edge
-	local z0, z1 = R, ThronePlan.Throne.Z + 7
+	local z0, z1 = R, ThronePlan.Throne.Z + 7 * ThronePlan.ThroneScale
 	local len = z0 - z1
 	part("Carpet", V3(9, 0.12, len), CFrame.new(at(0, 0.1, (z0 + z1) / 2)), PURPLE, DECOR)
 	for _, sx in ipairs({ -1, 1 }) do
@@ -237,8 +240,11 @@ local function buildThrone()
 	local t = Instance.new("Model")
 	t.Name = "KingThrone"
 	local b = ThronePlan.Throne
+	-- (drawn at the plan's size, built ThroneScale times bigger - he's a
+	-- walrus nine times your height, and he sleeps sitting on it)
+	local S = ThronePlan.ThroneScale
 	local function tp(name, size, x, y, z, color, extra)
-		return part(name, size, CFrame.new(at(b.X + x, y, b.Z + z)), color, merge(DECOR, extra), t)
+		return part(name, size * S, CFrame.new(at(b.X + x * S, y * S, b.Z + z * S)), color, merge(DECOR, extra), t)
 	end
 	-- the steps up to it
 	tp("ThroneStep", V3(26, 1.2, 14), 0, 0.6, 0, STONE_LIGHT)
@@ -409,14 +415,27 @@ local function buildGate()
 end
 
 local function buildSky()
-	-- a sea of clouds far below, pink and gold in the sunset
+	-- a sea of storm clouds far below, grey and blue
 	for _ = 1, 26 do
 		local a = rnd() * math.pi * 2
 		local d = between(WALL + 30, 360)
 		local w = between(40, 110)
 		local c = at(math.sin(a) * d, between(-70, -40), math.cos(a) * d)
 		part("CloudBank", V3(w, between(8, 16), w * between(0.5, 0.9)), CFrame.new(c) * CFrame.Angles(0, rnd() * 3, 0),
-			(rnd() < 0.3) and CLOUD_PINK or CLOUD, DECOR)
+			(rnd() < 0.35) and STORM_DARK or STORM, DECOR)
+	end
+	-- and dark thunderheads all round, towering up past the summit (the
+	-- lightning flashes among them)
+	for i = 1, 14 do
+		local a = (i + rnd() * 0.6) / 14 * math.pi * 2
+		local d = between(190, 300)
+		local w = between(70, 120)
+		local h = between(60, 120)
+		local c = at(math.sin(a) * d, between(-20, 30) + h / 2, math.cos(a) * d)
+		part("Thunderhead", V3(w, h, w * between(0.6, 0.9)), CFrame.new(c) * CFrame.Angles(0, rnd() * 3, 0),
+			(i % 3 == 0) and STORM or STORM_DEEP, DECOR)
+		part("ThunderheadTop", V3(w * 1.3, h * 0.25, w * 1.1), CFrame.new(c + V3(0, h * 0.55, 0)) * CFrame.Angles(0, rnd() * 3, 0),
+			STORM_DARK, DECOR)
 	end
 	-- the Spire's top: the courtyard sits on a great stone cap
 	part("SummitCap", V3((WALL + 6) * 2, 18, (WALL + 6) * 2), CFrame.new(at(0, -13, 0)), STONE_DEEP, SCENERY)

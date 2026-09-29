@@ -2,14 +2,18 @@
 	Gavelgrunt  (ModuleScript, parent: ReplicatedStorage > BossBodies, name: "Gavelgrunt")
 
 	How King Gavelgrunt, Lord of the Spire (floor 10's boss, the FINAL BOSS,
-	Config.Bosses[10]) looks on your screen: a chunky 8-bit GOLIATH six times
-	your height - stubby tree-trunk legs in big boots, an enormous round
-	belly in a royal purple robe with a gold belt straining round it, a red
-	cape with a white fur collar, a big round face with a bushy moustache and
-	little angry eyes, a wonky gold crown with three gems, and THE GAVEL: a
-	giant wooden mallet with gold bands, taller than you. In round 2 its head
-	splits open into a steel piston hammer (a glowing core, steam). In round
-	3 his crown flies off, his eyes burn red and the sky turns to an eclipse.
+	Config.Bosses[10]) looks on your screen: a colossal chunky 8-bit WALRUS
+	KING nine times your height - stubby legs on broad hind flippers with gold
+	anklets, a great layered belly (three rolls of blubber, a gold belt
+	straining round them), huge shoulders under spiked gold pauldrons, a deep
+	crimson cape with an ermine collar, front flippers in gold bracers, a
+	heavy-browed head with a big whiskery muzzle, ivory tusks (the right one
+	snapped off short), an old stitched scar slashed across his left eye -
+	which still glows, blind and bright - and a tall spiked gold crown. THE
+	GAVEL: an iron war-gavel with gold bands, a spike on top and runes that
+	light up as he winds up a blow. In round 2 it becomes a steel piston
+	hammer (a glowing core, steam). In round 3 his crown flies off, his eyes
+	and scar burn red and the storm turns to a red eclipse.
 
 	Everything he does is drawn from what the server publishes (see
 	ServerScriptService/Bosses/Gavelgrunt.lua, where each move is explained):
@@ -18,24 +22,31 @@
 	                  warnings on the floor, timed on the server's clock
 	  * SlotSpawns    warnings for the spots the server fills in as it goes
 	  * Body.glide    exactly where he is during a leap, a roll or a rush
-	  * Body.senses   every frame: his props (tin guards, the glowing toe,
+	  * Body.senses   every frame: his props (tin guards, the glowing flipper,
 	                  coins, the roast platter), the pillars crumbling, his
 	                  throne (hidden once he's thrown it, drawn where it
-	                  landed), the torches, the sky (a storm in round 2, a red
-	                  eclipse in round 3), the GUILTY spotlight, "HIT HIM!"
-	  * the moments every boss has: asleep sitting on his throne's step,
-	    waking up (a stretch, a heave up, a big laugh), sitting back down
-	    when everyone's gone, round 2 (the mechanical gavel), round 3 (the
-	    crown flies off), falling flat on his back at the end
+	                  landed), the torches, THE STORM (rain, lightning and
+	                  thunder the moment you arrive; darker in round 2, a red
+	                  eclipse in round 3), your camera for his entrance, and
+	                  "HIT HIM!"
+	  * the moments every boss has: asleep on his throne (the scarred eye
+	    never quite closes), THE ENTRANCE (lightning cracks, he stands up on
+	    his throne, raises the gavel into the storm - it's struck - and leaps
+	    down in front of you with a slam that shakes the courtyard), back up
+	    to his throne when everyone's gone, round 2 (the mechanical gavel),
+	    round 3 (the crown flies off), falling flat on his back at the end
 
 	HOW A BODY FILE WORKS: see BossBodies/_Template.lua. This one uses its own
 	pose fields as well as BossClient's: crouch, lean, twist, headPitch, sit,
-	fall (on his back), faceDown (tripped), rHand / lHand (where his hands
+	fall (on his back), faceDown (tripped), rHand / lHand (where his flippers
 	are, in his body's space, studs), gavelAt (a world point the gavel's head
 	reaches for) or gavelDir (the way it points, in his body's space), headAt
 	(the gavel's head flying off on its chain), rFoot (his right foot lifted
-	/ stamping), ball / ballSpin (curled up), spinA (spinning), mouth, cheeks,
-	stars (dizzy), crown ("on" / "off": round 3's crown).
+	/ stamping) and rFootAt (a world point the tip of that flipper reaches
+	for), ball / ballSpin (curled up), spinA (spinning), mouth, cheeks (his
+	muzzle puffed out), stars (dizzy), crown ("on" / "off": round 3's crown),
+	runes (the gavel's glow, 0-1, as well as its wind-ups'), glare (his eyes
+	flaring) and scarEye (how open the scarred eye is while the other's shut).
 ]]
 
 local RGB = Color3.fromRGB
@@ -46,14 +57,14 @@ local Body = {}
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, flat, easeOut
 local fxFolder, newPart, placeDisc, newRing, placeRing, onFloor, removeRing, burst
-local kick, playSound, addTelegraph, shockRing, at, SLOT_NAMES, bigText, shout
+local kick, playSound, addTelegraph, shockRing, at, SLOT_NAMES, bigText, shout, shot
 
 function Body.init(kit)
 	serverNow, clamp, lerp, smooth, flat, easeOut = kit.serverNow, kit.clamp, kit.lerp, kit.smooth, kit.flat, kit.easeOut
 	fxFolder, newPart, placeDisc, newRing, placeRing = kit.fxFolder, kit.newPart, kit.placeDisc, kit.newRing, kit.placeRing
 	onFloor, removeRing, burst = kit.onFloor, kit.removeRing, kit.burst
 	kick, playSound, addTelegraph, shockRing, at, SLOT_NAMES = kit.kick, kit.playSound, kit.addTelegraph, kit.shockRing, kit.at, kit.SLOT_NAMES
-	bigText, shout = kit.bigText, kit.shout
+	bigText, shout, shot = kit.bigText, kit.shout, kit.shot
 end
 
 local Poses, Starts, SlotSpawns = {}, {}, {}
@@ -71,6 +82,7 @@ local GOLD = RGB(254, 174, 52)
 local ORANGE = RGB(247, 118, 34)
 local GREEN = RGB(99, 199, 77)
 local SKY = RGB(44, 232, 245)
+local BLUE = RGB(0, 153, 219)
 local SILVER = RGB(192, 203, 220)
 local STEEL = RGB(139, 155, 180)
 local STONE = RGB(139, 155, 180)
@@ -79,6 +91,12 @@ local DUST = RGB(234, 212, 170)
 local WOOD = RGB(184, 111, 80)
 local WOOD_DARK = RGB(115, 62, 57)
 local ROAST = RGB(190, 74, 47)
+local HIDE = RGB(115, 62, 57)
+local HIDE_DEEP = RGB(62, 39, 49)
+local IVORY = RGB(234, 212, 170)
+local CRIMSON = RGB(162, 38, 51)
+local IRON = RGB(58, 68, 102)
+local IRON_DARK = RGB(38, 43, 68)
 local PIXEL_FONT = nil
 pcall(function()
 	PIXEL_FONT = Font.new("rbxasset://fonts/families/PressStart2P.json")
@@ -109,6 +127,12 @@ end
 local function turnY(dir, a)
 	local c, s = math.cos(a), math.sin(a)
 	return V3(dir.X * c - dir.Z * s, 0, dir.X * s + dir.Z * c)
+end
+
+-- from way `a` round towards way `b` (flat), `s` of the way (0 to 1)
+local function blendDir(a, b, s)
+	local ang = math.atan2(a.X * b.Z - a.Z * b.X, a.X * b.X + a.Z * b.Z)
+	return turnY(a, ang * s)
 end
 
 local function unitOr(v, fallback)
@@ -197,6 +221,47 @@ local function floorAt(B, pos)
 	return V3(pos.X, B.vpos and B.vpos.Y or pos.Y, pos.Z)
 end
 
+-- his throne: where he sits on it (a spot on the floor under him) and the
+-- way he faces there (down the carpet, at the gate)
+local function throneSeat(B)
+	local c = centerOf(B)
+	local s = ThronePlan.SeatAt
+	return V3(c.X + s.X, B.vpos.Y, c.Z + s.Z), V3(0, 0, 1)
+end
+
+-- where he fights from (the server keeps him there while he wakes)
+local function homeSpot(B)
+	local root = B.model.PrimaryPart
+	if root then
+		return V3(root.Position.X, B.vpos.Y, root.Position.Z)
+	end
+	local c = centerOf(B)
+	return V3(c.X + ThronePlan.Home.X, B.vpos.Y, c.Z + ThronePlan.Home.Z)
+end
+
+-- THE GAVEL'S RUNES light up as he winds up a blow with it (a move's Tell;
+-- the whole of the Hammer Tornado; the Final Gavel held up to the sky)
+local GAVEL_MOVES = { RoyalSmash = true, GavelSweep = true, TripleSlam = true, RocketHammer = true, Guilty = true, Earthquake = true }
+local function windUp(B)
+	local t0, act = B.actionStart, B.action
+	if not (t0 and act) then
+		return 0
+	end
+	local t = serverNow() - t0
+	local a = B.def.Attacks[act]
+	if act == "HammerTornado" then
+		return (t >= 0 and t < a.Tell + a.Time) and 1 or 0
+	elseif act == "FinalGavel" then
+		return (t >= 0.8 and t < B.def.Final.Tell + 0.1) and 1 or 0
+	elseif GAVEL_MOVES[act] and a and a.Tell then
+		if t < 0 or t > a.Tell + 0.15 then
+			return 0
+		end
+		return clamp(t / (a.Tell * 0.6), 0, 1)
+	end
+	return 0
+end
+
 ----------------------------------------------------------------------
 -- The body
 ----------------------------------------------------------------------
@@ -204,8 +269,9 @@ function Body.build(def)
 	local folder = Instance.new("Model")
 	folder.Name = def.Short .. "Body"
 	local body = { folder = folder, all = {}, tinted = {} }
-	local robe, deep, skin = def.Color, def.DeepColor, def.SkinColor or RGB(232, 183, 150)
-	local gold = def.GoldColor or GOLD
+	local hide, deep, belly = def.Color or HIDE, def.DeepColor or HIDE_DEEP, def.BellyColor or WOOD
+	local gold, ivory = def.GoldColor or GOLD, def.TuskColor or IVORY
+	local fur, cape = def.FurColor or WHITE, def.CapeColor or CRIMSON
 	local function add(name, color, material, tint, shape)
 		local p = newPart(name, shape, color, material or Enum.Material.SmoothPlastic, 0, folder)
 		table.insert(body.all, p)
@@ -214,59 +280,131 @@ function Body.build(def)
 		end
 		return p
 	end
-	-- legs: short and thick as tree trunks, in big boots with gold cuffs
-	body.thighs, body.shins, body.boots, body.cuffs = {}, {}, {}, {}
+	-- LEGS: short and fat, on broad hind flippers (splayed out, three ivory
+	-- claws each) with gold anklets
+	body.thighs, body.shins, body.anklets, body.flippers, body.fans, body.toeClaws = {}, {}, {}, {}, {}, {}
 	for i = 1, 2 do
-		body.thighs[i] = add("Thigh", robe, nil, true)
-		body.shins[i] = add("Shin", deep, nil, true)
-		body.boots[i] = add("Boot", WOOD_DARK, nil, true)
-		body.cuffs[i] = add("BootCuff", gold, nil, true)
+		body.thighs[i] = add("Thigh", hide, nil, true)
+		body.shins[i] = add("Shin", hide, nil, true)
+		body.anklets[i] = add("Anklet", gold, nil, true)
+		body.flippers[i] = add("HindFlipper", deep, nil, true)
+		body.fans[i] = add("HindFlipper", deep, nil, true)
+		body.toeClaws[i] = {}
+		for k = 1, 3 do
+			body.toeClaws[i][k] = add("FlipperClaw", ivory, nil, true)
+		end
 	end
-	-- THE BELLY: huge and round (three blocks through each other make a
-	-- chunky pixel ball), the robe's gold hem, the belt straining round it
-	body.belly = add("Belly", robe, nil, true)
-	body.bellyBand = add("BellyBand", robe, nil, true)
-	body.bellyFront = add("BellyFront", robe, nil, true)
+	-- THE BELLY: three great rolls of blubber, one on another (paler down the
+	-- front), a crease under the top one, and a gold belt straining round the
+	-- bottom two with a big buckle
+	body.rolls, body.rollFronts = {}, {}
+	for k = 1, 3 do
+		body.rolls[k] = add("BellyRoll", hide, nil, true)
+		body.rollFronts[k] = add("BellyFront", belly, nil, true)
+	end
+	body.creases = { add("BellyCrease", deep, nil, true), add("BellyCrease", deep, nil, true) }
 	body.belt = add("Belt", gold, nil, true)
 	body.buckle = add("Buckle", YELLOW, nil, true)
-	body.hem = add("RobeHem", gold, nil, true)
-	body.buttons = { add("RobeButton", gold, nil, true), add("RobeButton", gold, nil, true) }
-	-- the chest, shoulders, fur collar and the red cape behind
-	body.chest = add("Chest", robe, nil, true)
-	body.shoulders = { add("Shoulder", robe, nil, true), add("Shoulder", robe, nil, true) }
-	body.collar = add("FurCollar", def.FurColor or WHITE, nil, true)
-	body.cape = add("Cape", def.CapeColor or RED, nil, true)
-	body.capeHem = add("CapeHem", def.FurColor or WHITE, nil, true)
-	-- arms: fat sleeves, white fur cuffs, big gloved hands
-	body.upperArms, body.foreArms, body.armCuffs, body.hands = {}, {}, {}, {}
+	body.buckleGem = add("BuckleGem", RED, nil, true)
+	-- THE SHOULDERS: huge, under spiked gold pauldrons (a big plate, a smaller
+	-- one under it, a dark iron rim, three spikes)
+	body.shoulders, body.pauldrons, body.pauldronLows, body.pauldronRims, body.spikes, body.spikeTips = {}, {}, {}, {}, {}, {}
 	for i = 1, 2 do
-		body.upperArms[i] = add("UpperArm", robe, nil, true)
-		body.foreArms[i] = add("ForeArm", robe, nil, true)
-		body.armCuffs[i] = add("ArmCuff", def.FurColor or WHITE, nil, true)
-		body.hands[i] = add("Hand", WHITE, nil, true)
+		body.shoulders[i] = add("Shoulder", hide, nil, true)
+		body.pauldrons[i] = add("Pauldron", gold, nil, true)
+		body.pauldronLows[i] = add("Pauldron", gold, nil, true)
+		body.pauldronRims[i] = add("PauldronRim", def.IronColor or IRON, nil, true)
+		body.spikes[i], body.spikeTips[i] = {}, {}
+		for k = 1, 3 do
+			body.spikes[i][k] = add("PauldronSpike", gold, nil, true)
+			body.spikeTips[i][k] = add("PauldronSpike", YELLOW, nil, true)
+		end
 	end
-	-- the head: a big round face, a nose, little eyes, a bushy moustache
-	body.head = add("Head", skin, nil, true)
-	body.jowls = add("Jowls", skin, nil, true)
-	body.nose = add("Nose", RGB(246, 117, 122), nil, true)
-	body.eyes = { add("Eye", def.EyeColor or WHITE), add("Eye", def.EyeColor or WHITE) }
-	body.pupils = { add("Pupil", def.CoreColor or INK), add("Pupil", def.CoreColor or INK) }
-	body.brows = { add("Brow", def.BeardColor or WOOD_DARK, nil, true), add("Brow", def.BeardColor or WOOD_DARK, nil, true) }
-	body.stache = { add("Moustache", def.BeardColor or WOOD_DARK, nil, true), add("Moustache", def.BeardColor or WOOD_DARK, nil, true) }
+	-- the ermine collar (white fur, black spots) and the crimson cape behind:
+	-- two panels, flaring out as it falls, a gold hem along the bottom
+	body.collar = add("FurCollar", fur, nil, true)
+	body.ermine = {}
+	for k = 1, 6 do
+		body.ermine[k] = add("Ermine", INK)
+	end
+	body.capeTop = add("Cape", cape, nil, true)
+	body.capeLow = add("Cape", cape, nil, true)
+	body.capeHem = add("CapeHem", gold, nil, true)
+	-- ARMS: thick, gold bracers at the wrists, broad front flippers with claws
+	body.upperArms, body.foreArms, body.bracers, body.hands, body.claws = {}, {}, {}, {}, {}
+	for i = 1, 2 do
+		body.upperArms[i] = add("UpperArm", hide, nil, true)
+		body.foreArms[i] = add("ForeArm", hide, nil, true)
+		body.bracers[i] = add("Bracer", gold, nil, true)
+		body.hands[i] = add("Flipper", deep, nil, true)
+		body.claws[i] = {}
+		for k = 1, 3 do
+			body.claws[i][k] = add("FlipperClaw", ivory, nil, true)
+		end
+	end
+	-- THE HEAD: round and heavy-browed; a big whiskery muzzle (two round
+	-- lobes, pale bristles, nostrils on top, stiff whiskers); little glowing
+	-- eyes (the left one blind and brightest); the tusks; the scar
+	body.head = add("Head", hide, nil, true)
+	body.headRound = add("Head", hide, nil, true)
+	body.chin = add("Chin", hide, nil, true)
+	body.headParts = { body.head, body.headRound, body.chin }
+	body.brows = { add("Brow", deep, nil, true), add("Brow", deep, nil, true) }
+	local muzzle = def.MuzzleColor or RGB(194, 133, 105)
+	body.muzzle = { add("Muzzle", muzzle, nil, true), add("Muzzle", muzzle, nil, true) }
+	body.muzzleV = { add("Muzzle", muzzle, nil, true), add("Muzzle", muzzle, nil, true) }
+	body.nostrils = { add("Nostril", def.CoreColor or INK), add("Nostril", def.CoreColor or INK) }
+	body.bristles = {}
+	for k = 1, 8 do
+		body.bristles[k] = add("Bristle", ivory, nil, true)
+	end
+	body.whiskers = {}
+	for k = 1, 4 do
+		body.whiskers[k] = add("Whisker", ivory, nil, true)
+	end
 	body.mouth = add("Mouth", def.CoreColor or INK)
-	body.cheeks = { add("Cheek", RGB(246, 117, 122), nil, true), add("Cheek", RGB(246, 117, 122), nil, true) }
-	-- THE CROWN: a wonky gold band, five points, three gems (round 3 knocks it off)
-	body.crown = add("Crown", gold, nil, true)
-	body.crownPoints = {}
-	for i = 1, 5 do
-		body.crownPoints[i] = add("CrownPoint", gold, nil, true)
+	body.eyes = { add("Eye", def.ScarEyeColor or YELLOW, Enum.Material.Neon), add("Eye", def.EyeColor or GOLD, Enum.Material.Neon) }
+	body.pupil = add("Pupil", def.CoreColor or INK)
+	-- the tusks (the right one snapped off: a jagged stump)
+	body.tusks = { add("Tusk", ivory, nil, true), add("Tusk", ivory, nil, true) }
+	body.tuskTip = add("Tusk", ivory, nil, true)
+	body.tuskChip = add("Tusk", ivory, nil, true)
+	-- THE SCAR: a jagged slash from his brow, across his left eye, down onto
+	-- his muzzle, stitched (it burns red in round 3)
+	body.scar, body.stitches = {}, {}
+	for k = 1, 4 do
+		body.scar[k] = add("Scar", def.ScarColor or RGB(232, 183, 150))
 	end
-	body.gems = { add("CrownGem", RGB(0, 153, 219)), add("CrownGem", RED), add("CrownGem", GREEN) }
-	-- THE GAVEL: a long handle, a big head with gold bands (round 2: steel,
-	-- with a glowing piston core and steam vents), a chain for the rocket
-	body.handle = add("GavelHandle", WOOD_DARK, nil, true)
-	body.gHead = add("GavelHead", def.WoodColor or WOOD, nil, true)
+	for k = 1, 3 do
+		body.stitches[k] = add("Scar", def.ScarColor or RGB(232, 183, 150))
+	end
+	-- THE CROWN: tall and spiked - a band, a darker rim, five spikes along the
+	-- front and three behind (each with a sharp tip), three gems (round 3
+	-- knocks it off)
+	body.crown = add("Crown", gold, nil, true)
+	body.crownRim = add("Crown", ORANGE, nil, true)
+	body.crownPoints, body.crownTips = {}, {}
+	for k = 1, 8 do
+		body.crownPoints[k] = add("CrownPoint", gold, nil, true)
+		body.crownTips[k] = add("CrownPoint", YELLOW, nil, true)
+	end
+	body.gems = { add("CrownGem", BLUE), add("CrownGem", RED), add("CrownGem", BLUE) }
+	-- THE GAVEL: a leather-wrapped handle, a gold collar and pommel; an iron
+	-- head with gold bands, flat striking faces, a spike on top and runes
+	-- (round 2: steel, a glowing piston core and steam vents); a chain for the
+	-- rocket
+	body.handle = add("GavelHandle", def.GripColor or HIDE_DEEP, nil, true)
+	body.gCollar = add("GavelCollar", gold, nil, true)
+	body.pommel = add("GavelCollar", gold, nil, true)
+	body.gHead = add("GavelHead", def.IronColor or IRON, nil, true)
+	body.gFaces = { add("GavelFace", IRON_DARK, nil, true), add("GavelFace", IRON_DARK, nil, true) }
 	body.gBands = { add("GavelBand", gold, nil, true), add("GavelBand", gold, nil, true) }
+	body.gSpike = add("GavelSpike", def.IronColor or IRON, nil, true)
+	body.gSpikeTip = add("GavelSpike", SILVER, nil, true)
+	body.runes = {}
+	for k = 1, 4 do
+		body.runes[k] = add("GavelRune", IRON_DARK, Enum.Material.Neon)
+	end
 	body.gCore = add("GavelCore", ORANGE, Enum.Material.Neon)
 	body.gVents = { add("GavelVent", STEEL, nil, true), add("GavelVent", STEEL, nil, true) }
 	body.chain = {}
@@ -274,14 +412,17 @@ function Body.build(def)
 		body.chain[i] = newPart("GavelChain", nil, SILVER, Enum.Material.SmoothPlastic, 1)
 	end
 	-- curled up into a ball (the Royal Roll): three blocks crossed through a
-	-- cube make a chunky pixel ball, purple with his crown and face showing
+	-- cube make a chunky pixel ball of blubber - his muzzle, tusks and eyes
+	-- showing, his crown on top
 	body.balls = {}
 	for i = 1, 4 do
-		body.balls[i] = add("RollBall", robe, nil, true)
+		body.balls[i] = add("RollBall", hide, nil, true)
 	end
-	body.ballFace = add("RollBallFace", skin, nil, true)
+	body.ballFace = add("RollBallFace", belly, nil, true)
+	body.ballTusks = { add("RollBallTusk", ivory, nil, true), add("RollBallTusk", ivory, nil, true) }
+	body.ballEyes = { add("RollBallEye", def.ScarEyeColor or YELLOW, Enum.Material.Neon), add("RollBallEye", def.EyeColor or GOLD, Enum.Material.Neon) }
 	body.ballCrown = add("RollBallCrown", gold, nil, true)
-	body.ballBits = { body.ballFace, body.ballCrown }
+	body.ballBits = { body.ballFace, body.ballCrown, body.ballTusks[1], body.ballTusks[2], body.ballEyes[1], body.ballEyes[2] }
 	for _, b in ipairs(body.balls) do
 		table.insert(body.ballBits, b)
 	end
@@ -296,8 +437,9 @@ function Body.build(def)
 	-- each part vanishes at its own moment when he pops into pixels, and some
 	-- decide for themselves whether they show (see applyPose)
 	body.popAt, body.selfShown = {}, {}
-	local SELF = { RollBall = true, RollBallFace = true, RollBallCrown = true, DizzyStar = true, GavelCore = true, GavelVent = true,
-		Crown = true, CrownPoint = true, CrownGem = true, Cheek = true }
+	local SELF = { RollBall = true, RollBallFace = true, RollBallTusk = true, RollBallEye = true, RollBallCrown = true,
+		DizzyStar = true, GavelCore = true, GavelVent = true, Crown = true, CrownPoint = true, CrownGem = true, Eye = true,
+		Pupil = true }
 	for i, p in ipairs(body.all) do
 		body.popAt[p] = ((i * 37) % 29) / 29
 		body.selfShown[p] = SELF[p.Name] == true
@@ -309,15 +451,29 @@ end
 ----------------------------------------------------------------------
 -- Putting him together every frame
 ----------------------------------------------------------------------
--- (his resting stance: the gavel held at his right side, head down by his
--- boot; his left hand resting on his belly) - in his body's space, studs,
--- from his hips
-local REST_R = V3(9.5, 3.5, -3.5)
-local REST_L = V3(-7.5, 5.5, -6.5)
+-- (his resting stance: the gavel held at his right side, its head down by his
+-- flipper; his left flipper resting on his belly) - in his body's space,
+-- studs (times his size), from his hips
+local REST_R = V3(10, 4, -4)
+local REST_L = V3(-8, 6.5, -8.6)
 local REST_GAVEL = V3(0.25, -0.75, -0.6)
-local SHOULDER_Y = 13
-local ARM = 5.8 -- each arm piece
+local SHOULDER_Y = 13.5
+local SHOULDER_X = 8.4
+local ARM = 6.2 -- each arm piece
 local HANDLE = 15 -- the gavel's handle
+local BALL_R = 6.3 -- curled up, this round (his Royal Roll's Width is about this ball)
+local SPLAY = 0.28 -- his hind flippers point out this much (radians)
+local TOE = 5.4 -- from his ankle to the tip of a hind flipper
+-- his belly's three rolls: { height, how tall, how wide (of his width), how
+-- deep, how far forward, how far its paler front bulges out }
+local ROLLS = { { 3.4, 6.2, 0.9, 13.6, -1.0, 0.6 }, { 8.4, 5.4, 1.0, 14.0, -1.1, 1.1 }, { 12.4, 4.8, 0.8, 12.6, -0.8, 0.4 } }
+-- the scar, on his face (in his head's space): brow, over the brow ridge,
+-- across the eye, onto the muzzle, down it
+local SCAR = { V3(-3.9, 3.5, -4.05), V3(-3.3, 2.3, -4.7), V3(-2.5, 0.9, -4.3), V3(-2.75, -0.3, -5.1), V3(-2.2, -1.9, -6.9) }
+-- the crown's spikes: { across, how tall, front (-) or back (+) } (the back
+-- ones stand right behind front ones, so the gaps between show)
+local SPIKES = { { -3.4, 2.2, -3.2 }, { -1.7, 3.0, -3.3 }, { 0, 4.1, -3.4 }, { 1.7, 3.0, -3.3 }, { 3.4, 2.2, -3.2 },
+	{ -3.4, 2.0, 3.2 }, { 0, 3.2, 3.3 }, { 3.4, 2.0, 3.2 } }
 
 local function show(p, on)
 	p.Transparency = on and 0 or 1
@@ -327,9 +483,10 @@ local function applyPose(B, P, ground, facing, t, dt)
 	local body, def = B.body, B.def
 	local u = def.Size / 16
 	local model = B.model
+	local now = os.clock()
 	local moving = model:GetAttribute("Moving") == true
 	B.walk = smoothNum(B, "walkS", moving and 1 or 0, 6, dt)
-	B.stridePhase = (B.stridePhase or 0) + dt * 5 * math.max(B.walk, 0.1)
+	B.stridePhase = (B.stridePhase or 0) + dt * 4.4 * math.max(B.walk, 0.1)
 	local stride = math.sin(B.stridePhase) * B.walk
 	local rate = P.snap and 60 or (P.rate or 14)
 	local crouch = smoothNum(B, "crouchS", clamp(P.crouch or 0, -0.3, 1), rate, dt)
@@ -345,19 +502,23 @@ local function applyPose(B, P, ground, facing, t, dt)
 	local fall = smoothNum(B, "fallS", clamp(P.fall or 0, 0, 1), 5, dt)
 	local faceDown = smoothNum(B, "downS", clamp(P.faceDown or 0, 0, 1), 7, dt)
 	local rFoot = smoothVec(B, "rFootS", P.rFoot or V3(0, 0, 0), P.snap and 60 or 16, dt)
+	local glare = smoothNum(B, "glareS", clamp(P.glare or 0, 0, 1), 10, dt)
 	local sx, sy = P.sx or 1, P.sy or 1
 	local sink = P.sink or 0
 	local fade = P.fade or 0
 	local phase = num(model:GetAttribute("Phase"), 1)
 	local piston = B.phase2Look or phase >= 2
 	local rage = phase >= 3 or B.berserkLook
-	local flash = B.flashAt and (os.clock() - B.flashAt) < 0.1
+	local flash = B.flashAt and (now - B.flashAt) < 0.1
+	local rageColor = def.RageColor or RED
 
 	local jitter = V3(0, 0, 0)
 	if (P.shake or 0) > 0 then
 		jitter = V3((math.random() - 0.5) * 2, 0, (math.random() - 0.5) * 2) * P.shake
 	end
-	local groundPos = ground + jitter + V3(0, (P.lift or 0) - sink * 30 * u, 0)
+	-- (flat on his back or his face, his great belly holds him up off the floor)
+	local rest = (4 * fall + 3.5 * faceDown) * u
+	local groundPos = ground + jitter + V3(0, (P.lift or 0) + rest - sink * 30 * u, 0)
 	local look = unitOr(flat(facing), V3(0, 0, -1))
 	if P.spinA then
 		look = turnY(look, P.spinA)
@@ -374,7 +535,7 @@ local function applyPose(B, P, ground, facing, t, dt)
 
 	-- CURLED UP INTO A BALL (the Royal Roll)
 	local balled = ballK > 0.5
-	local R = 9 * u
+	local R = BALL_R * u
 	if balled then
 		local r = R * (0.75 + 0.25 * ballK)
 		local long, flatW, mid = 2 * r, 1.2 * r, 1.6 * r
@@ -390,157 +551,295 @@ local function applyPose(B, P, ground, facing, t, dt)
 		for _, b in ipairs(body.balls) do
 			b.CFrame = cf
 		end
-		body.ballFace.Size = V3(r * 0.8, r * 0.7, 0.6 * u)
-		body.ballFace.CFrame = cf * CFrame.new(0, r * 0.15, -r - 0.2 * u)
-		body.ballCrown.Size = V3(r * 0.8, r * 0.3, r * 0.8)
-		body.ballCrown.CFrame = cf * CFrame.new(0, r * 0.55, -r * 0.55)
+		local front = cf * CFrame.new(0, 0, -r)
+		body.ballFace.Size = V3(r * 0.9, r * 0.55, 0.8 * u)
+		body.ballFace.CFrame = front * CFrame.new(0, -r * 0.1, -0.2 * u)
+		for i = 1, 2 do
+			local side = (i == 1) and -1 or 1
+			local tusk = (i == 2) and r * 0.28 or r * 0.55 -- (the right one's the chipped one)
+			body.ballTusks[i].Size = V3(0.9 * u, tusk, 0.9 * u)
+			body.ballTusks[i].CFrame = front * CFrame.new(side * r * 0.22, -r * 0.36 - tusk / 2, -0.55 * u)
+			body.ballEyes[i].Size = V3(0.9 * u, 0.7 * u, 0.3 * u)
+			body.ballEyes[i].CFrame = front * CFrame.new(side * r * 0.3, r * 0.3, -0.15 * u)
+		end
+		body.ballCrown.Size = V3(r * 0.8, r * 0.35, r * 0.8)
+		body.ballCrown.CFrame = cf * CFrame.new(0, r * 0.6, -r * 0.5)
 	end
 	for _, b in ipairs(body.ballBits) do
 		show(b, balled and fade < 0.5)
 	end
 
-	-- LEGS: two pieces each, bent out under all that weight
+	-- LEGS: short and fat, bent out under all that weight, on broad hind
+	-- flippers splayed out to the sides
 	local hipY = (6.2 - 2.6 * math.max(crouch, 0) - 4.2 * sit) * u * sy
-	local legX = (4.4 + 0.8 * math.max(crouch, 0) + 1.2 * sit) * u * sx
-	local L1, L2 = 3.6 * u, 3.4 * u
+	local legX = (4.6 + 0.8 * math.max(crouch, 0) + 1.2 * sit) * u * sx
+	local L1, L2 = 3.8 * u, 3.6 * u
+	-- (the tip of his right flipper reaching for a spot: rFootAt)
+	local footAt = typeof(P.rFootAt) == "Vector3" and P.rFootAt or nil
+	if footAt then
+		if not B.footAtS and B.toeAt then
+			B.footAtS = B.toeAt -- (from where it is now)
+		end
+		footAt = smoothVec(B, "footAtS", footAt, P.snap and 60 or 16, dt)
+	else
+		B.footAtS = nil
+	end
 	for i = 1, 2 do
 		local side = (i == 1) and -1 or 1
 		local hip = base * V3(side * legX, hipY, 0.5 * u)
-		local fz = -side * stride * 2.4 * u
+		local fz = -side * stride * 2.2 * u
 		local liftFoot = math.max(0, -side * stride) * 1.0 * u
+		local footDir = (base * CFrame.Angles(0, -side * SPLAY, 0)).LookVector
 		local ankle
 		if sit > 0.05 then
-			local sitAnkle = base * V3(side * legX * 1.2, 1.0 * u, -6.5 * u)
-			ankle = (base * V3(side * legX * 1.1, 1.2 * u + liftFoot, fz)):Lerp(sitAnkle, sit)
+			local sitAnkle = base * V3(side * legX * 1.15, 1.2 * u, -6.5 * u)
+			ankle = (base * V3(side * legX * 1.1, 1.3 * u + liftFoot, fz)):Lerp(sitAnkle, sit)
 		else
-			ankle = base * V3(side * legX * 1.1, 1.2 * u + liftFoot, fz)
+			ankle = base * V3(side * legX * 1.1, 1.3 * u + liftFoot, fz)
 		end
-		if i == 2 and rFoot.Magnitude > 0.01 then
-			ankle = ankle + base:VectorToWorldSpace(rFoot * u)
+		if i == 2 then
+			if footAt then
+				ankle = footAt + base.UpVector * (1.3 * u) - footDir * (TOE * u)
+			end
+			if rFoot.Magnitude > 0.01 then
+				ankle = ankle + base:VectorToWorldSpace(rFoot * u)
+			end
 		end
 		local bend = unitOr(forward + base.RightVector * side * 0.5, forward)
 		local knee, ankle2 = twoBone(hip, ankle, L1, L2, bend)
-		stretch(body.thighs[i], hip, knee, 4.2 * u * sx, 4.2 * u, forward)
-		stretch(body.shins[i], knee, ankle2, 3.8 * u * sx, 3.8 * u, forward)
-		local boot = body.boots[i]
-		boot.Size = V3(4.4 * u * sx, 2.2 * u, 6.0 * u)
-		boot.CFrame = CFrame.lookAt(ankle2, ankle2 + forward) * CFrame.new(0, -0.9 * u, -1.1 * u)
-		body.cuffs[i].Size = V3(4.8 * u * sx, 1.0 * u, 4.6 * u)
-		body.cuffs[i].CFrame = CFrame.lookAt(ankle2, ankle2 + forward) * CFrame.new(0, 0.5 * u, 0)
+		stretch(body.thighs[i], hip, knee, 4.6 * u * sx, 4.6 * u, forward)
+		stretch(body.shins[i], knee, ankle2, 4.0 * u * sx, 4.0 * u, forward)
+		local af = CFrame.lookAt(ankle2, ankle2 + footDir, base.UpVector)
+		body.anklets[i].Size = V3(4.7 * u * sx, 1.0 * u, 4.7 * u)
+		body.anklets[i].CFrame = af * CFrame.new(0, 0.4 * u, 0)
+		body.flippers[i].Size = V3(4.0 * u * sx, 1.4 * u, 3.8 * u)
+		body.flippers[i].CFrame = af * CFrame.new(0, -0.6 * u, -1.3 * u)
+		body.fans[i].Size = V3(5.4 * u * sx, 0.8 * u, 3.4 * u)
+		body.fans[i].CFrame = af * CFrame.new(0, -1.0 * u, -3.6 * u)
+		for k, cl in ipairs(body.toeClaws[i]) do
+			cl.Size = V3(0.9, 0.7, 0.9) * u
+			cl.CFrame = af * CFrame.new((k - 2) * 1.8 * u * sx, -0.9 * u, -5.5 * u)
+		end
 		if i == 2 then
-			B.toeAt = boot.CFrame * V3(0, 0, -3.2 * u)
+			B.toeAt = af * V3(0, -1.2 * u, -TOE * u)
 		end
 	end
 
 	-- THE UPPER BODY: from the hips, leaning, twisting
 	local torso = base * CFrame.new(0, hipY, 0) * CFrame.Angles(0, twist, 0) * CFrame.Angles(-lean, 0, 0)
 	local up, tlook, right = torso.UpVector, torso.LookVector, torso.RightVector
-	local breathe = 1 + 0.035 * math.sin(os.clock() * 2)
-	local bw = 15 * u * sx * breathe
-	-- the belly: a pixel ball (the band sticks out widest, the front bulges)
-	body.belly.Size = V3(bw * 0.86, 11 * u * sy, 13 * u * breathe)
-	body.belly.CFrame = torso * CFrame.new(0, 5 * u * sy, -1 * u)
-	body.bellyBand.Size = V3(bw, 7 * u * sy, 12 * u * breathe)
-	body.bellyBand.CFrame = torso * CFrame.new(0, 4.5 * u * sy, -1 * u)
-	body.bellyFront.Size = V3(bw * 0.62, 7.5 * u * sy, 15 * u * breathe)
-	body.bellyFront.CFrame = torso * CFrame.new(0, 4.6 * u * sy, -1.2 * u)
-	body.belt.Size = V3(bw + 0.2 * u, 1.3 * u, 12.2 * u * breathe)
-	body.belt.CFrame = torso * CFrame.new(0, 2.6 * u * sy, -1 * u)
-	body.buckle.Size = V3(2.6 * u, 1.9 * u, 0.6 * u)
-	body.buckle.CFrame = torso * CFrame.new(0, 2.6 * u * sy, -8.8 * u * breathe)
-	body.hem.Size = V3(bw * 0.9, 0.9 * u, 12.5 * u)
-	body.hem.CFrame = torso * CFrame.new(0, -0.3 * u * sy, -1 * u)
-	for k, b in ipairs(body.buttons) do
-		b.Size = V3(0.9, 0.9, 0.5) * u
-		b.CFrame = torso * CFrame.new(0, (5.6 + (k - 1) * 2.2) * u * sy, -8.6 * u * breathe)
+	local breathe = 1 + 0.035 * math.sin(now * 2)
+	local bw = 16 * u * sx * breathe
+	-- the belly: three rolls of blubber, the middle one widest, each paler
+	-- down its front
+	local fronts = {} -- (how far forward each roll's front comes, in his studs)
+	for k, r in ipairs(ROLLS) do
+		local y, h, wk, d, z, poke = r[1], r[2], r[3], r[4], r[5], r[6]
+		body.rolls[k].Size = V3(bw * wk, h * u * sy, d * u * breathe)
+		body.rolls[k].CFrame = torso * CFrame.new(0, y * u * sy, z * u)
+		fronts[k] = z - d * breathe / 2 - poke
+		body.rollFronts[k].Size = V3(bw * wk * 0.64, h * u * sy * 0.84, 4 * u)
+		body.rollFronts[k].CFrame = torso * CFrame.new(0, y * u * sy, (fronts[k] + 2) * u)
 	end
-	local chestY = 12.2 * u * sy
-	body.chest.Size = V3(13 * u * sx, 5 * u * sy, 10 * u)
-	body.chest.CFrame = torso * CFrame.new(0, chestY, -0.5 * u)
+	-- (a deep crease under each of the top two rolls)
+	for k, c in ipairs(body.creases) do
+		local upper, lower = ROLLS[k + 1], ROLLS[k]
+		c.Size = V3(bw * lower[3] * 0.62, 0.55 * u, 0.6 * u)
+		c.CFrame = torso * CFrame.new(0, (upper[1] - upper[2] / 2 + 0.1) * u * sy, (fronts[k] - 0.2) * u)
+	end
+	-- the belt, low round his gut
+	body.belt.Size = V3(bw * 0.93, 1.4 * u, 16 * u * breathe)
+	body.belt.CFrame = torso * CFrame.new(0, 2.4 * u * sy, -1.0 * u)
+	body.buckle.Size = V3(3.6, 2.6, 0.7) * u
+	body.buckle.CFrame = torso * CFrame.new(0, 2.4 * u * sy, (-1.0 - 8 * breathe - 0.3) * u)
+	body.buckleGem.Size = V3(1.2, 1.2, 0.4) * u
+	body.buckleGem.CFrame = body.buckle.CFrame * CFrame.new(0, 0, -0.4 * u)
+	-- THE SHOULDERS, under spiked gold pauldrons
 	local shoulders = {}
 	for i = 1, 2 do
 		local side = (i == 1) and -1 or 1
-		local scf = torso * CFrame.new(side * 7.4 * u * sx, SHOULDER_Y * u * sy, -0.5 * u)
-		body.shoulders[i].Size = V3(4.4, 4.4, 5.2) * u
+		local scf = torso * CFrame.new(side * SHOULDER_X * u * sx, SHOULDER_Y * u * sy, -0.4 * u)
+		body.shoulders[i].Size = V3(5.6, 5.4, 6.4) * u
 		body.shoulders[i].CFrame = scf
 		shoulders[i] = scf.Position
+		local plate = scf * CFrame.new(side * 0.8 * u, 2.6 * u, 0) * CFrame.Angles(0, 0, -side * 0.32)
+		body.pauldrons[i].Size = V3(7.0, 2.2, 7.4) * u
+		body.pauldrons[i].CFrame = plate
+		body.pauldronRims[i].Size = V3(7.3, 0.6, 7.7) * u
+		body.pauldronRims[i].CFrame = plate * CFrame.new(0, -1.2 * u, 0)
+		body.pauldronLows[i].Size = V3(5.8, 1.6, 6.6) * u
+		body.pauldronLows[i].CFrame = scf * CFrame.new(side * 2.7 * u, 0.3 * u, 0) * CFrame.Angles(0, 0, -side * 0.78)
+		for k, sp in ipairs(body.spikes[i]) do
+			-- (short and stubby: a thick base, a sharp tip)
+			local h = ((k == 2) and 2.0 or 1.5) * u
+			local at = plate * CFrame.new(side * (-1.9 + (k - 1) * 2.3) * u, 1.1 * u, 0) * CFrame.Angles(0, 0, -side * 0.12)
+			sp.Size = V3(1.6 * u, h, 1.6 * u)
+			sp.CFrame = at * CFrame.new(0, h / 2, 0)
+			body.spikeTips[i][k].Size = V3(0.8, 1.2, 0.8) * u
+			body.spikeTips[i][k].CFrame = at * CFrame.new(0, h + 0.55 * u, 0)
+		end
 	end
-	body.collar.Size = V3(12.4 * u * sx, 2.4 * u, 9.6 * u)
-	body.collar.CFrame = torso * CFrame.new(0, (SHOULDER_Y + 1.6) * u * sy, -0.5 * u)
-	-- the cape: from his shoulders down behind him, swinging a little as he moves
-	local swing = 0.18 + 0.1 * B.walk + 0.06 * math.sin(os.clock() * 1.7)
-	local capeTop = torso * V3(0, (SHOULDER_Y + 0.8) * u * sy, 5 * u)
-	local capeDir = (torso:VectorToWorldSpace(V3(0, -1, math.sin(swing)))).Unit
-	local capeLen = (SHOULDER_Y + hipY / u - 1) * u
-	local capeEnd = capeTop + capeDir * capeLen
-	stretch(body.cape, capeTop, capeEnd, 14 * u * sx, 0.8 * u, tlook)
-	body.capeHem.Size = V3(14.4 * u * sx, 1.2 * u, 1.2 * u)
+	-- the ermine collar
+	-- (the ermine: a band of white fur round his shoulders and across his chest,
+	-- little black tails dotted along it)
+	local collar = torso * CFrame.new(0, (SHOULDER_Y + 0.4) * u * sy, -0.8 * u)
+	body.collar.Size = V3(18 * u * sx, 2.7 * u, 13.8 * u)
+	body.collar.CFrame = collar
+	for k, spot in ipairs(body.ermine) do
+		spot.Size = V3(0.45, 0.8, 0.3) * u
+		spot.CFrame = collar * CFrame.new(({ -7.4, -5.2, -2.9, 2.9, 5.2, 7.4 })[k] * u * sx, (k % 2 == 0) and 0.35 * u or -0.35 * u, -6.98 * u)
+	end
+	-- the cape: from under the collar down behind him to the floor, flaring out
+	-- as it falls, swinging as he moves
+	local swing = 0.16 + 0.12 * B.walk + 0.06 * math.sin(now * 1.7)
+	local capeTop = torso * V3(0, (SHOULDER_Y + 1.2) * u * sy, 6 * u)
+	local capeMid = capeTop + torso:VectorToWorldSpace(V3(0, -1, math.sin(swing * 0.6))).Unit * (SHOULDER_Y * 0.55 * u * sy)
+	local lowLen = math.max(SHOULDER_Y * 0.45 * u * sy + hipY - 1.5 * u, 2 * u)
+	local capeEnd = capeMid + torso:VectorToWorldSpace(V3(0, -1, math.sin(swing + 0.12))).Unit * lowLen
+	stretch(body.capeTop, capeTop, capeMid, 19 * u * sx, 0.9 * u, tlook)
+	stretch(body.capeLow, capeMid, capeEnd, 21.5 * u * sx, 0.8 * u, tlook)
+	body.capeHem.Size = V3(22 * u * sx, 1.3 * u, 1.3 * u)
 	body.capeHem.CFrame = CFrame.lookAt(capeEnd, capeEnd + tlook)
 
-	-- the head
-	local head = torso * CFrame.new(0, (SHOULDER_Y + 5.6) * u * sy, -1.2 * u) * CFrame.Angles(-headPitch, 0, 0)
-	body.head.Size = V3(8.4, 8.2, 8.2) * u
+	-- THE HEAD: low and forward on those shoulders
+	local head = torso * CFrame.new(0, (SHOULDER_Y + 4.8) * u * sy, -2.6 * u) * CFrame.Angles(-headPitch, 0, 0)
+	local face = head.LookVector
+	body.head.Size = V3(8.4, 7.4, 8.0) * u
 	body.head.CFrame = head
-	body.jowls.Size = V3(9.2 * u, 3.2 * u, 7.6 * u)
-	body.jowls.CFrame = head * CFrame.new(0, -3 * u, -0.4 * u)
-	body.nose.Size = V3(1.8, 1.6, 1.6) * u
-	body.nose.CFrame = head * CFrame.new(0, -0.2 * u, -4.6 * u)
-	local eyeOpen = clamp(num(P.eyes, 1), 0, 1) * (1 - fade)
-	local angry = rage and 0.5 or 0.2
+	body.headRound.Size = V3(9.4, 5.6, 7.0) * u
+	body.headRound.CFrame = head * CFrame.new(0, -0.5 * u, 0.2 * u)
+	-- (his jaw drops as he opens his mouth)
+	body.chin.Size = V3(5.4, 2.0, 4.6) * u
+	body.chin.CFrame = head * CFrame.new(0, (-4.1 - 1.6 * mouthOpen) * u, -2.9 * u)
+	body.mouth.Size = V3(3.6 * u, 0.4 * u + 2.6 * u * mouthOpen, 0.4 * u)
+	body.mouth.CFrame = head * CFrame.new(0, (-3.85 - 1.1 * mouthOpen) * u, -5.3 * u)
+	-- the heavy brow, scowling (harder in round 3)
+	local angry = rage and 0.5 or 0.28
 	for i = 1, 2 do
 		local side = (i == 1) and -1 or 1
-		local ecf = head * CFrame.new(side * 1.8 * u, 1.4 * u, -4.12 * u)
-		local eye, pupil = body.eyes[i], body.pupils[i]
-		eye.Size = V3(1.5 * u, math.max(1.1 * u * eyeOpen, 0.05), 0.15)
-		eye.CFrame = ecf
-		eye.Transparency = eyeOpen < 0.05 and 1 or 0
-		pupil.Size = V3(0.8 * u, math.max(0.8 * u * eyeOpen, 0.05), 0.15)
-		local roll = (P.stars or 0) > 0.05 and V3(math.cos(os.clock() * 9 + i) * 0.3 * u, math.sin(os.clock() * 9 + i) * 0.25 * u, 0) or V3()
-		pupil.CFrame = ecf * CFrame.new(-side * 0.15 * u + roll.X, roll.Y, -0.05)
-		pupil.Transparency = eyeOpen < 0.05 and 1 or 0
-		pupil.Color = rage and (def.RageColor or RED) or (def.CoreColor or INK)
-		pupil.Material = rage and Enum.Material.Neon or Enum.Material.SmoothPlastic
-		local brow = body.brows[i]
-		brow.Size = V3(2.4 * u, 0.7 * u, 0.6 * u)
-		brow.CFrame = head * CFrame.new(side * 1.8 * u, 2.5 * u, -4.2 * u) * CFrame.Angles(0, 0, side * angry)
-		local st = body.stache[i]
-		local flap = mouthOpen * 0.4 + 0.08 * math.sin(os.clock() * 6)
-		st.Size = V3(3.8 * u, 1.2 * u, 1.0 * u)
-		st.CFrame = head * CFrame.new(side * 1.9 * u, -1.5 * u, -4.5 * u) * CFrame.Angles(0, 0, -side * (0.25 + flap))
-		local ch = body.cheeks[i]
-		ch.Size = V3(1.6 * u + 1.6 * u * cheeks, 1.2 * u + 1.2 * u * cheeks, 0.5 * u + 1.2 * u * cheeks)
-		ch.CFrame = head * CFrame.new(side * 3.3 * u, -1.2 * u, -3.9 * u)
-		ch.Transparency = fade > 0.5 and 1 or (0.25 - 0.25 * cheeks)
+		body.brows[i].Size = V3(3.8, 1.3, 1.5) * u
+		body.brows[i].CFrame = head * CFrame.new(side * 2.4 * u, 2.1 * u, -3.85 * u) * CFrame.Angles(0, 0, side * angry)
 	end
-	body.mouth.Size = V3(2.6 * u, math.max(0.5 * u + 3 * u * mouthOpen, 0.05), 0.15)
-	body.mouth.CFrame = head * CFrame.new(0, (-2.6 - 1.0 * mouthOpen) * u, -4.62 * u)
+	-- his eyes: little, deep-set, glowing - the left one (the scarred one)
+	-- blind, pale and brightest; it never quite closes
+	local eyeOpen = clamp(num(P.eyes, 1), 0, 1) * (1 - fade)
+	local scarOpen = math.max(eyeOpen, clamp(num(P.scarEye, 0), 0, 1) * (1 - fade))
+	local flare = 1 + 0.4 * glare
+	for i = 1, 2 do
+		local side = (i == 1) and -1 or 1
+		local open = (i == 1) and scarOpen or eyeOpen
+		local eye = body.eyes[i]
+		local w, h = (i == 1) and 1.7 or 1.3, (i == 1) and 1.4 or 1.1
+		eye.Size = V3(w * u * flare, math.max(h * u * open * flare, 0.05), 0.3 * u)
+		eye.CFrame = head * CFrame.new(side * 2.5 * u, 0.9 * u, -4.05 * u)
+		eye.Color = flash and WHITE or (rage and rageColor or ((i == 1) and (def.ScarEyeColor or YELLOW) or (def.EyeColor or GOLD)))
+		eye.Transparency = (open < 0.05 or balled or fade > 0.5) and 1 or 0
+	end
+	B.eyeAt = body.eyes[1].Position
+	-- (the good eye's pupil, rolling round when he's dizzy)
+	local roll = (P.stars or 0) > 0.05 and V3(math.cos(now * 9) * 0.3 * u, math.sin(now * 9) * 0.25 * u, 0) or V3()
+	body.pupil.Size = V3(0.5 * u, math.max(0.55 * u * eyeOpen, 0.05), 0.2 * u)
+	body.pupil.CFrame = head * CFrame.new(2.35 * u + roll.X, 0.9 * u + roll.Y, -4.22 * u)
+	body.pupil.Transparency = (eyeOpen < 0.05 or balled or fade > 0.5 or rage) and 1 or 0
+	-- the muzzle: two big whiskery lobes (puffed out when he's got a mouthful),
+	-- the snout on top with its nostrils, bristles, stiff whiskers
+	local puff = 1 + 0.3 * cheeks
+	for i = 1, 2 do
+		local side = (i == 1) and -1 or 1
+		local lobe = head * CFrame.new(side * 2.3 * u * puff, -2.0 * u, -5.2 * u)
+		body.muzzle[i].Size = V3(4.2, 2.8, 3.4) * (u * puff)
+		body.muzzle[i].CFrame = lobe
+		body.muzzleV[i].Size = V3(3.2, 3.8, 3.0) * (u * puff)
+		body.muzzleV[i].CFrame = lobe
+		body.nostrils[i].Size = V3(0.9, 0.35, 0.8) * u
+		body.nostrils[i].CFrame = head * CFrame.new(side * 1.1 * u * puff, (-0.1 + 0.9 * (puff - 1)) * u, -5.5 * u)
+	end
+	local lobeFront = (-5.2 - 1.7 * puff - 0.1) * u
+	local BRISTLES = { { 1.1, -1.4 }, { 2.3, -1.8 }, { 3.4, -1.4 }, { 1.8, -2.7 } }
+	for k, br in ipairs(body.bristles) do
+		local side = (k <= 4) and -1 or 1
+		local b = BRISTLES[(k - 1) % 4 + 1]
+		br.Size = V3(0.4, 0.4, 0.3) * u
+		br.CFrame = head * CFrame.new(side * b[1] * u * puff, b[2] * u, lobeFront)
+	end
+	for k, wk in ipairs(body.whiskers) do
+		local side = (k <= 2) and -1 or 1
+		local j = (k - 1) % 2
+		local from = head * V3(side * 3.6 * u * puff, (-1.6 - j * 1.0) * u, -5.6 * u)
+		local to = head * V3(side * (6.4 + j * 0.4) * u * puff, (-1.3 - j * 1.4) * u, -6.6 * u)
+		stretch(wk, from, to, 0.3 * u, 0.3 * u, up)
+	end
+	-- THE TUSKS: long and ivory, hanging down past his chin over his chest
+	-- (the right one snapped off short, a jagged end)
+	local tA = head * V3(-1.9 * u, -3.4 * u, -5.4 * u)
+	local tB = head * V3(-2.2 * u, -7.2 * u, -6.3 * u)
+	local tC = head * V3(-1.8 * u, -10.2 * u, -6.6 * u)
+	stretch(body.tusks[1], tA, tB, 1.4 * u, 1.4 * u, face)
+	stretch(body.tuskTip, tB, tC, 1.1 * u, 1.1 * u, face)
+	local cA = head * V3(1.9 * u, -3.4 * u, -5.4 * u)
+	local cB = head * V3(2.15 * u, -6.3 * u, -6.1 * u)
+	stretch(body.tusks[2], cA, cB, 1.4 * u, 1.4 * u, face)
+	body.tuskChip.Size = V3(1.3, 0.8, 1.3) * u
+	body.tuskChip.CFrame = CFrame.new(cB) * head.Rotation * CFrame.Angles(0.4, 0.3, 0.55)
+	-- THE SCAR, stitched: pale - or burning red in round 3
+	for k, p in ipairs(body.scar) do
+		stretch(p, head * (SCAR[k] * u), head * (SCAR[k + 1] * u), 0.55 * u, 0.35 * u, face)
+	end
+	for k, st in ipairs(body.stitches) do
+		local seg = ({ 1, 2, 4 })[k]
+		local a, b = SCAR[seg], SCAR[seg + 1]
+		local mid = head * ((a + b) / 2 * u)
+		local across = head:VectorToWorldSpace((b - a).Unit):Cross(face)
+		across = unitOr(across, right)
+		stretch(st, mid - across * 0.75 * u, mid + across * 0.75 * u, 0.3 * u, 0.3 * u, face)
+	end
+	local scarColor, scarMat = def.ScarColor or RGB(232, 183, 150), Enum.Material.SmoothPlastic
+	if rage then
+		scarColor = rageColor:Lerp(RED_DARK, 0.5 * (0.5 - 0.5 * math.sin(now * 6)))
+		scarMat = Enum.Material.Neon
+	end
+	if flash then
+		scarColor = WHITE
+	end
+	for _, list in ipairs({ body.scar, body.stitches }) do
+		for _, p in ipairs(list) do
+			p.Color = scarColor
+			if B.scarMat ~= scarMat then
+				p.Material = scarMat
+			end
+		end
+	end
+	B.scarMat = scarMat
 
-	-- THE CROWN (round 3 knocks it off; putting it back on shows it again)
+	-- THE CROWN: tall and spiked (round 3 knocks it off; putting it back on
+	-- shows it again)
 	local crownOn = P.crown == "on" or (P.crown ~= "off" and not rage)
-	local crownCF = head * CFrame.new(0.4 * u, 5 * u, 0) * CFrame.Angles(0, 0, 0.1)
-	body.crown.Size = V3(8.8 * u, 2.2 * u, 8.8 * u)
+	local crownCF = head * CFrame.new(0.3 * u, 4.6 * u, 0.3 * u) * CFrame.Angles(0, 0, 0.07)
+	body.crown.Size = V3(8.2, 2.0, 7.6) * u
 	body.crown.CFrame = crownCF
-	for i, pt in ipairs(body.crownPoints) do
-		local x = (i - 3) * 1.9 * u
-		pt.Size = V3(1.2 * u, (i % 2 == 1) and 2.4 * u or 1.8 * u, 1.2 * u)
-		pt.CFrame = crownCF * CFrame.new(x, 2 * u, -4 * u)
+	body.crownRim.Size = V3(8.5, 0.6, 7.9) * u
+	body.crownRim.CFrame = crownCF * CFrame.new(0, -0.9 * u, 0)
+	for k, sp in ipairs(SPIKES) do
+		local x, h, z = sp[1], sp[2], sp[3]
+		body.crownPoints[k].Size = V3(1.0 * u, h * u, 1.0 * u)
+		body.crownPoints[k].CFrame = crownCF * CFrame.new(x * u, (1.0 + h / 2) * u, z * u)
+		body.crownTips[k].Size = V3(0.5, 0.9, 0.5) * u
+		body.crownTips[k].CFrame = crownCF * CFrame.new(x * u, (1.0 + h + 0.4) * u, z * u)
 	end
 	for i, gem in ipairs(body.gems) do
-		gem.Size = V3(1.1 * u, 1.1 * u, 0.4 * u)
-		gem.CFrame = crownCF * CFrame.new((i - 2) * 2.8 * u, 0, -4.5 * u)
+		gem.Size = ((i == 2) and V3(1.5, 1.5, 0.4) or V3(1.0, 1.0, 0.4)) * u
+		gem.CFrame = crownCF * CFrame.new((i - 2) * 2.5 * u, 0, -3.95 * u)
 	end
 	B.crownCF = crownCF
 	local crownShow = crownOn and fade < 0.5 and not balled
-	show(body.crown, crownShow)
-	for _, pt in ipairs(body.crownPoints) do
-		show(pt, crownShow)
+	for _, list in ipairs({ { body.crown, body.crownRim }, body.crownPoints, body.crownTips, body.gems }) do
+		for _, p in ipairs(list) do
+			show(p, crownShow)
+		end
 	end
-	for _, gem in ipairs(body.gems) do
-		show(gem, crownShow)
-	end
-	B.mouthAt = head * V3(0, -2.8 * u, -4.8 * u)
+	B.mouthAt = head * V3(0, -3.9 * u, -5.4 * u)
 
-	-- ARMS: from each shoulder to where the pose wants that hand
+	-- ARMS: from each shoulder to where the pose wants that flipper
 	local hands = {}
 	local wants = { torso * (lHandT * u), torso * (rHandT * u) }
 	for i = 1, 2 do
@@ -548,17 +847,22 @@ local function applyPose(B, P, ground, facing, t, dt)
 		local bend = (right * side * 0.7 - up * 0.3 + tlook * 0.1)
 		local elbow, hand = twoBone(shoulders[i], wants[i], ARM * u, ARM * u, bend.Unit)
 		hands[i] = hand
-		stretch(body.upperArms[i], shoulders[i], elbow, 3.8 * u, 3.8 * u, tlook)
-		stretch(body.foreArms[i], elbow, hand, 3.5 * u, 3.5 * u, tlook)
+		stretch(body.upperArms[i], shoulders[i], elbow, 4.6 * u, 4.6 * u, tlook)
+		stretch(body.foreArms[i], elbow, hand, 4.2 * u, 4.2 * u, tlook)
 		local wristDir = unitOr(hand - elbow, -up)
-		body.armCuffs[i].Size = V3(4.4, 4.4, 1.4) * u
-		body.armCuffs[i].CFrame = CFrame.lookAt(hand - wristDir * 1.2 * u, hand, tlook)
-		body.hands[i].Size = V3(3.6, 3.4, 3.8) * u
-		body.hands[i].CFrame = CFrame.lookAt(hand, hand + wristDir, tlook)
+		body.bracers[i].Size = V3(4.9, 4.9, 2.0) * u
+		body.bracers[i].CFrame = CFrame.lookAt(hand - wristDir * 2.1 * u, hand, tlook)
+		local hcf = CFrame.lookAt(hand, hand + wristDir, tlook)
+		body.hands[i].Size = V3(4.6, 2.8, 4.4) * u
+		body.hands[i].CFrame = hcf
+		for k, cl in ipairs(body.claws[i]) do
+			cl.Size = V3(0.8, 0.7, 1.0) * u
+			cl.CFrame = hcf * CFrame.new((k - 2) * 1.5 * u, -0.4 * u, -2.4 * u)
+		end
 	end
 	B.handR, B.handL = hands[2], hands[1]
 
-	-- THE GAVEL: in his right hand, reaching for gavelAt (a world point) or
+	-- THE GAVEL: in his right flipper, reaching for gavelAt (a world point) or
 	-- pointing gavelDir (his body's space). Its head can fly off (headAt).
 	local hand = hands[2]
 	local dirW
@@ -574,24 +878,50 @@ local function applyPose(B, P, ground, facing, t, dt)
 		len = clamp((P.gavelAt - hand).Magnitude, HANDLE * u * 0.6, HANDLE * u * 1.6)
 	end
 	local tip = hand + dirW * len
-	stretch(body.handle, hand - dirW * 1.5 * u, tip, 1.3 * u, 1.3 * u, tlook)
+	local hw = piston and 6.4 or 5.8
+	stretch(body.handle, hand - dirW * 2.0 * u, tip, 1.4 * u, 1.4 * u, tlook)
+	body.pommel.Size = V3(2.2, 2.2, 2.2) * u
+	body.pommel.CFrame = CFrame.lookAt(hand - dirW * 2.6 * u, hand, tlook)
+	body.gCollar.Size = V3(2.1, 2.1, 1.1) * u
+	body.gCollar.CFrame = CFrame.lookAt(tip - dirW * (hw / 2 + 0.55) * u, tip, tlook)
 	local headPos = typeof(P.headAt) == "Vector3" and P.headAt or tip
 	local headCF = CFrame.lookAt(headPos, headPos + dirW, tlook)
-	local hw = piston and 6.6 or 6
-	body.gHead.Size = V3(10 * u, hw * u, hw * u)
+	body.gHead.Size = V3(9.2 * u, hw * u, hw * u)
 	body.gHead.CFrame = headCF
-	body.gHead.Color = flash and WHITE or (piston and (def.SteelColor or STEEL) or (def.WoodColor or WOOD))
-	for k, band in ipairs(body.gBands) do
-		band.Size = V3(1.2 * u, (hw + 0.4) * u, (hw + 0.4) * u)
-		band.CFrame = headCF * CFrame.new((k == 1) and -3.4 * u or 3.4 * u, 0, 0)
+	for k, f in ipairs(body.gFaces) do
+		f.Size = V3(0.8 * u, (hw - 0.9) * u, (hw - 0.9) * u)
+		f.CFrame = headCF * CFrame.new(((k == 1) and -4.9 or 4.9) * u, 0, 0)
 	end
-	body.gCore.Size = V3(2.6 * u, (hw + 0.2) * u, 2.2 * u)
+	for k, band in ipairs(body.gBands) do
+		band.Size = V3(1.3 * u, (hw + 0.5) * u, (hw + 0.5) * u)
+		band.CFrame = headCF * CFrame.new(((k == 1) and -3.2 or 3.2) * u, 0, 0)
+	end
+	-- (the spike on top, pointing on out along the handle)
+	body.gSpike.Size = V3(1.6, 1.6, 2.6) * u
+	body.gSpike.CFrame = headCF * CFrame.new(0, 0, -(hw / 2 + 1.2) * u)
+	body.gSpikeTip.Size = V3(0.8, 0.8, 1.4) * u
+	body.gSpikeTip.CFrame = headCF * CFrame.new(0, 0, -(hw / 2 + 3.0) * u)
+	-- the runes: glowing as he winds up (the piston hammer's never quite go out)
+	local runeK = smoothNum(B, "runeS", math.max(clamp(P.runes or 0, 0, 1), windUp(B)), 12, dt)
+	runeK = math.max(runeK, piston and 0.35 or 0)
+	local runeHot = rage and rageColor or (piston and ORANGE or (def.RuneColor or YELLOW))
+	local runeColor = flash and WHITE or IRON_DARK:Lerp(runeHot, runeK)
+	local e = hw / 2 + 0.06
+	local RUNES = { { 0, e, 0, 4.2, 0.12, 0.9 }, { 0, -e, 0, 4.2, 0.12, 0.9 }, { 0, 0, e, 4.2, 0.9, 0.12 }, { 0, 0, -e, 4.2, 0.9, 0.12 } }
+	for k, rn in ipairs(body.runes) do
+		local r = RUNES[k]
+		rn.Size = V3(r[4], r[5], r[6]) * u
+		rn.CFrame = headCF * CFrame.new(r[1] * u, r[2] * u, r[3] * u)
+		rn.Color = runeColor
+	end
+	B.runeGlow = runeK
+	body.gCore.Size = V3(2.8 * u, (hw + 0.2) * u, 2.4 * u)
 	body.gCore.CFrame = headCF
-	body.gCore.Color = rage and (def.RageColor or RED) or ORANGE
+	body.gCore.Color = rage and rageColor or ORANGE
 	show(body.gCore, piston and fade < 0.5 and not balled)
 	for k, v in ipairs(body.gVents) do
-		v.Size = V3(1.4, 1.4, 1.8) * u
-		v.CFrame = headCF * CFrame.new((k == 1) and -5.2 * u or 5.2 * u, hw * 0.3 * u, 0)
+		v.Size = V3(1.5, 1.5, 1.9) * u
+		v.CFrame = headCF * CFrame.new(((k == 1) and -5.6 or 5.6) * u, hw * 0.3 * u, 0)
 		show(v, piston and fade < 0.5 and not balled)
 	end
 	B.gavelHead = headPos
@@ -612,38 +942,48 @@ local function applyPose(B, P, ground, facing, t, dt)
 	local stars = P.stars or 0
 	for i, st in ipairs(body.stars) do
 		if stars > 0.05 and fade < 0.5 then
-			local a = os.clock() * 4 + i * (math.pi * 2 / 3)
+			local a = now * 4 + i * (math.pi * 2 / 3)
 			local p = balled and (groundPos + V3(math.cos(a) * 6 * u, 2 * R + 2 * u, math.sin(a) * 6 * u))
-				or (head * V3(math.cos(a) * 6 * u, 6.5 * u, math.sin(a) * 6 * u))
+				or (head * V3(math.cos(a) * 6.5 * u, 6.5 * u, math.sin(a) * 6.5 * u))
 			st.Size = V3(2.2, 2.2, 0.9) * u
-			st.CFrame = CFrame.new(p) * CFrame.Angles(0, a, os.clock() * 5)
+			st.CFrame = CFrame.new(p) * CFrame.Angles(0, a, now * 5)
 			st.Transparency = 0
 		else
 			st.Transparency = 1
 		end
 	end
 
-	-- where word bubbles hang, and the top of his head
-	B.headTop = balled and (groundPos + V3(0, 2 * R + 1, 0)) or (head * V3(0, 7 * u, 0))
+	-- where word bubbles hang, and the top of his head (over his crown)
+	B.headTop = balled and (groundPos + V3(0, 2 * R + 1, 0)) or (head * V3(0, (crownShow and 9 or 5.5) * u, 0))
 	body.anchor.CFrame = CFrame.new(B.headTop + V3(0, 2, 0))
 
 	-- his shadow
-	local shadowD = 18 * u * (1 - clamp((P.lift or 0) / 60, 0, 0.7))
+	local shadowD = 20 * u * (1 - clamp((P.lift or 0) / 60, 0, 0.7))
 	placeDisc(body.shadow, onFloor(ground) + V3(0, 0.06, 0), shadowD, 0.1)
 	body.shadow.Transparency = (fade > 0.5 or sink > 0.4) and 1 or 0.35
 
 	-- colours: the hit flash; a gold glow when he's carrying taxed coins
-	local taxed = num(model:GetAttribute("Taxed"), 0) > 0
+	local taxed = num(model:GetAttribute("Taxed"), 0) > 0 and (math.floor(now * 6) % 2 == 0)
 	for _, rec in ipairs(body.tinted) do
 		local c = rec.color
 		if flash then
 			c = WHITE
-		elseif taxed and rec.part ~= body.head and (math.floor(os.clock() * 6) % 2 == 0) then
+		elseif taxed then
 			c = c:Lerp(GOLD, 0.35)
 		end
 		rec.part.Color = c
 	end
-	body.head.Color = flash and WHITE or ((P.choke and RGB(0, 153, 219)) or (rage and (def.SkinColor or RGB(232, 183, 150)):Lerp(RED, 0.3)) or (def.SkinColor or RGB(232, 183, 150)))
+	if not flash then
+		-- (round 2's steel piston hammer; his face going blue as he chokes, or
+		-- flushed red in round 3)
+		body.gHead.Color = piston and (def.SteelColor or STEEL) or (def.IronColor or IRON)
+		local headColor = (P.choke and BLUE) or (rage and (def.Color or HIDE):Lerp(RED, 0.3)) or nil
+		if headColor then
+			for _, p in ipairs(body.headParts) do
+				p.Color = headColor
+			end
+		end
+	end
 
 	-- the body hides while he's a ball; popping into pixels at the end
 	local hidden = sink > 0.97
@@ -822,6 +1162,66 @@ local function steam(B, big)
 	burst(at_ + V3(0, 2, 0), B.def.SteamColor or SILVER, big and 22 or 10, big and 18 or 10, big and 2.4 or 1.6, 0.8, true)
 end
 
+-- A BOLT OF LIGHTNING from high in the storm down to `to`: a jagged neon
+-- line that flickers twice and is gone, the sky flashing with it, and its
+-- thunder a moment later (sooner, the closer it is). `big` = a brighter,
+-- thicker one (his entrance, his rounds).
+local BOLT = RGB(192, 203, 220)
+local function strike(B, to, big)
+	local phase = num(B.model:GetAttribute("Phase"), 1)
+	local red = phase >= 3 and B.stateNow ~= "Dormant" and B.stateNow ~= "Resetting"
+	local color = red and (B.def.RageColor or RED) or BOLT
+	B.skyFlashAt, B.skyFlashBig = os.clock(), big and 1 or 0.55
+	local top = to + V3((math.random() - 0.5) * 40, 160 + math.random() * 40, (math.random() - 0.5) * 40)
+	local n = big and 9 or 7
+	local pts = { top }
+	for i = 1, n - 1 do
+		local k = i / n
+		local wob = (1 - k * 0.7) * (big and 11 or 8)
+		pts[i + 1] = top:Lerp(to, k) + V3((math.random() - 0.5) * 2 * wob, 0, (math.random() - 0.5) * 2 * wob)
+	end
+	pts[n + 1] = to
+	local parts = {}
+	local w = big and 1.8 or 1.2
+	for i = 1, n do
+		local seg = newPart("Lightning", nil, color, Enum.Material.Neon, 1)
+		stretch(seg, pts[i], pts[i + 1], w, w)
+		parts[i] = seg
+	end
+	-- (and a fork off it, part of the way down)
+	local j = math.floor(n * 0.4)
+	local fork = pts[j] + V3((math.random() - 0.5) * 50, -30 - math.random() * 20, (math.random() - 0.5) * 50)
+	local f1 = newPart("Lightning", nil, color, Enum.Material.Neon, 1)
+	stretch(f1, pts[j], fork, w * 0.6, w * 0.6)
+	table.insert(parts, f1)
+	local born = os.clock()
+	addTelegraph(B, {
+		update = function()
+			local age = os.clock() - born
+			if age > 0.3 then
+				return false
+			end
+			local on = age < 0.09 or (age > 0.14 and age < 0.22)
+			for _, p in ipairs(parts) do
+				p.Transparency = on and 0 or 1
+			end
+			return true
+		end,
+		cleanup = function()
+			for _, p in ipairs(parts) do
+				p:Destroy()
+			end
+		end,
+	})
+	-- the thunder: a crack right away close by, a rumble later far off
+	local cam = workspace.CurrentCamera
+	local ear = cam and cam.CFrame.Position or to
+	local delay = clamp((ear - to).Magnitude / 340, 0.03, 1.2)
+	at(B, serverNow() + delay, function()
+		playSound(B.def, "Thunder", to, big and 1 or 0.75)
+	end)
+end
+
 ----------------------------------------------------------------------
 -- Poses
 ----------------------------------------------------------------------
@@ -830,67 +1230,184 @@ local OVERHEAD_R = V3(3, 21, 3)
 local OVERHEAD_L = V3(-1.5, 20, 3)
 local OVERHEAD_DIR = V3(0, 0.25, 1)
 
--- ASLEEP: sitting on the courtyard stones, chin on his belly, snoring
+-- (asleep on his throne: his flippers on his belly and the gavel, its head
+-- resting on the step)
+local SEAT_R = V3(10.5, 5, -5)
+local SEAT_L = V3(-6.5, 5.5, -8.9)
+local SEAT_GAVEL = V3(0.2, -1, -0.35)
+
+-- ASLEEP ON HIS THRONE: slumped back, chin on his chest, snoring - but the
+-- scarred eye never quite closes
 function Poses.Dormant(B, t, P)
+	local seat, face = throneSeat(B)
+	P.override, P.facing = seat, face
+	P.lift = ThronePlan.SeatHeight
 	P.sit = 1
 	P.eyes = 0
-	P.headPitch = 0.35 + 0.05 * math.sin(os.clock() * 1.1)
-	P.rHand, P.lHand = V3(9, 2, -4), V3(-6, 4.5, -8)
-	P.gavelDir = V3(0.4, -0.2, -1)
+	P.scarEye = 0.3
+	P.lean = -0.06
+	P.headPitch = 0.32 + 0.04 * math.sin(os.clock() * 1.1)
+	P.rHand, P.lHand = SEAT_R, SEAT_L
+	P.gavelDir = SEAT_GAVEL
 	P.sy = 1 + 0.03 * math.sin(os.clock() * 1.4)
-	P.mouth = 0.2 + 0.2 * math.sin(os.clock() * 1.4)
-	local _ = B
+	P.mouth = 0.12 + 0.12 * math.sin(os.clock() * 1.4)
 	local _ = t
 end
 
--- WAKING UP: a yawn and a stretch, heaving himself up, a crack of his neck,
--- the gavel slammed on the floor, and a big royal laugh
-function Poses.Wake(B, t, P)
-	local W = B.def.WakeTime
-	local u1, u2, u3 = W * 0.28, W * 0.5, W * 0.66
-	if t < u1 then
-		local k = smooth(t / u1)
-		P.sit = 1
-		P.eyes = 0.3
-		P.lHand = REST_L:Lerp(V3(-5, 22, -2), k)
-		P.mouth = k
-		P.headPitch = 0.3 - 0.5 * k
-	elseif t < u2 then
-		local k = (t - u1) / (u2 - u1)
-		P.sit = 1 - smooth(k)
-		P.lift = math.sin(k * math.pi) * 2
-		P.eyes = 1
-		P.crouch = 0.3 * (1 - k)
-	elseif t < u3 then
-		P.crouch = 0.35
-		P.rHand, P.lHand = OVERHEAD_R, OVERHEAD_L
-		P.gavelDir = OVERHEAD_DIR
-		P.headPitch = math.sin((t - u2) * 20) * 0.08
-	else
-		-- SLAM, and laugh: belly bouncing
-		local e = t - u3
-		P.rHand = V3(4, 3, -12)
-		P.gavelDir = V3(0, -0.8, -1)
-		P.lHand = V3(-7, 6, -7)
-		P.mouth = 0.8 + 0.2 * math.sin(e * 22)
-		P.sy = 1 + 0.05 * math.sin(e * 22)
-		P.headPitch = -0.3
-		P.snap = e < 0.1
-	end
+-- THE ENTRANCE's beats (seconds from when he wakes). He lands - and the VS
+-- splash slams in - at IntroDelay.
+local function wakeBeats(def)
+	local land = def.IntroDelay or def.WakeTime * 0.57
+	return {
+		eyes = 0.25, -- his eyes snap open (the lightning struck at 0)
+		stand0 = 0.55, -- he heaves himself up...
+		stand1 = land - 1.9, -- ...standing tall on his throne
+		strike = land - 1.6, -- the gavel raised into the storm: lightning hits it
+		crouch = land - 1.15, -- he crouches...
+		leap = land - 0.95, -- ...and leaps
+		land = land, -- SLAM: the courtyard shakes
+		laugh = land + 0.7, -- up tall, laughing, the gavel on his shoulder
+		slam = def.WakeTime - 0.45, -- "KNEEL!": the gavel slammed on the floor
+	}
 end
 
--- EVERYONE'S GONE: a smug shrug... and he sits back down for a nap
+-- WAKING UP: THE ENTRANCE. Lightning; his eyes light up; he stands up on his
+-- throne and raises the gavel into the storm - it's struck, its runes blaze
+-- - then he leaps down in front of you, lands with a slam that shakes the
+-- courtyard, and laughs
+function Poses.Wake(B, t, P)
+	local W = wakeBeats(B.def)
+	local seat, face = throneSeat(B)
+	if t < W.leap then
+		P.override, P.facing = seat, face
+		P.lift = ThronePlan.SeatHeight
+		if t < W.eyes then
+			P.sit, P.eyes, P.scarEye = 1, 0, 0.3
+			P.headPitch = 0.32
+			P.rHand, P.lHand = SEAT_R, SEAT_L
+			P.gavelDir = SEAT_GAVEL
+			return
+		end
+		P.eyes = 1
+		P.glare = (t < W.eyes + 0.5) and 1 or 0
+		if t < W.stand0 then
+			P.sit = 1
+			P.headPitch = lerp(0.32, -0.1, smooth((t - W.eyes) / (W.stand0 - W.eyes)))
+			P.rHand, P.lHand = SEAT_R, SEAT_L
+			P.gavelDir = SEAT_GAVEL
+			return
+		end
+		if t < W.stand1 then
+			-- heaving himself up onto his feet
+			local k = smooth((t - W.stand0) / (W.stand1 - W.stand0))
+			P.sit = 1 - k
+			P.lean = 0.15 * math.sin(k * math.pi)
+			P.headPitch = -0.1
+			P.rHand = SEAT_R:Lerp(REST_R, k)
+			P.lHand = SEAT_L:Lerp(V3(-11, 9, -3), k)
+			P.gavelDir = SEAT_GAVEL:Lerp(REST_GAVEL, k)
+			return
+		end
+		if t < W.crouch then
+			-- the gavel raised high into the storm (struck by lightning at W.strike)
+			local k = smooth((t - W.stand1) / (W.strike - W.stand1))
+			local struck = t >= W.strike
+			P.rHand = REST_R:Lerp(V3(5, 23, 1), k)
+			P.lHand = V3(-11, 9, -3):Lerp(V3(-10, 14, -2), k)
+			P.gavelDir = REST_GAVEL:Lerp(V3(0.15, 1, 0.1), k)
+			P.headPitch = -0.35 * k
+			P.mouth = struck and 0.8 or 0.2
+			P.runes = struck and 1 or 0
+			P.glare = (struck and t < W.strike + 0.4) and 1 or 0
+			P.shake = struck and 0.12 or 0
+			return
+		end
+		-- crouching to leap
+		local k = smooth((t - W.crouch) / (W.leap - W.crouch))
+		P.crouch = 0.7 * k
+		P.rHand = V3(5, 23, 1):Lerp(V3(11, 10, 3), k)
+		P.lHand = V3(-11, 10, 3)
+		P.gavelDir = V3(0.15, 1, 0.1):Lerp(V3(0.5, 0.5, 0.6), k)
+		P.runes = 1
+		return
+	end
+	if t < W.land then
+		-- the leap: off his throne, high over the steps, down in front of you
+		local k = (t - W.leap) / (W.land - W.leap)
+		P.override = seat:Lerp(homeSpot(B), k)
+		P.facing = face
+		P.lift = lerp(ThronePlan.SeatHeight, 0, k) + math.sin(k * math.pi) * 20
+		P.rHand, P.lHand = OVERHEAD_R, OVERHEAD_L
+		P.gavelDir = OVERHEAD_DIR
+		P.lean = lerp(-0.2, 0.3, k)
+		P.runes = 1
+		P.sy = 1 + 0.08 * math.sin(k * math.pi)
+		return
+	end
+	if t < W.laugh then
+		-- SLAM: landed in a deep crouch, the gavel down
+		local e = t - W.land
+		local w = clamp(e / 0.5, 0, 1)
+		P.crouch = 0.9 * (1 - w) + 0.2 * w
+		P.sy = 1 - 0.25 * (1 - w)
+		P.sx = 1 + 0.18 * (1 - w)
+		P.rHand, P.lHand = V3(2, 6, -10), V3(-1.5, 6.5, -10)
+		P.gavelDir = V3(0, -0.9, -0.5)
+		P.snap = e < 0.08
+		P.runes = 1 - w
+		return
+	end
+	if t < W.slam then
+		-- up tall, the gavel on his shoulder, laughing (belly bouncing)
+		local e = t - W.laugh
+		P.rHand = V3(9, 17, 1)
+		P.gavelDir = V3(-0.2, 0.3, 1)
+		P.lHand = V3(-7, 7, -9)
+		P.mouth = 0.7 + 0.3 * math.sin(e * 22)
+		P.sy = 1 + 0.05 * math.sin(e * 22)
+		P.headPitch = -0.35
+		return
+	end
+	-- "KNEEL!": the gavel slammed down in front of him
+	P.rHand = V3(4, 4, -12)
+	P.gavelDir = V3(0, -0.8, -1)
+	P.lHand = V3(-8, 10, -6)
+	P.mouth = 1
+	P.headPitch = -0.2
+	P.snap = t - W.slam < 0.08
+end
+
+-- EVERYONE'S GONE: a scornful snort... a leap back up onto his throne, and he
+-- settles down to sleep
 function Poses.Reset(B, t, P)
-	if t < 0.8 then
+	local seat, face = throneSeat(B)
+	local from = B.resetFrom or seat
+	if t < 0.55 then
+		P.override = from
 		P.rHand, P.lHand = V3(10, 11, -1), V3(-10, 11, -1)
 		P.headPitch = 0.1
 		P.mouth = 0.4
-	else
-		P.sit = smooth((t - 0.8) / 0.8)
-		P.eyes = 1 - smooth((t - 1.4) / 0.6)
-		P.rHand, P.lHand = V3(9, 2, -4), V3(-6, 4.5, -8)
+		return
 	end
-	local _ = B
+	if t < 1.45 then
+		local k = (t - 0.55) / 0.9
+		P.override = from:Lerp(seat, k)
+		P.lift = lerp(0, ThronePlan.SeatHeight, k) + math.sin(k * math.pi) * 16
+		-- (turning round in the air to land facing the gate)
+		P.facing = blendDir(unitOr(flat(seat - from), face), face, smooth(clamp((k - 0.4) / 0.6, 0, 1)))
+		P.crouch = (k > 0.85) and 0.4 or 0
+		P.rHand, P.lHand = V3(10, 12, 2), V3(-10, 12, 2)
+		return
+	end
+	P.override, P.facing = seat, face
+	P.lift = ThronePlan.SeatHeight
+	local k = smooth((t - 1.45) / 0.45)
+	P.sit = k
+	P.eyes = 1 - smooth((t - 1.6) / 0.35)
+	P.scarEye = 0.3
+	P.rHand = V3(10, 12, 2):Lerp(SEAT_R, k)
+	P.lHand = V3(-10, 12, 2):Lerp(SEAT_L, k)
+	P.gavelDir = REST_GAVEL:Lerp(SEAT_GAVEL, k)
 end
 
 -- ROYAL SMASH: the gavel up over his head... SMASH... stuck in the floor
@@ -976,9 +1493,10 @@ function Poses.BellyBounce(B, t, P)
 		P.gavelDir = V3(0.6, 0.6, 0.3)
 		P.sy = 1 + 0.1 * math.sin(k * math.pi)
 	else
-		local w = clamp((within - a.Air) / 0.3, 0, 1)
-		P.sy = 1 - 0.3 * (1 - w)
-		P.sx = 1 + 0.25 * (1 - w)
+		-- (squashed flat by the landing, springing back up)
+		local w = clamp((within - a.Air) / 0.35, 0, 1)
+		P.sy = 1 - 0.22 * (1 - w)
+		P.sx = 1 + 0.2 * (1 - w)
 		P.lean = 0.6 * (1 - w)
 		P.crouch = 0.4 * (1 - w)
 		P.snap = within - a.Air < 0.08
@@ -995,18 +1513,29 @@ function Poses.RoyalDecree(B, t, P)
 	P.gavelDir = V3(0.3, -0.5, -0.8)
 end
 
--- TOE STOMP: his right foot up... STAMP. Then it stays out there, the big
--- toe glowing (punch it!)
+-- TOE STOMP: his right flipper up... STAMP, its tip coming down right on
+-- the spot (slot 1). Then it stays out there, glowing (punch it!)
 function Poses.ToeStomp(B, t, P)
 	local a = B.def.Attacks.ToeStomp
+	local spot = slot(B, 1)
 	if t < a.Tell then
-		local k = smooth(t / a.Tell)
-		P.rFoot = V3(0, 7 * k, -3 * k)
+		local k = smooth(t / (a.Tell * 0.6))
 		P.lean = -0.1 * k
 		P.rHand, P.lHand = V3(11, 9, 0), V3(-11, 9, 0)
+		if spot then
+			-- (over the spot, up high... and down in the last moment)
+			P.rFootAt = onFloor(spot)
+			P.rFoot = V3(0, 7 * (1 - clamp((t - (a.Tell - 0.12)) / 0.12, 0, 1)), 0)
+		else
+			P.rFoot = V3(0, 7 * k, -3 * k)
+		end
 		return
 	end
-	P.rFoot = V3(0, 0, -3)
+	if spot then
+		P.rFootAt = onFloor(spot)
+	else
+		P.rFoot = V3(0, 0, -3)
+	end
 	P.lean = 0.1
 	P.snap = t - a.Tell < 0.1
 	P.headPitch = 0.25 -- looking down at it
@@ -1207,7 +1736,7 @@ function Poses.RoyalRoll(B, t, P)
 	local e = t - a.Tell
 	if e < total then
 		P.ball = 1
-		P.ballSpin = (a.Tell * 0.65) ^ 2 * 30 + e * a.Speed / (9 * B.def.Size / 16)
+		P.ballSpin = (a.Tell * 0.65) ^ 2 * 30 + e * a.Speed / (BALL_R * B.def.Size / 16) -- (rolling, not skidding)
 		P.snap = true
 		return
 	end
@@ -1406,39 +1935,81 @@ end
 -- Starts and slots: the sounds, bursts and warnings of each move
 ----------------------------------------------------------------------
 function Starts.Wake(B, t0)
-	local W = B.def.WakeTime
-	at(B, t0 + W * 0.1, function()
-		shout(B.body.anchor, "*YAWN*", 1.0, WHITE)
+	local def = B.def
+	local W = wakeBeats(def)
+	local c = centerOf(B)
+	local throne = V3(c.X + ThronePlan.Throne.X, B.vpos.Y, c.Z + ThronePlan.Throne.Z)
+	-- lightning cracks down right behind his throne...
+	at(B, t0 + 0.02, function()
+		strike(B, throne + V3(-12, 0, -14), true)
+		kick(throne, 70, 0.5, -2)
 	end)
-	at(B, t0 + W * 0.5, function()
-		dust(B, B.vpos, true)
-		kick(B.vpos, 30, 0.6)
+	-- ...and his eyes light up
+	at(B, t0 + W.eyes, function()
+		if B.eyeAt then
+			burst(B.eyeAt, def.ScarEyeColor or YELLOW, 10, 8, 0.9, 0.5, true)
+		end
 	end)
-	at(B, t0 + W * 0.66 - (B.def.WakeSoundLead or 0.3), function()
-		playSound(B.def, "Wake", B.vpos, 1)
+	at(B, t0 + W.stand0 + 0.35, function()
+		shout(B.body.anchor, "WHO DARES...", 1.4, WHITE)
 	end)
-	at(B, t0 + W * 0.66, function()
-		local spot = B.vpos + B.vfacing * 14
+	-- the gavel raised into the storm: struck by lightning, its runes blazing
+	at(B, t0 + W.strike, function()
+		local g = B.gavelHead or (throne + V3(0, 60, 0))
+		strike(B, g, true)
+		burst(g, def.RuneColor or YELLOW, 26, 24, 1.6, 0.6, true)
+		kick(throne, 90, 0.7, -3)
+	end)
+	at(B, t0 + W.leap, function()
+		burst(throneSeat(B) + V3(0, ThronePlan.SeatHeight, 0), DUST, 16, 16, 1.6, 0.5)
+		playSound(def, "Lunge", B.vpos, 0.9)
+	end)
+	-- THE LANDING: the whole courtyard shakes
+	at(B, t0 + W.land, function()
+		local spot = homeSpot(B)
 		dust(B, spot, true)
-		shockRing(B, spot, 2, 18, 0.5, GOLD)
+		shockRing(B, spot, 4, 36, 0.6, DUST)
+		playSound(def, "Land", spot, 1)
+		kick(spot, 150, 1.9, -8)
+		for _ = 1, 8 do
+			local a2 = math.random() * math.pi * 2
+			local d = 12 + math.random() * 22
+			dust(B, spot + V3(math.cos(a2) * d, 0, math.sin(a2) * d), false)
+		end
+	end)
+	at(B, t0 + W.laugh - (def.WakeSoundLead or 0.3), function()
+		playSound(def, "Wake", B.vpos, 1)
+	end)
+	at(B, t0 + W.laugh, function()
+		shout(B.body.anchor, "HAR HAR HAR!", 1.3, GOLD)
+	end)
+	at(B, t0 + W.slam, function()
+		local spot = B.vpos + B.vfacing * 18
+		dust(B, spot, true)
+		shockRing(B, spot, 2, 20, 0.5, GOLD)
+		playSound(def, "Smash", spot, 0.8)
 		kick(B.vpos, 60, 1.1, -4)
-		shout(B.body.anchor, "HO HO HO!", 1.4, GOLD)
+		shout(B.body.anchor, "KNEEL!", 1.2, RED)
 	end)
 end
 
 function Starts.Dormant(B, t0)
-	if B.prevAction == "Reset" then
-		dust(B, B.vpos, false)
-	end
+	local _ = B
 	local _ = t0
 end
 
 function Starts.Reset(B, t0)
-	at(B, t0 + 0.2, function()
+	at(B, t0 + 0.15, function()
 		shout(B.body.anchor, "PEASANTS. HMPH.", 1.3, WHITE)
 	end)
-	at(B, t0 + 1.4, function()
-		dust(B, B.vpos, true)
+	at(B, t0 + 0.55, function()
+		dust(B, B.vpos, false)
+		playSound(B.def, "Lunge", B.vpos, 0.6)
+	end)
+	at(B, t0 + 1.45, function()
+		local seat = throneSeat(B)
+		burst(seat + V3(0, ThronePlan.SeatHeight, 0), DUST, 14, 14, 1.4, 0.5)
+		kick(seat, 40, 0.6, -2)
 	end)
 end
 
@@ -2060,9 +2631,9 @@ function Starts.ThroneToss(B, t0)
 		table.insert(parts, { part = p, size = size })
 		return p
 	end
-	local seat = tp(V3(9, 3, 5), GOLD)
-	local back = tp(V3(9, 11, 1.2), GOLD)
-	local cushion = tp(V3(7.4, 8, 0.4), RED)
+	local seat = tp(V3(16, 5.4, 9), GOLD)
+	local back = tp(V3(16, 20, 2.2), GOLD)
+	local cushion = tp(V3(13, 14, 0.7), RED)
 	local throwAt = t0 + a.Leap + a.Lift
 	local landAt = throwAt + a.Flight
 	local from = nil
@@ -2079,21 +2650,21 @@ function Starts.ThroneToss(B, t0)
 				end
 				return true
 			end
-			local over = ((B.handR or B.vpos) + (B.handL or B.vpos)) / 2 + V3(0, 5, 0)
+			local over = ((B.handR or B.vpos) + (B.handL or B.vpos)) / 2 + V3(0, 8, 0)
 			local p = over
 			local spin = 0
 			local spot = slot(B, 2)
 			if now >= throwAt and spot then
 				from = from or over
 				local k = clamp((now - throwAt) / a.Flight, 0, 1)
-				local g = onFloor(spot) + V3(0, 4, 0)
+				local g = onFloor(spot) + V3(0, 6, 0)
 				p = from:Lerp(g, k) + V3(0, math.sin(k * math.pi) * (14 + flat(g - from).Magnitude * 0.2), 0)
 				spin = k * 7
 			end
 			local cf = CFrame.lookAt(p, p + B.vfacing) * CFrame.Angles(spin, 0, 0)
 			seat.Size, seat.CFrame = parts[1].size, cf
-			back.Size, back.CFrame = parts[2].size, cf * CFrame.new(0, 6, 2.5)
-			cushion.Size, cushion.CFrame = parts[3].size, cf * CFrame.new(0, 6, 1.8)
+			back.Size, back.CFrame = parts[2].size, cf * CFrame.new(0, 11, 4.5)
+			cushion.Size, cushion.CFrame = parts[3].size, cf * CFrame.new(0, 11, 3.2)
 			for _, rec in ipairs(parts) do
 				rec.part.Transparency = 0
 			end
@@ -2168,6 +2739,7 @@ function Starts.Break(B, t0)
 	end)
 	at(B, t0 + def.BreakTime * 0.35, function()
 		B.phase2Look = true
+		strike(B, B.gavelHead or (B.vpos + V3(0, 40, 0)), true) -- (lightning forges the new hammer)
 		playSound(def, "Break", B.vpos, 1)
 		shockRing(B, B.vpos, 3, def.BreakReach, 0.55, def.SteamColor or SILVER)
 		steam(B, true)
@@ -2207,6 +2779,7 @@ function Starts.Berserk(B, t0)
 	end)
 	at(B, hit, function()
 		B.berserkLook = true
+		strike(B, (B.eyeAt or B.vpos) + V3(0, 14, 0), true) -- (red lightning: the eclipse begins)
 		playSound(def, "Berserk", B.vpos, 1)
 		shockRing(B, B.vpos, 3, def.BreakReach, 0.55, def.RageColor or RED)
 		burst(B.vpos + V3(0, 18, 0), def.RageColor or RED, 40, 30, 2, 0.9, true)
@@ -2238,7 +2811,7 @@ function Starts.Death(B, t0)
 end
 
 ----------------------------------------------------------------------
--- Every frame: his props, the pillars, the throne, torches, sky, "HIT HIM!"
+-- Every frame: his props, the pillars, the throne, torches, the storm, "HIT HIM!"
 ----------------------------------------------------------------------
 -- A TIN GUARD (the server's Workspace.GavelgruntProps): a little chunky
 -- knight with a spear that marches after you, winds up a jab (spear back,
@@ -2324,7 +2897,7 @@ local function stepGuard(B, rec, now)
 	return true
 end
 
--- HIS BIG TOE, glowing: punch it!
+-- THE TIP OF HIS FLIPPER, glowing: punch it!
 local function makeToe(inst)
 	local rec = { kind = "Toe", inst = inst, parts = {} }
 	rec.glow = newPart("ToeGlow", nil, YELLOW, Enum.Material.Neon, 1)
@@ -2342,12 +2915,12 @@ local function stepToe(B, rec, now)
 		removeRing(rec.ring)
 		return false
 	end
-	local p = B.toeAt or (hit.Position - V3(0, 0.6, 0))
+	local p = hit.Position - V3(0, 1.2, 0) -- (the prop: where you punch - the tip of his flipper is on it)
 	local pulse = 1 + 0.2 * math.sin(now * 12)
-	rec.glow.Size = V3(2.6, 2.2, 2.6) * pulse
+	rec.glow.Size = V3(3.2, 2.2, 3.2) * pulse
 	rec.glow.CFrame = CFrame.new(p + V3(0, 0.6, 0))
 	rec.glow.Transparency = endKind and 1 or 0.2
-	placeRing(rec.ring, onFloor(p) + V3(0, 0.1, 0), 3.2 * pulse, 0.3, 0.5, endKind and 1 or 0.2)
+	placeRing(rec.ring, onFloor(p) + V3(0, 0.1, 0), 3.8 * pulse, 0.3, 0.5, endKind and 1 or 0.2)
 	if endKind == "Broken" and not rec.popped then
 		rec.popped = true
 		burst(p + V3(0, 1, 0), YELLOW, 16, 16, 1, 0.4, true)
@@ -2554,9 +3127,9 @@ local function stepThrone(B)
 		local g = onFloor(thrownAt)
 		local cf = CFrame.new(g) * CFrame.Angles(0, 0.7, 0)
 		local s = B.landedThrone
-		s[1].Size, s[1].CFrame = V3(9, 3, 5), cf * CFrame.new(0, 1.5, 0)
-		s[2].Size, s[2].CFrame = V3(9, 1.2, 11), cf * CFrame.new(0, 0.6, 7.6) * CFrame.Angles(0.15, 0, 0)
-		s[3].Size, s[3].CFrame = V3(7.4, 0.4, 8), cf * CFrame.new(0, 1.35, 7.2) * CFrame.Angles(0.15, 0, 0)
+		s[1].Size, s[1].CFrame = V3(16, 5.4, 9), cf * CFrame.new(0, 2.7, 0)
+		s[2].Size, s[2].CFrame = V3(16, 2.2, 20), cf * CFrame.new(0, 1.1, 13.6) * CFrame.Angles(0.15, 0, 0)
+		s[3].Size, s[3].CFrame = V3(13, 0.7, 14), cf * CFrame.new(0, 2.4, 12.8) * CFrame.Angles(0.15, 0, 0)
 	elseif B.landedThrone then
 		for _, p in ipairs(B.landedThrone) do
 			p:Destroy()
@@ -2590,18 +3163,30 @@ local function stepTorches(B)
 	B.torchesHot = hot
 end
 
--- THE SKY: sunset in round 1, a dark storm in round 2, a red eclipse in
--- round 3 (a colour grade on your screen only, while you're here)
+-- THE SKY over his summit (a colour grade on your screen only, while you're
+-- here): a thunderstorm from the moment you arrive - darker in round 2, a red
+-- eclipse in round 3 - lit up white by every flash of lightning
 local function stepSky(B, here, dt)
 	local Lighting = game:GetService("Lighting")
 	local phase = num(B.model:GetAttribute("Phase"), 1)
 	local awake = B.stateNow == "Fighting" or B.stateNow == "Transition" or B.stateNow == "Waking"
-	local want = 0
-	if here and awake then
-		want = (phase >= 3) and 2 or ((phase == 2) and 1 or 0)
+	local want, darker = 0, 0
+	if here then
+		want = (awake and phase >= 3) and 2 or 1
+		darker = (awake and phase == 2) and 1 or 0
 	end
 	B.skyK = (B.skyK or 0) + (want - (B.skyK or 0)) * math.min(1, dt * 1.2)
+	B.darkK = (B.darkK or 0) + (darker - (B.darkK or 0)) * math.min(1, dt * 1.2)
 	local k = B.skyK
+	-- (a flash, a flicker, gone)
+	local flashK = 0
+	if B.skyFlashAt then
+		local age = os.clock() - B.skyFlashAt
+		flashK = (B.skyFlashBig or 1) * (math.max(0, 1 - age / 0.12) + 0.6 * math.max(0, 1 - math.abs(age - 0.18) / 0.05))
+		if age > 0.4 then
+			B.skyFlashAt = nil
+		end
+	end
 	if not here and k < 0.01 then
 		if B.skyFx then
 			B.skyFx:Destroy()
@@ -2617,11 +3202,154 @@ local function stepSky(B, here, dt)
 	end
 	local storm = math.min(k, 1)
 	local eclipse = math.max(k - 1, 0)
-	local tint = WHITE:Lerp(RGB(170, 180, 215), storm):Lerp(RGB(255, 120, 110), eclipse)
-	B.skyFx.TintColor = tint
-	B.skyFx.Brightness = -0.08 * storm - 0.06 * eclipse
-	B.skyFx.Contrast = 0.08 * storm + 0.1 * eclipse
-	B.skyFx.Saturation = -0.15 * storm + 0.25 * eclipse
+	local d = B.darkK
+	-- (the floor's own ambience already makes it a storm: this adds only a
+	-- touch more, round 2's darker sky, round 3's eclipse and the flashes)
+	local tint = WHITE:Lerp(RGB(232, 236, 248), storm):Lerp(RGB(176, 182, 214), d):Lerp(RGB(255, 120, 110), eclipse)
+	B.skyFx.TintColor = tint:Lerp(WHITE, math.min(flashK, 1) * 0.6)
+	B.skyFx.Brightness = -0.01 * storm - 0.06 * d - 0.06 * eclipse + 0.4 * flashK
+	B.skyFx.Contrast = 0.04 * storm + 0.05 * d + 0.1 * eclipse + 0.12 * flashK
+	B.skyFx.Saturation = -0.05 * storm - 0.08 * d + 0.3 * eclipse
+end
+
+-- THE LIGHTNING: every few seconds a bolt comes down somewhere out in the
+-- storm - into the clouds below, among the thunderheads, now and then on the
+-- battlements - more often as the fight goes on. (Never on the courtyard:
+-- it's scenery - only his moves can hurt you.)
+local function stepStorm(B, here)
+	local now = os.clock()
+	if not here or B.stateNow == "Waking" then
+		B.nextBolt = nil -- (his entrance brings its own)
+		return
+	end
+	local phase = num(B.model:GetAttribute("Phase"), 1)
+	local awake = B.stateNow == "Fighting" or B.stateNow == "Transition"
+	local gap = awake and ({ { 6, 11 }, { 4, 8 }, { 3, 6 } })[math.min(phase, 3)] or { 6, 11 }
+	if not B.nextBolt then
+		B.nextBolt = now + 1.5 + math.random() * 3
+		return
+	end
+	if now < B.nextBolt then
+		return
+	end
+	B.nextBolt = now + gap[1] + math.random() * (gap[2] - gap[1])
+	local c = centerOf(B)
+	local a = math.random() * math.pi * 2
+	local to
+	if math.random() < 0.25 then
+		local r = ThronePlan.Wall + 1.5
+		to = V3(c.X + math.sin(a) * r, c.Y + 10, c.Z + math.cos(a) * r)
+	else
+		local d = 110 + math.random() * 170
+		to = V3(c.X + math.sin(a) * d, c.Y - 30 - math.random() * 20, c.Z + math.cos(a) * d)
+	end
+	strike(B, to, false)
+end
+
+-- THE RAIN: streaks driving down all round your camera and splashes on the
+-- stones - like BossClient's acid rain, but cold grey storm rain, falling
+-- the whole time you're up here (harder once the fight's on)
+local RAIN = RGB(192, 203, 220)
+local function stepRain(B, here, dt)
+	local fighting = B.stateNow == "Fighting" or B.stateNow == "Transition"
+	local want = here and (fighting and 1 or 0.7) or 0
+	B.rainK = (B.rainK or 0) + (want - (B.rainK or 0)) * math.min(1, dt * 0.8)
+	if not here and B.rainK < 0.01 then
+		if B.rain then
+			B.rain.cloud:Destroy()
+			B.rain.floor:Destroy()
+			B.rain = nil
+		end
+		return
+	end
+	if not B.rain then
+		local cloud = newPart("KingRain", nil, WHITE, Enum.Material.SmoothPlastic, 1)
+		cloud.Size = V3(70, 1, 70)
+		local drops = Instance.new("ParticleEmitter")
+		drops.Name = "Drops"
+		drops.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		drops.Color = ColorSequence.new(RAIN)
+		drops.LightEmission = 0.3
+		drops.LightInfluence = 0.4
+		drops.Orientation = Enum.ParticleOrientation.FacingCameraWorldUp
+		drops.Size = NumberSequence.new(0.3)
+		drops.Squash = NumberSequence.new(6)
+		drops.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.08, 0.35),
+			NumberSequenceKeypoint.new(1, 0.45),
+		})
+		drops.Speed = NumberRange.new(70, 80)
+		drops.Lifetime = NumberRange.new(0.45, 0.5)
+		drops.EmissionDirection = Enum.NormalId.Bottom
+		drops.SpreadAngle = Vector2.new(0, 0)
+		drops.Shape = Enum.ParticleEmitterShape.Box
+		drops.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		drops.Rate = 0
+		drops.Parent = cloud
+		local floorPart = newPart("KingRainSplashes", nil, WHITE, Enum.Material.SmoothPlastic, 1)
+		floorPart.Size = V3(56, 0.2, 56)
+		local splashes = Instance.new("ParticleEmitter")
+		splashes.Name = "Splashes"
+		splashes.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		splashes.Color = ColorSequence.new(RAIN)
+		splashes.LightEmission = 0.3
+		splashes.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 0.8) })
+		splashes.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 1) })
+		splashes.Speed = NumberRange.new(2, 4)
+		splashes.Lifetime = NumberRange.new(0.15, 0.25)
+		splashes.EmissionDirection = Enum.NormalId.Top
+		splashes.SpreadAngle = Vector2.new(70, 70)
+		splashes.Shape = Enum.ParticleEmitterShape.Box
+		splashes.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		splashes.Rate = 0
+		splashes.Parent = floorPart
+		B.rain = { cloud = cloud, drops = drops, floor = floorPart, splashes = splashes }
+	end
+	B.rain.drops.Rate = 1300 * B.rainK
+	B.rain.splashes.Rate = 220 * B.rainK
+	-- (over your camera, a little ahead: where you're looking)
+	local cam = workspace.CurrentCamera
+	local camCF = cam and cam.CFrame
+	if camCF then
+		local focus = (cam.Focus or camCF).Position
+		local look = camCF.LookVector
+		local ahead = V3(look.X, 0, look.Z)
+		if ahead.Magnitude > 0.01 then
+			focus = focus + ahead.Unit * 14
+		end
+		local floorY = centerOf(B).Y
+		B.rain.cloud.CFrame = CFrame.new(focus.X, floorY + 36, focus.Z) * CFrame.Angles(0, 0, math.rad(4))
+		B.rain.floor.CFrame = CFrame.new(focus.X, floorY + 0.15, focus.Z)
+	end
+end
+
+-- YOUR CAMERA for his entrance (CombatClient moves it: kit.shot): low at the
+-- foot of his throne looking up at him as the lightning cracks, he stands up
+-- and raises the gavel into the storm; out wide from the side as he leaps;
+-- and back to you the moment he lands (as the VS splash slams in)
+local function stepShot(B, here, state)
+	local W = wakeBeats(B.def)
+	local t = B.actionStart and (serverNow() - B.actionStart) or -1
+	if not (here and state == "Waking" and B.action == "Wake" and t >= 0 and t < W.land) then
+		if B.shooting then
+			B.shooting = false
+			shot(nil)
+		end
+		return
+	end
+	B.shooting = true
+	local seat = throneSeat(B)
+	local top = seat + V3(0, ThronePlan.SeatHeight, 0)
+	if t < W.leap then
+		local k = smooth(t / W.leap)
+		local eye = top + V3(lerp(14, 8, k), lerp(-8.5, -7, k), lerp(46, 36, k))
+		shot(CFrame.lookAt(eye, top + V3(0, lerp(26, 32, k), 0)), 62)
+	else
+		local mid = seat:Lerp(homeSpot(B), 0.55)
+		local eye = mid + V3(64, 22, 14)
+		shot(CFrame.lookAt(eye, B.vpos + V3(0, 26, 0)), 56)
+	end
 end
 
 -- "HIT HIM!" over his head while he's wide open
@@ -2788,7 +3516,7 @@ function Body.glide(B, now, ground)
 		end
 		B.leapFrom = B.leapFrom or B.vpos
 		local c = centerOf(B)
-		local front = V3(c.X + ThronePlan.Throne.X, B.leapFrom.Y, c.Z + ThronePlan.Throne.Z + 12)
+		local front = V3(c.X + ThronePlan.ThroneFront.X, B.leapFrom.Y, c.Z + ThronePlan.ThroneFront.Z)
 		return B.leapFrom:Lerp(front, clamp(e / a.Leap, 0, 1))
 	elseif act == "CrownGrab" then
 		local a = A.CrownGrab
@@ -2810,6 +3538,9 @@ function Body.onAction(B, name, t0, now)
 	if name == "Wake" or name == "Dormant" or name == "Reset" then
 		B.berserkLook = false
 	end
+	if name == "Reset" then
+		B.resetFrom = B.vpos -- (he leaps back up onto his throne from here)
+	end
 	local _ = t0
 	local _ = now
 end
@@ -2827,7 +3558,8 @@ function Body.calm(B, name)
 	B.torchesHot = true -- (puts the torches back once)
 end
 
--- every frame, whatever he's doing: his props, pillars, throne, torches, sky, the hint
+-- every frame, whatever he's doing: his props, pillars, throne, torches, the
+-- storm (sky, lightning, rain), your camera for his entrance, the hint
 function Body.senses(B, dt, here, awake, state)
 	B.here = here
 	B.stateNow = state
@@ -2850,6 +3582,9 @@ function Body.senses(B, dt, here, awake, state)
 	run("throne", stepThrone, B)
 	run("torches", stepTorches, B)
 	run("sky", stepSky, B, here, dt)
+	run("storm", stepStorm, B, here)
+	run("rain", stepRain, B, here, dt)
+	run("shot", stepShot, B, here, state)
 	run("hint", stepHint, B, here and awake)
 end
 

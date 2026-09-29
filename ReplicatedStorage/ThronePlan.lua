@@ -15,7 +15,8 @@
 	                he finds you GUILTY: the gavel hits you far softer there)
 	  tiles()       the floor's big square flagstones (the EARTHQUAKE lights
 	                some up: only those are safe)
-	  Throne        where his throne stands (he throws it in round 3)
+	  Throne        where his throne stands (he throws it in round 3; he
+	                sleeps sitting on it)
 	  Spawn         where you arrive
 ]]
 
@@ -45,7 +46,16 @@ ThronePlan.Podiums = {
 
 ThronePlan.Throne = Vector3.new(0, 0, -52)
 ThronePlan.Spawn = Vector3.new(0, 0, 54)
-ThronePlan.Home = Vector3.new(0, 0, -14) -- where he waits, facing the door
+ThronePlan.Home = Vector3.new(0, 0, -14) -- where he fights from, facing the door
+
+-- HIS THRONE is built ThroneScale times its drawing's size (he's huge: so is
+-- his chair). He sleeps sitting on it - at SeatAt, on a cushion SeatHeight
+-- up - and leaps down to Home when he wakes. For the Throne Toss he lands at
+-- ThroneFront (just clear of its steps) to rip it out of the floor.
+ThronePlan.ThroneScale = 1.45
+ThronePlan.SeatHeight = 14.5
+ThronePlan.SeatAt = Vector3.new(0, 0, -48.5)
+ThronePlan.ThroneFront = Vector3.new(0, 0, -30)
 
 -- THE FLAGSTONES: a grid of Cell-stud squares; the ones whose middle is at
 -- least Cell/2 inside the courtyard's edge. Returns a list of { x, z }.

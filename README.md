@@ -569,22 +569,33 @@ rounds, 3-4 minutes: the longest fight yet. Recommended level 135.
 ## The Spire's tenth floor: King Gavelgrunt, Lord of the Spire (The Throne Summit)
 
 THE FINAL BOSS. The king at the top of the Spire - every boss below works for
-him. A goliath: a huge, fat, greedy king six times your height, with a
-wobbling belly, a gold crown, a red cape and a giant wooden gavel (a
-hammer-swinging king with his own name and look). His arena is a round stone
-courtyard above the clouds: a purple carpet up to his golden throne, four
-stone pillars to hide behind, three low podiums round the edge and torches.
-The sky turns from sunset (round 1) to a storm (round 2) to a red eclipse
-(round 3). Three rounds, 4-5 minutes: the longest fight in the game.
-Recommended level 150.
+him. A colossal WALRUS KING nine times your height (his own name and look):
+a great layered belly with a gold belt, huge shoulders under spiked gold
+pauldrons, a deep crimson cape with an ermine band, a tall spiked crown,
+ivory tusks (one snapped off short) and a giant stitched scar across his left
+eye - which still glows. He swings an iron war-gavel with gold bands whose
+runes light up as he winds up. His arena is a round stone courtyard above the
+clouds in a thunderstorm that never ends (rain, lightning, thunder): a purple
+carpet up to his golden throne, four stone pillars to hide behind, three low
+podiums round the edge and torches. It gets darker in round 2 and turns to a
+red eclipse in round 3. Three rounds, 4-5 minutes: the longest fight in the
+game. Recommended level 150.
+
+- **HIS ENTRANCE:** he sleeps on his throne. Walk up the carpet and lightning
+  cracks, his eyes light up ("WHO DARES..."), he stands up on the throne,
+  raises the gavel into the storm - lightning strikes it - and leaps down in
+  front of you with a slam that shakes the courtyard. The VS splash slams in
+  as he lands, then "HAR HAR HAR!" and "KNEEL!". Your camera watches it from
+  the foot of the throne. When everyone's gone he leaps back up onto his
+  throne and goes back to sleep.
 
 - **ROUND 1, "THE KING IS AMUSED":** ROYAL SMASH (a red circle, then the gavel
   slams and a shockwave ring rolls out - jump or roll it; the gavel sticks in
   the floor: "STUCK! HIT HIM!"), GAVEL SWEEP (a wide swing in front of him -
   get behind him), BELLY BOUNCE (he hops up and belly-flops on you - his
   shadow grows under you), ROYAL DECREE ("GUARDS!": little guards drop in),
-  TOE STOMP (after a stomp his toe glows: "PUNCH HIS TOE!" and he hops round
-  on one foot) and TAX COLLECTOR ("TAXES ARE DUE!": gold coins rain down -
+  TOE STOMP (after a stomp the tip of his flipper glows: "PUNCH HIS TOE!"
+  and he hops round on one foot) and TAX COLLECTOR ("TAXES ARE DUE!": gold coins rain down -
   grab them to heal; every coin you leave he sucks up and his next move hits
   harder).
 - **ROUND 2, "THE MECHANICAL GAVEL"** at 65%: steam, and the gavel becomes a
@@ -597,7 +608,8 @@ Recommended level 150.
   platter or punch his belly till he chokes) and THE ROYAL ROLL ("BOWLING!":
   he rolls into a ball and bowls across the courtyard, breaking pillars).
 - **ROUND 3, "NO ONE TAKES MY CROWN"** at 30%: his crown flies off and he goes
-  berserk (faster, red eyes), and the pillars that are left crumble. EARTHQUAKE
+  berserk (faster; his eyes, scar and runes burn red), and the pillars that
+  are left crumble. EARTHQUAKE
   (he leaps sky-high; some flagstones light up gold - "STAND ON THE GOLD!"),
   CROWN GRAB ("MY CROWN!!": he runs for his crown - punch him in time and he
   trips: "TRIP HIM!"), "GUILTY!" (one player gets a spotlight; a giant gavel
@@ -611,22 +623,27 @@ Recommended level 150.
   items yet). The Nightmare, Eclipse and Doom versions of the Spire come next.
 - **Where things are:** every number in `Config.Bosses[10]`; the floor in
   `Config.Spire.Floors[10]`; his moves and his three-round brain in
-  `ServerScriptService/Bosses/Gavelgrunt.lua`; his body, warnings, guards,
-  coins, the feast, the crown, the spotlight and the crumbling pillars in
+  `ServerScriptService/Bosses/Gavelgrunt.lua`; his body, his entrance,
+  warnings, guards, coins, the feast, the crown, the spotlight, the crumbling
+  pillars and the storm (rain, lightning, the sky) in
   `ReplicatedStorage/BossBodies/Gavelgrunt.lua`; the courtyard's shape (the
-  pillars, podiums, flagstones, throne) in `ReplicatedStorage/ThronePlan.lua`;
+  pillars, podiums, flagstones, the throne and where he sits on it) in
+  `ReplicatedStorage/ThronePlan.lua`;
   the arena in `ServerScriptService/ThroneBuilder.lua`; his portrait and lines
   (with a round-3 line) in `BossIntro`; his design in
   `Docs/bosses/hammer_king_design.md`.
 - **Music:** a Sound named `Gavelgrunt Song` in SoundService (Oozark's plays
-  until you add it), and `Summit Wind` for the arena's background loop.
-  **Sounds** (all optional; missing ones borrow Oozark's): Gavelgrunt Laugh,
+  until you add it), and `Summit Wind` for the arena's background loop (a
+  howling storm wind). **Thunder Crack** is the lightning's thunder (silent
+  until you add it). **Sounds** (all optional; missing ones borrow Oozark's): Gavelgrunt Laugh,
   Gavel Smash, Gavel Swing, Belly Bounce, Giant Land, Royal Trumpet, Guard
   Jab, Giant Stomp, Toe Ouch, Coin Rain, Coin Pickup, Coin Vacuum, Piston
   Hiss, Hammer Spin, Big Inhale, Gulp, Spit Out, Royal Burp, Rocket Hammer,
   Chain Rattle, Royal Feast, Munching, Choke Cough, Royal Roll, Earthquake,
   Crown Clang, Giant Trip, Gavel Guilty, Giant Gavel, Throne Crash, Final
   Gavel, Pillar Crumble, Gavel Transform, King Roar, King Fall.
+- Previews: `Docs/gavelgrunt_preview.png` (the entrance and the fight) and
+  `Docs/gavelgrunt_poses.png` (him, pose by pose).
 
 ## The look: modern retro
 

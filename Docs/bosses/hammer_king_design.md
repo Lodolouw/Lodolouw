@@ -1,39 +1,61 @@
 # Floor 10 - the final boss: KING GAVELGRUNT, Lord of the Spire
 
-(DRAFT for approval. Inspired by the idea of a hammer-swinging king - our own
-character, name and look; not any existing one.)
+(Built. Redesigned as a WALRUS KING for a real final-boss feel - our own
+character, name and look; not any existing one. His moves didn't change.)
 
 ## Who he is
 The Spire is his. Every boss below works for him, and he's been watching you
-climb from his throne. He's big, loud, greedy and proud - funny until he gets
-angry. The last boss before Nightmare / Eclipse / Doom.
+climb from his throne. He's colossal, greedy, proud and scarred - menacing,
+and funny until he gets angry. The last boss before Nightmare / Eclipse /
+Doom.
 
 - **Level:** about 150 (Scribble is 135). **Health:** the highest in the Spire.
 - **Length:** 3 rounds, about 4-5 minutes on Normal.
-- **Speech bubbles:** pompous at first ("Another peasant climbs MY tower?"),
-  furious by round 3 ("NOBODY TAKES MY CROWN!").
+- **Speech bubbles:** menacing at first ("So. Another little fish swims all
+  the way up MY Spire."), furious by round 3 ("NO MORE MR. NICE WALRUS!").
 
 ## His look (blocky, like the other bosses)
-- A GOLIATH: about 6-7x a player's height, and FAT - a giant round belly
-  that wobbles when he moves, stubby tree-trunk legs, huge gloved fists,
-  royal purple with a straining gold belt, a white fur-trimmed red cape.
-  Players only reach his knees and belly: you fight around his feet while
-  he looms over you (the camera tilts up when he winds up). The ground
-  shakes with every step.
-- A tall, wonky **gold crown** with three coloured gems.
-- A small angry face with a bushy **moustache** that flaps when he shouts.
-- **The Gavel:** a giant wooden mallet with gold bands, taller than him.
-- Round 2: the hammer head splits open into a **mechanical piston hammer**
-  (steam vents, a glowing core). Round 3: the crown flies off and he goes
-  **berserk** - red eyes, cape torn, steam pouring out of the hammer.
+- A COLOSSAL WALRUS KING: about 9x a player's height (the pillars come up to
+  his belly). Stubby legs on broad hind flippers with gold anklets and ivory
+  claws, a great layered belly (three rolls of blubber, paler down the
+  front, a gold belt straining round the bottom), huge shoulders under
+  spiked gold pauldrons, front flippers in gold bracers.
+- A deep **crimson cape** with a gold hem and a white **ermine** band (black
+  tails) round his shoulders.
+- A heavy-browed head with a big whiskery **muzzle** (two round lobes, pale
+  bristles, stiff whiskers) and **ivory tusks** - the right one snapped off
+  short.
+- A **giant scar** slashed across his left eye, stitched. That eye still
+  glows - blind, pale and bright - and never quite closes, even asleep.
+  Both eyes glow gold.
+- A tall **spiked gold crown** with gems.
+- **The Gavel:** an iron war-gavel with gold bands, flat striking faces, a
+  spike on top and **runes that glow** while he winds up a blow.
+- Dark hide and gold, so he stands out against the purple and blue arena.
+- Round 2: the gavel becomes a steel **mechanical piston hammer** (steam
+  vents, a glowing core). Round 3: the crown flies off and he goes
+  **berserk** - his eyes, his scar and the gavel's runes burn red.
 
 ## The arena: THE THRONE SUMMIT (top of the Spire)
 - A round stone courtyard above the clouds, purple carpet up to a giant
-  gold throne at the back, banners with his face on them, torches.
+  gold throne at the back (he sleeps on it), banners, torches.
 - **Four pillars** you can hide behind (his attacks break them one by one -
   gone by round 3).
-- The sky turns from sunset (round 1) to storm (round 2) to a red eclipse
-  (round 3).
+- **A thunderstorm from the moment you arrive:** dark blue-grey dusk, storm
+  clouds below and thunderheads all round, rain, lightning among the clouds
+  (with the "Thunder Crack" sound). Darker in round 2, a **red eclipse** in
+  round 3 (the lightning turns red too).
+
+## His entrance
+He's asleep on his throne. Walk up the carpet and: lightning cracks down
+behind the throne, his eyes light up, "WHO DARES..." - he stands up on the
+throne and raises the gavel into the storm, and lightning strikes it (the
+runes blaze). He leaps down in front of you and lands with a slam that
+shakes the courtyard - that's when the VS splash slams in - then laughs
+"HAR HAR HAR!" and slams the gavel down: "KNEEL!". Your camera watches it
+from the foot of the throne and comes back to you as he lands. (6 seconds;
+he can't hurt you or be hurt until it's over.) When everyone's gone he
+leaps back up onto his throne and goes back to sleep.
 
 ## What makes him different (his signature moves)
 Things no other boss in the Spire does - built around him being a fat,
@@ -57,8 +79,8 @@ greedy goliath king:
 - **Burp Wave:** after a Big Gulp he lets out a huge burp: a green cone of
   wind that pushes everyone back and knocks the minions flying (they hit
   you if you're behind them).
-- **Toe Stomp weak spot:** his giant toes glow after a stomp - hit a toe and
-  he hops around on one foot for 2 s (funny, and a free opening).
+- **Toe Stomp weak spot:** the tip of his flipper glows after a stomp - hit
+  it and he hops around on one foot for 2 s (funny, and a free opening).
 - **Throne Toss (round 3):** he rips his throne out of the floor and hurls it
   - it smashes where it lands and stays there as cover (the only cover
   left once the pillars are gone).
@@ -95,8 +117,9 @@ before, quicker, plus:
 2. **Crown Grab:** his crown lands somewhere in the arena. He rushes for it -
    stand in his way and hit him for a stagger (hit him 5 times in time =
    he trips and is stunned for 4 s).
-3. **Final Gavel:** at 10% he climbs onto his throne and brings down one
-   gigantic slam - a huge warning, roll at the last moment.
+3. **Final Gavel:** at 10% he leaps into the middle of the courtyard and
+   brings down one gigantic slam - a huge warning, then a shockwave over
+   everything (jump or roll it).
 
 ## The ending
 He falls onto his back, the crown rolls to your feet, big "SPIRE CONQUERED"

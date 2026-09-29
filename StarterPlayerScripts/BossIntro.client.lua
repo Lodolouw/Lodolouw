@@ -8,6 +8,8 @@
 	   down between them with the SOUL flashing in it, the screen flashes and
 	   shakes - and it all breaks away into the fight. About 2.4 seconds: the
 	   boss is still waking up the whole time (it can't attack while it does).
+	   A boss with an entrance of its own (its IntroDelay: King Gavelgrunt
+	   leaping down off his throne) has it slam in that long after it wakes.
 
 	3) THE BOSSES TALK - a speech bubble over the boss's head (its name on a
 	   tag in its colour): it greets you, mocks you, gloats, and has last
@@ -315,26 +317,31 @@ local PORTRAITS = {
 		},
 		ink = { B = RGB(0, 153, 219), W = RGB(255, 255, 255), K = RGB(24, 20, 37), Y = RGB(254, 174, 52), P = RGB(246, 117, 122) },
 	},
-	-- King Gavelgrunt: a wonky gold crown with gems, a big round face, little
-	-- angry eyes, a bushy brown moustache, and his white fur collar
+	-- King Gavelgrunt: a colossal walrus king - a tall spiked crown with
+	-- gems, a heavy brow, a glowing eye and a blind scarred one (the scar
+	-- slashing across it), a big whiskery muzzle, ivory tusks (the right one
+	-- chipped short), his ermine collar and crimson cape
 	Gavelgrunt = {
 		rows = {
-			"..Y..Y..Y..Y..",
-			"..YYYYYYYYYY..",
-			"..YBYYRYYGYY..",
-			".SSSSSSSSSSSS.",
-			".SKKSSSSSSKKS.",
-			".SSWKSSSSKWSS.",
-			".SSSSSPPSSSSS.",
-			".SMMMMMMMMMMS.",
-			".SSMMSKKSMMSS.",
-			"..SSSSSSSSSS..",
-			".WWWWWWWWWWWW.",
-			"WWUUUUUUUUUUWW",
+			"......YY......",
+			".Y..Y.YY.Y..Y.",
+			".YYYYYYYYYYYY.",
+			".YYBYYRRYYBYY.",
+			".HHHHHHHHHHSH.",
+			".HDDDHHHHDSDH.",
+			".HHEHHHHHGSHH.",
+			".HHHHHHHHSHHH.",
+			".MMMMMNNMSMMM.",
+			".MkMkMMMMkMkM.",
+			"..TMMMMMMMMT..",
+			"WWTWkWWWkWWTWW",
+			"WkTWWWkWWWkWkW",
+			"CCTCCCCCCCCCCC",
 		},
-		ink = { Y = RGB(254, 174, 52), B = RGB(0, 153, 219), R = RGB(228, 59, 68), G = RGB(99, 199, 77),
-			S = RGB(232, 183, 150), K = RGB(24, 20, 37), W = RGB(255, 255, 255), P = RGB(246, 117, 122),
-			M = RGB(115, 62, 57), U = RGB(104, 56, 108) },
+		ink = { Y = RGB(254, 174, 52), B = RGB(0, 153, 219), R = RGB(228, 59, 68), H = RGB(115, 62, 57),
+			D = RGB(62, 39, 49), E = RGB(254, 174, 52), G = RGB(254, 231, 97), S = RGB(232, 183, 150),
+			M = RGB(184, 111, 80), N = RGB(24, 20, 37), k = RGB(24, 20, 37), T = RGB(234, 212, 170),
+			W = RGB(255, 255, 255), C = RGB(162, 38, 51) },
 	},
 	-- the Colosseum's boss wave: a straw face, a gold crown, a big fluffy beard
 	["Straw King"] = {
@@ -496,6 +503,14 @@ local function watchBoss(model)
 		local def = floor and Config.Bosses and Config.Bosses[floor]
 		if def then
 			task.spawn(function()
+				-- (a boss with an entrance of its own - King Gavelgrunt leaping
+				-- down off his throne - has the splash slam in as it lands)
+				if (def.IntroDelay or 0) > 0 then
+					task.wait(def.IntroDelay)
+					if model:GetAttribute("State") ~= "Waking" then
+						return
+					end
+				end
 				local ok, err = pcall(playIntro, def)
 				if not ok then
 					-- (never leave the screen dimmed if something went wrong)
@@ -712,26 +727,27 @@ local LINES = {
 		win = { "* GAME OVER! Press any key to try again!", "* Ha! Another player, undone. CTRL+Z!" },
 		lose = { "* Hey... you can't just... crumple me... up...", "* Scribble.exe has stopped working. ...Nice one." },
 	},
-	-- the king at the top of the Spire: huge, greedy, pompous - funny until
-	-- he gets angry
+	-- the king at the top of the Spire: a colossal, scarred walrus - greedy,
+	-- pompous and menacing, and funny until he gets angry
 	Gavelgrunt = {
 		wake = {
-			"* Another peasant climbs MY tower? How... adorable. HO HO HO!",
-			"* You beat ALL my servants? Then kneel before their KING!",
+			"* So. Another little fish swims all the way up MY Spire.",
+			"* You beat ALL my servants? Then KNEEL before their KING!",
 		},
 		idle = {
-			"* Every floor of this Spire is MINE. Every coin, every crumb, every CRUMB.",
-			"* I didn't climb to the top. I was BORN at the top.",
+			"* Every floor of this Spire is MINE. Every coin. Every crumb. Every FISH.",
+			"* See this scar? A hero gave me that. I gave him the long way down. All ten floors.",
 			"* My gavel has one ruling for you: SQUASHED.",
 			"* Is that a sword? It's very small. Like you.",
 			"* A king never runs. A king ROLLS.",
 			"* Pay your taxes, peasant! ...with your health!",
+			"* Chipped my tusk on the last hero's shield. HE came off worse.",
 		},
-		hit = { "* ORDER! ORDER IN MY COURT!", "* HO HO! Squashed flat!", "* The king has spoken. With a HAMMER." },
-		phase2 = { "* Enough games. Behold my MECHANICAL GAVEL!", "* You scuffed my robe! Now feel the STEAM!" },
-		phase3 = { "* MY CROWN! NOBODY TAKES MY CROWN!", "* NO MORE MR. NICE KING!" },
+		hit = { "* ORDER! ORDER IN MY COURT!", "* HAR HAR! Squashed flat!", "* The king has spoken. With a HAMMER." },
+		phase2 = { "* Enough games. Behold my MECHANICAL GAVEL!", "* You scratched my BLUBBER! Now feel the STEAM!" },
+		phase3 = { "* MY CROWN! NOBODY TAKES MY CROWN!", "* NO MORE MR. NICE WALRUS!" },
 		win = { "* Long live the KING! That's me. Forever.", "* Case closed. GUILTY of being too small!" },
-		lose = { "* Impossible... a peasant... on MY throne...", "* Fine... FINE... take the tower... I need a nap anyway..." },
+		lose = { "* Impossible... a peasant... on MY throne...", "* Fine... FINE... take the tower... I need a nap. On a nice cold ice floe..." },
 	},
 	-- the Giant Straw King: loud, vain and very proud of his beard
 	["Straw King"] = {
@@ -1061,7 +1077,7 @@ local function watchTalk(model)
 		if st == "Waking" then
 			current = { model = model, short = def.Short }
 			nextIdle = os.clock() + 14
-			task.delay(2.6, say, def.Short, "wake", model) -- (just after the VS splash)
+			task.delay((def.IntroDelay or 0) + 2.6, say, def.Short, "wake", model) -- (just after the VS splash)
 		elseif st == "Dead" then
 			say((current and current.short) or def.Short, "lose", model)
 			current = nil

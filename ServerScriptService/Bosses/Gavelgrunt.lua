@@ -2,8 +2,8 @@
 	Gavelgrunt  (ModuleScript, parent: ServerScriptService > Bosses, name: "Gavelgrunt")
 
 	Floor 10's boss, THE FINAL BOSS: King Gavelgrunt, Lord of the Spire
-	(Config.Bosses[10]) - a huge, fat, greedy goliath of a king with a giant
-	wooden gavel. Every boss below works for him. Three rounds:
+	(Config.Bosses[10]) - a colossal, scarred walrus king with an iron
+	war-gavel. Every boss below works for him. Three rounds:
 
 	 ROUND 1, "THE KING IS AMUSED" (slow and heavy):
 	  ROYAL SMASH    the gavel comes down where a red circle marks, with
@@ -692,10 +692,11 @@ function Attacks.RoyalDecree(E, token)
 	waitUntil(E, token, t0 + a.Tell + recovery(E, a.Recovery))
 end
 
--- TOE STOMP. Slot 1 = where his foot comes down (in front of him: published
--- at the start). It lands at Tell (Radius). Then the toe glows there until
--- Tell + Window (a prop, Toe). Punched: the action "ToeHop" (its number =
--- Hop seconds): he hops round holding it.
+-- TOE STOMP. Slot 1 = where his foot comes down (in front of him, a little
+-- to his right: under the tip of his right flipper - published at Tell * 0.5).
+-- It lands at Tell (Radius). Then the tip glows there until Tell + Window (a
+-- prop, Toe). Punched: the action "ToeHop" (its number = Hop seconds): he
+-- hops round holding it.
 function Attacks.ToeStomp(E, token)
 	local a = E.def.Attacks.ToeStomp
 	E.track = true
@@ -704,7 +705,8 @@ function Attacks.ToeStomp(E, token)
 		return
 	end
 	E.track = false
-	local spot = inside(E, ground(E) + E.facing * (E.def.Size / 2 + 2), ThronePlan.Radius - 2)
+	local right = Vector3.new(-E.facing.Z, 0, E.facing.X)
+	local spot = inside(E, ground(E) + E.facing * (E.def.Size / 2 + 1) + right * (E.def.Size * 0.2), ThronePlan.Radius - 2)
 	setSlot(E, 1, spot)
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return
@@ -800,7 +802,7 @@ function Attacks.TripleSlam(E, token)
 		if aim then
 			step = math.min(step, math.max(0, flatDistance(aim, from) - E.def.Size / 2 - 3))
 		end
-		step = math.min(step, toEdge(E, from, dir, E.def.Leash))
+		step = math.min(step, toEdge(E, from, dir, E.def.Court))
 		local to = from + dir * step
 		local spot = inside(E, to + dir * (E.def.Size / 2 + 2.5), ThronePlan.Radius - 2)
 		setSlot(E, k, spot)
@@ -841,7 +843,7 @@ function Attacks.HammerTornado(E, token)
 		if aim then
 			local want = flat(aim - E.pos)
 			if want.Magnitude > 1 then
-				E.pos = inside(E, E.pos + want.Unit * math.min(want.Magnitude, a.Speed * dt), E.def.Leash)
+				E.pos = inside(E, E.pos + want.Unit * math.min(want.Magnitude, a.Speed * dt), E.def.Court)
 			end
 		end
 		E.pillarSweep = a.Radius * 0.7
@@ -1042,7 +1044,7 @@ function Attacks.RoyalRoll(E, token)
 	end
 	E.track = false
 	-- the path: straight at you, bouncing off the edge of the courtyard
-	local edge = E.def.Leash
+	local edge = E.def.Court
 	local from = ground(E)
 	local dir = aimDir(E, from)
 	local points = { from }
@@ -1093,13 +1095,25 @@ function Attacks.Earthquake(E, token)
 	E.lastQuake = now()
 	E.track = true
 	-- the safe flagstones: one close to each of you (not the one you're on),
-	-- then more at random
+	-- then more at random (never one somebody's already standing on: you
+	-- always have to move)
 	local tiles = ThronePlan.tiles()
-	local chosen, used = {}, {}
+	local chosen, used, taken = {}, {}, {}
 	local function pick(i)
-		if not used[i] and #chosen < a.Safe then
+		if not used[i] and not taken[i] and #chosen < a.Safe then
 			used[i] = true
 			table.insert(chosen, tiles[i])
+		end
+	end
+	for _, pl in ipairs(fightersIn(E)) do
+		local root = rootOf(pl)
+		if root then
+			local off = root.Position - E.center
+			for i, t in ipairs(tiles) do
+				if ThronePlan.onTile(off.X, off.Z, t[1], t[2], 0.6) then
+					taken[i] = true
+				end
+			end
 		end
 	end
 	for _, pl in ipairs(fightersIn(E)) do
@@ -1109,7 +1123,7 @@ function Attacks.Earthquake(E, token)
 			local best, bestD = nil, math.huge
 			for i, t in ipairs(tiles) do
 				local d = math.sqrt((t[1] - off.X) ^ 2 + (t[2] - off.Z) ^ 2)
-				if d > ThronePlan.Cell * 0.8 and d < bestD then
+				if d > ThronePlan.Cell * 0.8 and not taken[i] and d < bestD then
 					best, bestD = i, d
 				end
 			end
@@ -1169,7 +1183,7 @@ function Attacks.CrownGrab(E, token)
 	if flat(E.center - E.pos).Magnitude < 8 then
 		away = unitOr(flat(-E.facing), Z_AXIS)
 	end
-	local spot = inside(E, E.center + away * 34 + Vector3.new(away.Z, 0, -away.X) * (E.rng:NextNumber() * 20 - 10), E.def.Leash)
+	local spot = inside(E, E.center + away * 34 + Vector3.new(away.Z, 0, -away.X) * (E.rng:NextNumber() * 20 - 10), E.def.Court)
 	setSlot(E, 1, spot)
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return
@@ -1291,7 +1305,7 @@ function Attacks.ThroneToss(E, token)
 	E.track = false
 	local t0 = setAction(E, "ThroneToss", a.Flight)
 	local throne = E.center + ThronePlan.Throne
-	local front = Vector3.new(throne.X, E.floorY, throne.Z + 12)
+	local front = Vector3.new(E.center.X + ThronePlan.ThroneFront.X, E.floorY, E.center.Z + ThronePlan.ThroneFront.Z)
 	setSlot(E, 1, throne)
 	if not lunge(E, token, ground(E), front, t0, a.Leap, nil) then
 		return
@@ -1556,11 +1570,11 @@ function Boss.step(E, dt)
 	end
 end
 
--- he stays on the courtyard (clear of its edge)
+-- he stays on the courtyard (his belly clear of its edge: Court)
 function Boss.onMove(E, _dt)
 	local off = flat(E.pos - E.center)
-	if off.Magnitude > E.def.Leash then
-		off = off.Unit * E.def.Leash
+	if off.Magnitude > E.def.Court then
+		off = off.Unit * E.def.Court
 		E.pos = Vector3.new(E.center.X + off.X, E.floorY, E.center.Z + off.Z)
 	end
 end

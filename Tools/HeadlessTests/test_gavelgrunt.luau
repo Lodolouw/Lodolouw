@@ -34,6 +34,9 @@
 --   final    the Final Gavel at FinalAt: he's untouchable while he winds up,
 --            the slam and shockwave hit a player standing still but not one
 --            jumping it, then he's worn out (open)
+--   entrance asleep up on his throne; walk up and THE ENTRANCE plays (in
+--            client mode: he stands up on the throne, then leaps down to
+--            where he fights from); leave and he goes back up onto it
 -- It checks: no errors or warnings, no broken numbers, he stays on the
 -- courtyard, every move is seen (and draws its warnings, in client mode),
 -- round 2 comes at PhaseAt and round 3 at Round3At, he dies, the reward
@@ -670,6 +673,60 @@ elseif SCENARIO == "reset" then
 	fightUntil({ p }, function()
 		return stateIs("Dead")
 	end, 1200)
+elseif SCENARIO == "entrance" then
+	-- asleep up on his throne; THE ENTRANCE (standing up on it, the leap down
+	-- to where he fights from); back up onto it once you've gone. (Where he's
+	-- drawn is only checked in client mode.)
+	local function headAt()
+		local fx = workspace:FindFirstChild("BossFX")
+		local b = fx and fx:FindFirstChild("GavelgruntBody")
+		local h = b and b:FindFirstChild("Head")
+		local pr = h and rawget(h, "__props")
+		return pr and pr.CFrame and pr.CFrame.Position
+	end
+	local seat = E.center + ThronePlan.SeatAt
+	local function over(pos, spot, r)
+		return pos ~= nil and Vector3.new(pos.X - spot.X, 0, pos.Z - spot.Z).Magnitude <= r
+	end
+	local p = people[1] or makePlayer("Alpha", 1001)
+	runFor(1)
+	if MODE == "client" then
+		local h = headAt()
+		assert(over(h, seat, 8) and h.Y > floorY + ThronePlan.SeatHeight + 20, "asleep, he should be sitting up on his throne")
+	end
+	walkIn(p)
+	place(p, Vector3.new(home.X, floorY + 3, home.Z + 30), 0)
+	local woke, onThrone, landed = nil, false, false
+	runFor(def.WakeTime + 1, function()
+		if stateIs("Waking") then
+			woke = woke or T
+			if MODE == "client" then
+				lookAtDrawing() -- (every frame: a flash of lightning is gone in a blink)
+			end
+			local h = MODE == "client" and headAt()
+			local t = T - woke
+			-- (and your lock-on goes where he's drawn: up on the throne, then down)
+			local aim = model:GetAttribute("AimAt")
+			if h and t > 1 and t < def.IntroDelay - 1.2 and over(h, seat, 8) and M.typeof(aim) == "Vector3" and over(aim, seat, 10) then
+				onThrone = true
+			end
+			if h and t > def.IntroDelay + 0.3 and over(h, home, 8) and M.typeof(aim) == "Vector3" and over(aim, home, 10) then
+				landed = true
+			end
+		end
+	end)
+	assert(woke, "walking up to him should wake him")
+	assert(stateIs("Fighting"), "his entrance should end in the fight")
+	if MODE == "client" then
+		assert(onThrone, "he should stand up on his throne before he leaps (and your lock-on should follow him there)")
+		assert(landed, "he should land where he fights from (and your lock-on should follow him)")
+	end
+	leave(p)
+	runFor(8)
+	assert(stateIs("Dormant"), "he should go back to sleep once you've gone")
+	if MODE == "client" then
+		assert(over(headAt(), seat, 8), "back asleep, he should be up on his throne again")
+	end
 elseif SCENARIO == "attacks" then
 	local p = people[1] or makePlayer("Alpha", 1001)
 	walkIn(p)
@@ -1191,7 +1248,8 @@ if MODE == "client" then
 		end
 	end
 	-- (all of him, every time)
-	needDrawn({ "Head", "Belly", "Thigh", "Boot", "Hand", "GavelHandle", "GavelHead", "Cape", "Moustache", "Shadow" })
+	needDrawn({ "Head", "BellyRoll", "Thigh", "HindFlipper", "Flipper", "Pauldron", "GavelHandle", "GavelHead", "GavelRune", "Cape",
+		"Tusk", "Scar", "Muzzle", "Crown", "Shadow" })
 	if SCENARIO == "attacks" then
 		needDrawn({ "KingWarning", "WedgeWarning", "GuardBody", "ToeGlow", "TaxCoin", "FallingCoin", "TornadoWarning", "GulpWarning",
 			"LaneWarning", "GavelChain", "FeastPlatter", "RollBall", "SafeTile", "QuakeWarning", "LooseCrown", "Spotlight", "GiantGavel",
@@ -1199,14 +1257,17 @@ if MODE == "client" then
 		needWords({ "GUARDS!", "TAXES ARE DUE!", "GUILTY!", "STAND ON THE GOLD!" })
 	elseif SCENARIO == "full" then
 		needWords({ "THE MECHANICAL GAVEL", "NO ONE TAKES MY CROWN!", "THE FINAL GAVEL" })
-		needDrawn({ "Crown", "GavelCore", "FlyingCrown" })
+		needDrawn({ "GavelCore", "FlyingCrown", "Lightning" })
+	elseif SCENARIO == "entrance" then
+		needWords({ "WHO DARES...", "HAR HAR HAR!", "KNEEL!", "PEASANTS. HMPH." })
+		needDrawn({ "Lightning" })
 	elseif SCENARIO == "toe" then
 		needWords({ "OW! MY TOE!", "HIT HIM!" })
 	elseif SCENARIO == "final" then
 		needWords({ "THE FINAL GAVEL", "HIT HIM!" })
 	end
 end
-if maxOff > def.Leash + 0.6 then
+if maxOff > def.Court + 0.6 then
 	problem(string.format("he went %.1f from the middle (off the courtyard)", maxOff))
 end
 if SCENARIO == "full" or SCENARIO == "duo" or SCENARIO == "reset" then

@@ -247,16 +247,26 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `test_gavelgrunt.luau` - KING GAVELGRUNT (floor 10, the final boss) on the
   real Throne Summit (ThroneBuilder, ThronePlan) with the real BossService
   and his own three-round brain (and, with `client` at the end, the real
-  BossClient drawing him, his warnings, guards, coins, feast, crown,
-  spotlight and crumbling pillars). `-a full`, `attacks`, `reset`, `duo` and
-  `timing` as for the others; `toe` checks the glowing toe (punched: he hops
-  and punches land), `coins` the Tax Collector (grabbed coins heal you; left
-  ones make his next move hit harder), `feast` the Royal Feast (smashing the
-  platter or choking him stops the heal), `crown` the Crown Grab (punched in
-  time he trips), `guilty` GUILTY! (a podium softens it; friends share it),
-  `pillars` that his big moves break pillars and round 3 crumbles the rest,
-  and `final` THE FINAL GAVEL (once, at 10%; a jump or roll clears it; then
-  he's worn out). It also checks he stays in the courtyard.
+  BossClient drawing him - the walrus king - his warnings, guards, coins,
+  feast, crown, spotlight, crumbling pillars and the storm's lightning).
+  `-a full`, `attacks`, `reset`, `duo` and `timing` as for the others; `toe`
+  checks the glowing flipper tip (punched: he hops and punches land), `coins`
+  the Tax Collector (grabbed coins heal you; left ones make his next move hit
+  harder), `feast` the Royal Feast (smashing the platter or choking him stops
+  the heal), `crown` the Crown Grab (punched in time he trips), `guilty`
+  GUILTY! (a podium softens it; friends share it), `pillars` that his big
+  moves break pillars and round 3 crumbles the rest, `final` THE FINAL GAVEL
+  (once, at 10%; a jump or roll clears it; then he's worn out), and
+  `entrance` his entrance (with `client`: drawn asleep up on his throne, then
+  standing on it, then landing where he fights from - your lock-on following
+  him - and back up onto it after a reset). It also checks he stays in the
+  courtyard.
+- `gavelgrunt_snaps.luau` + `render_snaps.py` - King Gavelgrunt's preview
+  pictures: `luau gavelgrunt_snaps.luau > s.txt` then
+  `python3 render_snaps.py s.txt ../../Docs/gavelgrunt_preview.png --cols 3 --title "KING GAVELGRUNT|FLOOR 10  -  THE THRONE SUMMIT|RECOMMENDED LV 150"`;
+  `-a poses` with `--cols 3 --title ""` the pose sheet
+  (`Docs/gavelgrunt_poses.png`); `-a turn` with `--cols 2 --size 900,900`
+  a big turnaround of him (front, three-quarter, side, back).
 - `scribble_snaps.luau` + `render_snaps.py` - Scribble's preview pictures:
   `luau scribble_snaps.luau > s.txt` then
   `python3 render_snaps.py s.txt ../../Docs/scribble_preview.png --cols 3 --title "SCRIBBLE|FLOOR 9  -  THE CANVAS|RECOMMENDED LV 135"`;

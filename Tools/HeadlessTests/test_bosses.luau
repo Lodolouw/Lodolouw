@@ -678,6 +678,15 @@ local function aimSample()
 		aimPrev = nil
 		return -- (nothing of it showing: gone, or not drawn yet)
 	end
+	-- (a boss with an entrance of its own - King Gavelgrunt up on his throne,
+	-- then flying down off it - is drawn far from its Root, which waits where
+	-- it lands, until IntroDelay: its lock-on follows where it's drawn, and
+	-- test_gavelgrunt's entrance checks that)
+	if model:GetAttribute("Action") == "Wake" and def.IntroDelay
+		and M.now() - (model:GetAttribute("ActionStart") or 0) < def.IntroDelay + 0.3 then
+		aimPrev = nil
+		return
+	end
 	aimChecked += 1
 	-- (this sample's body and the last one's together)
 	local ulo, uhi = lo, hi
