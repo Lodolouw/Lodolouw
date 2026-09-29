@@ -83,6 +83,9 @@ local function defaultData()
 		-- (Config.Colosseum.Difficulties), with runs cleared (`wins`) and your
 		-- fastest clear (`bests`) on each one: ["Hard"] = 3
 		Colosseum = { clears = 0, best = nil, bonusDay = 0, pick = "Normal", wins = {}, bests = {} },
+		-- WEAPONS (Config.Weapons): the ones you own, each with its mastery
+		-- points (["IronSword"] = 140), and the one in your hand (nil: fists)
+		Weapons = { own = {}, hold = nil },
 	}
 end
 
@@ -240,6 +243,28 @@ local function mergeSaved(saved)
 		end
 		if Config.statPointsSpent(d) > Config.statPointsTotal(d) then
 			d.Stats = {}
+		end
+	end
+	-- weapons: only real ones, mastery kept in range, holding only one you own
+	local W = Config.Weapons
+	if W and type(saved.Weapons) == "table" then
+		local maxPoints = Config.masteryPointsFor(W.MasteryMax)
+		if type(saved.Weapons.own) == "table" then
+			for id, points in pairs(saved.Weapons.own) do
+				if type(id) == "string" and W.List[id] and type(points) == "number" and points == points then
+					d.Weapons.own[id] = math.clamp(math.floor(points), 0, maxPoints)
+				end
+			end
+		end
+		local hold = saved.Weapons.hold
+		if type(hold) == "string" and d.Weapons.own[hold] then
+			d.Weapons.hold = hold
+		end
+	end
+	-- (everyone has the starter weapons)
+	for _, id in ipairs(W and W.Starters or {}) do
+		if W.List[id] and not d.Weapons.own[id] then
+			d.Weapons.own[id] = 0
 		end
 	end
 	return d
@@ -607,6 +632,30 @@ end
 -- Lets another service add an action the client can ask for through the
 -- Action RemoteFunction (so it gets the same request budget and argument
 -- checks as everything else). handler(player, data, arg) -> ok, message
+-- (another service changed a player's data: send them a fresh copy)
+function PlayerService.MarkDirty(player)
+	if profiles[player] then
+		markDirty(player)
+	end
+end
+
+-- Give a player a weapon to keep (an id in Config.Weapons.List). Returns
+-- true if it's new to them (already owned: nothing changes).
+function PlayerService.GiveWeapon(player, id)
+	local profile = profiles[player]
+	local W = Config.Weapons
+	if not profile or type(id) ~= "string" or not (W and W.List[id]) then
+		return false
+	end
+	local own = profile.data.Weapons.own
+	if own[id] then
+		return false
+	end
+	own[id] = 0
+	markDirty(player)
+	return true
+end
+
 function PlayerService.AddAction(name, handler)
 	if type(name) == "string" and type(handler) == "function" then
 		handlers[name] = handler

@@ -2876,7 +2876,8 @@ Config.Combat = {
 -- weapon's MASTERY grows (mastery goes up by landing hits with it).
 -- For now there's one, the Iron Sword, to test the feel: the dev console's
 -- "DEV: Test Sword" gives it to you and "DEV: Mastery +25" levels it.
--- (Mastery isn't saved yet: that comes with owning weapons.)
+-- The weapons you own, each one's mastery and the one in your hand are
+-- saved (PlayerService: data.Weapons).
 ----------------------------------------------------------------------
 Config.Weapons = {
 	-- how much harder than your punch a weapon hits: its rarity's Start at
@@ -2971,6 +2972,9 @@ Config.Weapons = {
 			},
 		},
 	},
+	-- what every player owns from the start (saved with their mastery; the
+	-- Iron Sword moves to an early quest reward later)
+	Starters = { "IronSword" },
 	Test = "IronSword", -- what "DEV: Test Sword" gives you
 	-- what "DEV: Next Sword" goes through, one press at a time (then back to fists)
 	TestList = { "IronSword", "EmberCleaver", "Tidefang", "Voidstar" },

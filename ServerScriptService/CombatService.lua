@@ -788,7 +788,19 @@ local function weaponOf(player)
 	return nil
 end
 
+-- a player's saved weapons (PlayerService: data.Weapons), or nil
+local function savedWeapons(player)
+	local d = PlayerService and PlayerService.GetData and PlayerService.GetData(player)
+	return d and d.Weapons
+end
+
+-- mastery points: saved for weapons you own; a dev test weapon you don't own
+-- keeps its mastery for this session only
 local function masteryPoints(player, id)
+	local saved = savedWeapons(player)
+	if saved and saved.own[id] then
+		return saved.own[id]
+	end
 	local t = mastery[player]
 	return t and t[id] or 0
 end
@@ -805,11 +817,18 @@ local function showMastery(player, id)
 end
 
 local function setMasteryPoints(player, id, points)
-	mastery[player] = mastery[player] or {}
 	local before = Config.masteryLevel(masteryPoints(player, id))
-	mastery[player][id] = math.clamp(points, 0, Config.masteryPointsFor(W.MasteryMax))
+	points = math.clamp(math.floor(points), 0, Config.masteryPointsFor(W.MasteryMax))
+	local saved = savedWeapons(player)
+	if saved and saved.own[id] then
+		saved.own[id] = points
+		PlayerService.MarkDirty(player)
+	else
+		mastery[player] = mastery[player] or {}
+		mastery[player][id] = points
+	end
 	showMastery(player, id)
-	local after = Config.masteryLevel(mastery[player][id])
+	local after = Config.masteryLevel(points)
 	if after > before then
 		local def = W.List[id]
 		local _, tierBefore = Config.abilityTier(def, before)
@@ -832,6 +851,12 @@ function CombatService.Equip(player, id)
 	end
 	player:SetAttribute("Weapon", id)
 	showMastery(player, id)
+	-- (remembered for next time, if it's one you own - or fists)
+	local saved = savedWeapons(player)
+	if saved and (id == nil or saved.own[id]) and saved.hold ~= id then
+		saved.hold = id
+		PlayerService.MarkDirty(player)
+	end
 	return true
 end
 
@@ -1167,6 +1192,45 @@ function CombatService.Start(playerService)
 			warn("[CombatService] " .. name .. " failed: " .. tostring(err))
 		end
 	end)
+
+	-- Hold one of your own weapons (the BAG), or nil for your fists
+	if PlayerService and PlayerService.AddAction then
+		PlayerService.AddAction("EquipWeapon", function(player, data, id)
+			if id == nil or id == false then
+				CombatService.Equip(player, nil)
+				return true, "Back to your fists."
+			end
+			local def = type(id) == "string" and W.List[id]
+			if not def or not (data.Weapons and data.Weapons.own[id]) then
+				return false, "You don't own that weapon."
+			end
+			CombatService.Equip(player, id)
+			return true, def.Name .. " equipped!"
+		end)
+	end
+
+	-- when your save loads, the weapon you were holding goes back in your hand
+	local function restoreWeapon(player)
+		task.spawn(function()
+			for _ = 1, 120 do -- (up to a minute: a save can wait on another server)
+				if not player.Parent then
+					return
+				end
+				local saved = savedWeapons(player)
+				if saved then
+					if saved.hold and saved.own[saved.hold] and W.List[saved.hold] then
+						CombatService.Equip(player, saved.hold)
+					end
+					return
+				end
+				task.wait(0.5)
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(restoreWeapon)
+	for _, p in ipairs(Players:GetPlayers()) do
+		restoreWeapon(p)
+	end
 
 	-- DEV ONLY (Studio, or the game's owner): the weapon test buttons on the
 	-- dev console - "DEV: Test Sword" and "DEV: Mastery +25"
