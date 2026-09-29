@@ -974,7 +974,7 @@ end
 -- start the ability (the Whirlwind) at a tier for this player (now)
 local function startSpin(h, tierIndex)
 	local ab = h.def and h.def.Ability
-	local tier = ab and ab.Tiers[math.clamp(tierIndex or 1, 1, #ab.Tiers)]
+	local tier = ab and ab.Tiers and ab.Tiers[math.clamp(tierIndex or 1, 1, #ab.Tiers)]
 	if not tier then
 		return
 	end

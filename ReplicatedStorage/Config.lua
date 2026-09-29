@@ -3000,6 +3000,34 @@ do
 	L.Voidstar = sword("Voidstar", "Legendary", "Voidstar", Color3.fromRGB(70, 40, 110), Color3.fromRGB(255, 170, 250), Color3.fromRGB(40, 25, 70))
 end
 
+-- ABILITY BUILDING BLOCKS (CombatService, "Ability building blocks"): most
+-- weapons' abilities are a few of these switched on together. An ability
+-- without Tiers is this kind:
+--   Ability = { Name, Cooldown, Cost (stamina), Aura (a colour), Busy (seconds
+--     you're stopped for, default 0.25), Effects = { ... }, Burst = { Radius,
+--     Damage (x your hit), Delay } (optional: a hit all round you) }
+-- and a weapon can have Passive = { ... }: effects always on while held.
+-- Each effect is { Block = name, Amount, Time (seconds) }:
+--   DamageUp       you deal Amount more (0.2 = +20%)
+--   Crit           Amount extra chance of a critical hit (0.15 = +15%)
+--   Lifesteal      every hit heals Amount of your max health (x the swing's weight)
+--   StaminaOnHit   every hit gives Amount stamina back
+--   StaminaRefill  (instant) refills Amount of your stamina (1 = all of it)
+--   Guard          you take Amount less damage (0.2 = 20% less; at most 80%)
+--   Shield         the next hit on you does nothing (then it breaks)
+--   Thorns         when you're hit, the nearest enemy (within Range, 14) takes Amount x your hit
+--   MoveSpeed      you walk Amount faster (0.2 = +20%)
+--   NextHit        your next hit deals Amount more (and is a crit); Mark =
+--                  the target then takes Mark more from everyone for MarkTime s
+--   Stacks         (usually Passive) every hit adds a stack; at Max the hit
+--                  deals Amount more and they reset
+-- Mastery makes every Amount stronger, up to +50% at mastery 100, and every
+-- Time a little longer (Config.blockScale).
+function Config.blockScale(mastery)
+	local max = Config.Weapons.MasteryMax
+	return 1 + 0.5 * math.clamp(((mastery or 1) - 1) / math.max(1, max - 1), 0, 1)
+end
+
 -- The mastery level `points` mastery points make (1 to MasteryMax), and how far
 -- into that level they are (0 to 1)
 function Config.masteryLevel(points)

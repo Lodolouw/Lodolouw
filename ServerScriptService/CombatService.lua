@@ -280,6 +280,7 @@ end
 -- knockback: optional Vector3 push (studs/second) applied on the player's screen.
 -- quiet = true for small repeated damage (standing in a puddle): no "Dodged!"
 -- message and no camera knock every tick, just a faint flash.
+local blockIncoming -- (set in "Ability building blocks" below)
 function CombatService.DamagePlayer(player, amount, fromPosition, knockback, quiet)
 	local st = fighters[player]
 	local hum = st and charParts(player)
@@ -291,6 +292,16 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 			send(player, "Dodged")
 		end
 		return false
+	end
+	-- your weapon ability's guard or shield
+	if blockIncoming then
+		amount = blockIncoming(player, st, amount)
+		if amount <= 0 then
+			if not quiet then
+				send(player, "Dodged")
+			end
+			return false
+		end
 	end
 	-- your gear's defence takes a share off every hit
 	amount = amount * (1 - gearOf(player).Defense / 100)
@@ -886,6 +897,222 @@ local function targetsInArc(root, player, range, arc, locked)
 	return list
 end
 
+local function restoreWalkSpeed(player, hum)
+	local d = PlayerService and PlayerService.GetData(player)
+	hum.WalkSpeed = Config.walkSpeedFor(player, d) -- capped while you're in an arena
+	local cm = hum.Parent and hum.Parent:FindFirstChildWhichIsA("ControllerManager", true)
+	if cm then
+		cm.BaseMoveSpeed = hum.WalkSpeed
+	end
+end
+
+----------------------------------------------------------------------
+-- Ability building blocks (Config.Weapons.Blocks): the small effects most
+-- weapons' abilities are made of - a buff for a few seconds (more damage,
+-- lifesteal, a guard...), a one-hit shield, a bigger next hit, stacks that
+-- burst. An ability lists them in its Effects; a weapon can also have
+-- Passive ones that are always on while it's in your hand. Mastery makes
+-- each one a bit stronger (Config.blockScale). Every screen sees them
+-- through the player's attributes: Aura (a colour) with AuraUntil (server
+-- time), Shield (true while it's up) and Stacks (a number).
+----------------------------------------------------------------------
+local blockRng = Random.new()
+local function serverNow()
+	return workspace:GetServerTimeNow()
+end
+
+-- an effect still running on this fighter (nil once it's worn off)
+local function buff(st, name, now)
+	local b = st.buffs and st.buffs[name]
+	if b and b.untilT and now >= b.untilT then
+		st.buffs[name] = nil
+		return nil
+	end
+	return b
+end
+
+local function showBuffs(player, st, now)
+	local shield = buff(st, "Shield", now)
+	player:SetAttribute("Shield", shield and true or nil)
+end
+
+-- the weapon in hand's Passive effects (always on while you hold it)
+local function passive(player, name)
+	local def = weaponOf(player)
+	for _, e in ipairs(def and def.Passive or {}) do
+		if e.Block == name then
+			return e
+		end
+	end
+	return nil
+end
+
+-- switch on a list of effects (an ability's Effects), scaled by mastery
+local function applyEffects(player, st, effects, scale, color)
+	local now = os.clock()
+	st.buffs = st.buffs or {}
+	local longest = 0
+	for _, e in ipairs(effects or {}) do
+		local time = e.Time and e.Time * (1 + (scale - 1) * 0.5) or nil -- (mastery lengthens them a little too)
+		local amount = (e.Amount or 0) * scale
+		if e.Block == "StaminaRefill" then
+			st.stamina = math.min(CC.MaxStamina, st.stamina + CC.MaxStamina * math.min(1, amount))
+			pushState(player, st)
+		elseif e.Block == "MoveSpeed" then
+			local _, _, char = charParts(player)
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				restoreWalkSpeed(player, hum)
+				hum.WalkSpeed = hum.WalkSpeed * (1 + amount)
+				local cm = char:FindFirstChildWhichIsA("ControllerManager", true)
+				if cm then
+					cm.BaseMoveSpeed = hum.WalkSpeed
+				end
+				local token = {}
+				st.speedToken = token
+				task.delay(time or 4, function()
+					if st.speedToken == token and hum.Parent then
+						restoreWalkSpeed(player, hum)
+					end
+				end)
+			end
+		else
+			st.buffs[e.Block] = { untilT = time and (now + time) or nil, amount = amount, e = e }
+		end
+		longest = math.max(longest, time or 0)
+	end
+	if longest > 0 then
+		player:SetAttribute("Aura", color or Color3.fromRGB(255, 255, 255))
+		player:SetAttribute("AuraUntil", serverNow() + longest)
+	end
+	showBuffs(player, st, now)
+end
+
+-- your hit, with your effects on top: returns the damage and whether it's a crit
+local function boostHit(player, st, target, dmg, crit)
+	local now = os.clock()
+	local up = buff(st, "DamageUp", now)
+	if up then
+		dmg = dmg * (1 + up.amount)
+	end
+	local critUp = buff(st, "Crit", now)
+	if critUp and not crit and blockRng:NextNumber() < critUp.amount then
+		crit = true
+		dmg = dmg * Items.CritMultiplier
+	end
+	-- stacks (usually a Passive): each hit adds one; at Max, this hit bursts
+	local stacks = passive(player, "Stacks") or (buff(st, "Stacks", now) and buff(st, "Stacks", now).e)
+	if stacks then
+		st.stacks = (st.stacks or 0) + 1
+		if st.stacks >= (stacks.Max or 5) then
+			st.stacks = 0
+			dmg = dmg * (1 + (stacks.Amount or 0.5))
+			crit = true
+		end
+		player:SetAttribute("Stacks", st.stacks)
+	end
+	-- the next hit (used up by it); it can mark the target to take more for a while
+	local nextHit = buff(st, "NextHit", now)
+	if nextHit then
+		st.buffs.NextHit = nil
+		dmg = dmg * (1 + nextHit.amount)
+		crit = true
+		if nextHit.e.Mark and target and target.Parent then
+			target:SetAttribute("MarkedAmount", nextHit.e.Mark)
+			target:SetAttribute("MarkedUntil", serverNow() + (nextHit.e.MarkTime or 3))
+		end
+	end
+	-- a marked target takes more from everyone
+	if target and (target:GetAttribute("MarkedUntil") or 0) > serverNow() then
+		dmg = dmg * (1 + (target:GetAttribute("MarkedAmount") or 0))
+	end
+	return math.max(1, math.floor(dmg)), crit
+end
+
+-- after a hit lands: lifesteal and stamina back
+local function afterHit(player, st, weight)
+	local now = os.clock()
+	local steal = buff(st, "Lifesteal", now)
+	if steal then
+		local hum = charParts(player)
+		if hum then
+			hum.Health = math.min(hum.MaxHealth, hum.Health + hum.MaxHealth * steal.amount * (weight or 1))
+		end
+	end
+	local back = buff(st, "StaminaOnHit", now)
+	if back then
+		st.stamina = math.min(CC.MaxStamina, st.stamina + back.amount)
+	end
+end
+
+-- a hit coming at you: the guard takes a share, the shield eats it whole,
+-- thorns sting the nearest enemy back. Returns what's left of it.
+blockIncoming = function(player, st, amount)
+	local now = os.clock()
+	if buff(st, "Shield", now) then
+		st.buffs.Shield = nil
+		showBuffs(player, st, now)
+		return 0
+	end
+	local guard = buff(st, "Guard", now)
+	if guard then
+		amount = amount * (1 - math.min(0.8, guard.amount))
+	end
+	local thorns = buff(st, "Thorns", now)
+	if thorns then
+		local _, root = charParts(player)
+		local near = root and targetsInArc(root, player, thorns.e.Range or 14, 180)
+		if near and near[1] then
+			local dmg = CombatService.DamageAgainst(player, near[1])
+			hitTarget(player, near[1], math.max(1, math.floor(dmg * thorns.amount)), 1)
+		end
+	end
+	return amount
+end
+
+-- an area hit round you (an ability's Burst): hits everything within Radius
+local function burst(player, st, def, id, spec, scale)
+	local _, root = charParts(player)
+	if not root then
+		return
+	end
+	local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1) * (spec.Damage or 1.5) * scale
+	local count = 0
+	for _, target in ipairs(targetsInArc(root, player, spec.Radius or 10, 180)) do
+		local dmg, crit = CombatService.DamageAgainst(player, target)
+		dmg, crit = boostHit(player, st, target, dmg * mult, crit)
+		hitTarget(player, target, dmg, crit and 3 or 2)
+		afterHit(player, st, 1.5)
+		count = count + 1
+	end
+	addMastery(player, id, (W.MasteryPerHit or 1) * count)
+end
+
+-- the buff kind of ability: switch its effects on (and its Burst, if any)
+local function useBuffAbility(player, st, def, id, now)
+	local ab = def.Ability
+	if st.drinking or now < (st.abilityReadyAt or 0) or st.stamina < ab.Cost then
+		send(player, "Denied", "Ability")
+		return
+	end
+	local mastery = player:GetAttribute("Mastery") or 1
+	local scale = Config.blockScale(mastery)
+	st.abilityReadyAt = now + ab.Cooldown
+	st.busyUntil = now + (ab.Busy or 0.25)
+	spend(st, ab.Cost, now)
+	st.abilities = (st.abilities or 0) + 1
+	player:SetAttribute("PowerN", st.abilities) -- (every screen: a quick power-up flash)
+	send(player, "Ability", ab.Cooldown, 0)
+	applyEffects(player, st, ab.Effects, scale, ab.Aura)
+	if ab.Burst then
+		task.delay(ab.Burst.Delay or 0.15, function()
+			if fighters[player] == st then
+				burst(player, st, def, id, ab.Burst, scale)
+			end
+		end)
+	end
+end
+
 -- One swing of a weapon: like a punch (it commits you, costs stamina and lands
 -- partway through), but it cuts every enemy in its arc, hits as hard as the
 -- weapon's rarity and mastery say, and every enemy it hits is mastery.
@@ -918,11 +1145,14 @@ local function swingWeapon(player, st, def, kind, id, locked, swing, now)
 		local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1) * s.Damage
 		for _, target in ipairs(hit) do
 			local dmg, crit = CombatService.DamageAgainst(player, target)
-			hitTarget(player, target, math.max(1, math.floor(dmg * mult)), (crit or n == #kind.Swings) and 3 or n)
+			dmg, crit = boostHit(player, st, target, dmg * mult, crit)
+			hitTarget(player, target, dmg, (crit or n == #kind.Swings) and 3 or n)
+			afterHit(player, st, s.Damage)
 		end
 		addMastery(player, id, (W.MasteryPerHit or 1) * #hit)
 	end)
 end
+
 
 -- The weapon's ability (the Iron Sword's Whirlwind: spin round, cutting
 -- everything close to you). What it does comes from its tier - the highest
@@ -930,6 +1160,10 @@ end
 local function useAbility(player, st, def, id, now)
 	local ab = def.Ability
 	if not ab then
+		return
+	end
+	if not ab.Tiers then
+		useBuffAbility(player, st, def, id, now)
 		return
 	end
 	if st.drinking or now < (st.abilityReadyAt or 0) or st.stamina < ab.Cost then
@@ -962,7 +1196,9 @@ local function useAbility(player, st, def, id, now)
 				cut[target] = true
 				count = count + 1
 				local dmg, crit = CombatService.DamageAgainst(player, target)
-				hitTarget(player, target, math.max(1, math.floor(dmg * mult * tier.Damage)), (crit or last) and 3 or 2)
+				dmg, crit = boostHit(player, st, target, dmg * mult * tier.Damage, crit)
+				hitTarget(player, target, dmg, (crit or last) and 3 or 2)
+				afterHit(player, st, 1)
 			end
 			-- the shockwave off the last spin: what's a little further out
 			if last and tier.Ring then
@@ -1000,15 +1236,11 @@ end
 local function stopFighting(player)
 	fighters[player] = nil
 	send(player, "Stop")
-end
-
-local function restoreWalkSpeed(player, hum)
-	local d = PlayerService and PlayerService.GetData(player)
-	hum.WalkSpeed = Config.walkSpeedFor(player, d) -- capped while you're in an arena
-	local cm = hum.Parent and hum.Parent:FindFirstChildWhichIsA("ControllerManager", true)
-	if cm then
-		cm.BaseMoveSpeed = hum.WalkSpeed
-	end
+	-- (ability effects end with the fight)
+	player:SetAttribute("Aura", nil)
+	player:SetAttribute("AuraUntil", nil)
+	player:SetAttribute("Shield", nil)
+	player:SetAttribute("Stacks", nil)
 end
 
 local function onFloorChanged(player)

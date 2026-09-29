@@ -1686,8 +1686,12 @@ do
 		if punchLockUntil > 0 then
 			releasePunchLock()
 		end
-		Weapon.fx.spin(player, tierIndex) -- (straight away: it's your own)
-		commitToPunch(now, (ab.SpinTime or 0.32) * tier.Spins / CC.PunchLock) -- (you spin on the spot)
+		if tier then
+			Weapon.fx.spin(player, tierIndex) -- (straight away: it's your own)
+			commitToPunch(now, (ab.SpinTime or 0.32) * tier.Spins / CC.PunchLock) -- (you spin on the spot)
+		else
+			commitToPunch(now, (ab.Busy or 0.25) / CC.PunchLock) -- (a buff: a quick power-up)
+		end
 		comboSwing = 0
 	end
 
