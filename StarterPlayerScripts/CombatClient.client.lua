@@ -1668,10 +1668,11 @@ do
 		local move = Moves.of(id)
 		local key = move and (move.Anim or id)
 		local aid = key and AssetIds.Animations and AssetIds.Animations[key]
-		if not aid then
+		local n = aid and string.match(tostring(aid), "(%d+)%s*$") -- (a number, or "rbxassetid://...")
+		if not n then
 			return nil
 		end
-		return trackFor(tostring(aid), Enum.AnimationPriority.Action3)
+		return trackFor(n, Enum.AnimationPriority.Action3)
 	end
 	-- (warmed up the moment you pick the weapon up, so it plays right first time)
 	local function warmMove()

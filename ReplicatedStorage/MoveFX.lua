@@ -237,25 +237,33 @@ local function streak(a, b, color, width, time, o)
 end
 MoveFX.streak = streak
 
--- a crescent sweep round a spot (a spin, a sweep): glowing blades of light
--- drawn from angle a0 to a1 (degrees round, 0 = straight ahead)
+-- a crescent sweep round a spot (a spin, a sweep): a band of light drawn round
+-- from angle a0 to a1 (degrees, 0 = straight ahead, + = to the left), fattest
+-- in the middle, a bright edge along its outside, fading as it goes
 local function sweep(cf, radius, a0, a1, color, time, o)
 	o = o or {}
-	local n = o.count or math.max(6, math.floor(math.abs(a1 - a0) / 14))
-	local width = o.width or 1.6
+	local span = math.abs(a1 - a0)
+	local n = o.count or math.max(8, math.floor(span / 9))
+	local rMid = radius * (o.at or 0.72)
+	local band = o.width or radius * 0.3
+	local stepLen = rad(span / n) * rMid * 1.25
 	for i = 0, n do
 		local u = i / n
 		local a = rad(a0 + (a1 - a0) * u)
-		local dirv = (cf * CFrame.Angles(0, -a, 0)).LookVector
-		local pos = cf.Position + dirv * radius * 0.62 + V3(0, o.height or 0, 0)
-		local seg = newPart(V3(width, 0.3, radius * 0.9), CFrame.lookAt(pos, pos + dirv) * CFrame.Angles(0, 0, rad(o.tilt or 0)),
-			i % 2 == 0 and color or (o.color2 or color), Enum.Material.Neon, 0.05)
-		seg.Transparency = 1
+		local dirv = (cf * CFrame.Angles(0, a, 0)).LookVector
+		local fat = 0.3 + 0.7 * math.sin(math.pi * math.clamp(u, 0.04, 0.96))
+		local w = band * fat
+		local pos = cf.Position + dirv * rMid + V3(0, o.height or 0, 0)
+		local out = CFrame.lookAt(pos, pos + dirv) * CFrame.Angles(0, 0, rad(o.tilt or 0))
+		local seg = newPart(V3(stepLen, 0.22, w), out, i % 2 == 0 and color or (o.color2 or color), Enum.Material.Neon, 1)
+		local rim = newPart(V3(stepLen, 0.26, math.max(0.2, w * 0.2)), out * CFrame.new(0, 0.03, -w * 0.42), WHITE, Enum.Material.Neon, 1)
 		task.delay(u * (o.draw or 0.12), function()
-			seg.Transparency = 0.05
-			tween(seg, time, { Transparency = 1, Size = V3(width * 0.2, 0.3, radius * 1.05) })
+			seg.Transparency, rim.Transparency = 0.1, 0
+			tween(seg, time, { Transparency = 1, Size = V3(stepLen, 0.22, w * 0.3) })
+			tween(rim, time * 0.8, { Transparency = 1 })
 		end)
 		gone(seg, time + (o.draw or 0.12) + 0.05)
+		gone(rim, time + (o.draw or 0.12) + 0.05)
 	end
 end
 MoveFX.sweep = sweep
@@ -560,24 +568,29 @@ local function wheelProp()
 	end)
 end
 
--- Oozark's ghostly jaw: an upper and a lower half, each a slab of jelly with teeth
+-- Oozark's ghostly jaw: an upper and a lower half, built out forward (-Z) from
+-- their hinge at the back (the prop's root), so they open like a real jaw
 local function jawHalf(style, upper)
 	return prop(function(add)
 		local s = upper and 1 or -1
-		add(V3(11, 3.2, 7), CFrame.new(0, s * 1.6, 0), style.Main, Enum.Material.SmoothPlastic, 0.45)
-		add(V3(9, 1.8, 5), CFrame.new(0, s * 1.5, 0.6), RGB(26, 38, 22), Enum.Material.SmoothPlastic, 0.2)
-		add(V3(11.2, 0.5, 7.2), CFrame.new(0, s * 3.2, 0), style.Light, Enum.Material.SmoothPlastic, 0.4)
-		for i = -4, 4 do
-			local x = i * 1.2
-			add(V3(0.8, 1.4, 0.8), CFrame.new(x, -s * 0.5, -3.1), WHITE)
+		local core = RGB(26, 38, 22)
+		-- the jelly slab, a little domed, and its darker inside
+		add(V3(12, 2.6, 8), CFrame.new(0, s * 1.3, -4), style.Main, Enum.Material.SmoothPlastic, 0.4)
+		add(V3(9, 1.2, 6), CFrame.new(0, s * 2.7, -4.3), style.Light, Enum.Material.SmoothPlastic, 0.45)
+		add(V3(10.6, 0.6, 6.8), CFrame.new(0, s * 0.35, -4.2), core, Enum.Material.SmoothPlastic, 0.1)
+		-- teeth round the front and sides, pointing at the other half
+		for i = -5, 5 do
+			add(V3(0.9, 1.9, 0.9), CFrame.new(i * 1.05, -s * 0.8, -7.6), WHITE)
 		end
-		for _, z in ipairs({ -1.5, 0, 1.5 }) do
-			add(V3(0.8, 1.2, 0.8), CFrame.new(-5.1, -s * 0.4, z), WHITE)
-			add(V3(0.8, 1.2, 0.8), CFrame.new(5.1, -s * 0.4, z), WHITE)
+		for _, z in ipairs({ -6.2, -4.8, -3.4, -2.0 }) do
+			add(V3(0.9, 1.6, 0.9), CFrame.new(-5.6, -s * 0.7, z), WHITE)
+			add(V3(0.9, 1.6, 0.9), CFrame.new(5.6, -s * 0.7, z), WHITE)
 		end
 		if upper then
-			for _, x in ipairs({ -2.5, 2.5 }) do
-				add(V3(1.6, 1.6, 0.4), CFrame.new(x, 2.4, -3.55), RGB(236, 255, 170), Enum.Material.Neon)
+			-- Oozark's eyes, glowing on top
+			for _, x in ipairs({ -2.8, 2.8 }) do
+				add(V3(2.2, 1.4, 1.8), CFrame.new(x, 3.2, -6.2), RGB(236, 255, 170), Enum.Material.Neon)
+				add(V3(0.8, 0.9, 0.5), CFrame.new(x, 3.2, -7.2), INK)
 			end
 		end
 	end)
@@ -728,11 +741,23 @@ end
 R.GooGloves = {
 	Clap = function(ctx)
 		local s, at = ctx.style, chest(ctx, 1.6)
-		bits({ at = at, colors = { s.Main, s.Light, s.Glow }, count = 16, speed = { 6, 14 }, up = { 4, 12 }, size = 0.45, life = 0.7,
-			transparency = 0.2, floor = ctx.feet.Y })
-		ring(ctx.feet, s.Main, 7, 0.35, { size = 0.6 })
-		disc(ctx.feet, s.Glow, 5, 0.3)
-		light(at, s.Glow, 12, 0.3)
+		-- the goo bursting out between your fists, a jelly ring, drips raining down
+		bits({ at = at, colors = { s.Main, s.Light, s.Glow }, count = 22, speed = { 6, 16 }, up = { 4, 14 }, size = 0.5, life = 0.8,
+			transparency = 0.15, floor = ctx.feet.Y })
+		for i = 1, 10 do
+			local a = i / 10 * math.pi * 2
+			local p = newPart(V3(0.7, 0.7, 0.7), CFrame.new(at), s.Main, Enum.Material.SmoothPlastic, 0.2, Enum.PartType.Ball)
+			tween(p, 0.3, { CFrame = CFrame.new(at + (ctx.frame * CFrame.Angles(0, a, 0)).LookVector * 2.6 + V3(0, math.sin(a * 2) * 0.6, 0)),
+				Size = V3(1.1, 1.1, 1.1), Transparency = 0.5 })
+			task.delay(0.3, function()
+				tween(p, 0.35, { Size = V3(0.2, 0.2, 0.2), Transparency = 1, CFrame = p.CFrame - V3(0, 1.5, 0) })
+			end)
+			gone(p, 0.7)
+		end
+		ring(ctx.feet, s.Main, 8, 0.4, { size = 0.7 })
+		disc(ctx.feet, s.Glow, 6, 0.35)
+		light(at, s.Glow, 14, 0.35)
+		pop(at + V3(0, 3, 0), "STICKY!", s.Light, 5, 0.7)
 		sfx({ "Orb Land", "Punch 2" }, at)
 	end,
 }
@@ -857,36 +882,41 @@ R.GelatinousEdge = {
 	end,
 	Jaw = function(ctx)
 		local s = ctx.style
-		local base = ctx.frame * CFrame.new(0, 2, -8)
+		-- hinged at its back, 5 studs in front of you, facing away (at them)
+		local hinge = ctx.frame * CFrame.new(0, 2.4, -5)
 		local top, troot = jawHalf(s, true)
 		local bot, broot = jawHalf(s, false)
-		-- they open wide, hang there, then snap shut on the Chomp (0.38 s later)
+		-- it opens wide (0.25 s), hangs there, then snaps shut on the Chomp
+		-- (0.38 s after it appeared) - and melts away into goo
 		local t0 = os.clock()
 		local conn
 		conn = RunService.Heartbeat:Connect(function()
 			local t = os.clock() - t0
 			local open
 			if t < 0.25 then
-				open = t / 0.25
-			elseif t < 0.36 then
+				open = 1 - (1 - t / 0.25) ^ 3
+			elseif t < 0.33 then
 				open = 1
 			else
-				open = math.max(0, 1 - (t - 0.36) / 0.06)
+				open = math.max(0, 1 - (t - 0.33) / 0.05)
 			end
-			local gap = 0.4 + open * 4.5
-			local tilt = open * 18
-			troot.CFrame = base * CFrame.new(0, gap, 0) * CFrame.Angles(rad(tilt), 0, 0)
-			broot.CFrame = base * CFrame.new(0, -gap * 0.6, 0) * CFrame.Angles(rad(-tilt * 0.6), 0, 0)
-			if t > 0.75 then
+			local rise = 0.3 + 0.2 * open
+			troot.CFrame = hinge * CFrame.new(0, rise, 0) * CFrame.Angles(rad(40 * open), 0, 0)
+			broot.CFrame = hinge * CFrame.new(0, -rise, 0) * CFrame.Angles(rad(-28 * open), 0, 0)
+			if t > 0.62 then
 				conn:Disconnect()
+				local at = (hinge * CFrame.new(0, 0, -4)).Position
+				bits({ at = at, colors = { s.Main, s.Light, WHITE }, count = 22, speed = { 4, 12 }, up = { 2, 10 }, size = 0.7, life = 0.8,
+					transparency = 0.2, floor = ctx.feet.Y })
 				top:Destroy()
 				bot:Destroy()
 			end
 		end)
+		sfx(WHOOSH, ctx.frame.Position, 0.6)
 	end,
 	Chomp = function(ctx)
 		local s = ctx.style
-		local at = ahead(ctx, 8)
+		local at = ahead(ctx, 9)
 		slam(ctx, at, 12, { s.Glow, s.Main, s.Light }, { bits = 26, size = 0.7, sound = BOOM })
 		pop(at + V3(0, 7, 0), "CHOMP!", s.Glow, 9, 0.9)
 		if ctx.own or nearMe(at, 30) then

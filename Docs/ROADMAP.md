@@ -52,21 +52,27 @@ sound effects.
 `Tools/Weapons`), its moveset (shared by its type), its ability, sounds, and
 its card picture for the Arcade menu.
 
-- [x] **The type movesets:** gauntlets, Hammer, Daggers, Scythe, Katana (drawn in code). Still to come: the katana's quick-draw, and uploaded animations to replace the code-drawn ones if you want them smoother.
-- [ ] **The 5 shared Epic moves:** dash-strike, spin, ground slam, leap strike, uppercut (re-coloured per pack).
-- [ ] **The Open Cloud uploader:** one command uploads every model and animation and writes all the IDs into the game - no copying 68 IDs by hand. (You'll need to make an API key once.)
+- [x] **The type movesets:** gauntlets, Hammer, Daggers, Scythe, Katana, animated the same way as the sword's and uploaded (their IDs are in Config). The gauntlets punch exactly like your bare fists. Still to come: the katana's quick-draw.
+- [x] ~~The 5 shared Epic moves~~ Better: **every weapon has its own real ability** (all 30): what it hits, when, and how it looks on every screen (`ReplicatedStorage/Moves` and `MoveFX`).
+- [x] **The Open Cloud uploader:** `Tools/Upload/upload_assets.bat` uploads every model and ability animation and copies all the IDs for you to paste to me - no copying IDs one by one. (You make an API key; see `Tools/Upload/README.md`.)
 - [ ] **Starters:** Training Wraps (Fists) ✅ · Iron Sword ✅ (make it the free early-quest weapon)
 
 **Launch: a machine on every second floor (1, 3, 5, 7, 9) = 5 packs, 30 weapons.** Your first roll comes right after your first boss.
 
 - [ ] **Slime (Oozark):** Goo Gloves · Jellyblade · Gelatin Hammer · Ooze Daggers · Acid Scythe · *Gelatinous Edge* (Secret)
+  - [x] 3D models (`Docs/weapons/slime.png`), abilities with their effects and animations (`Docs/animations/slime_abilities_fx.mp4`)
+  - [ ] You: run the uploader and paste me the IDs, then play-test the pack
+  - [ ] Sounds, and the card pictures for the Arcade menu
 - [ ] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
 - [ ] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
 - [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
 - [ ] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
 
 (Each pack is Common → Rare → Epic → Legendary → Mythic → Secret, in that
-order. One test weapon goes first so you can play-test a roll.)
+order. One test weapon goes first so you can play-test a roll.) The Slime pack
+goes first; the other four packs' abilities already work (with blocky
+stand-in models), and their 3D models are drafted but not finished - they
+come one pack at a time after you've play-tested Slime.
 
 **Updates after launch (the even floors, one "NEW WEAPON PACK!" update each; the Throne pack is the big one):**
 

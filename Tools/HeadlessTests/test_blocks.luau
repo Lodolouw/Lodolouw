@@ -1,10 +1,10 @@
 --!nocheck
--- Headless test of ABILITY BUILDING BLOCKS on the server (CombatService).
--- "Weapons" part), with a pretend player standing among punchable targets.
--- It checks fists are still fists, and that the Iron Sword's swings cut
--- every enemy in their arc (and nothing behind), hit harder with mastery,
--- keep their timing and stamina costs, and that the Whirlwind spins,
--- cools down and gets better at each mastery quarter.
+-- Headless test of ABILITY BUILDING BLOCKS on the server (CombatService,
+-- "Ability building blocks"), with a pretend player standing among punchable
+-- targets. It checks using an ability tells every screen and turns its aura
+-- on; DamageUp and Lifesteal work and wear off; the cooldown; Shield eats the
+-- first hit, Guard halves the next; a Burst hits round you; NextHit's Mark;
+-- Stacks burst every third hit; and leaving the fight clears it all.
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)

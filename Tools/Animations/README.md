@@ -81,6 +81,10 @@ plane), but baked into the game instead of uploaded:
   to publish from the Animation Editor like the sword's - only if you want them
   as uploaded animations; not needed).
 
+They've since been uploaded too (below: `upload_animations.bat`), and their IDs
+are in `Config.Weapons.Types`: a type with uploaded swings plays those, and the
+baked clips are only what's played when a type has none.
+
 ```
 python3 export_types.py
 python3 preview_types.py sheet types.png
@@ -91,8 +95,53 @@ python3 preview_types.py video ../../Docs/animations/weapon_types.mp4
 
 You don't have to publish animations one by one. `python3 export_types.py --rbxmx`
 also writes each animation as its own file in `upload/`. Double-click
-`upload_animations.bat` on Windows: it asks for an Open Cloud API key (with Assets
-read + write) and your user or group ID, uploads every file, and writes the IDs
-straight into `Config.Weapons.Types.<Type>.Animations`. Uploads that worked are
-remembered in `%LOCALAPPDATA%\Lodolouw\animation_ids.txt`, so running it again only does the missing ones.
+`upload_animations.bat` on Windows: it reads an Open Cloud API key (with Assets
+read + write) from your clipboard, asks your user or group ID, uploads every
+file, and writes the IDs straight into `Config.Weapons.Types.<Type>.Animations`
+(if Windows won't let it write there, it prints them to paste to Claude).
+Uploads that worked are remembered in `%LOCALAPPDATA%\Lodolouw\animation_ids.txt`,
+so running it again only does the missing ones. (The weapon models and the
+abilities' animations have their own: `Tools/Upload/upload_assets.bat`.)
 (Studio's own AssetService:CreateAssetAsync is switched off by Roblox for now.)
+
+## The weapon abilities (abilities.py)
+
+Each weapon's ability (F) has its own animation, made the same way as the
+types' swings (posing by direction, swings round a plane) and timed to its
+move in `ReplicatedStorage/Moves`: its big moment lands exactly when the
+move's hit or effect is due, and it lasts the move's `Time`. Change the two
+together. **The Slime pack only for now**; the other packs' come with their
+weapons.
+
+- Goo Gloves, Sticky Fists: fists flung out wide, then a CLAP in front of the
+  chest (0.18 s, the goo splat).
+- Jellyblade, Wobble Guard: the blade snaps up flat in front of you, the free
+  hand braced on it (0.15 s, the jelly bubble).
+- Gelatin Hammer, Goo Slam: up with the hop, the hammer high behind the head,
+  and down it slams (0.42 s).
+- Ooze Daggers, Slime Trail: low, blades crossed, through the dash, then ripped
+  out wide in an X (0.40 s).
+- Acid Scythe, Acid Rain: a coil, then a full spin with the blade out flat
+  (0.22 s).
+- Gelatinous Edge, Oozark's Jaw: a quick-draw, crouched with the hand on the
+  hilt while the jaw opens, then a flash of a draw straight across (0.68 s,
+  the chomp).
+
+```
+python3 abilities.py            # -> abilities/<weapon>.rbxmx (one KeyframeSequence each, 30 keyframes a second)
+python3 abilities.py preview    # -> Docs/animations/slime_abilities.mp4 and .png (front and side, full speed and slow)
+```
+
+They're uploaded with the models by `Tools/Upload/upload_assets.bat` (see
+`Tools/Upload/README.md`), and their IDs go in `ReplicatedStorage/AssetIds.lua`
+(`Animations`, by weapon id). Your screen plays one on your character when you
+use the ability (priority Action3, so it wins over the idle and the swings);
+while it plays, WeaponFX leaves the body and the weapon to it. An ability
+without its animation still does everything else. The gauntlets' animations
+leave the weapon alone (they sit on the fists).
+
+The effects themselves (splats, the jelly bubble, the jaw...) are made in code
+on every screen (`ReplicatedStorage/MoveFX`). A film of them played out with
+these animations: `Docs/animations/slime_abilities_fx.mp4`
+(`Tools/HeadlessTests`: `luau abilities_film.luau > film.txt`, then
+`python3 render_abilities.py film.txt out.mp4`).

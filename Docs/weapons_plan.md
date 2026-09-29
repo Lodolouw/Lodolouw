@@ -178,4 +178,10 @@ already made (Ember Cleaver, Tidefang, Voidstar).
   Open Cloud Assets API can upload animations. So: one script uploads every
   exported animation (and weapon model) with an Open Cloud API key and writes
   all the new IDs into one file the game reads (`AnimationIds.lua`), which Rojo
-  syncs. One command instead of 68 uploads and 68 copied IDs. (Not built yet.)
+  syncs. One command instead of 68 uploads and 68 copied IDs. **Built:**
+  `Tools/Upload/upload_assets.bat` (the models and the abilities' animations;
+  it copies the IDs, which go in `ReplicatedStorage/AssetIds.lua` - Windows
+  wouldn't let it write into the project in Documents) and
+  `Tools/Animations/upload_animations.bat` (the types' swings, IDs in Config).
+  The 5 shared Epic moves were dropped: every weapon got its own ability
+  instead (`ReplicatedStorage/Moves`).

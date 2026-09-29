@@ -60,7 +60,7 @@ local function load(key, id)
 end
 
 for key, id in pairs(ids) do
-	local n = tonumber(id)
+	local n = tonumber(string.match(tostring(id), "(%d+)%s*$")) -- (a number, or "rbxassetid://...")
 	if n and n > 0 and not folder:FindFirstChild(key) then
 		task.spawn(load, key, n)
 	end

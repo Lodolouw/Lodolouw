@@ -35,6 +35,10 @@ MARKERS = {
     'SwordSwing3': [('Cut', 0.24), ('Hit', 0.3375), ('Through', 0.60)],
 }
 
+# animations that leave the weapon in the hand alone (no "Handle" pose): the
+# gauntlets' abilities - the game holds gauntlets on the fists itself
+NO_HANDLE = set()
+
 _ref = [0]
 
 
@@ -75,13 +79,13 @@ def pose_xml(name, m, children, indent):
     return '\n'.join(out)
 
 
-def keyframe_xml(t, tr, markers, indent):
+def keyframe_xml(t, tr, markers, indent, handle=True):
     """one keyframe: the pose tree HumanoidRootPart > Torso > (Head, arms, legs; the Handle under the right arm)"""
     I = r6.cf()
     d = indent + 3
     limbs = [
         pose_xml('Head', tr['Neck'], [], d + 1),
-        pose_xml('Right Arm', tr['Right Shoulder'], [pose_xml('Handle', tr['Grip'], [], d + 2)], d + 1),
+        pose_xml('Right Arm', tr['Right Shoulder'], [pose_xml('Handle', tr['Grip'], [], d + 2)] if handle else [], d + 1),
         pose_xml('Left Arm', tr['Left Shoulder'], [], d + 1),
         pose_xml('Right Leg', tr['Right Hip'], [], d + 1),
         pose_xml('Left Leg', tr['Left Hip'], [], d + 1),
@@ -123,7 +127,7 @@ def sequence_xml(anim, indent=1):
     for t in times:
         tr = anims.dir_transforms(anim.at(t))
         here = [name for name, mt in marks if abs(mt - t) < 1e-6]
-        out.append(keyframe_xml(t, tr, here, indent + 1))
+        out.append(keyframe_xml(t, tr, here, indent + 1, handle=anim.name not in NO_HANDLE))
     out.append(pad + '</Item>')
     return '\n'.join(out)
 

@@ -366,6 +366,39 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   (their idle and swing left alone), one that doesn't arrive in 0.15 s is
   drawn in code, and code steps aside if it turns up late; leaving the fight
   stops and throws the tracks away; no 3D model: the blocky sword.
+- `test_weapon_save.luau` - OWNING WEAPONS on the server: you can only
+  equip what you own, and the weapon in your hand and every weapon's mastery
+  are kept in the save (`data.Weapons`); the held weapon goes back in your
+  hand when you join.
+- `test_weapontypes.luau` - the WEAPON TYPES in WeaponFX (gauntlets, hammer,
+  daggers, scythe, katana): each one in hand (two for gauntlets and daggers),
+  its own stance, and every swing of its string - an arm really swings, the
+  smear shows through the cut, the feet stay down, and it settles back.
+  `-a trace` prints which way the weapon points every frame; `-a poses` the
+  blocks and poses for `render_weapontypes.py`.
+- `test_blocks.luau` - ABILITY BUILDING BLOCKS on the server: the aura and
+  PowerN, DamageUp and Lifesteal (and wearing off), the cooldown, Shield,
+  Guard, a Burst, NextHit's Mark, Stacks, and leaving the fight clearing it
+  all.
+- `test_voxelhold.luau` - holding the VOXEL WEAPONS' 3D models
+  (`Tools/Weapons`): a pretend imported model, turned, moved and scaled any
+  old way, is held exactly where its markers say at its true size, the
+  markers gone, each mesh coloured from `WeaponModelInfo`, one in each hand
+  for gauntlets and daggers, gold metal when awakened, and the blocky one
+  until the model arrives (then the real one swaps in).
+- `test_moves.luau` - every weapon ABILITY MOVE on the server (all 30,
+  `ReplicatedStorage/Moves`): each one used among dummies hurts only what it
+  should (close in front, never the far dummy, nothing before its first hit
+  is due); the patches it leaves keep hurting and slow; things thrown fly
+  and hit; a spot it picks is the dummy you're locked on to, and every screen
+  is told (AbilityFx); the aura and its style; the specials (No Quarter's
+  gold wave, Copy-Paste's copies, Victory Lap's rolls); cooldowns and
+  stamina.
+- `test_movefx.luau` - how every ability LOOKS (`ReplicatedStorage/MoveFX`):
+  each weapon's move played on your own screen and on someone else's, the
+  spots the server picks, every building block's moment and every style's
+  aura - each really draws something, nothing errors or warns, and it all
+  tidies itself up.
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,
@@ -418,6 +451,15 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   frozen as he plunges. The film's clock runs faster or slower than the
   game's in places (the scene's header says where); `--sheet` draws a 3 x 3
   contact sheet (`Docs/youtube/burrowmore_cutscene_frames.png`).
+- `abilities_film.luau` + `render_abilities.py` - the weapon abilities'
+  EFFECTS filmed from the real MoveFX (`Docs/animations/slime_abilities_fx.mp4`):
+  each Slime ability used in turn among dummies, with tweens really playing
+  out; the renderer draws the player posed by the ability's own animation
+  (`Tools/Animations/abilities.py`) holding the blocky stand-in, with the
+  pops and flashes on top: `luau abilities_film.luau > film.txt`, then
+  `python3 render_abilities.py film.txt out.mp4` (`--sheet` for a PNG of key
+  moments). `film_draw.py` is the drawing both use (from
+  `render_burrowmore_cutscene.py`).
 
 Run them all with `./run_all.sh` (it ends with `./golden.sh check`) (needs the Luau tools from
 https://github.com/luau-lang/luau/releases; the pictures also need Python

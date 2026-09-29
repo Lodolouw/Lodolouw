@@ -88,6 +88,20 @@ local W = Config.Weapons or { List = {}, Types = {}, MasteryMax = 100 }
 local WeaponFX = {}
 local rad = math.rad
 
+-- the weapon abilities' uploaded animations (ReplicatedStorage/AssetIds): while
+-- one plays it has the body and the weapon in the hand, like a swing does
+local ABILITY_IDS = {}
+pcall(function()
+	local m = ReplicatedStorage:WaitForChild("AssetIds", 5)
+	local ids = m and require(m)
+	for _, id in pairs(ids and ids.Animations or {}) do
+		local n = tonumber(string.match(tostring(id), "(%d+)%s*$"))
+		if n then
+			ABILITY_IDS[n] = true
+		end
+	end
+end)
+
 -- the weapon types' baked animations (ReplicatedStorage/WeaponClips, made by
 -- Tools/Animations/export_types.py): see "Clips" below
 local CLIPS = nil
@@ -1090,7 +1104,7 @@ local function animsPlaying(h)
 	if not ok or type(list) ~= "table" then
 		return nil, nil, 0, 0
 	end
-	local swingN, swingTrack, idleW, swingW = nil, nil, 0, 0
+	local swingN, swingTrack, idleW, swingW, abilityW = nil, nil, 0, 0, 0
 	for _, track in ipairs(list) do
 		local id = idOf(track)
 		local fine, weight, length, playing = pcall(function()
@@ -1098,7 +1112,9 @@ local function animsPlaying(h)
 		end)
 		if fine and id and (tonumber(length) or 0) > 0 then
 			weight = math.clamp(tonumber(weight) or 1, 0, 1)
-			if id == ids.idle then
+			if ABILITY_IDS[id] and playing ~= false then
+				abilityW = math.max(abilityW, weight) -- (an ability's animation: it holds the weapon too)
+			elseif id == ids.idle then
 				idleW = math.max(idleW, weight)
 			elseif playing ~= false then
 				-- (a swing that's been stopped is only fading out: the next one has it)
@@ -1110,7 +1126,7 @@ local function animsPlaying(h)
 			end
 		end
 	end
-	return swingN, swingTrack, idleW, swingW
+	return swingN, swingTrack, idleW, swingW, abilityW
 end
 
 local function loaded(track)
@@ -1591,7 +1607,7 @@ local function targetFor(plr, h, dt)
 	-- the uploaded animations: your own idle plays while you stand still with
 	-- nothing else going on; on every screen, while it or a swing plays, the
 	-- body and the grip are theirs (the Whirlwind, made in code, always wins)
-	local swingN, swingTrack, idleW, swingW = animsPlaying(h)
+	local swingN, swingTrack, idleW, swingW, abilityW = animsPlaying(h)
 	local spinning = h.anim ~= nil and h.anim.kind == "spin"
 	if spinning then
 		swingN, swingTrack, idleW, swingW = nil, nil, 0, 0
@@ -1626,7 +1642,7 @@ local function targetFor(plr, h, dt)
 		end
 	end
 	-- how much the animations hold the blade (see stepOne)
-	h.animGrip = drawn and 0 or math.max(idleW, swingW)
+	h.animGrip = drawn and 0 or math.max(idleW, swingW, abilityW or 0)
 	local mode, turn, cutting = "idle", 0, false
 	local a = h.anim
 	if a then
