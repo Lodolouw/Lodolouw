@@ -8,6 +8,8 @@ video's title (along the bottom).
     python3 make_end_card.py                 -> end_card_day2.mp4 and .png
     python3 make_end_card.py --day 3         -> for day 2's video (DAY 3 TOMORROW!)
     python3 make_end_card.py --goal 1K       -> a different likes goal
+    python3 make_end_card.py --subs          -> end_card_10k_subs.mp4: the reusable
+        2-second card (SUBSCRIBE TO UNLOCK THE GAME!, GOAL: 10K SUBS, no day on it)
 
 Needs Pillow and numpy; the video also needs imageio-ffmpeg
 (pip install imageio-ffmpeg) - without it you just get the picture.
@@ -22,11 +24,16 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--day', type=int, default=2, help='the day the card promises for tomorrow')
 ap.add_argument('--goal', default='10K', help='the likes goal on the bar')
 ap.add_argument('--fill', type=float, default=0.12, help='how full the goal bar ends up (0-1)')
+ap.add_argument('--subs', action='store_true', help='the reusable card: a subscribers goal, no day, 2 seconds')
+ap.add_argument('--seconds', type=float, default=None, help='how long the video is (3, or 2 with --subs)')
 ap.add_argument('--out', default=os.path.dirname(os.path.abspath(__file__)))
 ap.add_argument('--preview', default=None, help='also save a strip of frames here (to check it)')
 args = ap.parse_args()
 
-W, H, FPS, SECONDS = 1080, 1920, 30, 3.0
+W, H, FPS, SECONDS = 1080, 1920, 30, 3.0  # (SECONDS: how long the animation is, in its own time)
+LENGTH = args.seconds or (2.0 if args.subs else SECONDS + 0.5)  # how long the video is
+# (a shorter video plays the animation faster, finishing a third of a second before the end)
+SPEED = max(1.0, SECONDS / max(LENGTH - 0.35, 0.1))
 CELL = 12  # the background's pixels
 GW, GH = W // CELL, H // CELL
 MID = (540, 790)  # Oozlet's middle, and the middle of the rays
@@ -178,10 +185,12 @@ def button():
 # the bottom ~300 pixels on YouTube, and its buttons the right edge)
 BAR_Y = 1120
 BUTTON_Y = 1390
-LINE1 = "LIKE TO UNLOCK"
+LINE0 = "SUBSCRIBE TO" if args.subs else None
+LINE1 = "UNLOCK" if args.subs else "LIKE TO UNLOCK"
 LINE2 = "THE GAME!"
-LABEL = "GOAL: %s LIKES" % args.goal.upper()
-TOMORROW = "DAY %d TOMORROW!" % args.day
+LABEL = "GOAL: %s %s" % (args.goal.upper(), "SUBS" if args.subs else "LIKES")
+TOMORROW = None if args.subs else "DAY %d TOMORROW!" % args.day
+TITLE0 = text_image(LINE0) if LINE0 else None
 TITLE1, TITLE2 = text_image(LINE1), text_image(LINE2)
 LOCK, BUTTON = padlock(), button()
 
@@ -206,9 +215,14 @@ def frame_at(t):
     body = sprite.resize((w, h), Image.NEAREST)
     bottom_of_sprite = FEET + (50 - 43) * SIZE * sy  # (the sprite goes a few rows below his feet)
     frame.alpha_composite(body, (MID[0] - w // 2, int(bottom_of_sprite - h + fall + bob)))
-    # LIKE TO UNLOCK / THE GAME!
-    paste(frame, TITLE1, W / 2, 170, pop_scale(t, 0.28, [3, 7, 12, 11, 10]))
-    paste(frame, TITLE2, W / 2, 290, pop_scale(t, 0.42, [5, 11, 18, 16, 15]))
+    # LIKE TO UNLOCK / THE GAME! (or SUBSCRIBE TO / UNLOCK / THE GAME!)
+    if TITLE0:
+        paste(frame, TITLE0, W / 2, 105, pop_scale(t, 0.2, [3, 7, 11, 10, 9]))
+        paste(frame, TITLE1, W / 2, 205, pop_scale(t, 0.3, [4, 9, 14, 13, 12]))
+        paste(frame, TITLE2, W / 2, 335, pop_scale(t, 0.42, [5, 11, 17, 15, 14]))
+    else:
+        paste(frame, TITLE1, W / 2, 170, pop_scale(t, 0.28, [3, 7, 12, 11, 10]))
+        paste(frame, TITLE2, W / 2, 290, pop_scale(t, 0.42, [5, 11, 18, 16, 15]))
     # the goal bar wipes in and fills a little; the padlock drops onto its end
     if t >= 0.9:
         bar = goal_bar(args.fill * ease_out((t - 1.05) / 0.5)).resize((700, 90), Image.NEAREST)
@@ -229,14 +243,14 @@ def frame_at(t):
         scale = 1 + 0.04 * math.sin(2 * math.pi * (t - 1.62) / 0.7)
     if scale > 0:
         paste(frame, BUTTON, 470, BUTTON_Y - BUTTON.height * scale / 2, scale)  # (centred on BUTTON_Y)
-    if t >= 1.7:
+    if TOMORROW and t >= 1.7:
         tomorrow = text_image(TOMORROW, fill=YEL, chars=int((t - 1.7) / 0.035))
         paste(frame, tomorrow, 470, BUTTON_Y + 90, 7)
     return frame.convert("RGB")
 
 
-frames = int(SECONDS * FPS)
-base = os.path.join(args.out, "end_card_day%d" % args.day)
+frames = int(round(LENGTH * FPS))
+base = os.path.join(args.out, ("end_card_%s_subs" % args.goal.lower()) if args.subs else ("end_card_day%d" % args.day))
 last = frame_at(SECONDS)
 last.save(base + ".png")
 print("saved", base + ".png")
@@ -259,7 +273,7 @@ else:
     writer = imageio_ffmpeg.write_frames(base + ".mp4", (W, H), fps=FPS, quality=9, codec="libx264", macro_block_size=1,
                                          output_params=["-tune", "animation", "-movflags", "+faststart"])
     writer.send(None)
-    for i in range(frames + FPS // 2):  # (holds the finished card for half a second more)
-        writer.send(np.asarray(frame_at(min(SECONDS, i / FPS))).tobytes())
+    for i in range(frames):  # (the animation sped up to fit, then the finished card held)
+        writer.send(np.asarray(frame_at(min(SECONDS, i / FPS * SPEED))).tobytes())
     writer.close()
     print("saved", base + ".mp4")
