@@ -2,7 +2,7 @@
 	Kongo  (ModuleScript, parent: ServerScriptService > Bosses, name: "Kongo")
 
 	Floor 7's boss: Kongo, the Jungle Brawler (Config.Bosses[7]) - a big,
-	cocky gorilla in a red tie who fights up close with the moves from his
+	cocky silverback gorilla with a gold banana chain who fights up close with the moves from his
 	games. A brawl on flat ground: every move has a wind-up you can read, a
 	way to dodge it, and a moment afterwards when he's open. He fights on the
 	surface, so BossService's shared brain runs him (it picks a move that

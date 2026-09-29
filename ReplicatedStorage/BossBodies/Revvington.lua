@@ -475,7 +475,7 @@ function Body.build(def)
 	body.posts = { add("SpoilerPost", ink), add("SpoilerPost", ink) }
 	body.wing = add("Spoiler", paint)
 	body.wingEdge = add("SpoilerEdge", stripe)
-	-- THE LIGHTNING BOLTS down his sides (and one on his bonnet), his number
+	-- THE RACING STRIPES down his sides (and one over his bonnet), his number
 	body.bolts = { {}, {} }
 	for i = 1, 2 do
 		for k = 1, 3 do
@@ -858,7 +858,7 @@ local function applyPose(B, P, ground, facing, t, dt)
 	put(body.wing, 0, wingY + 0.2, 7.9, phase2 and 9.2 or 8.4, 0.45, 2.0)
 	put(body.wingEdge, 0, wingY + 0.47, 8.75, phase2 and 9.3 or 8.5, 0.2, 0.35)
 
-	-- THE LIGHTNING BOLTS down his sides (glowing in TURBO) and his number
+	-- THE RACING STRIPES down his sides (glowing in TURBO) and his number
 	for i = 1, 2 do
 		local s = (i == 1) and -1 or 1
 		for k, bar in ipairs(BOLT) do

@@ -2,7 +2,7 @@
 	Revvington  (ModuleScript, parent: ServerScriptService > Bosses, name: "Revvington")
 
 	Floor 5's boss: Speedy Revvington, King of the Speedway (Config.Bosses[5])
-	- a cocky red race car in a DRIVE-BY DUEL. Like a knight on horseback: he
+	- a cocky orange muscle car in a DRIVE-BY DUEL. Like a knight on horseback: he
 	charges at you, drives past swinging his tail, rears up, skids round and
 	charges again. He has his own brain (Boss.brain) and his own every-frame
 	step (Boss.step): he never walks - everything he does is DRIVING, a chain

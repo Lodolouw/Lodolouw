@@ -90,6 +90,8 @@ local PINK = RGB(246, 117, 122)
 local PURPLE = RGB(104, 56, 108)
 local FUR = RGB(115, 62, 57)
 local SKIN = RGB(232, 183, 150)
+local GOLD = RGB(254, 174, 52)
+local KONGO_FACE = RGB(165, 160, 172) -- (Kongo's pale grey face, on the totem)
 local RAINBOW = { RED, ORANGE, YELLOW, GRASS, WATER_LIGHT, WATER, PURPLE }
 
 ----------------------------------------------------------------------
@@ -570,14 +572,15 @@ local function totem(p)
 		local y = (i - 1) * 5
 		part("TotemBlock", V3(5, 5, 5), cf * CFrame.new(0, y + 2.5, 0), c, SCENERY)
 		part("TotemBrow", V3(5.2, 0.9, 1), cf * CFrame.new(0, y + 3.7, -2.4), BARK, DECOR)
-		part("TotemMuzzle", V3(3.4, 2, 1), cf * CFrame.new(0, y + 1.6, -2.5), (i == 3) and SKIN or WOOD_LIGHT, DECOR)
+		part("TotemMuzzle", V3(3.4, 2, 1), cf * CFrame.new(0, y + 1.6, -2.5), (i == 3) and KONGO_FACE or WOOD_LIGHT, DECOR)
 		for _, sx in ipairs({ -1, 1 }) do
 			part("TotemEye", V3(0.9, 0.9, 0.3), cf * CFrame.new(sx * 1.1, y + 2.9, -2.55), (i == 3) and WHITE or YELLOW, DECOR)
 		end
 		part("TotemMouth", V3(2, 0.4, 0.3), cf * CFrame.new(0, y + 1.1, -3.05), INK, DECOR)
 	end
-	-- Kongo's own face on top: a red tie painted under it, and a crown of leaves
-	part("TotemTie", V3(1.6, 2.4, 0.3), cf * CFrame.new(0, 10.5 - 1.2, -2.6), RED, DECOR)
+	-- Kongo's own face on top (painted grey): his gold banana chain under it, and a crown of leaves
+	part("TotemChain", V3(3.6, 0.5, 0.3), cf * CFrame.new(0, 10.5 - 0.5, -2.6), GOLD, DECOR)
+	part("TotemBanana", V3(1.4, 0.7, 0.35), cf * CFrame.new(0, 10.5 - 1.3, -2.65), YELLOW, DECOR)
 	for k = -2, 2 do
 		part("TotemLeaf", V3(1.2, 3, 0.5), cf * CFrame.new(k * 1.1, 16.2, 0) * CFrame.Angles(0, 0, k * 0.28), GRASS, DECOR)
 	end

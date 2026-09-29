@@ -2,10 +2,11 @@
 	Kongo  (ModuleScript, parent: ReplicatedStorage > BossBodies, name: "Kongo")
 
 	How Kongo, the Jungle Brawler (floor 7's boss, Config.Bosses[7]) looks on
-	your screen: a big chunky 8-bit gorilla nearly three times your height -
-	brown fur, a tan face with a big muzzle, a heavy brow, a tuft of hair on
-	top, huge arms that hang down to his knuckles, and a gold chain round his
-	neck with a big banana medallion (a charcoal silverback, pale grey face). In round 2 his face goes angry red.
+	your screen: a big chunky 8-bit silverback gorilla nearly three times your
+	height - charcoal fur with a silver saddle on his back, a pale grey face
+	with a big muzzle, a heavy brow, a tuft of hair on top, huge arms that hang
+	down to his knuckles, and a gold chain round his neck with a big banana
+	medallion. In round 2 his face goes angry red.
 
 	Everything he does is drawn from what the server publishes (see
 	ServerScriptService/Bosses/Kongo.lua, where each move is explained):
@@ -201,7 +202,7 @@ function Body.build(def)
 	body.belly = add("Belly", fur, nil, "fur")
 	body.chest = add("Chest", fur, nil, "fur")
 	body.shoulders = { add("Shoulder", fur, nil, "fur"), add("Shoulder", fur, nil, "fur") }
-	body.back = add("BackFur", deep, nil, "fur")
+	body.back = add("BackFur", def.BackColor or deep, nil, "fur") -- (a silverback: the silver saddle on his back)
 	-- THE CHAIN: a gold collar, two strands in a V, and a banana medallion
 	-- (the pieces keep their old "Tie" names)
 	body.knot = add("TieKnot", def.TieColor or RED)
@@ -215,7 +216,7 @@ function Body.build(def)
 		body.foreArms[i] = add("ForeArm", fur, nil, "fur")
 		body.hands[i] = add("Hand", skin, nil, "skin")
 	end
-	-- the head: fur, a tan face and big muzzle, a heavy brow, a tuft of hair
+	-- the head: fur, a grey face and big muzzle, a heavy brow, a tuft of hair
 	body.head = add("Head", fur, nil, "fur")
 	body.tuft = { add("HairTuft", fur, nil, "fur"), add("HairTuft", deep, nil, "fur"), add("HairTuft", fur, nil, "fur") }
 	body.face = add("Face", skin, nil, "skin")

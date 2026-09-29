@@ -2090,6 +2090,7 @@ Config.Bosses = {
 		Color = Color3.fromRGB(70, 68, 82), -- his charcoal fur
 		DeepColor = Color3.fromRGB(38, 36, 50), -- the fur in shadow, his brow
 		SkinColor = Color3.fromRGB(165, 160, 172), -- his pale grey face, hands and feet
+		BackColor = Color3.fromRGB(170, 172, 186), -- the silver saddle on his back (a silverback)
 		CoreColor = Color3.fromRGB(24, 20, 37), -- his pupils, nostrils, mouth
 		EyeColor = Color3.fromRGB(255, 255, 255), -- the whites of his eyes
 		TieColor = Color3.fromRGB(254, 174, 52), -- his gold chain

@@ -321,19 +321,15 @@ local function buildTrack()
 		end
 	end
 
-	-- the big 57 and a lightning bolt, painted on the infield (white: nothing
-	-- painted on the track is red, so it's never mistaken for a warning)
+	-- the big 57 and a checkered flag on its pole, painted on the infield
+	-- (nothing painted on the track is red, so it's never mistaken for a warning)
 	paintNumber("57", at(-24, 0, 0), 4, WHITE, 0)
-	local bolt = { { 18, -10 }, { 22, -6 }, { 18, -2 }, { 24, 2 }, { 20, 6 }, { 26, 10 } }
-	for i = 1, #bolt - 1 do
-		local a, b = bolt[i], bolt[i + 1]
-		local p, q = at(a[1], 0.12, a[2]), at(b[1], 0.12, b[2])
-		part("InfieldBolt", V3(3, 0.14, (q - p).Magnitude + 2), CFrame.lookAt((p + q) / 2, q), YELLOW, DECOR)
-	end
-	for i = 1, #bolt - 1 do
-		local a, b = bolt[i], bolt[i + 1]
-		local p, q = at(a[1] + 1.2, 0.1, a[2]), at(b[1] + 1.2, 0.1, b[2])
-		part("InfieldBoltShade", V3(3, 0.12, (q - p).Magnitude + 2), CFrame.lookAt((p + q) / 2, q), GOLD, DECOR)
+	part("InfieldFlagPole", V3(1, 0.14, 20), CFrame.new(at(16, 0.12, 0)), GOLD, DECOR)
+	for i = 0, 3 do
+		for j = 0, 4 do
+			part("InfieldFlag", V3(2.4, 0.14, 2.4), CFrame.new(at(18.4 + i * 2.4, 0.12, -9 + j * 2.4)),
+				((i + j) % 2 == 0) and WHITE or INK, DECOR)
+		end
 	end
 end
 

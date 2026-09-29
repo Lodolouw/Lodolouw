@@ -300,8 +300,8 @@ stands, bows, drops into his stance: **ROUND 1... FIGHT!** He fights like a
 
 ## The Spire's fifth floor: Speedy Revvington (Piston Speedway)
 
-A cocky red race car (a parody of a certain famous red race car, with his own
-name, number - 57 - and catchphrase: "Ka-VROOM!") waits on the start line of a
+A cocky orange muscle car with white racing stripes and big green eyes (his
+own name, look, number - 57 - and catchphrase: "Ka-VROOM!") waits on the start line of a
 roaring desert racetrack, the grandstands packed with blocky fans. His face is
 his windscreen and his grin is on his bumper. Walk up and the start lights on
 the gantry count down: **3... 2... 1... GO!** It's a **drive-by duel**: like a
@@ -407,8 +407,8 @@ of the music. Recommended level 90.
 
 ## The Spire's seventh floor: Kongo, the Jungle Brawler (Kongo's Jungle Village)
 
-A huge gorilla in a red tie with a big K on it (a parody of a certain famous
-barrel-throwing ape, with his own name and look) naps in the middle of a flat
+A huge silverback gorilla - charcoal fur, a pale grey face and a gold chain
+with a big banana medallion (his own name and look) naps in the middle of a flat
 jungle clearing. Round it: a village of huts on stilts joined by rope bridges,
 two giant trees with treehouses, tiki torches, banana stalls and barrel piles,
 and behind it all a waterfall thundering down a cliff into a river, with a
