@@ -66,6 +66,22 @@ local function iconFor(def, id, size)
 	return "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=" .. size .. "&h=" .. size
 end
 
+-- (every icon starts downloading as soon as you join, not the first time
+-- it's shown - otherwise the strip and the cards sit blank for a moment)
+task.spawn(function()
+	local icons = type(AssetIds) == "table" and AssetIds.Icons
+	if not icons then
+		return
+	end
+	local list = {}
+	for _, n in pairs(icons) do
+		table.insert(list, "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150")
+	end
+	pcall(function()
+		game:GetService("ContentProvider"):PreloadAsync(list)
+	end)
+end)
+
 local WeaponFX = nil -- (for the weapons in 3D: loaded when first needed)
 local function weaponFX()
 	if WeaponFX == nil then

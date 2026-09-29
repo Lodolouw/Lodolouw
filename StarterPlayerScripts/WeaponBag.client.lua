@@ -179,6 +179,22 @@ local function iconFor(def, id)
 	return n and ("rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150") or nil
 end
 
+-- (every icon starts downloading as soon as you join, not the first time
+-- it's shown - otherwise the strip and the cards sit blank for a moment)
+task.spawn(function()
+	local icons = type(AssetIds) == "table" and AssetIds.Icons
+	if not icons then
+		return
+	end
+	local list = {}
+	for _, n in pairs(icons) do
+		table.insert(list, "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150")
+	end
+	pcall(function()
+		game:GetService("ContentProvider"):PreloadAsync(list)
+	end)
+end)
+
 local function setStatus(msg, good)
 	status.Text = msg or ""
 	status.TextColor3 = good == false and RED or (good and GREEN or GREY)
