@@ -179,10 +179,10 @@ local function lowFoot()
 	return math.min(foot(J.RH).Y, foot(J.LH).Y)
 end
 
--- WEAPON TYPES (Config.Weapons.Types / WeaponFX.STANCES, POSES, BUILDERS):
--- each new type's weapon appears in hand (two for gauntlets and daggers),
--- stands in its own stance, and swings its whole string - winding up,
--- cutting (the smear on), and settling back - with the feet on the floor.
+-- WEAPON TYPES (Config.Weapons.Types, WeaponFX BUILDERS and "Clips"): each
+-- type's weapon appears in hand (two for gauntlets and daggers) and plays
+-- its baked animations (ReplicatedStorage/WeaponClips) - the idle, and its
+-- whole string, the smear on through each cut, feet never below the floor.
 local ORDER = { "Fists", "Hammer", "Daggers", "Scythe", "Katana" }
 local MODE = ({ ... })[1] or "all"
 local pick = {}
@@ -211,7 +211,7 @@ if MODE == "trace" then
 			local start = t
 			step(s.Lock + 0.1, function()
 				local arm = body() * shoulder.C0 * shoulder.Transform * shoulder.C1:Inverse()
-				local g = arm * h.weld.C0
+				local g = arm * h.weld.C0 * h.weld.Transform
 				local d = g:VectorToWorldSpace(Vector3.new(0, 0, -1))
 				local az = math.deg(math.atan2(-d.X, -d.Z))
 				local el = math.deg(math.asin(math.clamp(d.Y, -1, 1)))
@@ -265,15 +265,15 @@ if MODE == "poses" then
 			for _, key in ipairs({ "RS", "Root", "LS", "RH", "LH", "Neck" }) do
 				parts[#parts + 1] = key .. " " .. table.concat({ J[key].Transform:GetComponents() }, " ")
 			end
-			parts[#parts + 1] = "Grip " .. table.concat({ h.weld.C0:GetComponents() }, " ")
+			parts[#parts + 1] = "Grip " .. table.concat({ (h.weld.C0 * h.weld.Transform):GetComponents() }, " ")
 			parts[#parts + 1] = h.trails[1].Enabled and "smear" or "-"
 			print("POSE " .. table.concat(parts, " | "))
 		end
 		dump("STANCE")
 		for n, s in ipairs(W.Types[kind].Swings) do
-			local m = WeaponFX.swingMoments(s)
-			local marks = { m.coil + 0.01, m.contact + 0.02, m.follow + 0.02 }
-			local labels = { "SWING " .. n .. ": WIND UP", "SWING " .. n .. ": CUT", "SWING " .. n .. ": FOLLOW" }
+			local clip = h.clips.swings[n]
+			local marks = { clip.cut - 0.03, clip.hit, clip.through }
+			local labels = { "SWING " .. n .. ": WIND UP", "SWING " .. n .. ": HIT", "SWING " .. n .. ": THROUGH" }
 			WeaponFX.swing(me, n)
 			local start, i = t, 1
 			step(s.Lock, function()
@@ -288,11 +288,33 @@ if MODE == "poses" then
 	return
 end
 
+-- the lowest corner of either foot (the baked clips, like the sword's uploaded
+-- animations, put that on the floor, so a tilted foot never sinks in)
+local function lowCorner()
+	local low = math.huge
+	for _, hip in ipairs({ J.RH, J.LH }) do
+		local leg = body() * hip.C0 * hip.Transform * hip.C1:Inverse()
+		for _, sx in ipairs({ -0.5, 0.5 }) do
+			for _, sz in ipairs({ -0.5, 0.5 }) do
+				low = math.min(low, (leg * Vector3.new(sx, -1, sz)).Y)
+			end
+		end
+	end
+	return low
+end
+
+-- the angle between two rotations (degrees)
+local function apart(a, b)
+	local d = a:Inverse() * b
+	local _, _, _, r00, _, _, _, r11, _, _, _, r22 = d:GetComponents()
+	return math.deg(math.acos(math.clamp((r00 + r11 + r22 - 1) / 2, -1, 1)))
+end
+
 for _, kind in ipairs(ORDER) do
 	local T = W.Types[kind]
 	check(T ~= nil, kind .. ": has a moveset in Config")
-	check(WeaponFX.STANCES[kind] ~= nil, kind .. ": has its own stance")
-	check(WeaponFX.POSES[kind] and #WeaponFX.POSES[kind] == #T.Swings, kind .. ": a pose for every swing")
+	local clips = WeaponFX.clipsFor(kind)
+	check(clips ~= nil and #clips.swings == #T.Swings, kind .. ": baked clips for its idle and every swing")
 	local id = pick[kind]
 	check(id ~= nil, kind .. ": a launch weapon of this type")
 	me:SetAttribute("Weapon", id)
@@ -300,7 +322,8 @@ for _, kind in ipairs(ORDER) do
 	local model = weapon(char)
 	local h = WeaponFX._held[me]
 	check(model ~= nil and h ~= nil and h.id == id, kind .. ": " .. tostring(id) .. " is in hand")
-	if model and h then
+	if model and h and clips then
+		check(h.clips == clips, kind .. ": it plays the clips")
 		local parts = 0
 		for _, p in ipairs(model:GetChildren()) do
 			if p:IsA("Part") then
@@ -314,34 +337,91 @@ for _, kind in ipairs(ORDER) do
 				offhand = true
 			end
 		end
-		check(offhand == (WeaponFX.OFFHAND[kind] ~= nil), kind .. ": " .. (WeaponFX.OFFHAND[kind] and "one in each hand" or "one weapon"))
-		step(1.2)
-		local ST = WeaponFX.STANCES[kind]
-		check(off(shoulder, ST.RS) < 14, ("%s: standing in its own stance (%.0f off)"):format(kind, off(shoulder, ST.RS)))
-		check(math.abs(lowFoot() + 3) < 0.05, ("%s: feet on the floor (%.2f)"):format(kind, lowFoot()))
+		check(offhand == (clips.offhand ~= nil), kind .. ": " .. (clips.offhand and "one in each hand" or "one weapon"))
+		-- the idle: standing still, every joint is the idle clip's
+		step(1.5)
+		local want = WeaponFX.sampleClip(clips.idle, h.clock)
+		local worst = 0
+		for _, key in ipairs({ "RS", "LS", "Neck" }) do
+			worst = math.max(worst, apart(J[key].Transform, want[key]))
+		end
+		check(worst < 6, ("%s: standing, the body is the idle clip's (%.1f degrees off)"):format(kind, worst))
+		check(apart(h.weld.Transform, want.Grip) < 2, kind .. ": and the weapon turns in the hand with it")
+		check(math.abs(lowCorner() + 3) < 0.05, ("%s: feet on the floor (lowest corner %.2f; the floor is -3)"):format(kind, lowCorner()))
+		-- the string
 		for n, s in ipairs(T.Swings) do
-			local smeared, moved, floorOk = false, 0, true
+			local clip = clips.swings[n]
+			local smeared, smearEarly, moved, sank = false, false, 0, 0
 			local startR, startL = J.RS.Transform, J.LS.Transform
-			local function turned(a, b)
-				return math.deg((a.LookVector - b.LookVector).Magnitude + (a.UpVector - b.UpVector).Magnitude)
-			end
 			WeaponFX.swing(me, n)
-			step(s.Lock + WeaponFX.SETTLE + 0.3, function()
+			local started = t
+			check(h.anim ~= nil and h.anim.kind == "clip" and h.anim.clip == clip, ("%s swing %d: its clip starts"):format(kind, n))
+			step(clip.length + 0.1, function()
+				local tt = t - started
 				if h.trails[1].Enabled then
 					smeared = true
+					if tt < clip.cut - 0.02 then
+						smearEarly = true
+					end
 				end
-				moved = math.max(moved, turned(J.RS.Transform, startR), turned(J.LS.Transform, startL))
-				if lowFoot() > -2.9 and (WeaponFX.POSES[kind][n].cut.Hop[1] or 0) == 0 and (WeaponFX.POSES[kind][n].coil.Hop[1] or 0) == 0 then
-					floorOk = false
-				end
+				moved = math.max(moved, apart(J.RS.Transform, startR), apart(J.LS.Transform, startL))
+				sank = math.max(sank, -3 - lowCorner())
 			end)
-			check(smeared, ("%s swing %d: the smear shows through the cut"):format(kind, n))
-			check(moved > 25, ("%s swing %d: an arm really swings (%.0f)"):format(kind, n, moved))
-			check(floorOk, ("%s swing %d: feet stay down (no leap in this one)"):format(kind, n))
-			check(h.anim == nil, ("%s swing %d: it's over and settled back"):format(kind, n))
+			check(smeared and not smearEarly, ("%s swing %d: the smear shows through the cut"):format(kind, n))
+			check(moved > 30, ("%s swing %d: an arm really swings (%.0f degrees)"):format(kind, n, moved))
+			check(sank < 0.08, ("%s swing %d: the feet never sink into the floor (%.2f)"):format(kind, n, sank))
+			check(h.anim == nil, ("%s swing %d: it's over and back to the idle"):format(kind, n))
+			-- (the hit lands on the server's moment: Lock x Contact)
+			check(math.abs(clip.hit - s.Lock * s.Contact) < 0.002, ("%s swing %d: its hit is the server's moment"):format(kind, n))
 		end
+		-- hit-stop: the swing stops dead for a blink
+		WeaponFX.swing(me, 1)
+		step(0.05)
+		local before = h.anim and h.anim.t
+		WeaponFX.hitStop(me, 0.1)
+		step(0.06)
+		check(before ~= nil and h.anim ~= nil and math.abs(h.anim.t - before) < 1e-6, kind .. ": hit-stop freezes the swing")
+		step(1.5)
 	end
 end
+
+-- the hammer's overhead slam hits the floor: a shockwave ring
+do
+	me:SetAttribute("Weapon", pick.Hammer)
+	step(0.5)
+	local rings = 0
+	local conn = M.workspace.ChildAdded:Connect(function(c)
+		if c.Name == "SlamRing" then
+			rings += 1
+		end
+	end)
+	WeaponFX.swing(me, 3)
+	step(1.2)
+	conn:Disconnect()
+	check(rings >= 1, "the hammer's slam sends a shockwave along the floor")
+end
+
+-- someone else's swing shows on this screen (their SwingN changes)
+do
+	local other = Instance.new("Player")
+	other.Name = "Other"
+	other.UserId = 2002
+	other.Parent = Players
+	local ochar = r6("Other")
+	other.Character = ochar
+	M.players = { me, other }
+	other:SetAttribute("SpireFloor", 2)
+	other:SetAttribute("Weapon", pick.Katana)
+	step(0.3)
+	local oh = WeaponFX._held[other]
+	check(oh ~= nil and oh.clips ~= nil, "another player's katana plays clips on this screen")
+	other:SetAttribute("SwingN", "1:2")
+	step(0.05)
+	check(oh and oh.anim ~= nil and oh.anim.kind == "clip" and oh.anim.n == 2, "their swing plays here when their SwingN changes")
+	M.players = { me }
+	other.Parent = nil
+end
+
 -- letting go puts it all away
 me:SetAttribute("Weapon", nil)
 step(0.3)

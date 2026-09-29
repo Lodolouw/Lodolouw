@@ -144,7 +144,7 @@ def render(polys, yaw, pitch, size, label, trailPts=None):
 
 
 size = 200
-cols = max(1 + 2 * sum(1 for l, _, _ in poses if l.endswith("CUT")) for _, _, _, poses, _, _ in types)
+cols = max(1 + 2 * sum(1 for l, _, _ in poses if l.endswith("HIT") or l.endswith("CUT")) for _, _, _, poses, _, _ in types)
 cellH = 2 * size + 6 + 26
 sheet = Image.new("RGB", (cols * size + (cols + 1) * 8, 110 + len(types) * (cellH + 44)), (24, 20, 37))
 d = ImageDraw.Draw(sheet)
@@ -162,7 +162,7 @@ for r, (kind, name, pcs, poses, opcs, og) in enumerate(types):
     c = 0
     trail = []
     for label, joints, smearOn in poses:
-        if not (label == "STANCE" or label.endswith("WIND UP") or label.endswith("CUT")):
+        if not (label == "STANCE" or label.endswith("WIND UP") or label.endswith("HIT") or label.endswith("CUT")):
             continue
         if label.endswith("WIND UP"):
             trail = []

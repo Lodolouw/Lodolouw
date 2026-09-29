@@ -1,4 +1,9 @@
-# The sword's animations (R6)
+# The weapons' animations (R6)
+
+The sword's (below) and the other weapon types' - gauntlets, hammer, daggers,
+scythe, katana (at the end: "The other weapon types").
+
+## The sword
 
 The idle and the three swings the game plays (`Config.Weapons.Types.Sword.Animations`),
 made here in Python and Blender instead of Studio's Animation Editor.
@@ -56,3 +61,28 @@ Animations only play in a game owned by whoever published them (you, or your gro
   checks they match).
 - Each swing starts where the last one's follow-through is at 0.5 s (when you can press
   again), so a string chains without a snap.
+
+## The other weapon types
+
+Made exactly the way the sword's are (posing by direction, swings round a swing
+plane), but baked into the game instead of uploaded:
+
+- `weapon_types.py` - their idles and strings (`TypeSwing`: the sword's
+  `PlaneSwing`, plus two hands on a handle, left-hand blows, mirrored arms and
+  which side of the weapon leads). The hit moments come from
+  `Config.Weapons.Types` (Lock x Contact): change both together.
+- `preview_types.py` - `sheet out.png` (key moments, front and side) and
+  `video out.mp4` (every string, full and half speed). The weapons' blocks come
+  from `weapon_pieces.txt` (the game's own models: in `Tools/HeadlessTests`,
+  `luau test_weapontypes.luau -a poses`, the TYPE/PIECE/OFFPIECE lines).
+- `export_types.py` - bakes them into `ReplicatedStorage/WeaponClips.lua`, which
+  WeaponFX plays on every screen ("Clips"). Run it after any change here.
+  `--rbxmx` also writes `ServerStorage/WeaponAnimations.rbxmx` (KeyframeSequences,
+  to publish from the Animation Editor like the sword's - only if you want them
+  as uploaded animations; not needed).
+
+```
+python3 export_types.py
+python3 preview_types.py sheet types.png
+python3 preview_types.py video ../../Docs/animations/weapon_types.mp4
+```

@@ -88,6 +88,14 @@ local W = Config.Weapons or { List = {}, Types = {}, MasteryMax = 100 }
 local WeaponFX = {}
 local rad = math.rad
 
+-- the weapon types' baked animations (ReplicatedStorage/WeaponClips, made by
+-- Tools/Animations/export_types.py): see "Clips" below
+local CLIPS = nil
+pcall(function()
+	local m = ReplicatedStorage:WaitForChild("WeaponClips", 5)
+	CLIPS = m and require(m)
+end)
+
 ----------------------------------------------------------------------
 -- The poses (all in degrees)
 ----------------------------------------------------------------------
@@ -139,114 +147,12 @@ WeaponFX.POSES = {
 WeaponFX.SPIN_COIL = { Root = { 10, 0, -60 }, RS = { -10, -90, 70 }, LS = { -60, 0, -20 }, RH = { -10, 0, -10 }, LH = { -10, 0, -20 }, Neck = { 0, 0, 40 }, Grip = { -85, 0 }, Hop = { 0 } }
 WeaponFX.SPIN = { Root = { 12, 0, 0 }, RS = { -10, -85, 95 }, LS = { -80, 0, 0 }, RH = { -12, 0, 0 }, LH = { -12, 0, 0 }, Neck = { 0, 0, 0 }, Grip = { -85, 0 }, Hop = { 0 } }
 
--- THE OTHER TYPES (drawn in code until they have uploaded animations): each
--- has its own stance and string. They're worked out, not guessed: the spec
--- (Tools/Weapons/poses/genposes.py) says where each hand goes and which way
--- the weapon points (and, for two-handed weapons, keeps the left hand on the
--- handle wherever it can reach), and posesolve.py finds the joint angles.
--- BEGIN GENERATED POSES (Tools/Weapons/poses/genposes.py: change the spec there and run it)
-WeaponFX.STANCES = {
-	Fists = { Root = { 8, 0, -15 }, RS = { -3, 36, 105 }, LS = { 11, -40, -96 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
-	Hammer = { Root = { 6, 0, -15 }, RS = { -19, 43, 57 }, LS = { 18, -57, -71 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 12 }, Grip = { 11, 0 }, Hop = { 0 } },
-	Daggers = { Root = { 14, 0, -6 }, RS = { 34, 11, 70 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -45, 0 }, Hop = { 0 } },
-	Scythe = { Root = { 4, 0, -10 }, RS = { 1, -9, 42 }, LS = { 5, 17, -21 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 8 }, Grip = { 39, -96 }, Hop = { 0 } },
-	Katana = { Root = { 6, 0, -8 }, RS = { 43, 15, 54 }, LS = { 72, -10, -17 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -39, 43 }, Hop = { 0 } },
-}
-WeaponFX.POSES.Fists = {
-	{ -- a right jab
-		coil = { Root = { 4, 0, -28 }, RS = { -5, 22, 87 }, LS = { 11, -40, -96 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
-		cut = { Root = { 12, 0, 22 }, RS = { -4, 31, 95 }, LS = { 11, -37, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, -5 }, Grip = { -90, 0 }, Hop = { 0 } },
-		follow = { Root = { 14, 0, 26 }, RS = { -4, 32, 94 }, LS = { 11, -37, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, -8 }, Grip = { -90, 0 }, Hop = { 0 } },
-	},
-	{ -- a left hook
-		coil = { Root = { 6, 0, 28 }, RS = { -2, 35, 103 }, LS = { 18, 27, -110 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
-		cut = { Root = { 12, 0, -30 }, RS = { -2, 35, 103 }, LS = { 12, -44, -88 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 25 }, Grip = { -90, 0 }, Hop = { 0 } },
-		follow = { Root = { 12, 0, -38 }, RS = { -2, 35, 103 }, LS = { 11, -60, -82 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 30 }, Grip = { -90, 0 }, Hop = { 0 } },
-	},
-	{ -- the uppercut: dip, then drive up off the floor
-		coil = { Root = { 22, 0, -25 }, RS = { -7, 28, 33 }, LS = { 14, -41, -95 }, RH = { 0, 0, -30 }, LH = { 0, 0, -35 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
-		cut = { Root = { -12, 0, 18 }, RS = { 57, 79, 105 }, LS = { 14, -40, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { -15, 0, 0 }, Grip = { -90, 0 }, Hop = { 0.6 } },
-		follow = { Root = { -10, 0, 20 }, RS = { 58, 87, 107 }, LS = { 14, -41, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { -12, 0, 0 }, Grip = { -90, 0 }, Hop = { 0.3 } },
-	},
-}
-WeaponFX.POSES.Hammer = {
-	{ -- a heavy diagonal: from high over the right shoulder, over the top and down across
-		coil = { Root = { -10, 0, -45 }, RS = { -16, 26, 172 }, LS = { -84, -49, -216 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 35 }, Grip = { -19, 0 }, Hop = { 0 } },
-		cut = { Root = { 25, 0, 15 }, RS = { 40, 12, 58 }, LS = { -7, -52, -74 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Neck = { 0, 0, 12 }, Grip = { -88, 0 }, Hop = { 0 } },
-		follow = { Root = { 32, 0, 42 }, RS = { 25, 44, 38 }, LS = { 14, -39, -36 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Neck = { 0, 0, -30 }, Grip = { -98, 0 }, Hop = { 0 } },
-	},
-	{ -- a sweeping backhand at chest height, across the front
-		coil = { Root = { 10, 0, 50 }, RS = { 104, 5, 48 }, LS = { -16, -35, -80 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, -35 }, Grip = { -175, 0 }, Hop = { 0 } },
-		cut = { Root = { 12, 0, -10 }, RS = { 92, 5, 72 }, LS = { -84, -31, -122 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 12 }, Grip = { -73, 0 }, Hop = { 0 } },
-		follow = { Root = { 5, 0, -58 }, RS = { 80, 4, 118 }, LS = { -107, -40, -180 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { -5, 0, 38 }, Grip = { 12, 0 }, Hop = { 0 } },
-	},
-	{ -- the overhead slam: up with a little leap, and everything comes down with it
-		coil = { Root = { -20, 0, -8 }, RS = { -30, 17, 176 }, LS = { -69, -24, -202 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { -20, 0, 5 }, Grip = { -14, 0 }, Hop = { 0.7 } },
-		cut = { Root = { 42, 0, 0 }, RS = { 44, 1, 58 }, LS = { -48, -60, -101 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 15, 0, 0 }, Grip = { -83, 0 }, Hop = { 0 } },
-		follow = { Root = { 36, 0, 0 }, RS = { -82, 47, 102 }, LS = { -110, -40, -138 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 20, 0, 0 }, Grip = { -112, 0 }, Hop = { 0 } },
-	},
-}
-WeaponFX.POSES.Daggers = {
-	{ -- a right stab
-		coil = { Root = { 10, 0, -25 }, RS = { 1, -2, 38 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -29, 0 }, Hop = { 0 } },
-		cut = { Root = { 18, 0, 18 }, RS = { 92, 10, 73 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, -8 }, Grip = { -73, 0 }, Hop = { 0 } },
-		follow = { Root = { 18, 0, 20 }, RS = { 110, 5, 77 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, -8 }, Grip = { -78, 0 }, Hop = { 0 } },
-	},
-	{ -- a left stab
-		coil = { Root = { 10, 0, 25 }, RS = { 16, 4, 62 }, LS = { 4, 3, -45 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -39, 0 }, Hop = { 0 } },
-		cut = { Root = { 18, 0, -18 }, RS = { 16, 1, 62 }, LS = { 76, -13, -58 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 12 }, Grip = { -38, 0 }, Hop = { 0 } },
-		follow = { Root = { 18, 0, -20 }, RS = { 16, 1, 62 }, LS = { 79, -10, -57 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 12 }, Grip = { -37, 0 }, Hop = { 0 } },
-	},
-	{ -- a right slash across
-		coil = { Root = { 8, 0, -40 }, RS = { -53, -35, 62 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 30 }, Grip = { -59, 0 }, Hop = { 0 } },
-		cut = { Root = { 16, 0, 10 }, RS = { -20, 34, 90 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -69, 0 }, Hop = { 0 } },
-		follow = { Root = { 18, 0, 40 }, RS = { -12, 67, 84 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, -25 }, Grip = { -72, 0 }, Hop = { 0 } },
-	},
-	{ -- both blades crossing, with a hop in
-		coil = { Root = { 0, 0, 0 }, RS = { 11, 5, 157 }, LS = { -54, 52, -82 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -97, 0 }, Hop = { 0.35 } },
-		cut = { Root = { 24, 0, 0 }, RS = { 51, 16, 55 }, LS = { 23, -33, -40 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 }, Neck = { -6, 0, 6 }, Grip = { -84, 0 }, Hop = { 0 } },
-		follow = { Root = { 24, 0, 0 }, RS = { 73, -16, 35 }, LS = { 53, -19, -7 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 }, Neck = { -6, 0, 6 }, Grip = { -89, 0 }, Hop = { 0 } },
-	},
-}
-WeaponFX.POSES.Scythe = {
-	{ -- a wide sweep, right to left, blade low
-		coil = { Root = { 0, 0, -60 }, RS = { 112, -23, 131 }, LS = { 121, -71, 30 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 40 }, Grip = { -10, -120 }, Hop = { 0 } },
-		cut = { Root = { 12, 0, 0 }, RS = { 96, -17, 79 }, LS = { 93, -131, 60 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Neck = { 0, 0, 8 }, Grip = { -75, -83 }, Hop = { 0 } },
-		follow = { Root = { 16, 0, 62 }, RS = { 75, 4, 40 }, LS = { 43, -111, 62 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Neck = { 0, 0, -35 }, Grip = { -162, -88 }, Hop = { 0 } },
-	},
-	{ -- sweeping back, left to right
-		coil = { Root = { 10, 0, 58 }, RS = { 78, 9, 41 }, LS = { -16, -61, -14 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, -38 }, Grip = { -158, -88 }, Hop = { 0 } },
-		cut = { Root = { 8, 0, -5 }, RS = { 67, -11, 65 }, LS = { -96, -45, -124 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 8 }, Grip = { -76, -88 }, Hop = { 0 } },
-		follow = { Root = { 2, 0, -62 }, RS = { 113, -23, 131 }, LS = { -123, -24, -185 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 40 }, Grip = { -7, -89 }, Hop = { 0 } },
-	},
-	{ -- a full turn with the blade out
-		coil = { Root = { 8, 0, -90 }, RS = { 113, -21, 134 }, LS = { -125, -9, -179 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 45 }, Grip = { -16, -119 }, Hop = { 0 } },
-		cut = { Root = { 14, 0, 40 }, RS = { 97, -17, 80 }, LS = { -113, -37, -132 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Neck = { 0, 0, 8 }, Grip = { -75, -83 }, Hop = { 0 } },
-		follow = { Root = { 16, 0, 160 }, RS = { 102, -17, 82 }, LS = { -110, -36, -125 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Neck = { 0, 0, -40 }, Grip = { -85, -78 }, Hop = { 0 } },
-	},
-}
-WeaponFX.POSES.Katana = {
-	{ -- a fast flat cut, right to left
-		coil = { Root = { 0, 0, -45 }, RS = { 6, 36, 153 }, LS = { 73, -70, -54 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 32 }, Grip = { -3, -104 }, Hop = { 0 } },
-		cut = { Root = { 14, 0, 12 }, RS = { 111, 2, 72 }, LS = { 72, -53, -14 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -97, -190 }, Hop = { 0 } },
-		follow = { Root = { 18, 0, 45 }, RS = { 92, 7, 41 }, LS = { 77, -32, -36 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, -30 }, Grip = { -152, -191 }, Hop = { 0 } },
-	},
-	{ -- a rising cut, low left to high right
-		coil = { Root = { 14, 0, 38 }, RS = { 67, 3, 35 }, LS = { 69, -21, -40 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, -32 }, Grip = { -180, -221 }, Hop = { 0 } },
-		cut = { Root = { 8, 0, -8 }, RS = { 113, 8, 74 }, LS = { 89, -34, -24 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -42, -231 }, Hop = { 0 } },
-		follow = { Root = { -4, 0, -45 }, RS = { 90, 88, 96 }, LS = { 72, -94, -47 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { -8, 0, 35 }, Grip = { -54, -228 }, Hop = { 0 } },
-	},
-	{ -- the dashing thrust
-		coil = { Root = { -5, 0, -20 }, RS = { 113, 0, 88 }, LS = { 73, -55, -16 }, RH = { 0, 0, 10 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -90, -225 }, Hop = { 0 } },
-		cut = { Root = { 32, 0, 0 }, RS = { 115, 4, 73 }, LS = { 74, -54, -22 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -74, -225 }, Hop = { 0 } },
-		follow = { Root = { 26, 0, 8 }, RS = { 115, 2, 74 }, LS = { 74, -54, -22 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -73, -225 }, Hop = { 0 } },
-	},
-}
--- END GENERATED POSES
+-- THE OTHER TYPES (gauntlets, hammer, daggers, scythe, katana) don't use poses
+-- here: they play baked animations made the way the sword's are (see "Clips").
 
--- a weapon's stance (its type's, or the sword's)
+-- a weapon's stance (the sword's: the other types play clips)
 local function stanceOf(def)
-	return WeaponFX.STANCES[def and def.Type or ""] or WeaponFX.STANCE
+	return WeaponFX.STANCE
 end
 WeaponFX.stanceOf = stanceOf
 WeaponFX.JOINTS = { "Root", "RS", "LS", "RH", "LH", "Neck" }
@@ -619,7 +525,7 @@ function BUILDERS.Katana(def, golden)
 	return k.model, k.handle, k.trails(blade, Vector3.new(0, 0, 1.2), Vector3.new(0, 0, -2.1), Vector3.new(0, 0, 1.8), Vector3.new(0, 0, -2.6)), blade
 end
 -- the types that hold a second one in the left hand, and how it's held
-WeaponFX.OFFHAND = { Fists = { -90, 0 }, Daggers = { -40, 0 } }
+WeaponFX.OFFHAND = { Fists = { -90, 0 }, Daggers = { -90, 0 } } -- (the clips carry their own: WeaponClips' Offhand)
 
 -- the 3D weapons (Tools/Weapons: pixel sprites made 3D in Blender, imported
 -- into ReplicatedStorage with Studio's 3D Importer): how long each is (studs,
@@ -1107,6 +1013,86 @@ local function drop(plr)
 	held[plr] = nil
 end
 
+----------------------------------------------------------------------
+-- Clips: the weapon types' animations, baked (gauntlets, hammer, daggers,
+-- scythe, katana). Made the way the sword's uploaded animations are -
+-- Tools/Animations/weapon_types.py: every swing travelling round a swing
+-- plane with a coil, a whip through the enemy and a follow-through, the
+-- chest ahead of the arm, the feet stepping - and baked frame by frame into
+-- ReplicatedStorage/WeaponClips. Here they're played straight onto every R6
+-- joint and the Grip, on every screen (nothing to upload): the idle loops
+-- while you stand; a swing plays when you swing (everyone else's when their
+-- SwingN changes). Walking, jumping, drinking and rolling take the body back
+-- the same way as for the sword. Hit-stop freezes the clip for a blink; the
+-- smear shows between its cut and through; the hammer's finisher slams the
+-- floor at its hit.
+----------------------------------------------------------------------
+local decodedClips = {} -- [type] = { idle =, swings = {}, offhand = }
+
+local function decodeClip(raw)
+	local clip = { fps = raw.fps, frames = raw.frames, length = raw.length, loop = raw.loop,
+		hit = raw.hit, lock = raw.lock, cut = raw.cut, through = raw.through, joints = {} }
+	for key, text in pairs(raw.joints) do
+		local list = {}
+		for _, frame in ipairs(string.split(text, ";")) do
+			local v = string.split(frame, ",")
+			list[#list + 1] = CFrame.new(0, 0, tonumber(v[5]) or 0, tonumber(v[1]), tonumber(v[2]), tonumber(v[3]), tonumber(v[4]))
+		end
+		clip.joints[key] = list
+	end
+	return clip
+end
+
+-- a clip's first frame (every joint)
+local function sampleClipFirst(clip)
+	local pose = {}
+	for key, list in pairs(clip.joints) do
+		pose[key] = list[1]
+	end
+	return pose
+end
+
+-- a weapon type's clips (decoded the first time they're needed), or nil
+function WeaponFX.clipsFor(kindName)
+	if decodedClips[kindName] ~= nil then
+		return decodedClips[kindName] or nil
+	end
+	local raw = CLIPS and kindName and CLIPS[kindName]
+	if not raw then
+		decodedClips[kindName or ""] = false
+		return nil
+	end
+	local out = { idle = decodeClip(raw.Idle), swings = {}, offhand = raw.Offhand, twoHanded = raw.TwoHanded == true }
+	for n, s in ipairs(raw.Swings) do
+		out.swings[n] = decodeClip(s)
+	end
+	decodedClips[kindName] = out
+	return out
+end
+
+-- every joint's Transform in `clip`, `t` seconds in (between its frames)
+local function sampleClip(clip, t)
+	local n = clip.frames
+	local f = t * clip.fps
+	local i0, i1
+	if clip.loop then
+		f = f % n
+		i0 = math.floor(f)
+		i1 = (i0 + 1) % n
+	else
+		f = math.clamp(f, 0, n - 1)
+		i0 = math.floor(f)
+		i1 = math.min(i0 + 1, n - 1)
+	end
+	local a = f - i0
+	local pose = {}
+	for key, list in pairs(clip.joints) do
+		pose[key] = list[i0 + 1]:Lerp(list[i1 + 1], a)
+	end
+	return pose
+end
+WeaponFX.sampleClip = sampleClip
+
 local function hold(plr, char, id, def, tracks)
 	local torso = char:FindFirstChild("Torso")
 	local arm = char:FindFirstChild("Right Arm")
@@ -1134,9 +1120,12 @@ local function hold(plr, char, id, def, tracks)
 		local builder = BUILDERS[def.Type] or buildSword
 		model, handle, trails, blade = builder(def, golden)
 	end
+	-- the weapon type's baked animations, if it has them (and no uploaded ones)
+	local kind = W.Types[def.Type]
+	local clips = not (kind and kind.Animations) and WeaponFX.clipsFor(def.Type) or nil
 	-- a second one in the left hand (gauntlets, daggers): held still at the
 	-- hand; the string's poses swing the left arm for its blows
-	local off = WeaponFX.OFFHAND[def.Type]
+	local off = (clips and clips.offhand) or WeaponFX.OFFHAND[def.Type]
 	local leftArm = char:FindFirstChild("Left Arm")
 	if off and leftArm and BUILDERS[def.Type] then
 		local offModel, offHandle, offTrails = BUILDERS[def.Type](def, golden)
@@ -1165,6 +1154,12 @@ local function hold(plr, char, id, def, tracks)
 	weld.Name = "Grip"
 	weld.Part0, weld.Part1 = arm, handle
 	weld.C0 = gripAt(g[1], g[2])
+	if clips then
+		-- (a clip turns the weapon with the Grip's Transform, from the hand)
+		weld.C0 = GRIP_HAND
+		weld.Transform = sampleClipFirst(clips.idle).Grip
+		handle.CFrame = arm.CFrame * GRIP_HAND * weld.Transform
+	end
 	weld.Parent = handle
 	model.Parent = char
 	local mem, weights = {}, {}
@@ -1201,6 +1196,7 @@ local function hold(plr, char, id, def, tracks)
 		swingN = plr:GetAttribute("SwingN"), -- (what was already there isn't a new swing)
 		abilityN = plr:GetAttribute("AbilityN"),
 		animIds = animsOf(def),
+		clips = clips,
 		tracks = tracks or (plr == Players.LocalPlayer and loadTracks(char, def) or nil),
 		seen = setmetatable({}, { __mode = "k" }), -- the animation tracks we've whooshed for
 	}
@@ -1219,6 +1215,15 @@ end
 -- start swing `n` of the string for this player (now)
 local function startSwing(h, n)
 	local kind = h.def and W.Types[h.def.Type]
+	if h.clips then
+		local clip = h.clips.swings[n]
+		if clip then
+			h.anim = { kind = "clip", clip = clip, t = 0, n = n, slam = kind ~= nil and kind.SlamSwing == n,
+				sound = kind and kind.Sounds and kind.Sounds.Swing }
+			h.freeze = 0
+		end
+		return
+	end
 	local s = kind and kind.Swings[n]
 	local keys = WeaponFX.POSES[h.def and h.def.Type or ""]
 	if not (s and keys and keys[n]) then
@@ -1484,6 +1489,112 @@ local function targetFor(plr, h, dt)
 	return stance, want, mode, turn, cutting, drinking, rolling
 end
 
+local function stepClips(plr, h, dt)
+	local clips = h.clips
+	local md = h.hum and h.hum.MoveDirection
+	local moving = typeof(md) == "Vector3" and md.Magnitude > 0.1
+	h.clock = h.clock + dt
+	local drinking = h.char:GetAttribute("Drinking") ~= nil
+	local rolling = actionPlaying(h)
+	local airborne = inAir(h)
+	local a = h.anim
+	if a and (rolling or a.kind ~= "clip") then
+		h.anim, a = nil, nil -- (a roll cancels a swing)
+	end
+	-- the swing's clock: frozen for a blink by hit-stop
+	local cutting = false
+	if a then
+		local c = a.clip
+		if h.freeze > 0 then
+			h.freeze = h.freeze - dt
+		else
+			a.t = a.t + dt
+			if not a.whooshed and a.t >= (c.cut or 0) - 0.03 then
+				a.whooshed = true
+				-- (a touch different every time, so a string never sounds canned)
+				playAt(a.sound, h.handle, (1.08 - 0.06 * a.n) * (0.96 + 0.08 * math.random()))
+			end
+			if a.slam and not a.slammed and a.t >= (c.hit or 0) then
+				a.slammed, a.slamNow = true, true
+			end
+			if a.t >= c.length then
+				h.anim, a = nil, nil
+			end
+		end
+		if a then
+			cutting = a.t >= (a.clip.cut or 0) and a.t <= (a.clip.through or 0)
+		end
+	end
+	local pose = a and sampleClip(a.clip, a.t) or sampleClip(clips.idle, h.clock)
+	-- how much of each joint the clip holds: all of it in a swing (until it
+	-- lets you go); walking, the legs and body walk and the weapon arms hold on
+	local want = { Root = 1, RS = 1, LS = 1, RH = 1, LH = 1, Neck = 1 }
+	local committed = a ~= nil and a.t < (a.clip.lock or a.clip.length)
+	if not committed then
+		if moving then
+			want.Root, want.RH, want.LH, want.Neck = 0, 0, 0, 0.3
+			want.RS = 0.85
+			want.LS = clips.twoHanded and 0.85 or 0
+		end
+		if airborne then
+			want.Root, want.RH, want.LH = 0, 0, 0
+			want.LS = math.min(want.LS, 0.5)
+		end
+	end
+	if drinking then
+		want.RS, want.Neck, want.LS = 0, 0, 0 -- (your arm and head belong to the drink)
+	end
+	if rolling then
+		for key in pairs(want) do
+			want[key] = 0
+		end
+	end
+	local rs = pose.RS
+	if a and h.freeze > 0 then
+		-- the shudder: the arm judders as the weapon bites
+		rs = rs * CFrame.Angles(0, 0, rad((math.random() - 0.5) * 5))
+	end
+	local show = { Root = pose.Root, RS = rs, LS = pose.LS, RH = pose.RH, LH = pose.LH, Neck = pose.Neck }
+	for _, key in ipairs(WeaponFX.JOINTS) do
+		local joint = h.joints[key]
+		if joint then
+			local w = h.weights[key]
+			local goal = want[key]
+			local rate = rolling and 40 or (goal < w and 16 or (a and 30 or 8))
+			w = w + (goal - w) * math.min(1, dt * rate)
+			if math.abs(goal - w) < 0.002 then
+				w = goal
+			end
+			h.weights[key] = w
+			if w > 0.001 then
+				blend(h, joint, show[key], w)
+			else
+				letGo(h, joint)
+			end
+		end
+	end
+	-- the weapon in the hand: the clip turns it (the Grip's Transform)
+	h.weld.C0 = GRIP_HAND
+	h.weld.Transform = pose.Grip
+	setSmear(h, cutting)
+	-- tucked away while you drink (the potion's in that hand)
+	local wantParent = (not drinking) and h.char or nil
+	if h.model.Parent ~= wantParent then
+		h.model.Parent = wantParent
+	end
+	-- the hammer's finisher hits the floor: a shockwave where the head lands
+	if a and a.slamNow then
+		a.slamNow = false
+		local ok, tip = pcall(function()
+			return h.blade.CFrame.Position
+		end)
+		local hrp = h.char:FindFirstChild("HumanoidRootPart")
+		if ok and hrp then
+			WeaponFX.groundSlam(Vector3.new(tip.X, hrp.Position.Y + WeaponFX.GROUND + 0.1, tip.Z), h.golden)
+		end
+	end
+end
+
 local function stepOne(plr, h, dt)
 	-- awakened (mastery 100): the blade turns gold
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
@@ -1536,6 +1647,10 @@ local function stepOne(plr, h, dt)
 				startSpin(h, n)
 			end
 		end
+	end
+	if h.clips then
+		stepClips(plr, h, dt)
+		return
 	end
 	local target, want, mode, turn, cutting, drinking, rolling = targetFor(plr, h, dt)
 	-- the springs: every part eases towards its target (snappier in a swing).

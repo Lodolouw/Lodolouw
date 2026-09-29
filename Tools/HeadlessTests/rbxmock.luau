@@ -279,6 +279,16 @@ function CFrame.new(a, b, c, ...)
 	if select("#", ...) >= 9 then
 		return cf(a, b, c, ...)
 	end
+	if select("#", ...) == 4 then
+		-- CFrame.new(x, y, z, qX, qY, qZ, qW): a quaternion
+		local qx, qy, qz, qw = ...
+		local n = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+		qx, qy, qz, qw = qx / n, qy / n, qz / n, qw / n
+		return cf(a, b, c,
+			1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw),
+			2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qx * qw),
+			2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy))
+	end
 	return cf(a, b, c)
 end
 local function rx(t)
