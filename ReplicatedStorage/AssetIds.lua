@@ -11,8 +11,12 @@
 	  * Sounds: the weapons' sound effects (Tools/Sounds/weapon_sfx.py), by
 	    name with _ for spaces. ServerScriptService/SoundLoader puts each in
 	    SoundService under its name ("Goo_Splat" -> "Goo Splat").
+	  * Icons: each weapon's icon (Tools/Weapons/make_icons.py, from its real
+	    picture), uploaded as a decal, by the weapon's key. The Arcade and the
+	    Weapons panel show them (as "rbxthumb://type=Asset&id=...").
 	Missing ones are fine: a weapon without its model is the blocky one made in
-	code, an ability without its animation still does everything else.
+	code, an ability without its animation still does everything else, and one
+	without its icon shows a gem in its rarity's colour.
 ]]
 return {
 	Models = {
@@ -58,4 +62,5 @@ return {
 		Sword_Swing = 108223416687483,
 		Whirlwind = 139816322041910,
 	},
+	Icons = {},
 }

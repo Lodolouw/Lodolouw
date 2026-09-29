@@ -1,4 +1,4 @@
-# Uploading the models and animations (upload_assets.bat)
+# Uploading the models, animations, sounds and icons (upload_assets.bat)
 
 Uploads everything the game loads from Roblox in one go, with an Open Cloud
 API key, so nothing has to be published by hand:
@@ -7,6 +7,10 @@ API key, so nothing has to be published by hand:
 - the weapon abilities' animations (`Tools/Animations/abilities/*.rbxmx`)
 - the weapons' sound effects (`Tools/Sounds/out/weapons/*.ogg`, made by
   `Tools/Sounds/weapon_sfx.py`)
+- the weapons' icons (`Tools/Weapons/out/icons/*.png`, made by
+  `Tools/Weapons/make_icons.py`), as decals - the Arcade and the Weapons panel
+  show them (a brand-new decal can take a little while to pass Roblox's
+  check; until then it shows blank)
 
 ## Steps (Windows)
 

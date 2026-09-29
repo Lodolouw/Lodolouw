@@ -2,6 +2,7 @@
 #   * the voxel weapons' models  (Tools\Weapons\out\models\<key>.fbx)
 #   * the weapon abilities' animations  (Tools\Animations\abilities\<key>.rbxmx)
 #   * the weapons' sound effects  (Tools\Sounds\out\weapons\<name>.ogg)
+#   * the weapons' icons  (Tools\Weapons\out\icons\<key>.png, as decals)
 # then copies ALL their ids (as ReplicatedStorage\AssetIds.lua) to your clipboard,
 # to paste to Claude. Run it by double-clicking upload_assets.bat.
 #
@@ -39,6 +40,12 @@ if (Test-Path $sounds) {
         $items += [pscustomobject]@{ Kind = 'Audio'; Key = $_.BaseName; Path = $_.FullName; Type = 'audio/ogg' }
     }
 }
+$icons = Join-Path $tools 'Weapons\out\icons'
+if (Test-Path $icons) {
+    Get-ChildItem $icons -Filter *.png | Sort-Object Name | ForEach-Object {
+        $items += [pscustomobject]@{ Kind = 'Decal'; Key = $_.BaseName; Path = $_.FullName; Type = 'image/png' }
+    }
+}
 if ($items.Count -eq 0) { Write-Host 'Nothing to upload (pull first?)' -ForegroundColor Red; exit }
 
 # what's been uploaded before: "Kind:Key:fingerprint = id"
@@ -56,7 +63,7 @@ foreach ($it in $items) {
 $todo = @($items | Where-Object { -not $mem.ContainsKey($_.Tag) })
 
 Write-Host ''
-Write-Host ("{0} models, animations and sounds here, {1} to upload." -f $items.Count, $todo.Count) -ForegroundColor Yellow
+Write-Host ("{0} models, animations, sounds and icons here, {1} to upload." -f $items.Count, $todo.Count) -ForegroundColor Yellow
 Write-Host ''
 $badKey = $false
 if ($todo.Count -gt 0) {
@@ -83,7 +90,7 @@ if ($todo.Count -gt 0) {
         $request = @{
             assetType = $it.Kind
             displayName = $it.Key
-            description = 'Weapon ' + $it.Kind.ToLower()
+            description = $(if ($it.Kind -eq 'Decal') { 'Weapon icon' } else { 'Weapon ' + $it.Kind.ToLower() })
             creationContext = @{ creator = $creator }
         } | ConvertTo-Json -Depth 5 -Compress
         $op = $null
@@ -146,6 +153,11 @@ foreach ($it in ($items | Where-Object { $_.Kind -eq 'Animation' })) {
 $lines += "`t},"
 $lines += "`tSounds = {"
 foreach ($it in ($items | Where-Object { $_.Kind -eq 'Audio' })) {
+    if ($mem.ContainsKey($it.Tag)) { $lines += ("`t`t{0} = {1}," -f $it.Key, $mem[$it.Tag]) }
+}
+$lines += "`t},"
+$lines += "`tIcons = {"
+foreach ($it in ($items | Where-Object { $_.Kind -eq 'Decal' })) {
     if ($mem.ContainsKey($it.Tag)) { $lines += ("`t`t{0} = {1}," -f $it.Key, $mem[$it.Tag]) }
 }
 $lines += "`t},"

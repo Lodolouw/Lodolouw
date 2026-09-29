@@ -50,6 +50,22 @@ local Action = Remotes:WaitForChild("Action")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- the weapons' icons (their real pictures, uploaded: AssetIds.Icons)
+local AssetIds = nil
+pcall(function()
+	AssetIds = require(ReplicatedStorage:WaitForChild("AssetIds", 5))
+end)
+-- a weapon's icon as an image, or nil if it hasn't been uploaded yet
+local function iconFor(def, id, size)
+	local icons = type(AssetIds) == "table" and AssetIds.Icons
+	local n = icons and ((def and def.Model and icons[def.Model]) or icons[id])
+	if not n then
+		return nil
+	end
+	size = size or 150
+	return "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=" .. size .. "&h=" .. size
+end
+
 local WeaponFX = nil -- (for the weapons in 3D: loaded when first needed)
 local function weaponFX()
 	if WeaponFX == nil then
@@ -425,11 +441,14 @@ for i = 1, 6 do
 		frame = r,
 		bar = bar,
 		rarity = text(r, { Position = UDim2.fromOffset(20, 7), Size = UDim2.fromOffset(122, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
-		name = text(r, { Position = UDim2.fromOffset(146, 7), Size = UDim2.fromOffset(214, 26), TextScaled = false, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
+		icon = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Position = UDim2.fromOffset(142, 2), Size = UDim2.fromOffset(36, 36), ScaleType = Enum.ScaleType.Fit, ZIndex = 5, Visible = false }, r),
+		gem = new("Frame", { Name = "Gem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(160, 20), Size = UDim2.fromOffset(16, 16), Rotation = 45, BorderSizePixel = 0, ZIndex = 5 }, r),
+		name = text(r, { Position = UDim2.fromOffset(184, 7), Size = UDim2.fromOffset(178, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
 		kind = text(r, { Position = UDim2.fromOffset(364, 9), Size = UDim2.fromOffset(82, 22), TextScaled = false, TextSize = 17, TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 5 }),
 		odds = text(r, { Position = UDim2.fromOffset(446, 7), Size = UDim2.fromOffset(62, 26), TextScaled = false, TextSize = 22, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
 		owned = text(r, { Position = UDim2.fromOffset(516, 9), Size = UDim2.fromOffset(120, 22), TextScaled = false, TextSize = 16, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
 	}
+	stroke(rows[i].gem, INK, 2)
 end
 local pityLabel = text(detail, { Text = "", Position = UDim2.fromOffset(0, 356), Size = UDim2.fromOffset(644, 24), TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
 local pityBack = new("Frame", { BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 384), Size = UDim2.fromOffset(644, 12), ZIndex = 4 }, detail)
@@ -526,6 +545,11 @@ refresh = function()
 			r.rarity.Text = string.upper(d.rarity)
 			r.rarity.TextColor3 = col
 			r.name.Text = d.def and d.def.Name or d.id
+			local icon = iconFor(d.def, d.id)
+			r.icon.Image = icon or ""
+			r.icon.Visible = icon ~= nil
+			r.gem.Visible = icon == nil
+			r.gem.BackgroundColor3 = col
 			r.kind.Text = d.def and d.def.Type or ""
 			r.odds.Text = tostring(A.Odds[d.rarity] or 0) .. "%"
 			local lv = ownedLevel(d.id)
@@ -1002,10 +1026,15 @@ local function tileFor(parent, wid, rarity, x)
 	if rarity == "Secret" then
 		rainbow(edge)
 	end
-	text(f, { Text = string.upper(rarity), Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 0, 22), TextColor3 = col, ZIndex = 15 })
-	gem(f, rarity, 46, { Position = UDim2.fromOffset(TILE / 2, 62), ZIndex = 15 })
-	text(f, { Text = def and def.Name or wid, Position = UDim2.fromOffset(6, 94), Size = UDim2.new(1, -12, 0, 32), ZIndex = 15, TextWrapped = true })
-	text(f, { Text = def and string.upper(def.Type) or "", Position = UDim2.fromOffset(6, 126), Size = UDim2.new(1, -12, 0, 16), TextColor3 = GREY, TextStrokeTransparency = 1, ZIndex = 15 })
+	text(f, { Text = string.upper(rarity), Position = UDim2.fromOffset(6, 4), Size = UDim2.new(1, -12, 0, 18), TextColor3 = col, ZIndex = 15 })
+	local icon = iconFor(def, wid)
+	if icon then
+		new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Image = icon, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(TILE / 2, 61), Size = UDim2.fromOffset(84, 84), ZIndex = 15 }, f)
+	else
+		gem(f, rarity, 46, { Position = UDim2.fromOffset(TILE / 2, 61), ZIndex = 15 })
+	end
+	text(f, { Text = def and def.Name or wid, Position = UDim2.fromOffset(6, 104), Size = UDim2.new(1, -12, 0, 26), ZIndex = 15, TextWrapped = true })
+	text(f, { Text = def and string.upper(def.Type) or "", Position = UDim2.fromOffset(6, 130), Size = UDim2.new(1, -12, 0, 14), TextColor3 = GREY, TextStrokeTransparency = 1, ZIndex = 15 })
 	return f
 end
 
@@ -1161,7 +1190,12 @@ local function reveal(result, machineId, count)
 		cardGem = nil
 	end
 	if not model then
-		cardGem = gem(card, result.rarity, 120, { Position = UDim2.new(0.5, 0, 0, 206), ZIndex = 21 })
+		local icon = iconFor(def, result.id, 420)
+		if icon then
+			cardGem = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Image = icon, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 206), Size = UDim2.fromOffset(230, 230), ZIndex = 21 }, card)
+		else
+			cardGem = gem(card, result.rarity, 120, { Position = UDim2.new(0.5, 0, 0, 206), ZIndex = 21 })
+		end
 	end
 	if model then
 		local offset, size = standInfo(model)

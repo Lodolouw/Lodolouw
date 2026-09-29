@@ -171,6 +171,8 @@ def shape_mask(size, pts, radius, grow=0.0, width=0):
     return m
 
 
+ICON_IDS = {}  # asset id -> a weapon's key (the test's "ICONMAP id key" lines)
+ICON_DIR = os.path.join(REPO, "Tools", "Weapons", "out", "icons")
 PACK_PICTURE = {}  # weapon id -> (picture, box) from Docs/weapons
 
 
@@ -268,6 +270,19 @@ def paint(items, bg):
             layer = Image.new("RGBA", size, (0, 0, 0, 0))
             draw_text(layer, it)
             img = Image.alpha_composite(img, clipped(layer, it))
+        elif kind == "img":
+            import re
+            m = re.search(r"id=(\d+)", it.get("src", ""))
+            key = m and ICON_IDS.get(m.group(1))
+            path = key and os.path.join(ICON_DIR, key + ".png")
+            if path and os.path.exists(path):
+                pic = Image.open(path).convert("RGBA")
+                x0, y0, x1, y1 = [v * SS for v in bounds(it["pts"])]
+                k = min((x1 - x0) / pic.width, (y1 - y0) / pic.height)
+                p = pic.resize((max(1, int(pic.width * k)), max(1, int(pic.height * k))), Image.LANCZOS)
+                layer = Image.new("RGBA", size, (0, 0, 0, 0))
+                layer.paste(p, (int((x0 + x1) / 2 - p.width / 2), int((y0 + y1) / 2 - p.height / 2)), p)
+                img = Image.alpha_composite(img, clipped(layer, it))
         elif kind == "image":
             pic = weapon_picture(it["name"])
             if pic:
@@ -284,7 +299,10 @@ def paint(items, bg):
 snaps = []
 for line in open(args.snaps, encoding="utf-8"):
     line = line.rstrip("\n")
-    if line.startswith("SNAP "):
+    if line.startswith("ICONMAP "):
+        _, aid, key = line.split()
+        ICON_IDS[aid] = key
+    elif line.startswith("SNAP "):
         snaps.append({"caption": line[5:], "items": []})
     elif line.startswith("{") and snaps:
         try:

@@ -180,6 +180,23 @@ end
 local PS = mount.require(mount.module("ServerScriptService/PlayerService.lua"))
 local CS = mount.require(mount.module("ServerScriptService/CombatService.lua"))
 local AS = mount.require(mount.module("ServerScriptService/ArcadeService.lua"))
+-- two weapons' icons are uploaded (the rest aren't yet)
+local AssetIds = mount.require(mount.module("ReplicatedStorage/AssetIds.lua"))
+AssetIds.Icons = { Jellyblade = 111, GooGloves = 222 }
+local ICON_JELLY = "rbxthumb://type=Asset&id=111&w=150&h=150"
+if SNAPS then
+	-- (for the pictures: every weapon's icon, so render_gui.py can paint them)
+	local n = 1000
+	for id in pairs(W.List) do
+		n += 1
+		if id ~= "Jellyblade" and id ~= "GooGloves" then
+			AssetIds.Icons[id] = n
+		end
+	end
+	for id, aid in pairs(AssetIds.Icons) do
+		print("ICONMAP " .. aid .. " " .. id)
+	end
+end
 
 local T = 0
 local DT = 1 / 30
@@ -370,6 +387,14 @@ for _, r in ipairs(A.Order) do
 	check(textOn(detail, "^" .. string.upper(r) .. "$") and textOn(detail, "^" .. string.gsub(W.List[id].Name, "%-", "%%-") .. "$"), "it lists the " .. r .. " weapon")
 end
 check(textOn(detail, "^45%%$") and textOn(detail, "^0.5%%$"), "with the real odds")
+-- each row's icon, or its rarity's gem while the icon isn't uploaded
+local function rowOf(name)
+	local l = textOn(detail, "^" .. name .. "$")
+	return l and l.Parent
+end
+local jellyRow, hammerRow = rowOf("Jellyblade"), rowOf("Gelatin Hammer")
+check(jellyRow and jellyRow.Icon.Visible and jellyRow.Icon.Image == ICON_JELLY and not jellyRow.Gem.Visible, "a weapon's row shows its icon")
+check(SNAPS or (hammerRow and not hammerRow.Icon.Visible and hammerRow.Gem.Visible), "one without an uploaded icon shows its gem")
 check(textOn(detail, "FIRST SPIN IS RARE OR BETTER") ~= nil, "a first spin promises Rare or better")
 check(textOn(detail, "IN " .. A.Pity .. " SPINS") ~= nil, "the pity count shows " .. A.Pity)
 check(textOn(win, "^%+ GET TOKENS$") ~= nil, "there's a GET TOKENS button")
@@ -424,6 +449,19 @@ check((played["Token Clunk"] or 0) >= 1, "the token clunks in")
 step(0.5)
 local tiles = find("Tiles", show)
 check(tiles and #tiles:GetChildren() == 46, "the strip has its tiles")
+local iconTiles, gemTiles, rightIcons = 0, 0, true
+for _, t in ipairs(tiles and tiles:GetChildren() or {}) do
+	local ic, gm = t:FindFirstChild("Icon"), t:FindFirstChild("Gem")
+	if ic then
+		iconTiles += 1
+		local isJelly = textOn(t, "^Jellyblade$") ~= nil
+		local isGloves = textOn(t, "^Goo Gloves$") ~= nil
+		rightIcons = rightIcons and ((isJelly and ic.Image == ICON_JELLY) or (isGloves and ic.Image == "rbxthumb://type=Asset&id=222&w=150&h=150"))
+	elseif gm then
+		gemTiles += 1
+	end
+end
+check(iconTiles > 0 and (SNAPS or gemTiles > 0) and (SNAPS or rightIcons), "tiles show their weapon's icon, or a gem without one (" .. iconTiles .. " icons, " .. gemTiles .. " gems)")
 local landing = tiles and tiles:GetChildren()[40]
 check(landing and textOn(landing, "^" .. string.upper(tostring(r1.rarity)) .. "$") and textOn(landing, W.List[r1.id] and string.gsub(W.List[r1.id].Name, "%-", "%%-") or "?"), "and lands on what the server picked")
 check((played["Roll Tick"] or 0) > 5, "ticking as it goes")

@@ -168,6 +168,17 @@ new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4) }, 
 
 local data = nil
 
+-- the weapons' icons (their real pictures, uploaded: AssetIds.Icons)
+local AssetIds = nil
+pcall(function()
+	AssetIds = require(ReplicatedStorage:WaitForChild("AssetIds", 5))
+end)
+local function iconFor(def, id)
+	local icons = type(AssetIds) == "table" and AssetIds.Icons
+	local n = icons and ((def and def.Model and icons[def.Model]) or icons[id])
+	return n and ("rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150") or nil
+end
+
 local function setStatus(msg, good)
 	status.Text = msg or ""
 	status.TextColor3 = good == false and RED or (good and GREEN or GREY)
@@ -190,7 +201,12 @@ local function card(id, def, points, holding, order)
 	end
 	-- the rarity stripe down the left
 	new("Frame", { BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(0, 10, 1, 0), ZIndex = 4 }, c)
-	text(c, { Text = def.Name, TextSize = 24, Position = UDim2.fromOffset(24, 10), Size = UDim2.new(1, -40, 0, 30), ZIndex = 4, TextTruncate = Enum.TextTruncate.AtEnd })
+	-- its icon, top right (once the icons are uploaded)
+	local icon = iconFor(def, id)
+	if icon then
+		new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Image = icon, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 6), Size = UDim2.fromOffset(84, 84), ZIndex = 4 }, c)
+	end
+	text(c, { Text = def.Name, TextSize = 24, Position = UDim2.fromOffset(24, 10), Size = UDim2.new(1, icon and -130 or -40, 0, 30), ZIndex = 4, TextTruncate = Enum.TextTruncate.AtEnd })
 	text(c, { Text = string.upper(def.Rarity) .. "  ·  " .. def.Type, TextSize = 16, TextColor3 = color, Position = UDim2.fromOffset(24, 40), Size = UDim2.new(1, -40, 0, 20), ZIndex = 4 })
 	local ability = def.Ability and def.Ability.Name or "No ability"
 	text(c, { Text = "F: " .. ability, TextSize = 16, TextColor3 = GREY, Position = UDim2.fromOffset(24, 62), Size = UDim2.new(1, -40, 0, 20), ZIndex = 4 })

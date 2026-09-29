@@ -426,6 +426,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   the banner, BIG WINS), two spins on one machine taking turns, the HUD's
   ArcadeOpen, the token machine, and no spinning outside the lobby or in the
   intro. `-a snaps` also prints snapshots of the screen for `render_gui.py`.
+- `test_weaponbag.luau` - the WEAPONS panel (WeaponBag.client.lua): a card
+  per weapon you own, rarest first, its icon when it's uploaded
+  (`AssetIds.Icons`) and none when it isn't, IN HAND / EQUIP.
 - `test_hud.luau` - the HUD's ARCADE TOKENS (Hud.client.lua): the counter
   bottom-left and its token picture, clicking it opens the Arcade
   (`ArcadeOpen`), the hint line nudging you to spin, and DEV: +10 Tokens.

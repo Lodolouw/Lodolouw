@@ -17,6 +17,12 @@ and the game colours each mesh itself.
   drafts in `packs/later` (see its README to bring one in).
 - `make_models.py` - builds every pack's weapons, exports each one as a model,
   renders a sheet of each pack and writes the list the game reads.
+- `make_icons.py` - each weapon's ICON, made from its picture
+  (`out/tiles/<Key>.png`): laid corner to corner like an item icon (gauntlets
+  upright), 256 x 256, see-through, with a dark outline, into
+  `out/icons/<Key>.png` (`--sheet` also makes `Docs/weapons/icons.png`). The
+  uploader uploads them; the Arcade (strip, menu, grid, reveal) and the
+  Weapons panel show them (`AssetIds.Icons`). Re-run it after re-rendering.
 - `make_weapons.py` + `sprites.py` - the older pixel-sprite swords (Iron
   Warden, Ember Cleaver, Tidefang, Voidstar), in `out/`.
 

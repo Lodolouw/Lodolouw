@@ -284,6 +284,9 @@ return function(root, caption, SW, SH)
 			if obj.ClassName == "ViewportFrame" and obj:GetAttribute("SnapImage") then
 				print(encode({ k = "image", pts = pts, name = obj:GetAttribute("SnapImage") }))
 			end
+			if (obj.ClassName == "ImageLabel" or obj.ClassName == "ImageButton") and type(obj.Image) == "string" and obj.Image ~= "" then
+				print(encode({ k = "img", pts = pts, src = obj.Image, t = tonumber(obj.ImageTransparency) or 0 }))
+			end
 			if TEXT[obj.ClassName] and (obj.Text or "") ~= "" and (tonumber(obj.TextTransparency) or 0) < 0.99 then
 				local pad = childOf(obj, "UIPadding")
 				local l, r, t, b = 0, 0, 0, 0
