@@ -2,9 +2,9 @@
 	ArcadeBuilder  (ModuleScript, parent: ServerScriptService, name: "ArcadeBuilder")
 
 	THE ARCADE, where the forge used to be (north-east of the fountain, at
-	Config.Stations.Arcade): a very open neon pavilion - a checkered floor, a
-	flat roof on six pillars with blinking marquee bulbs round its edge, and a
-	big pixel "ARCADE" sign on top with a giant spinning token over it, so it
+	Config.Stations.Arcade): open to the sky - a checkered floor with glowing
+	edges, and over the front a big pixel "ARCADE" sign on two posts, with
+	blinking marquee bulbs along it and a giant spinning token over it, so it
 	can be seen from the spawn. LobbyBuilder calls ArcadeBuilder.Build(lobby).
 
 	Inside:
@@ -243,6 +243,22 @@ local function cabinet(parent, cf, id, machine, pack)
 	return m, screen, foot
 end
 
+-- makes a finished model `s` times bigger round `pivot` (a spot on the floor
+-- under it, so it stays standing there); its screens' words grow with it
+local function scaleModel(model, pivot, s)
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			local rel = pivot:ToObjectSpace(d.CFrame)
+			d.Size = d.Size * s
+			d.CFrame = pivot * (rel - rel.Position + rel.Position * s)
+		end
+	end
+end
+
+-- the machines (and the token machine) are built this much bigger than
+-- their parts below say (I asked for them 1.5x bigger)
+local MACHINE_SCALE = 1.5
+
 ----------------------------------------------------------------------
 -- The whole building
 ----------------------------------------------------------------------
@@ -254,7 +270,7 @@ function ArcadeBuilder.Build(parent)
 		return O * CFrame.new(x, y, z)
 	end
 	local HALF = 20 -- the floor is 40 x 40 studs
-	local ROOF = 16.8
+	local SIGN_Y = 22.6 -- the middle of the ARCADE sign over the front
 
 	-- THE FLOOR: dark with purple checks, glowing edges, a mat to the path
 	part(m, "ArcadeFloor", V3(HALF * 2, 0.8, HALF * 2), at(0, 0.4, 0), INK)
@@ -271,35 +287,15 @@ function ArcadeBuilder.Build(parent)
 	neon(m, "FloorGlow", V3(0.4, 0.15, HALF * 2), at(HALF - 0.2, 0.82, 0), MAGENTA)
 	part(m, "EntryMat", V3(18, 0.6, 3), at(-4, 0.3, HALF + 1.5), NIGHT)
 
-	-- PILLARS and the flat ROOF
-	-- (only at the corners: open on every side)
+	-- NO ROOF: open to the sky (I asked for the roof gone). Two posts at the
+	-- front corners hold up the sign.
 	for _, px in ipairs({ -19.2, 19.2 }) do
-		for _, pz in ipairs({ -19.2, 19.2 }) do
-			part(m, "Pillar", V3(1.6, ROOF - 0.8, 1.6), at(px, 0.8 + (ROOF - 0.8) / 2, pz), NIGHT)
-			neon(m, "PillarGlow", V3(0.3, ROOF - 2, 0.3), at(px - 0.8 * math.sign(px), 0.8 + (ROOF - 0.8) / 2, pz), CYAN)
-		end
-	end
-	part(m, "Roof", V3(HALF * 2 + 2, 1.2, HALF * 2 + 2), at(0, ROOF + 0.6, 0), INK)
-	neon(m, "RoofGlow", V3(HALF * 2 + 2.2, 0.35, 0.35), at(0, ROOF + 0.2, HALF + 1.05), YELLOW)
-	neon(m, "RoofGlow", V3(HALF * 2 + 2.2, 0.35, 0.35), at(0, ROOF + 0.2, -HALF - 1.05), MAGENTA)
-	neon(m, "RoofGlow", V3(0.35, 0.35, HALF * 2 + 2.2), at(-HALF - 1.05, ROOF + 0.2, 0), MAGENTA)
-	neon(m, "RoofGlow", V3(0.35, 0.35, HALF * 2 + 2.2), at(HALF + 1.05, ROOF + 0.2, 0), MAGENTA)
-	-- strip lights under the roof
-	for i, z in ipairs({ -11, 0, 11 }) do
-		neon(m, "CeilingLight", V3(HALF * 2 - 6, 0.25, 0.6), at(0, ROOF - 0.15, z), i == 2 and CYAN or MAGENTA, { Transparency = 0.15 })
-	end
-	-- the marquee bulbs along the front edge (ArcadeClient runs lights along them)
-	local n = 0
-	for x = -HALF, HALF, 2 do
-		n = n + 1
-		local b = ball(m, "Bulb", 0.7, at(x, ROOF - 0.35, HALF + 1.3), YELLOW, Mat.Neon)
-		b.CastShadow = false
-		b:SetAttribute("Index", n)
-		CollectionService:AddTag(b, "ArcadeBulb")
+		part(m, "SignPost", V3(1.6, SIGN_Y - 0.8, 1.6), at(px, 0.8 + (SIGN_Y - 0.8) / 2, HALF - 0.8), NIGHT)
+		neon(m, "SignPostGlow", V3(0.3, SIGN_Y - 5.8, 0.3), at(px - 0.8 * math.sign(px), 0.8 + (SIGN_Y - 5.8) / 2 + 0.6, HALF - 0.8), CYAN)
 	end
 
-	-- THE SIGN on the roof: ARCADE in pixel letters, a different colour each
-	local signCf = at(0, ROOF + 1.2 + 4.6, HALF + 0.4)
+	-- THE SIGN over the front: ARCADE in pixel letters, a different colour each
+	local signCf = at(0, SIGN_Y, HALF + 0.4)
 	part(m, "SignBoard", V3(38, 9.2, 1), signCf, INK)
 	neon(m, "SignEdge", V3(38.4, 0.4, 1.1), signCf * CFrame.new(0, 4.6, 0), CYAN)
 	neon(m, "SignEdge", V3(38.4, 0.4, 1.1), signCf * CFrame.new(0, -4.6, 0), CYAN)
@@ -318,8 +314,19 @@ function ArcadeBuilder.Build(parent)
 			end
 		end
 	end
+	-- marquee bulbs along its top and bottom (ArcadeClient runs lights along them)
+	local n = 0
+	for _, y in ipairs({ -5.05, 5.05 }) do
+		for x = -19, 19, 2 do
+			n = n + 1
+			local b = ball(m, "Bulb", 0.7, signCf * CFrame.new(x, y, 0.55), YELLOW, Mat.Neon)
+			b.CastShadow = false
+			b:SetAttribute("Index", n)
+			CollectionService:AddTag(b, "ArcadeBulb")
+		end
+	end
 	-- the giant token over it, turning (LobbyFX spins it)
-	local coin = disc(m, "GiantToken", 0.9, 7, at(0, ROOF + 15, HALF + 0.4), GOLD, Mat.SmoothPlastic)
+	local coin = disc(m, "GiantToken", 0.9, 7, at(0, SIGN_Y + 9.2, HALF + 0.4), GOLD, Mat.SmoothPlastic)
 	coin.CastShadow = false
 	for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
 		local g = screenGui(coin, face, 30)
@@ -348,10 +355,11 @@ function ArcadeBuilder.Build(parent)
 	table.sort(packs, function(a, b)
 		return a.Floor < b.Floor
 	end)
-	local spacing = 7
+	local spacing = 8
 	local first = -spacing * (#packs - 1) / 2
 	for i, p in ipairs(packs) do
-		cabinet(m, at(first + (i - 1) * spacing, 0.8, -14) * CFrame.Angles(0, math.pi, 0), p.Id, A.Machines[p.Id], p)
+		local cf = at(first + (i - 1) * spacing, 0.8, -14) * CFrame.Angles(0, math.pi, 0)
+		scaleModel(cabinet(m, cf, p.Id, A.Machines[p.Id], p), cf, MACHINE_SCALE)
 	end
 	-- (the update packs' machines come with their packs: the sides stay open
 	-- until then - covered ones there crowded the room)
@@ -373,6 +381,7 @@ function ArcadeBuilder.Build(parent)
 		neon(t, "MarqueeGlow", V3(4.6, 0.18, 1.3), tcf * CFrame.new(0, 9.89, -1.05), YELLOW)
 		local g = screenGui(part(t, "Screen", V3(3.0, 1.2, 0.1), tcf * CFrame.new(0, 3.6, -1.9), INK), Enum.NormalId.Front, 60)
 		label(g, "Text", "GET TOKENS", YELLOW, UDim2.fromScale(0.05, 0.1), UDim2.fromScale(0.9, 0.8))
+		scaleModel(t, tcf, MACHINE_SCALE)
 		CollectionService:AddTag(t, "ArcadeTokens")
 		t.Parent = m
 	end
@@ -386,13 +395,14 @@ function ArcadeBuilder.Build(parent)
 		CollectionService:AddTag(base, "ArcadePrize")
 	end
 
-	-- THE BIG WINS board, hanging at the back over the machines
+	-- THE BIG WINS board, up on two posts at the back, over the machines
 	do
-		local board = part(m, "WinsBoard", V3(22, 4.6, 0.4), at(0, ROOF - 2.5, -HALF + 0.6), INK)
-		neon(m, "WinsEdge", V3(22.4, 0.3, 0.5), at(0, ROOF - 0.25, -HALF + 0.6), YELLOW)
-		neon(m, "WinsEdge", V3(22.4, 0.3, 0.5), at(0, ROOF - 4.75, -HALF + 0.6), YELLOW)
-		for _, x in ipairs({ -8, 8 }) do
-			part(m, "WinsChain", V3(0.2, 0.4, 0.2), at(x, ROOF - 0.3, -HALF + 0.6), STEEL)
+		local WINS_Y, WZ = 23.5, -HALF + 1.4
+		local board = part(m, "WinsBoard", V3(26, 6, 0.4), at(0, WINS_Y, WZ), INK)
+		neon(m, "WinsEdge", V3(26.4, 0.35, 0.5), at(0, WINS_Y + 3.15, WZ), YELLOW)
+		neon(m, "WinsEdge", V3(26.4, 0.35, 0.5), at(0, WINS_Y - 3.15, WZ), YELLOW)
+		for _, x in ipairs({ -12, 12 }) do
+			part(m, "WinsPost", V3(1, WINS_Y - 0.8, 1), at(x, 0.8 + (WINS_Y - 0.8) / 2, WZ - 0.7), NIGHT)
 		end
 		local g = screenGui(board, Enum.NormalId.Back, 30) -- (its back faces into the room)
 		label(g, "Title", "BIG WINS", YELLOW, UDim2.fromScale(0.3, 0.04), UDim2.fromScale(0.4, 0.26))

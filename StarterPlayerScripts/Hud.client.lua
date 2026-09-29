@@ -1449,11 +1449,10 @@ local function renderHint()
 	end
 	local message
 	local tokens = tonumber(state.Tokens) or 0
+	-- (the Sell Shop is gone, so there's no "sell your loot" any more)
 	if tokens > 0 then
 		message = tokens == 1 and "You have an Arcade Token! Spin it at the Arcade for a weapon!"
 			or ("You have " .. tokens .. " Arcade Tokens! Spin them at the Arcade for weapons!")
-	elseif Config.lootCount(state) > 0 then
-		message = "You're carrying loot - sell it at the Sell Shop!"
 	elseif Config.statPointsLeft(state) > 0 then
 		message = "You have " .. Config.statPointsLeft(state) .. " stat points! Spend them in STATS."
 	else

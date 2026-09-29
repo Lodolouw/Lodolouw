@@ -3,7 +3,7 @@
 
 	Builds the whole starter lobby out of Parts when the server starts:
 	  * toy-brick island, paths, walls, trees, lamps
-	  * Sell Shop, Upgrade Shop (mushroom house), the Arcade (ArcadeBuilder, where the forge was), Prestige Shrine
+	  * Upgrade Shop (mushroom house), the Arcade (ArcadeBuilder, where the forge was), the Quest Board (where the Sell Shop was)
 	  * the mini Colosseum (its door takes you to the wave arena)
 	  * the castle gate, and the stairs and bridge up to the Spire (the boss floors)
 
@@ -18,7 +18,6 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
-local InsertService = game:GetService("InsertService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
@@ -201,149 +200,8 @@ local function titleSign(parent, cf, title, subtitle, titleColor, width, maxDist
 	return anchor
 end
 
--- A blocky shopkeeper. Faces local +Z of `origin`. Assumes the floor top is at y = 0.8.
-local function npc(parent, origin, x, z, shirt, hatColor)
-	local m = Instance.new("Model")
-	m.Name = "Shopkeeper"
-	m.Parent = parent
-	local skin = RGB(255, 214, 170)
-	part(m, "Legs", V3(3, 3, 1.8), origin * CFrame.new(x, 2.3, z), RGB(60, 70, 110))
-	part(m, "Torso", V3(3.6, 3.4, 2), origin * CFrame.new(x, 5.5, z), shirt)
-	part(m, "ArmL", V3(1, 3.2, 1.2), origin * CFrame.new(x - 2.4, 5.4, z), skin)
-	part(m, "ArmR", V3(1, 3.2, 1.2), origin * CFrame.new(x + 2.4, 5.4, z), skin)
-	local head = part(m, "Head", V3(2.8, 2.8, 2.8), origin * CFrame.new(x, 8.6, z), skin)
-	local face = Instance.new("Decal")
-	face.Texture = "rbxasset://textures/face.png"
-	face.Face = Enum.NormalId.Back -- local +Z
-	face.Parent = head
-	if hatColor then
-		part(m, "HatBrim", V3(3.6, 0.6, 3.6), origin * CFrame.new(x, 10.3, z), hatColor)
-		part(m, "HatTop", V3(2.4, 1.8, 2.4), origin * CFrame.new(x, 11.5, z), hatColor)
-	end
-	return m
-end
-
--- Real Roblox avatar shopkeepers, loaded from models the developer uploaded
--- (InsertService can load models owned by the game's creator). Loaded in
--- the background so the lobby doesn't wait on the network. If a model can't
--- be loaded (offline, wrong id, not accessible), `fallback` builds the old
--- blocky shopkeeper instead, so a shop is never left empty.
---
--- `height` (optional) forces that exact height in studs - handy for
--- things that aren't people, like the toad.
--- `turn` (optional) spins the model in degrees if it faces the wrong way:
--- -90 = quarter turn to its right, 90 = to its left, 180 = turn around.
---
--- Easiest way to use ANY model (even one you don't own): put a copy in
--- ServerStorage named "ToadNPC", "BlacksmithNPC" or "ShopkeeperNPC" - if
--- that's there, it's used instead of loading the id below.
-local NPC_MODELS = {
-	Toad = { id = 4816047695, height = 4.5, turn = -90 }, -- a real toad, by the mushroom house (Upgrade Shop)
-	Smith = { id = 106244394777485 }, -- (the forge's blacksmith: the forge is gone, the Arcade stands there)
-	Shopkeeper = { id = 91467356738952 }, -- Sell Shop
-}
-
--- Shopkeepers are resized to about this many studs tall if their model is
--- much bigger or smaller (a normal Roblox avatar is ~5-6).
-local NPC_HEIGHT = 6.5
-
--- `cframe` = where to stand and which way to face; `floorY` = the world
--- height of the floor there, so the feet land exactly on it.
-local function avatarNPC(parent, info, name, cframe, floorY, fallback)
-	local assetId = info.id
-	local targetHeight = info.height or NPC_HEIGHT
-	task.spawn(function()
-		local ok, container
-		-- 1) a copy placed in ServerStorage wins (works for any model)
-		local override = ServerStorage:FindFirstChild(name .. "NPC")
-		if override then
-			ok, container = true, override:Clone()
-		end
-		-- 2) otherwise load it by id. A model uploaded moments ago can still
-		-- be under review, so try a few times before giving up.
-		for attempt = 1, 4 do
-			if ok and container then
-				break -- already have it (from ServerStorage)
-			end
-			ok, container = pcall(function()
-				return InsertService:LoadAsset(assetId)
-			end)
-			if ok and container then
-				break
-			end
-			if attempt < 4 then
-				task.wait(5)
-			end
-		end
-
-		-- Prefer a proper character (a Model with a Humanoid). If there isn't
-		-- one - e.g. the model is a mesh or a rig without a Humanoid - use the
-		-- whole model anyway as a statue-style shopkeeper.
-		local rig
-		if ok and container then
-			if container:FindFirstChildOfClass("Humanoid") then
-				rig = container
-			else
-				for _, d in ipairs(container:GetDescendants()) do
-					if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") then
-						rig = d
-						break
-					end
-				end
-			end
-			if not rig and container:FindFirstChildWhichIsA("BasePart", true) then
-				rig = container
-			end
-		end
-		if not rig then
-			warn("[LobbyBuilder] Couldn't load the " .. name .. " model (" .. tostring(assetId) .. "), using the blocky one instead. "
-				.. (ok and "The model has no parts in it." or tostring(container)))
-			if fallback then
-				fallback()
-			end
-			return
-		end
-
-		rig.Name = name
-		for _, d in ipairs(rig:GetDescendants()) do
-			if d:IsA("Script") or d:IsA("LocalScript") then
-				d:Destroy() -- a shopkeeper doesn't need any code of its own
-			elseif d:IsA("BasePart") then
-				d.Anchored = true -- stand still, never fall over
-			end
-		end
-		local hum = rig:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-			hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-		end
-
-		-- Resize anything that isn't roughly character-sized (e.g. a model
-		-- uploaded at a huge scale) to NPC_HEIGHT studs tall.
-		local _, rawSize = rig:GetBoundingBox()
-		if info.height or rawSize.Y > NPC_HEIGHT * 1.15 or rawSize.Y < NPC_HEIGHT * 0.6 then
-			pcall(function()
-				rig:ScaleTo(rig:GetScale() * targetHeight / rawSize.Y)
-			end)
-		end
-
-		rig:PivotTo(cframe * CFrame.Angles(0, math.rad(info.turn or 0), 0))
-		local boxCf, boxSize = rig:GetBoundingBox()
-		local feet = boxCf.Position.Y - boxSize.Y / 2
-		rig:PivotTo(rig:GetPivot() + Vector3.new(0, floorY - feet, 0))
-		rig.Parent = parent
-		if container ~= rig then
-			container:Destroy()
-		end
-		print("[LobbyBuilder] " .. name .. " loaded" .. (hum and "" or " (no Humanoid - placed as a statue)"))
-	end)
-end
-
--- Where a shopkeeper stands: (x, z) in the station's own coordinates,
--- turned round to face the customer (characters look down their -Z).
-local function facingCustomer(O, x, z)
-	return O * CFrame.new(x, 0, z) * CFrame.Angles(0, math.pi, 0)
-end
+-- (the shopkeepers - the forge's blacksmith and the Sell Shop's - and the
+-- code that loaded their avatars went with their buildings: see git history)
 
 ----------------------------------------------------------------------
 -- Lighting
@@ -1073,198 +931,6 @@ local function buildDecor(parent)
 	for _, f in ipairs(FLOWER_PATCHES) do
 		flowers(d, f[1], f[2], 3)
 	end
-end
-
-----------------------------------------------------------------------
--- Sell Shop (west side, faces east)
-----------------------------------------------------------------------
-local function buildSellShop(parent)
-	-- The Sell Shop: a market stall. Timber posts, a striped awning with a
-	-- scalloped edge, lanterns hanging at the front, a panelled back wall with
-	-- shelves of loot crates (each with its gem glowing on top) and potion
-	-- bottles, sacks of goods, barrels brimming with ore, an open treasure
-	-- chest spilling gold, and brass scales on the counter. The counter is
-	-- kept low and the shopkeeper stands on a step behind it, so you see him.
-	-- Faces the plaza (local +Z).
-	local m = folder(parent, "SellShop")
-	local O = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(Config.StationTurn.Sell or 90), 0)
-	local wood = RGB(150, 106, 68)
-	local timber = RGB(120, 80, 50)
-	local woodDark = RGB(96, 64, 42)
-	local red, white = RGB(226, 62, 68), RGB(252, 246, 236)
-	local coinGold = RGB(255, 205, 60)
-	local deco = { CanCollide = false } -- (little things you don't bump into)
-
-	-- Floor, with a darker trim round its edge
-	part(m, "FloorTrim", V3(27, 0.5, 21), O * CFrame.new(0, 0.25, 0), woodDark, Mat.Wood)
-	part(m, "Floor", V3(26, 0.8, 20), O * CFrame.new(0, 0.4, 0), wood, Mat.WoodPlanks)
-
-	-- Back wall: plaster above, wooden panelling below
-	part(m, "BackWall", V3(24, 17, 1.5), O * CFrame.new(0, 9.3, -8), RGB(240, 228, 200))
-	part(m, "Wainscot", V3(23.6, 5, 0.4), O * CFrame.new(0, 3.3, -7.1), RGB(168, 120, 76), Mat.WoodPlanks, deco)
-	part(m, "WainscotRail", V3(23.6, 0.5, 0.6), O * CFrame.new(0, 5.9, -7), timber, Mat.Wood, deco)
-	for _, sx in ipairs({ -11.5, 11.5 }) do
-		part(m, "PostBack", V3(1.6, 15, 1.6), O * CFrame.new(sx, 8.3, -8), timber, Mat.Wood)
-		part(m, "PostFront", V3(1.6, 15, 1.6), O * CFrame.new(sx, 8.3, 8), timber, Mat.Wood)
-		part(m, "PostFoot", V3(2.2, 1, 2.2), O * CFrame.new(sx, 1.3, 8), woodDark, Mat.Wood, deco)
-		part(m, "PostCap", V3(2.2, 0.6, 2.2), O * CFrame.new(sx, 15.9, 8), coinGold, Mat.Metal, deco)
-	end
-
-	-- Striped awning, and a scalloped edge hanging along its front
-	for i = 1, 10 do
-		local x = -10.8 + (i - 1) * 2.4
-		local c = (i % 2 == 1) and red or white
-		part(m, "Awning" .. i, V3(2.4, 0.7, 18), O * CFrame.new(x, 15.4, 0.5) * CFrame.Angles(math.rad(12), 0, 0), c)
-		-- (the awning's front edge sits at y 13.5, z 9.3)
-		part(m, "Scallop", V3(2.4, 1, 0.3), O * CFrame.new(x, 12.75, 9.35), c, Mat.SmoothPlastic, deco)
-		part(m, "ScallopTip", V3(1.4, 0.5, 0.3), O * CFrame.new(x, 12, 9.35), c, Mat.SmoothPlastic, deco)
-	end
-
-	-- Lanterns hanging from the front posts
-	for _, sx in ipairs({ -11.5, 11.5 }) do
-		local dir = sx > 0 and 1 or -1
-		part(m, "LanternArm", V3(2, 0.3, 0.3), O * CFrame.new(sx + dir * 1.2, 11.6, 8.9), woodDark, Mat.Wood, deco)
-		part(m, "LanternCap", V3(1.4, 0.35, 1.4), O * CFrame.new(sx + dir * 2, 10.9, 8.9), RGB(50, 50, 62), Mat.Metal, deco)
-		local lantern = part(m, "Lantern", V3(1, 1.3, 1), O * CFrame.new(sx + dir * 2, 10.05, 8.9), RGB(255, 208, 130), Mat.Neon, deco)
-		part(m, "LanternBase", V3(1.3, 0.3, 1.3), O * CFrame.new(sx + dir * 2, 9.3, 8.9), RGB(50, 50, 62), Mat.Metal, deco)
-		local light = Instance.new("PointLight")
-		light.Color = RGB(255, 200, 130)
-		light.Range = 12
-		light.Brightness = 0.8
-		light.Parent = lantern
-	end
-
-	-- Counter: low enough to see the shopkeeper over it, with planked panels
-	part(m, "CounterFront", V3(20, 3.2, 3), O * CFrame.new(0, 2.4, 5.5), RGB(168, 120, 76), Mat.WoodPlanks)
-	local top = part(m, "Counter", V3(21.5, 0.7, 4.4), O * CFrame.new(0, 4.35, 5.5), RGB(204, 150, 98), Mat.WoodPlanks)
-	for _, px in ipairs({ -10, -3.4, 3.4, 10 }) do
-		part(m, "CounterPlank", V3(0.6, 3.2, 0.3), O * CFrame.new(px, 2.4, 7.05), woodDark, Mat.Wood, deco)
-	end
-	part(m, "CounterTrim", V3(21.5, 0.25, 0.25), O * CFrame.new(0, 4.05, 7.75), coinGold, Mat.Metal, deco)
-	-- the step the shopkeeper stands on
-	part(m, "KeeperStep", V3(10, 0.6, 5), O * CFrame.new(0, 1.1, 0.5), woodDark, Mat.Wood)
-
-	-- Coin stacks on the counter
-	local COUNTER_TOP = 4.7
-	local stacks = { { -7, 4 }, { -4.6, 3 }, { 7.4, 5 } }
-	for i, st in ipairs(stacks) do
-		for k = 1, st[2] do
-			cylinder(m, "Coin" .. i .. "_" .. k, 0.4, 2.4, O * CFrame.new(st[1], COUNTER_TOP + 0.2 + (k - 1) * 0.42, 5.4), coinGold, Mat.Metal, deco)
-		end
-	end
-	-- Brass scales, weighing a gem against a coin
-	local brass = RGB(214, 170, 70)
-	local SX = 3.2
-	cylinder(m, "ScaleBase", 0.3, 1.8, O * CFrame.new(SX, COUNTER_TOP + 0.15, 5.2), brass, Mat.Metal, deco)
-	part(m, "ScalePost", V3(0.3, 2.6, 0.3), O * CFrame.new(SX, COUNTER_TOP + 1.6, 5.2), brass, Mat.Metal, deco)
-	part(m, "ScaleBeam", V3(3.6, 0.25, 0.25), O * CFrame.new(SX, COUNTER_TOP + 2.9, 5.2) * CFrame.Angles(0, 0, math.rad(6)), brass, Mat.Metal, deco)
-	for _, side in ipairs({ -1, 1 }) do
-		local py = COUNTER_TOP + 1.5 + side * 0.18
-		part(m, "ScaleString", V3(0.08, 1.3, 0.08), O * CFrame.new(SX + side * 1.7, py + 0.75, 5.2), brass, Mat.Metal, deco)
-		cylinder(m, "ScalePan", 0.15, 1.4, O * CFrame.new(SX + side * 1.7, py, 5.2), brass, Mat.Metal, deco)
-	end
-	part(m, "ScaleGem", V3(0.6, 0.6, 0.6), O * CFrame.new(SX - 1.7, COUNTER_TOP + 1.7, 5.2) * CFrame.Angles(math.rad(45), 0, math.rad(45)), RGB(44, 232, 245), Mat.Neon, deco)
-	cylinder(m, "ScaleCoin", 0.2, 0.9, O * CFrame.new(SX + 1.7, COUNTER_TOP + 1.8, 5.2), coinGold, Mat.Metal, deco)
-
-	-- Shelf of loot crates: wooden crates banded in each loot's colour, the
-	-- loot's gem glowing on top
-	part(m, "Shelf", V3(18, 1, 2.5), O * CFrame.new(0, 7.5, -6.4), wood, Mat.WoodPlanks)
-	for i, mat in ipairs(Config.Materials) do
-		local x = -6 + (i - 1) * 4
-		part(m, "Crate" .. i, V3(3, 2.6, 2.2), O * CFrame.new(x, 9.3, -6.4), RGB(168, 120, 76), Mat.WoodPlanks)
-		part(m, "CrateBand", V3(3.1, 0.5, 2.3), O * CFrame.new(x, 9.3, -6.4), mat.color, Mat.SmoothPlastic, deco)
-		part(m, "CrateGem", V3(0.9, 0.9, 0.9), O * CFrame.new(x, 11.2, -6.4) * CFrame.Angles(math.rad(45), math.rad(20), math.rad(45)), mat.color, Mat.Neon, deco)
-	end
-	-- a higher shelf of potion bottles
-	part(m, "PotionShelf", V3(16, 0.5, 1.8), O * CFrame.new(0, 13, -6.9), wood, Mat.WoodPlanks, deco)
-	local POTIONS = { RGB(228, 59, 68), RGB(44, 232, 245), RGB(99, 199, 77), RGB(181, 80, 136), RGB(254, 174, 52), RGB(0, 153, 219) }
-	for i, c in ipairs(POTIONS) do
-		local x = -6.25 + (i - 1) * 2.5
-		local h = (i % 2 == 0) and 1.6 or 1.2
-		cylinder(m, "Potion", h, 0.9, O * CFrame.new(x, 13.25 + h / 2, -6.9), c, Mat.Neon, { CanCollide = false, Transparency = 0.15 })
-		cylinder(m, "PotionNeck", 0.5, 0.4, O * CFrame.new(x, 13.25 + h + 0.25, -6.9), RGB(192, 203, 220), Mat.Glass, deco)
-		cylinder(m, "PotionCork", 0.3, 0.45, O * CFrame.new(x, 13.25 + h + 0.6, -6.9), RGB(184, 111, 80), Mat.Wood, deco)
-	end
-
-	-- Sacks of goods behind the counter, tied at the top
-	for i, sp in ipairs({ { -9, -3.5, 2.8 }, { -7.2, -5, 2.3 }, { 9.2, -4, 2.6 } }) do
-		ball(m, "Sack", sp[3], O * CFrame.new(sp[1], 0.8 + sp[3] * 0.42, sp[2]), RGB(196, 170, 120), Mat.Fabric, deco)
-		cylinder(m, "SackTie", 0.35, 0.8, O * CFrame.new(sp[1], 0.8 + sp[3] * 0.85, sp[2]), RGB(120, 80, 50), Mat.Fabric, deco)
-		if i == 1 then
-			ball(m, "SackCoins", 1.4, O * CFrame.new(sp[1], 0.8 + sp[3] * 0.95, sp[2]), coinGold, Mat.Metal, deco)
-		end
-	end
-
-	-- Barrels brimming with ore at the front corners
-	for bi, bx in ipairs({ -12.6, 12.6 }) do
-		local B = O * CFrame.new(bx, 0.8, 10.6)
-		cylinder(m, "Barrel", 3, 2.6, B * CFrame.new(0, 1.5, 0), RGB(150, 100, 60), Mat.WoodPlanks)
-		for _, by in ipairs({ 0.5, 2.5 }) do
-			cylinder(m, "BarrelBand", 0.3, 2.75, B * CFrame.new(0, by, 0), RGB(58, 58, 66), Mat.Metal, deco)
-		end
-		for k = 1, 5 do
-			local mat = Config.Materials[((k + bi) % #Config.Materials) + 1]
-			local a = k / 5 * math.pi * 2
-			part(m, "Ore", V3(0.8, 0.8, 0.8), B * CFrame.new(math.cos(a) * 0.6, 3.1 + (k % 2) * 0.3, math.sin(a) * 0.6) * CFrame.Angles(a, a * 2, 0), mat.color, Mat.Neon, deco)
-		end
-	end
-
-	-- An open treasure chest spilling coins, out front on the left
-	local C = O * CFrame.new(-8.4, 0.8, 11) * CFrame.Angles(0, math.rad(20), 0)
-	part(m, "Chest", V3(3.2, 1.8, 2.2), C * CFrame.new(0, 0.9, 0), RGB(140, 90, 52), Mat.WoodPlanks, deco)
-	for _, bx in ipairs({ -1.1, 1.1 }) do
-		part(m, "ChestBand", V3(0.3, 1.9, 2.3), C * CFrame.new(bx, 0.9, 0), coinGold, Mat.Metal, deco)
-	end
-	part(m, "ChestLid", V3(3.2, 0.4, 2.2), C * CFrame.new(0, 2.6, -1.4) * CFrame.Angles(math.rad(-70), 0, 0), RGB(140, 90, 52), Mat.WoodPlanks, deco)
-	local hoard = part(m, "ChestGold", V3(2.8, 0.8, 1.9), C * CFrame.new(0, 1.75, 0), coinGold, Mat.Neon, deco)
-	part(m, "ChestGoldTop", V3(1.8, 0.5, 1.2), C * CFrame.new(-0.2, 2.35, 0.1), coinGold, Mat.Neon, deco)
-	local glow = Instance.new("PointLight")
-	glow.Color = coinGold
-	glow.Range = 9
-	glow.Brightness = 1
-	glow.Parent = hoard
-	for k = 1, 4 do
-		local a = k * 1.7
-		cylinder(m, "SpiltCoin", 0.2, 0.9, C * CFrame.new(math.cos(a) * 2.4, 0.1, 1.3 + math.sin(a) * 0.8) * CFrame.Angles(0, 0, math.rad(8 * k)), coinGold, Mat.Metal, deco)
-	end
-
-	avatarNPC(m, NPC_MODELS.Shopkeeper, "Shopkeeper", facingCustomer(O, 0, 0.5), 1.4, function()
-		npc(m, O * CFrame.new(0, 0.6, 0), 0, 0.5, RGB(206, 60, 60), RGB(250, 240, 220))
-	end)
-
-	-- Sign + spinning coin
-	titleSign(m, O * CFrame.new(0, 21.5, 2), "SELL SHOP", "Turn loot into coins", RGB(255, 214, 80), 340, 80)
-	-- a pixel-art coin floating above it: gold cubes with a darker rim, a
-	-- shine and a notched middle, bobbing (in step with the Upgrade arrow)
-	local COIN = {
-		"...OOOO...",
-		".OOYYYYOO.",
-		".OYWYYYyO.",
-		"OYWYYYYYyO",
-		"OYYYddYYyO",
-		"OYYYddYYyO",
-		"OYYYYYYYyO",
-		".OYYYYYyO.",
-		".OOyyyyOO.",
-		"...OOOO...",
-	}
-	local INK = { O = RGB(184, 111, 80), Y = RGB(254, 231, 97), y = RGB(254, 174, 52), W = RGB(255, 255, 255), d = RGB(214, 150, 40) }
-	local cube = 0.8
-	for y, row in ipairs(COIN) do
-		for x = 1, #row do
-			local c = INK[string.sub(row, x, x)]
-			if c then
-				local px = part(m, "CoinPixel", V3(cube, cube, cube), O * CFrame.new((x - 5.5) * cube, 28.5 + (5.5 - y) * cube, 2), c, Mat.Neon, { CanCollide = false, CanQuery = false })
-				fx(px, { BobAmp = 0.7, BobSpeed = 1.8 })
-			end
-		end
-	end
-
-	-- Glowing welcome mat
-	part(m, "Mat", V3(12, 0.3, 6), O * CFrame.new(0, 0.45, 14), RGB(80, 230, 130), Mat.Neon, { Transparency = 0.35, CanCollide = false })
-
-	addPrompt(top, "Sell", "Sell Loot", "Sell Shop", 14)
-	autoZone(m, O * CFrame.new(0, 4, 12), V3(22, 8, 12), "Panel", "Sell")
 end
 
 ----------------------------------------------------------------------
@@ -3158,6 +2824,122 @@ local function buildPetSanctuary(parent)
 	blossomTree(m, -102, -98, 0.8)
 	bush(m, -106, -104, 0.9)
 	titleSign(m, CFrame.new(-80, 12, z1 + 2), "Pet Sanctuary", nil, RGB(255, 150, 200), 320, 70)
+
+	-- UNDER CONSTRUCTION (pets aren't made yet; I asked for it to show):
+	-- scaffolding round the tower's front, a tower crane behind it, striped
+	-- barriers and cones across the gate, a sign, and building stuff piled up
+	do
+		local c = folder(m, "Construction")
+		local STEEL, PLANK = RGB(139, 155, 180), RGB(158, 104, 66)
+		local HAZARD, BLACK = RGB(254, 231, 97), RGB(24, 20, 37)
+		local CONE, WHITE = RGB(247, 118, 34), RGB(255, 255, 255)
+		local solid = { CanCollide = true }
+		local deco = { CanCollide = false }
+		-- scaffolding: three frames round the front of the tower, each with a
+		-- walkway every 11 studs, a rail and a zig-zag brace
+		for _, deg in ipairs({ -55, 0, 55 }) do
+			local F = CFrame.new(tx, 0, tz) * CFrame.Angles(0, math.rad(deg), 0) * CFrame.new(0, 0, 12)
+			for _, px in ipairs({ -4.5, 4.5 }) do
+				for _, pz in ipairs({ -1.5, 1.5 }) do
+					part(c, "ScaffoldPole", V3(0.4, 34, 0.4), F * CFrame.new(px, 17, pz), STEEL, Mat.Metal, deco)
+				end
+			end
+			for lvl, y in ipairs({ 11, 22, 33 }) do
+				part(c, "ScaffoldBoard", V3(9.4, 0.4, 3.4), F * CFrame.new(0, y, 0), PLANK, Mat.WoodPlanks, deco)
+				part(c, "ScaffoldRail", V3(9.4, 0.25, 0.25), F * CFrame.new(0, y + 3, 1.5), STEEL, Mat.Metal, deco)
+				-- (the brace from this walkway down to the one below)
+				local lean = math.atan2(11, 9) * (lvl % 2 == 0 and 1 or -1)
+				part(c, "ScaffoldBrace", V3(0.25, math.sqrt(11 * 11 + 9 * 9), 0.25), F * CFrame.new(0, y - 5.5, 1.6) * CFrame.Angles(0, 0, math.pi / 2 - lean), STEEL, Mat.Metal, deco)
+			end
+		end
+		-- the crane, behind the tower on the right: a lattice mast, a cab, the
+		-- arm reaching towards the tower with its hook down, a counterweight
+		do
+			local cx, cz, top = -66, -97, 58
+			part(c, "CraneBase", V3(5, 2, 5), CFrame.new(cx, 1, cz), RGB(139, 155, 180), Mat.Concrete, solid)
+			for _, ox in ipairs({ -1.2, 1.2 }) do
+				for _, oz in ipairs({ -1.2, 1.2 }) do
+					part(c, "CraneMast", V3(0.5, top - 2, 0.5), CFrame.new(cx + ox, 2 + (top - 2) / 2, cz + oz), HAZARD, Mat.Metal, deco)
+				end
+			end
+			for y = 7, top - 1, 7 do
+				part(c, "CraneRung", V3(2.9, 0.35, 0.35), CFrame.new(cx, y, cz - 1.2), HAZARD, Mat.Metal, deco)
+				part(c, "CraneRung", V3(2.9, 0.35, 0.35), CFrame.new(cx, y, cz + 1.2), HAZARD, Mat.Metal, deco)
+				part(c, "CraneRung", V3(0.35, 0.35, 2.9), CFrame.new(cx - 1.2, y, cz), HAZARD, Mat.Metal, deco)
+				part(c, "CraneRung", V3(0.35, 0.35, 2.9), CFrame.new(cx + 1.2, y, cz), HAZARD, Mat.Metal, deco)
+			end
+			part(c, "CraneCab", V3(3.2, 3, 3.2), CFrame.new(cx, top + 1.5, cz), HAZARD, Mat.SmoothPlastic, deco)
+			part(c, "CraneWindow", V3(2.4, 1.4, 0.2), CFrame.new(cx, top + 2, cz + 1.65), RGB(44, 232, 245), Mat.Glass, deco)
+			part(c, "CranePeak", V3(0.8, 5, 0.8), CFrame.new(cx, top + 5.5, cz), HAZARD, Mat.Metal, deco)
+			local reach, back = 20, 8
+			part(c, "CraneJib", V3(reach, 1, 1), CFrame.new(cx - reach / 2, top + 3.4, cz), HAZARD, Mat.Metal, deco)
+			part(c, "CraneCounterJib", V3(back, 1, 1), CFrame.new(cx + back / 2, top + 3.4, cz), HAZARD, Mat.Metal, deco)
+			part(c, "CraneWeight", V3(2.4, 2.6, 2.2), CFrame.new(cx + back - 1.2, top + 2.3, cz), RGB(139, 155, 180), Mat.Concrete, deco)
+			-- the ties from the peak to both arms' ends
+			for _, tip in ipairs({ V3(cx - reach, top + 3.9, cz), V3(cx + back, top + 3.9, cz) }) do
+				local peak = V3(cx, top + 8, cz)
+				part(c, "CraneTie", V3(0.2, 0.2, (tip - peak).Magnitude), CFrame.lookAt((tip + peak) / 2, tip), BLACK, Mat.Metal, deco)
+			end
+			-- the hook, hanging on its cable beside the tower
+			local hx = cx - reach + 1.5
+			part(c, "CraneCable", V3(0.15, 20, 0.15), CFrame.new(hx, top + 3 - 10, cz), BLACK, Mat.Metal, deco)
+			part(c, "CraneHook", V3(1.2, 1.4, 1.2), CFrame.new(hx, top + 3 - 20.7, cz), HAZARD, Mat.Metal, deco)
+			part(c, "CraneHookStripe", V3(1.25, 0.4, 1.25), CFrame.new(hx, top + 3 - 20.7, cz), BLACK, Mat.Metal, deco)
+		end
+		-- barriers across the gate: two striped planks on legs each (solid)
+		for _, bx in ipairs({ -86, -80, -74 }) do
+			for _, lx in ipairs({ -2.4, 2.4 }) do
+				part(c, "BarrierLeg", V3(0.4, 3.2, 1.4), CFrame.new(bx + lx, 1.6, z1 + 1.2), BLACK, Mat.SmoothPlastic, solid)
+			end
+			for _, y in ipairs({ 1.3, 2.6 }) do
+				for k = 0, 5 do
+					part(c, "BarrierStripe", V3(0.92, 0.7, 0.3), CFrame.new(bx - 2.3 + k * 0.92, y, z1 + 1.2), k % 2 == 0 and HAZARD or BLACK, Mat.SmoothPlastic, solid)
+				end
+			end
+		end
+		-- cones in front of them
+		for _, cx in ipairs({ -88.5, -83, -77, -71.5 }) do
+			local base = CFrame.new(cx, 0, z1 + 3.4)
+			part(c, "ConeBase", V3(1.5, 0.2, 1.5), base * CFrame.new(0, 0.1, 0), BLACK, Mat.SmoothPlastic, deco)
+			part(c, "Cone", V3(1, 0.6, 1), base * CFrame.new(0, 0.5, 0), CONE, Mat.SmoothPlastic, deco)
+			part(c, "ConeBand", V3(0.8, 0.4, 0.8), base * CFrame.new(0, 1, 0), WHITE, Mat.SmoothPlastic, deco)
+			part(c, "Cone", V3(0.6, 0.5, 0.6), base * CFrame.new(0, 1.45, 0), CONE, Mat.SmoothPlastic, deco)
+			part(c, "ConeTip", V3(0.35, 0.3, 0.35), base * CFrame.new(0, 1.85, 0), CONE, Mat.SmoothPlastic, deco)
+		end
+		-- the sign over the middle barrier
+		local signCf = CFrame.new(-80, 6.4, z1 + 1.0)
+		for _, sx in ipairs({ -3.6, 3.6 }) do
+			part(c, "SignPost", V3(0.5, 8, 0.5), CFrame.new(-80 + sx, 4, z1 + 0.7), BLACK, Mat.SmoothPlastic, solid)
+		end
+		local board = part(c, "ConstructionSign", V3(9, 3.4, 0.3), signCf, HAZARD, Mat.SmoothPlastic, solid)
+		part(c, "SignEdge", V3(9.3, 0.3, 0.35), signCf * CFrame.new(0, 1.7, 0), BLACK, Mat.SmoothPlastic, deco)
+		part(c, "SignEdge", V3(9.3, 0.3, 0.35), signCf * CFrame.new(0, -1.7, 0), BLACK, Mat.SmoothPlastic, deco)
+		local g = Instance.new("SurfaceGui")
+		g.Name = "Words"
+		g.Face = Enum.NormalId.Back -- (its back faces the path)
+		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		g.PixelsPerStud = 40
+		g.LightInfluence = 0.3
+		g.Parent = board
+		for _, line in ipairs({ { "UNDER CONSTRUCTION", 0.1, 0.46 }, { "PETS COMING SOON!", 0.6, 0.3 } }) do
+			local l = Instance.new("TextLabel")
+			l.BackgroundTransparency = 1
+			l.Font = FONT
+			l.Text = line[1]
+			l.TextColor3 = BLACK
+			l.TextScaled = true
+			l.Position = UDim2.fromScale(0.05, line[2])
+			l.Size = UDim2.fromScale(0.9, line[3])
+			l.Parent = g
+		end
+		-- building stuff: a stack of planks and a pile of stone blocks
+		for k = 0, 2 do
+			part(c, "PlankStack", V3(6, 0.5, 1.2), CFrame.new(-72, 0.55 + k * 0.5, -66 + (k % 2) * 0.3) * CFrame.Angles(0, math.rad(k * 6), 0), PLANK, Mat.WoodPlanks, deco)
+		end
+		for _, b in ipairs({ { -89, 0.9, -66, 1.6 }, { -87.2, 0.9, -66.4, 1.6 }, { -88.1, 2.4, -66.2, 1.4 }, { -86.6, 0.7, -64.6, 1.2 } }) do
+			part(c, "StoneBlock", V3(b[4], b[4], b[4]), CFrame.new(b[1], b[2], b[3]) * CFrame.Angles(0, math.rad(b[1] * 13 % 30), 0), RGB(176, 168, 156), Mat.Cobblestone, deco)
+		end
+	end
 end
 
 -- A stream down the east side of the castle: it springs from a grotto in
@@ -5570,43 +5352,48 @@ local Extras = (function()
 		CollectionService:AddTag(spawnAt, "ColosseumSpawn")
 	end
 
-	-- The Quest Board: a wooden notice board with a little roof, by the road
-	-- between the plaza and the training field. Walk up to it and your own
-	-- quest menu pops up on your screen (LobbyActivities client script). A
-	-- gold "!" hovers over it when you have a reward waiting.
+	-- The Quest Board: a big wooden notice board with a little roof, where the
+	-- Sell Shop was. Walk up to it and your own quest menu pops up on your
+	-- screen (LobbyActivities client script). A gold "!" hovers over it when
+	-- you have a reward waiting.
 	local function buildQuestBoard(parent)
 		local f = folder(parent, "QuestBoard")
 		local O = CFrame.new(Config.Stations.Quests) * CFrame.Angles(0, math.rad(Config.StationTurn.Quests or 90), 0)
+		-- (built 1.5x the size it first was: I asked for it bigger)
+		local S = 1.5
+		local function at(x, y, z)
+			return O * CFrame.new(x * S, y * S, z * S)
+		end
 		local wood, dark = RGB(158, 104, 66), RGB(96, 64, 48)
 		for _, sx in ipairs({ -1, 1 }) do
-			part(f, "Leg", V3(1, 11, 1), O * CFrame.new(sx * 5.6, 5.5, 0), dark, Mat.Wood)
+			part(f, "Leg", V3(1, 11, 1) * S, at(sx * 5.6, 5.5, 0), dark, Mat.Wood)
 		end
-		part(f, "Frame", V3(11.6, 7.2, 1), O * CFrame.new(0, 6.4, 0), dark, Mat.Wood)
+		part(f, "Frame", V3(11.6, 7.2, 1) * S, at(0, 6.4, 0), dark, Mat.Wood)
 		-- the face the notes are drawn on (its front is local +Z)
-		local face = part(f, "QuestFace", V3(10.6, 6.2, 0.4), O * CFrame.new(0, 6.4, 0.45), RGB(190, 128, 88), Mat.WoodPlanks)
+		local face = part(f, "QuestFace", V3(10.6, 6.2, 0.4) * S, at(0, 6.4, 0.45), RGB(190, 128, 88), Mat.WoodPlanks)
 		CollectionService:AddTag(face, "QuestFace")
 		-- (no "press E": walk onto the grass in front of it - this invisible
-		-- box, reaching just over the curb onto the road - and your quest menu
-		-- opens (LobbyActivities))
-		autoZone(f, O * CFrame.new(0, 4, 6), V3(14, 8, 10), "Activity", "Quests")
+		-- box, reaching to the path from the road - and your quest menu opens
+		-- (LobbyActivities))
+		autoZone(f, at(0, 4, 6), V3(14, 8, 10) * S, "Activity", "Quests")
 		-- paper notes pinned to it
 		for k = -1, 1 do
-			part(f, "Note", V3(2.6, 3.2, 0.1), O * CFrame.new(k * 3.4, 6.6, 0.7) * CFrame.Angles(0, 0, math.rad(k * 4)), RGB(234, 212, 170), Mat.SmoothPlastic, { CanCollide = false })
+			part(f, "Note", V3(2.6, 3.2, 0.1) * S, at(k * 3.4, 6.6, 0.7) * CFrame.Angles(0, 0, math.rad(k * 4)), RGB(234, 212, 170), Mat.SmoothPlastic, { CanCollide = false })
 		end
 		-- a little pitched roof of stepped planks
 		for k = 0, 2 do
-			part(f, "Roof", V3(13.4 - k * 0.2, 0.5, 3.4 - k * 1.1), O * CFrame.new(0, 10.3 + k * 0.5, 0), (k % 2 == 0) and ROOF_RED or RGB(158, 40, 53), Mat.WoodPlanks)
+			part(f, "Roof", V3(13.4 - k * 0.2, 0.5, 3.4 - k * 1.1) * S, at(0, 10.3 + k * 0.5, 0), (k % 2 == 0) and ROOF_RED or RGB(158, 40, 53), Mat.WoodPlanks)
 		end
-		part(f, "Shelf", V3(10.6, 0.4, 1.2), O * CFrame.new(0, 2.8, 0.6), wood, Mat.Wood)
-		titleSign(f, O * CFrame.new(0, 14.2, 0), "QUEST BOARD", nil, RGB(254, 174, 52), 300, 70)
+		part(f, "Shelf", V3(10.6, 0.4, 1.2) * S, at(0, 2.8, 0.6), wood, Mat.Wood)
+		titleSign(f, at(0, 14.2, 0), "QUEST BOARD", nil, RGB(254, 174, 52), 300 * S, 110)
 		-- the "!" (8-bit: a bar and a dot)
 		local mark = Instance.new("Model")
 		mark.Name = "QuestMark"
 		mark.Parent = f
 		-- (hidden until the QuestBoard script says you have something to hand in; it bobs it too)
-		part(mark, "Bar", V3(1, 2.6, 1), O * CFrame.new(0, 19.2, 0), RGB(254, 231, 97), Mat.Neon, { CanCollide = false })
-		part(mark, "Dot", V3(1, 1, 1), O * CFrame.new(0, 17.2, 0), RGB(254, 231, 97), Mat.Neon, { CanCollide = false })
-		mark.WorldPivot = O * CFrame.new(0, 18, 0)
+		part(mark, "Bar", V3(1, 2.6, 1) * S, at(0, 19.2, 0), RGB(254, 231, 97), Mat.Neon, { CanCollide = false })
+		part(mark, "Dot", V3(1, 1, 1) * S, at(0, 17.2, 0), RGB(254, 231, 97), Mat.Neon, { CanCollide = false })
+		mark.WorldPivot = at(0, 18, 0)
 		CollectionService:AddTag(mark, "QuestMark")
 	end
 
@@ -5637,7 +5424,8 @@ function LobbyBuilder.Build()
 	-- one mistake leaving the whole world empty.
 	local pieces = {
 		{ "Ground and walls", buildGround },
-		{ "Sell Shop", buildSellShop },
+		-- (the Sell Shop is gone - nothing drops to sell any more; the Quest
+		-- Board stands where it was)
 		{ "Upgrade Shop", buildUpgradeShop },
 		-- the Arcade, where the forge was (its own module: this one is full)
 		{ "Arcade", function(lobby)

@@ -21,18 +21,18 @@ Config.TalismanSlots = 3
 
 -- Where the shops stand. Used by the lobby builder AND by server range checks.
 Config.Stations = {
-	Sell = Vector3.new(52, 0, 45), -- south-east of the fountain plaza
+	Sell = Vector3.new(52, 0, 45), -- (the Sell Shop was here: it's gone, the Quest Board stands there now)
 	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle
 	Craft = Vector3.new(72, 0, -40), -- (the forge was here: the Arcade stands there now)
 	Arcade = Vector3.new(75, 0, -41), -- the Arcade (ServerScriptService/ArcadeBuilder), north-east of the fountain
 	Prestige = Vector3.new(0, 0, 0),
-	Quests = Vector3.new(18, 0, 27), -- the Quest Board, by the south road just past the plaza
+	Quests = Vector3.new(48, 0, 45), -- the Quest Board, where the Sell Shop was (east of the plaza, up the little path off the road)
 }
 -- which way each building turns (degrees round the vertical)
 Config.StationTurn = {
 	Sell = -90, -- faces west, towards the path from the plaza
 	Upgrades = 90, -- faces east, towards the stairs and the pier
-	Quests = -90, -- faces west, onto the road
+	Quests = -90, -- faces west, down the little path to the road
 }
 
 ----------------------------------------------------------------------

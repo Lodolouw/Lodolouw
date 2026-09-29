@@ -1033,7 +1033,7 @@ local function cameraToMachine(machineId)
 	camSaved = { type = cam.CameraType }
 	cam.CameraType = Enum.CameraType.Scriptable
 	local s = c.screen
-	local goal = CFrame.lookAt(s.Position + s.CFrame.LookVector * 9 + Vector3.new(0, 1.5, 0), s.Position)
+	local goal = CFrame.lookAt(s.Position + s.CFrame.LookVector * 11 + Vector3.new(0, 1.5, 0), s.Position) -- (the machines are big)
 	camTween = tween(cam, 0.6, { CFrame = goal }, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 end
 local function cameraBack()
