@@ -3,8 +3,8 @@
 
 	How Speedy Revvington, King of the Speedway (floor 5's boss,
 	Config.Bosses[5]) looks on your screen: a chunky 8-bit cartoon race car,
-	shiny red, a lightning bolt down each side and a big "57" on his doors and
-	roof. His FACE is his windscreen - two huge eyes that follow you about,
+	shiny orange, two white racing stripes down each side and over his bonnet,
+	and a big "57" on his doors and roof. His FACE is his windscreen - two huge eyes that follow you about,
 	blink, squint and roll - and his MOUTH is the grille on his front bumper:
 	a cocky grin full of teeth. His wheels really turn (the front ones steer),
 	his springs bounce, he leans out of turns, dips his nose when he brakes,
@@ -580,8 +580,9 @@ local FACES = {
 	shut = { w = 3.8, h = 0.25, curve = 0, teeth = 0 },
 }
 
--- the lightning bolt down each side: three bars, { y, z from; y, z to; thickness }
-local BOLT = { { 2.25, -7.4, 3.05, -1.2, 0.62 }, { 3.05, -1.2, 2.15, 0.9, 0.62 }, { 2.15, 0.9, 3.1, 7.6, 0.9 } }
+-- the racing stripes down each side: bars, { y, z from; y, z to; thickness }
+-- (two wide stripes, and a thin pinstripe under them)
+local BOLT = { { 2.35, -7.4, 2.35, 7.6, 0.45 }, { 3.0, -7.4, 3.0, 7.6, 0.45 }, { 1.75, -7.2, 1.75, 7.4, 0.18 } }
 
 -- the front wheel that rolled away at the finish: where it is now, and how
 -- far it has turned
@@ -683,7 +684,7 @@ local function applyPose(B, P, ground, facing, t, dt)
 	local hinge = bodyCF * CFrame.new(0, 3.85 * u * sy, -2.75 * u * sz) * CFrame.Angles(0.75 * pop, 0, 0)
 	body.hood.Size = V3(7.6 * u * sx, 0.45 * u * sy, 5.6 * u * sz)
 	body.hood.CFrame = hinge * CFrame.new(0, 0, -2.8 * u * sz)
-	stretch(body.hoodBolt, hinge * V3(-2.3 * u * sx, 0.25 * u * sy, -5.0 * u * sz), hinge * V3(1.8 * u * sx, 0.25 * u * sy, -0.8 * u * sz), 0.7 * u, 0.06, hinge.UpVector)
+	stretch(body.hoodBolt, hinge * V3(0, 0.25 * u * sy, -5.0 * u * sz), hinge * V3(0, 0.25 * u * sy, -0.8 * u * sz), 1.1 * u, 0.06, hinge.UpVector)
 	put(body.deck, 0, 3.85, 6.3, 7.6, 0.45, 3.6)
 	put(body.cabin, 0, 4.95, 1.2, 7.0, 2.5, 6.6)
 	put(body.roof, 0, 6.38, 1.5, 6.6, 0.36, 5.4)

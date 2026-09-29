@@ -4,8 +4,8 @@
 	How Kongo, the Jungle Brawler (floor 7's boss, Config.Bosses[7]) looks on
 	your screen: a big chunky 8-bit gorilla nearly three times your height -
 	brown fur, a tan face with a big muzzle, a heavy brow, a tuft of hair on
-	top, huge arms that hang down to his knuckles, and a red tie with a big
-	yellow K on it. In round 2 his face goes angry red.
+	top, huge arms that hang down to his knuckles, and a gold chain round his
+	neck with a big banana medallion (a charcoal silverback, pale grey face). In round 2 his face goes angry red.
 
 	Everything he does is drawn from what the server publishes (see
 	ServerScriptService/Bosses/Kongo.lua, where each move is explained):
@@ -202,7 +202,8 @@ function Body.build(def)
 	body.chest = add("Chest", fur, nil, "fur")
 	body.shoulders = { add("Shoulder", fur, nil, "fur"), add("Shoulder", fur, nil, "fur") }
 	body.back = add("BackFur", deep, nil, "fur")
-	-- THE TIE: a knot, a long tie, and a big K on it
+	-- THE CHAIN: a gold collar, two strands in a V, and a banana medallion
+	-- (the pieces keep their old "Tie" names)
 	body.knot = add("TieKnot", def.TieColor or RED)
 	body.tie = add("Tie", def.TieColor or RED)
 	body.tieTip = add("TieTip", def.TieColor or RED)
@@ -426,21 +427,23 @@ local function applyPose(B, P, ground, facing, t, dt)
 		body.shoulders[i].CFrame = scf
 		shoulders[i] = scf.Position
 	end
-	-- the tie: knot at his neck, down his chest, a big K on it
-	local tieCF = torso * CFrame.new(0, neckY - 0.35 * u, -2.05 * u)
-	body.knot.Size = V3(1.3, 0.9, 0.6) * u
+	-- the chain: a gold collar at his neck, two strands down his chest in a V,
+	-- and a big banana medallion where they meet
+	local tieCF = torso * CFrame.new(0, neckY - 0.35 * u, -2.05 * u) * CFrame.Angles(0.08 + lean * 0.5, 0, 0)
+	body.knot.Size = V3(3.4 * u, 0.45 * u, 0.5 * u)
 	body.knot.CFrame = tieCF
-	body.tie.Size = V3(1.5 * u, 3.4 * u * sy, 0.35 * u)
-	body.tie.CFrame = tieCF * CFrame.new(0, -2.1 * u * sy, -0.05 * u) * CFrame.Angles(0.08 + lean * 0.5, 0, 0)
-	body.tieTip.Size = V3(1.1, 1.1, 0.35) * u
-	body.tieTip.CFrame = body.tie.CFrame * CFrame.new(0, -1.7 * u * sy, 0) * CFrame.Angles(0, 0, math.rad(45))
-	local kcf = body.tie.CFrame * CFrame.new(0, 0.1 * u, -0.2 * u)
-	body.letter[1].Size = V3(0.28 * u, 1.5 * u, 0.08)
-	body.letter[1].CFrame = kcf * CFrame.new(-0.28 * u, 0, 0)
-	body.letter[2].Size = V3(0.26 * u, 0.9 * u, 0.08)
-	body.letter[2].CFrame = kcf * CFrame.new(0.12 * u, 0.36 * u, 0) * CFrame.Angles(0, 0, math.rad(-40))
-	body.letter[3].Size = V3(0.26 * u, 0.9 * u, 0.08)
-	body.letter[3].CFrame = kcf * CFrame.new(0.12 * u, -0.36 * u, 0) * CFrame.Angles(0, 0, math.rad(40))
+	body.tie.Size = V3(0.4 * u, 2.3 * u * sy, 0.35 * u)
+	body.tie.CFrame = tieCF * CFrame.new(-0.85 * u, -1.05 * u * sy, -0.05 * u) * CFrame.Angles(0, 0, math.rad(-32))
+	body.tieTip.Size = V3(0.4 * u, 2.3 * u * sy, 0.35 * u)
+	body.tieTip.CFrame = tieCF * CFrame.new(0.85 * u, -1.05 * u * sy, -0.05 * u) * CFrame.Angles(0, 0, math.rad(32))
+	-- (the banana: three chunky blocks bent in a curve)
+	local mcf = tieCF * CFrame.new(0, -2.35 * u * sy, -0.25 * u)
+	body.letter[1].Size = V3(0.45 * u, 0.8 * u, 0.3 * u)
+	body.letter[1].CFrame = mcf * CFrame.new(-0.5 * u, 0.2 * u, 0) * CFrame.Angles(0, 0, math.rad(55))
+	body.letter[2].Size = V3(0.8 * u, 0.5 * u, 0.3 * u)
+	body.letter[2].CFrame = mcf * CFrame.new(0, -0.1 * u, 0)
+	body.letter[3].Size = V3(0.45 * u, 0.8 * u, 0.3 * u)
+	body.letter[3].CFrame = mcf * CFrame.new(0.5 * u, 0.2 * u, 0) * CFrame.Angles(0, 0, math.rad(-55))
 
 	-- the head
 	local head = torso * CFrame.new(0, neckY + 1.5 * u * sy, -0.9 * u) * CFrame.Angles(-headPitch, 0, 0)

@@ -1795,18 +1795,18 @@ Config.Bosses = {
 	[5] = {
 		Name = "Speedy Revvington, King of the Speedway",
 		Short = "Revvington",
-		-- A cocky red race car (a parody of a certain famous red race car - with
-		-- his own name, number and catchphrase: "Ka-VROOM!"). A DRIVE-BY DUEL:
+		-- A cocky orange muscle car with white racing stripes (his own name,
+		-- number, colours and catchphrase: "Ka-VROOM!"). A DRIVE-BY DUEL:
 		-- like a knight on horseback he charges at you, drives past swinging,
 		-- rears up, skids round and charges again. He never walks: he drives,
 		-- along lines, arcs and skid turns that every screen follows exactly
 		-- (ReplicatedStorage/CarPath.lua). His brain: ServerScriptService/
 		-- Bosses/Revvington.lua. His body: ReplicatedStorage/BossBodies/Revvington.lua.
-		Color = Color3.fromRGB(228, 59, 68), -- his paint
-		DeepColor = Color3.fromRGB(162, 38, 51), -- the paint in shadow
+		Color = Color3.fromRGB(247, 118, 34), -- his orange paint
+		DeepColor = Color3.fromRGB(190, 74, 40), -- the paint in shadow
 		CoreColor = Color3.fromRGB(24, 20, 37), -- tyres, grille, his mouth
-		EyeColor = Color3.fromRGB(0, 153, 219), -- his big blue eyes
-		StripeColor = Color3.fromRGB(254, 174, 52), -- the lightning bolt down his sides
+		EyeColor = Color3.fromRGB(99, 199, 77), -- his big green eyes
+		StripeColor = Color3.fromRGB(255, 255, 255), -- the white racing stripes down his sides and bonnet
 
 		HealthPunches = 38,
 		PartyScale = 0.6,
@@ -2079,23 +2079,23 @@ Config.Bosses = {
 	[7] = {
 		Name = "Kongo, the Jungle Brawler",
 		Short = "Kongo",
-		-- A big, cocky gorilla in a red tie (a parody of a certain famous
-		-- barrel-throwing ape - with his own name and look) who fights up close
+		-- A big, cocky silverback gorilla with a gold banana chain (his own
+		-- name and look: charcoal fur, a pale grey face, no tie) who fights up close
 		-- with moves from his games: a Giant Punch he winds up like a windmill,
 		-- ground slaps, a rolling attack, a helicopter spin, barrels and TNT.
 		-- A brawl on flat ground: read his wind-ups, dodge at the right moment,
 		-- and punish him when he's tired. He fights on the surface, so the shared
 		-- brain runs him; his moves: ServerScriptService/Bosses/Kongo.lua. His
 		-- body: ReplicatedStorage/BossBodies/Kongo.lua. His arena: JungleBuilder.
-		Color = Color3.fromRGB(115, 62, 57), -- his brown fur
-		DeepColor = Color3.fromRGB(62, 39, 49), -- the fur in shadow, his brow
-		SkinColor = Color3.fromRGB(232, 183, 150), -- his face, chest, hands and feet
+		Color = Color3.fromRGB(70, 68, 82), -- his charcoal fur
+		DeepColor = Color3.fromRGB(38, 36, 50), -- the fur in shadow, his brow
+		SkinColor = Color3.fromRGB(165, 160, 172), -- his pale grey face, hands and feet
 		CoreColor = Color3.fromRGB(24, 20, 37), -- his pupils, nostrils, mouth
 		EyeColor = Color3.fromRGB(255, 255, 255), -- the whites of his eyes
-		TieColor = Color3.fromRGB(228, 59, 68), -- his red tie
-		LetterColor = Color3.fromRGB(254, 231, 97), -- the big K on his tie
+		TieColor = Color3.fromRGB(254, 174, 52), -- his gold chain
+		LetterColor = Color3.fromRGB(254, 231, 97), -- the banana medallion on it
 		RageColor = Color3.fromRGB(255, 0, 68), -- round 2: his face and eyes, angry red
-		Accent = Color3.fromRGB(228, 59, 68), -- the VS splash's colour
+		Accent = Color3.fromRGB(254, 174, 52), -- the VS splash's colour
 
 		HealthPunches = 42,
 		PartyScale = 0.6,

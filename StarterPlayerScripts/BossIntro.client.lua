@@ -216,7 +216,7 @@ local PORTRAITS = {
 		ink = { H = RGB(62, 39, 49), R = RGB(228, 59, 68), r = RGB(162, 38, 51), S = RGB(232, 183, 150), K = RGB(24, 20, 37),
 			W = RGB(255, 255, 255), D = RGB(194, 133, 105), L = RGB(192, 203, 220) },
 	},
-	-- a red race car, head on: big eyes on his windscreen (lids half down:
+	-- an orange muscle car, head on: big eyes on his windscreen (lids half down:
 	-- cocky), headlights, and a toothy grin on his bumper
 	Revvington = {
 		rows = {
@@ -233,8 +233,8 @@ local PORTRAITS = {
 			"KKDDDDDDDDDDKK",
 			"KK..........KK",
 		},
-		ink = { R = RGB(228, 59, 68), D = RGB(162, 38, 51), K = RGB(24, 20, 37), W = RGB(255, 255, 255), B = RGB(0, 153, 219),
-			Y = RGB(254, 231, 97), S = RGB(254, 174, 52) },
+		ink = { R = RGB(247, 118, 34), D = RGB(190, 74, 40), K = RGB(24, 20, 37), W = RGB(255, 255, 255), B = RGB(99, 199, 77),
+			Y = RGB(254, 231, 97), S = RGB(255, 255, 255) },
 	},
 	-- a black cube with glowing red edges and little horns: slanted yellow
 	-- eyes and a jagged grin
@@ -257,7 +257,7 @@ local PORTRAITS = {
 			M = RGB(162, 38, 51) },
 	},
 	-- a gorilla: a tuft of brown fur, a heavy brow, a big tan muzzle with a
-	-- cocky grin, and the knot of his red tie
+	-- cocky grin, and his gold banana chain
 	Kongo = {
 		rows = {
 			".....FFF......",
@@ -270,11 +270,11 @@ local PORTRAITS = {
 			"FSSSSSSSSSSSSF",
 			".FSKWWWWWWKSF.",
 			"..FSKKKKKKSF..",
-			"...FFRRRRFF...",
+			"...FRFFFFRF...",
 			"....FFRRFF....",
 		},
-		ink = { F = RGB(115, 62, 57), D = RGB(62, 39, 49), S = RGB(232, 183, 150), W = RGB(255, 255, 255), K = RGB(24, 20, 37),
-			R = RGB(228, 59, 68) },
+		ink = { F = RGB(70, 68, 82), D = RGB(38, 36, 50), S = RGB(165, 160, 172), W = RGB(255, 255, 255), K = RGB(24, 20, 37),
+			R = RGB(254, 174, 52) },
 	},
 	-- a flower: pink petals round a big yellow face, long-lashed eyes, rosy
 	-- cheeks and a sweet little smile
@@ -652,14 +652,14 @@ local LINES = {
 		lose = { "* LEVEL... COMPLETE...? But I'm the LAST level...", "* 100%... Nobody gets 100%... GG." },
 	},
 	-- a gorilla: loud, cocky, loves showing off to his village, and very,
-	-- very proud of his tie
+	-- very proud of his gold banana chain
 	Kongo = {
 		wake = {
 			"* OOH OOH! Somebody wants to fight the KING OF THE JUNGLE?!",
 			"* *YAWN* ...A challenger? In MY clearing? Let's GO!",
 		},
 		idle = {
-			"* Nice tie? Thanks. I've never lost a fight in it.",
+			"* Nice chain? Real gold. Real banana. I've never lost a fight in it.",
 			"* The whole village is watching. Don't embarrass yourself!",
 			"* Bananas for breakfast, bananas for lunch, YOU for dinner!",
 			"* My Giant Punch is winding up... and up... and UP!",
@@ -669,7 +669,7 @@ local LINES = {
 		hit = { "* BONK! Right on the noggin!", "* Ooh ooh! Did that hurt? It looked like it hurt!", "* That's what you get in MY jungle!" },
 		phase2 = { "* GRRRR... NOW you've made me go BANANAS!", "* Nobody knocks the King off his feet! NOBODY!" },
 		win = { "* OOH OOH! Another win for the King! The village goes wild!", "* Come back when you've had more bananas!" },
-		lose = { "* Ooh... ooh... my tie... is all crooked...", "* Okay, okay! You win! ...Want a banana?" },
+		lose = { "* Ooh... ooh... my chain... is all tangled...", "* Okay, okay! You win! ...Want a banana?" },
 	},
 	-- a flower: sugary sweet (to your face), very proud of her garden, and
 	-- never, ever to be trusted
