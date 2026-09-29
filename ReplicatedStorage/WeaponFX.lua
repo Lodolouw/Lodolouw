@@ -81,6 +81,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local W = Config.Weapons or { List = {}, Types = {}, MasteryMax = 100 }
@@ -891,28 +892,198 @@ end
 WeaponFX.buildVoxel = buildVoxel
 
 ----------------------------------------------------------------------
+-- Swing effects by rarity: the rarer the weapon, the bigger and brighter its
+-- swings. On top of the two smears every weapon has, Rare and up sweep a
+-- wide glowing crescent from the grip past the tip (colours shading round
+-- the weapon's glow), Epic and up add a bright white-hot edge and sparkles
+-- flying off the tip, Legendary and up burst sparkles as each cut starts,
+-- and Mythic and Secret add a rainbow halo round the outside and stars.
+----------------------------------------------------------------------
+local RARITY_TIER = { Common = 1, Uncommon = 1, Rare = 2, Epic = 3, Legendary = 4, Mythic = 5, Secret = 6 }
+WeaponFX.RARITY_TIER = RARITY_TIER
+
+-- a colour turned round the colour wheel by `turn` (0-1), full strength
+local function hueTurn(c, turn, sat)
+	local r, g, b = c.R, c.G, c.B
+	local mx, mn = math.max(r, g, b), math.min(r, g, b)
+	local h = 0
+	if mx > mn then
+		local d = mx - mn
+		if mx == r then
+			h = ((g - b) / d) % 6
+		elseif mx == g then
+			h = (b - r) / d + 2
+		else
+			h = (r - g) / d + 4
+		end
+		h = h / 6
+	end
+	h = (h + turn) % 1
+	local s = sat or 1
+	local i = math.floor(h * 6)
+	local f = h * 6 - i
+	local p, q, t = 1 - s, 1 - f * s, 1 - (1 - f) * s
+	local rr, gg, bb
+	i = i % 6
+	if i == 0 then
+		rr, gg, bb = 1, t, p
+	elseif i == 1 then
+		rr, gg, bb = q, 1, p
+	elseif i == 2 then
+		rr, gg, bb = p, 1, t
+	elseif i == 3 then
+		rr, gg, bb = p, q, 1
+	elseif i == 4 then
+		rr, gg, bb = t, p, 1
+	else
+		rr, gg, bb = 1, p, q
+	end
+	return Color3.new(rr, gg, bb)
+end
+WeaponFX.hueTurn = hueTurn
+
+local function colors(list)
+	local keys = {}
+	for i, c in ipairs(list) do
+		keys[i] = ColorSequenceKeypoint.new((i - 1) / (#list - 1), c)
+	end
+	return ColorSequence.new(keys)
+end
+local function fades(list)
+	local keys = {}
+	for i, v in ipairs(list) do
+		keys[i] = NumberSequenceKeypoint.new(v[1], v[2])
+	end
+	return NumberSequence.new(keys)
+end
+
+-- the extra trails and sparkles, along the same line as the weapon's own
+-- smear (`trails[1]`), added to `trails` (so they switch on and off with it)
+local function dressTrails(trails, def, glow, golden)
+	local tier = RARITY_TIER[def and def.Rarity or ""] or 1
+	local base = trails and trails[1]
+	local a0, a1 = base and base.Attachment0, base and base.Attachment1
+	if tier < 2 or not (a0 and a1 and base.Parent) then
+		return trails
+	end
+	local part = base.Parent
+	local p0, p1 = a0.Position, a1.Position
+	local along = p1 - p0
+	local function at(u)
+		return p0 + along * u
+	end
+	local c1 = golden and GOLD or glow
+	local c2 = golden and Color3.fromRGB(255, 160, 40) or hueTurn(c1, 0.1)
+	local c3 = golden and Color3.fromRGB(255, 250, 200) or hueTurn(c1, -0.12)
+	local white = Color3.fromRGB(255, 255, 255)
+	local function attach(name, pos)
+		local a = Instance.new("Attachment")
+		a.Name = name
+		a.Position = pos
+		a.Parent = part
+		return a
+	end
+	local function trail(name, u0, u1, cs, see, life, width)
+		local t = Instance.new("Trail")
+		t.Name = name
+		t.Attachment0, t.Attachment1 = attach(name .. "Base", at(u0)), attach(name .. "Tip", at(u1))
+		t.Color = cs
+		t.Transparency = see
+		t.LightEmission = 1
+		t.Lifetime = life
+		t.MinLength = 0.02
+		t.WidthScale = width
+		t.Enabled = false
+		t.Parent = part
+		table.insert(trails, t)
+		return t
+	end
+	-- the wide crescent: from near the grip to past the tip, shading from white
+	-- through the glow into its neighbours on the colour wheel
+	trail("SwingFan", -0.35, 1.18, colors({ white, c1, c2, c3 }),
+		fades({ { 0, 0.15 }, { 0.35, 0.45 }, { 1, 1 } }), 0.16 + 0.035 * tier, NumberSequence.new(1, 0.55))
+	if tier >= 3 then
+		-- the white-hot edge along the outside
+		trail("SwingEdge", 0.82, 1.3, colors({ white, white, c1, c2 }),
+			fades({ { 0, 0 }, { 0.5, 0.35 }, { 1, 1 } }), 0.2 + 0.05 * tier, NumberSequence.new(1, 0.3))
+		-- sparkles flying off the tip
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Name = "SwingSparks"
+		sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparks.Color = colors({ white, c1, c2 })
+		sparks.LightEmission = 1
+		sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35 + 0.08 * tier), NumberSequenceKeypoint.new(1, 0) })
+		sparks.Transparency = NumberSequence.new(0, 1)
+		sparks.Lifetime = NumberRange.new(0.25, 0.5 + 0.05 * tier)
+		sparks.Speed = NumberRange.new(2, 5 + tier)
+		sparks.SpreadAngle = Vector2.new(180, 180)
+		sparks.Drag = 4
+		sparks.Rate = 25 * tier
+		sparks.LockedToPart = false
+		sparks.Enabled = false
+		sparks.Parent = attach("SwingSparkTip", at(1.05))
+		table.insert(trails, sparks)
+	end
+	if tier >= 5 then
+		-- a rainbow halo round the outside, turning from the glow's own colour
+		local bow = {}
+		for i = 0, 5 do
+			bow[i + 1] = hueTurn(c1, i / 6)
+		end
+		trail("SwingHalo", 1.2, 1.5 + 0.05 * tier, colors(bow),
+			fades({ { 0, 0.1 }, { 0.6, 0.5 }, { 1, 1 } }), 0.4 + 0.05 * tier, NumberSequence.new(1, 0.2))
+		-- and stars
+		local stars = Instance.new("ParticleEmitter")
+		stars.Name = "SwingStars"
+		stars.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		stars.Color = colors({ white, c3, c2 })
+		stars.LightEmission = 1
+		stars.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(0.3, 1.2), NumberSequenceKeypoint.new(1, 0) })
+		stars.Transparency = NumberSequence.new(0, 1)
+		stars.Lifetime = NumberRange.new(0.4, 0.8)
+		stars.Speed = NumberRange.new(1, 4)
+		stars.Rotation = NumberRange.new(0, 360)
+		stars.RotSpeed = NumberRange.new(-200, 200)
+		stars.SpreadAngle = Vector2.new(180, 180)
+		stars.Drag = 3
+		stars.Rate = 18 * (tier - 3)
+		stars.LockedToPart = false
+		stars.Enabled = false
+		stars.Parent = attach("SwingStarTip", at(0.9))
+		table.insert(trails, stars)
+	end
+	return trails
+end
+WeaponFX.dressTrails = dressTrails
+
+----------------------------------------------------------------------
 -- Hits: the slash mark ripping across what you hit, and the finisher's slam
 ----------------------------------------------------------------------
 -- a bright bar that tears across the spot, stretching out and fading, with a
 -- burst of sparks - and on a heavy hit a second one crossing it
-function WeaponFX.slashMark(position, direction, heavy, golden)
+-- (`def`, the weapon: its own glow colour, and the rarer it is the more bars,
+-- sparks and colour - a ring of every colour on Mythic and Secret)
+function WeaponFX.slashMark(position, direction, heavy, golden, def)
 	if typeof(position) ~= "Vector3" then
 		return
 	end
 	local dir = typeof(direction) == "Vector3" and direction.Magnitude > 0.01 and direction.Unit or Vector3.new(0, 0, -1)
-	local color = golden and GOLD or GLOW
+	local info = def and def.Model and INFO[def.Model]
+	local tier = RARITY_TIER[def and def.Rarity or ""] or 1
+	local color = golden and GOLD or (info and rgb(info.Glow, GLOW)) or GLOW
 	local holder = Instance.new("Folder")
 	holder.Name = "SlashMark"
 	holder.Parent = workspace
-	for i = 1, heavy and 2 or 1 do
+	local bars = (heavy and 2 or 1) + (tier >= 3 and 1 or 0)
+	for i = 1, bars do
 		local bar = Instance.new("Part")
 		bar.Name = "Slash"
 		bar.Anchored, bar.CanCollide, bar.CanTouch, bar.CanQuery, bar.CastShadow = true, false, false, false, false
 		bar.Material = Enum.Material.Neon
-		bar.Color = i == 1 and Color3.fromRGB(255, 255, 255) or color
-		local long = heavy and 11 or 7
+		bar.Color = i == 1 and Color3.fromRGB(255, 255, 255) or (i == 3 and hueTurn(color, 0.1) or color)
+		local long = (heavy and 11 or 7) * (1 + 0.08 * (tier - 1))
 		bar.Size = Vector3.new(0.35, 0.35, 1)
-		local tilt = (i == 1 and 30 or -40) + math.random(-10, 10)
+		local tilt = ({ 30, -40, 75 })[i] + math.random(-10, 10)
 		bar.CFrame = CFrame.lookAt(position, position + dir) * CFrame.Angles(0, math.rad(90), math.rad(tilt))
 		bar.Parent = holder
 		local t0 = os.clock()
@@ -938,16 +1109,37 @@ function WeaponFX.slashMark(position, direction, heavy, golden)
 	sparks.Parent = holder
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
+	emitter.Color = tier >= 3 and colors({ Color3.fromRGB(255, 255, 255), color, hueTurn(color, 0.1), hueTurn(color, -0.12) })
+		or ColorSequence.new(Color3.fromRGB(255, 255, 255), color)
 	emitter.LightEmission = 1
-	emitter.Size = NumberSequence.new(heavy and 0.7 or 0.45, 0)
-	emitter.Lifetime = NumberRange.new(0.15, 0.35)
+	emitter.Size = NumberSequence.new((heavy and 0.7 or 0.45) * (1 + 0.12 * (tier - 1)), 0)
+	emitter.Lifetime = NumberRange.new(0.15, 0.35 + 0.04 * tier)
 	emitter.Speed = NumberRange.new(20, heavy and 45 or 30)
 	emitter.SpreadAngle = Vector2.new(180, 180)
 	emitter.Drag = 5
 	emitter.Rate = 0
 	emitter.Parent = sparks
-	emitter:Emit(heavy and 26 or 14)
+	emitter:Emit(math.floor((heavy and 26 or 14) * (1 + 0.35 * (tier - 1))))
+	if tier >= 5 then
+		-- a ring of every colour bursting out round the hit
+		for k = 0, 5 do
+			local ring = Instance.new("Part")
+			ring.Name = "HitRing"
+			ring.Shape = Enum.PartType.Cylinder
+			ring.Anchored, ring.CanCollide, ring.CanTouch, ring.CanQuery, ring.CastShadow = true, false, false, false, false
+			ring.Material = Enum.Material.Neon
+			ring.Color = hueTurn(color, k / 6)
+			ring.Size = Vector3.new(0.12, 1, 1)
+			ring.CFrame = CFrame.lookAt(position, position + dir) * CFrame.Angles(0, math.rad(90), 0)
+			ring.Transparency = 0.2
+			ring.Parent = holder
+			local grow = (heavy and 9 or 6) * (1 + k * 0.12)
+			task.delay(k * 0.025, function()
+				TweenService:Create(ring, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ Size = Vector3.new(0.05, grow, grow), Transparency = 1 }):Play()
+			end)
+		end
+	end
 	task.delay(0.8, function()
 		holder:Destroy()
 	end)
@@ -1344,6 +1536,10 @@ local function hold(plr, char, id, def, tracks)
 		if not m then
 			m, hd, tr, bl = (BUILDERS[def.Type] or buildSword)(def, golden)
 		end
+		-- (the rarer it is, the flashier its swings)
+		local info = def.Model and INFO[def.Model]
+		local glow = info and rgb(info.Glow, GLOW) or (def.Colors and def.Colors.Blade) or GLOW
+		tr = dressTrails(tr or {}, def, glow, golden)
 		return m, hd, tr, bl
 	end
 	local model, handle, trails, blade = build()
@@ -1491,9 +1687,18 @@ local function tail(value)
 end
 
 local function setSmear(h, on)
+	local starting = on and not h.smearOn
+	h.smearOn = on
+	local tier = RARITY_TIER[h.def and h.def.Rarity or ""] or 1
 	for _, t in ipairs(h.trails) do
 		if t.Enabled ~= on then
 			t.Enabled = on
+		end
+		-- (Legendary and up: a burst of sparkles as each cut starts)
+		if starting and tier >= 4 and t:IsA("ParticleEmitter") then
+			pcall(function()
+				t:Emit(6 * tier)
+			end)
 		end
 	end
 end

@@ -2009,7 +2009,7 @@ do
 			Weapon.fx.hitStop(player, heavy and (kind.HeavyHitStop or 0.12) or (kind.HitStop or 0.06))
 			local _, hrp = charParts()
 			local dir = hrp and typeof(at) == "Vector3" and (at - hrp.Position) or nil
-			Weapon.fx.slashMark(at, dir, heavy, Weapon.fx.isGolden(player))
+			Weapon.fx.slashMark(at, dir, heavy, Weapon.fx.isGolden(player), Weapon.current())
 		end
 		if heavy and kind.ImpactFrames ~= false then
 			impactAt = os.clock()

@@ -196,6 +196,19 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 			end
 			check(count > 0 and each, key .. ": " .. (two and "one in each hand" or "one of it"))
 			check(held:FindFirstChild("Head") ~= nil, key .. ": it knows where its business end is")
+			-- its swing effects, by rarity (WeaponFX "dressTrails")
+			local has = {}
+			for _, d in ipairs(held:GetDescendants()) do
+				has[d.Name] = true
+			end
+			local def = mount.require(mount.module("ReplicatedStorage/Config.lua")).Weapons.List[key]
+			local tier = WeaponFX.RARITY_TIER[def.Rarity]
+			check(has.SwingTrail and has.SwingGlow, key .. ": the two smears every weapon has")
+			check((has.SwingFan == true) == (tier >= 2), key .. ": the wide crescent from Rare up (" .. def.Rarity .. ")")
+			check((has.SwingEdge == true and has.SwingSparks == true) == (tier >= 3), key .. ": the white-hot edge and sparkles from Epic up")
+			check((has.SwingHalo == true and has.SwingStars == true) == (tier >= 5), key .. ": the rainbow halo and stars on Mythic and Secret")
+			local all = #h.trails
+			check(all == ({ 2, 3, 5, 5, 7, 7 })[tier] * (two and 2 or 1), key .. ": " .. all .. " swing effects, all switched with the smear")
 		end
 		src:Destroy()
 		me:SetAttribute("Weapon", nil)
