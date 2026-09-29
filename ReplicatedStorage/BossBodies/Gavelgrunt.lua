@@ -3558,6 +3558,38 @@ function Body.calm(B, name)
 	B.torchesHot = true -- (puts the torches back once)
 end
 
+-- THE STORM NEVER FOLLOWS YOU HOME: every frame, even when his body isn't
+-- being drawn at all (leave for the lobby and he can be unloaded before his
+-- own senses tidy up), anything of his storm left on your screen goes the
+-- moment you're not on his floor - his sky's colour grade and the rain
+local stormOf = nil -- (the one whose storm is showing)
+function Body.everyFrame()
+	local B = stormOf
+	if not B then
+		return
+	end
+	local me = game:GetService("Players").LocalPlayer
+	local stillHere = me and me:GetAttribute("SpireFloor") == B.floor and B.model.Parent ~= nil
+	if stillHere then
+		return
+	end
+	if B.skyFx then
+		B.skyFx:Destroy()
+		B.skyFx = nil
+	end
+	if B.rain then
+		B.rain.cloud:Destroy()
+		B.rain.floor:Destroy()
+		B.rain = nil
+	end
+	B.skyK, B.rainK, B.skyFlashAt, B.nextBolt = 0, 0, nil, nil
+	local left = game:GetService("Lighting"):FindFirstChild("KingSky")
+	if left then
+		left:Destroy()
+	end
+	stormOf = nil
+end
+
 -- every frame, whatever he's doing: his props, pillars, throne, torches, the
 -- storm (sky, lightning, rain), your camera for his entrance, the hint
 function Body.senses(B, dt, here, awake, state)
@@ -3581,6 +3613,9 @@ function Body.senses(B, dt, here, awake, state)
 	run("pillars", stepPillars, B)
 	run("throne", stepThrone, B)
 	run("torches", stepTorches, B)
+	if here then
+		stormOf = B
+	end
 	run("sky", stepSky, B, here, dt)
 	run("storm", stepStorm, B, here)
 	run("rain", stepRain, B, here, dt)

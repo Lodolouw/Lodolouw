@@ -726,6 +726,7 @@ elseif SCENARIO == "entrance" then
 	assert(stateIs("Dormant"), "he should go back to sleep once you've gone")
 	if MODE == "client" then
 		assert(over(headAt(), seat, 8), "back asleep, he should be up on his throne again")
+		assert(not M.services.Lighting:FindFirstChild("KingSky"), "his storm's colour grade shouldn't follow you out of the arena")
 	end
 elseif SCENARIO == "attacks" then
 	local p = people[1] or makePlayer("Alpha", 1001)
