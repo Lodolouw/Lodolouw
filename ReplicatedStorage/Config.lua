@@ -953,14 +953,14 @@ Config.Spire = {
 			-- file adds the rain, the lightning and the thunder, darkens it more
 			-- in round 2 and turns it into a red eclipse in round 3)
 			ambience = {
-				ClockTime = 15.5, -- (an overcast storm afternoon: dark enough to feel it, light enough to see him)
+				ClockTime = 16.5, -- (a stormy late afternoon: dark enough to feel it, light enough to see him)
 				Atmosphere = {
-					Density = 0.3,
-					Offset = 0.2,
-					Color = Color3.fromRGB(170, 180, 202),
-					Decay = Color3.fromRGB(106, 118, 146),
+					Density = 0.24,
+					Offset = 0.25,
+					Color = Color3.fromRGB(122, 132, 156),
+					Decay = Color3.fromRGB(78, 88, 114),
 					Glare = 0,
-					Haze = 1.4,
+					Haze = 1.0,
 				},
 				Tint = Color3.fromRGB(226, 232, 246),
 				Saturation = -0.05,

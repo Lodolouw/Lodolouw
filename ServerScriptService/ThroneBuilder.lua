@@ -203,7 +203,8 @@ end
 local function buildFloor()
 	-- the solid floor you stand on (its top is exactly y = 0)
 	local size = (WALL + 10) * 2
-	part("CourtyardFloor", V3(size, 4, size), CFrame.new(at(0, -2, 0)), STONE_DARK, { Material = Mat.SmoothPlastic })
+	-- (round, like the courtyard: a square slab's corners would stick out into the sky)
+	disc("CourtyardFloor", at(0, -2, 0), size, 4, STONE_DARK)
 	-- the flagstones: each a slightly different stone (8-bit: flat colours)
 	local shades = { STONE, STONE_LIGHT, STONE, RGB(139, 155, 180), STONE_DARK }
 	local c = ThronePlan.Cell
@@ -415,32 +416,19 @@ end
 
 local function buildSky()
 	-- MIST hiding the void (like Oozark's hollow): the summit rises out of a
-	-- sea of storm cloud - two see-through layers over a solid cloud floor,
-	-- soft cloud puffs heaped evenly all round the battlements so there's
-	-- never a hard edge, and a drifting fog under the courtyard
-	local MIST = RGB(150, 160, 184)
-	local PUFF = { RGB(170, 180, 202), RGB(139, 155, 180), RGB(192, 203, 220) }
-	for _, layer in ipairs({ { -22, 0.7 }, { -40, 0.45 } }) do
+	-- sea of dark storm cloud well below it - two see-through layers over a
+	-- solid cloud floor - with a slow fog drifting under the courtyard
+	local MIST = RGB(90, 100, 124)
+	for _, layer in ipairs({ { -34, 0.55 }, { -52, 0.3 } }) do
 		part("SummitMist", V3(2048, 1, 2048), CFrame.new(at(0, layer[1], 0)), MIST,
 			merge(DECOR, { Transparency = layer[2], CanTouch = false }))
 	end
-	part("SummitCloudFloor", V3(2048, 1, 2048), CFrame.new(at(0, -60, 0)), STORM, merge(DECOR, { CanTouch = false }))
-	-- three rings of puffs, evenly spread (each ring shifted so they don't line up)
-	for ring, r in ipairs({ { WALL + 16, 30, -14 }, { WALL + 60, 44, -24 }, { WALL + 120, 60, -34 } }) do
-		local n = 18 + ring * 6
-		for i = 0, n - 1 do
-			local ang = (i + (ring - 1) / 3 + rnd() * 0.4) / n * math.pi * 2
-			local d = r[1] + rnd() * 16
-			local size = r[2] * (0.75 + rnd() * 0.5)
-			part("CloudPuff", V3(size, size * 0.55, size), CFrame.new(at(math.sin(ang) * d, r[3] - rnd() * 8, math.cos(ang) * d)),
-				PUFF[(i + ring) % 3 + 1], merge(DECOR, { Shape = Enum.PartType.Ball, Transparency = 0.1 + rnd() * 0.2, CanTouch = false }))
-		end
-	end
-	local underFog = anchorPart("UnderFog", CFrame.new(at(0, -18, 0)))
+	part("SummitCloudFloor", V3(2048, 1, 2048), CFrame.new(at(0, -70, 0)), STORM_DARK, merge(DECOR, { CanTouch = false }))
+	local underFog = anchorPart("UnderFog", CFrame.new(at(0, -30, 0)))
 	underFog.Size = V3(360, 10, 360)
 	local uf = Instance.new("ParticleEmitter")
 	uf.Rate = 6
-	uf.Color = ColorSequence.new(RGB(192, 203, 220))
+	uf.Color = ColorSequence.new(RGB(118, 128, 150))
 	uf.LightEmission = 0.05
 	uf.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 50), NumberSequenceKeypoint.new(1, 90) })
 	uf.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 1) })
@@ -480,10 +468,10 @@ local function buildSky()
 		e.Parent = f
 	end
 	-- the Spire's top: the courtyard sits on a great stone cap
-	part("SummitCap", V3((WALL + 6) * 2, 18, (WALL + 6) * 2), CFrame.new(at(0, -13, 0)), STONE_DEEP, SCENERY)
-	part("SummitCapTrim", V3((WALL + 7) * 2, 2, (WALL + 7) * 2), CFrame.new(at(0, -4.5, 0)), GOLD, DECOR)
+	disc("SummitCap", at(0, -13, 0), (WALL + 11) * 2, 18, STONE_DEEP, SCENERY)
+	disc("SummitCapTrim", at(0, -4.5, 0), (WALL + 12) * 2, 2, GOLD, DECOR)
 	-- and the tower going on down into the clouds
-	part("SpireBelow", V3(90, 90, 90), CFrame.new(at(0, -67, 0)), STONE_DARK, DECOR)
+	disc("SpireBelow", at(0, -67, 0), 110, 90, STONE_DARK, DECOR)
 end
 
 ----------------------------------------------------------------------
