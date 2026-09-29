@@ -3138,4 +3138,14 @@ Config.SoundIds = {
 	["Level Complete"] = 126251365588787,
 }
 
+-- How loud each uploaded 8-bit sound plays (1 = normal). Lower a number if
+-- one still hurts; they also get their shrill top end turned down.
+Config.SoundLoudness = {}
+for name in pairs(Config.SoundIds) do
+	Config.SoundLoudness[name] = 0.4
+end
+Config.SoundLoudness["Ship Thrust"] = 0.25 -- (a long buzz)
+Config.SoundLoudness["Wave Zoom"] = 0.25
+Config.SoundLoudness["Spikes Up"] = 0.3
+
 return Config

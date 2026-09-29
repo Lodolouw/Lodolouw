@@ -82,6 +82,24 @@ pcall(function()
 			s.Parent = SoundService
 		end
 	end
+	-- the 8-bit ones are softened: quieter, and their shrill top end turned down
+	local soft = Config.SoundLoudness or {}
+	for _, s in ipairs(SoundService:GetChildren()) do
+		local n = squash((string.gsub(s.Name, "_", "")))
+		for name, level in pairs(soft) do
+			if s:IsA("Sound") and squash(name) == n then
+				s:SetAttribute("Loudness", level)
+				if not s:FindFirstChild("Soften") then
+					local eq = Instance.new("EqualizerSoundEffect")
+					eq.Name = "Soften"
+					eq.HighGain = -12
+					eq.MidGain = -3
+					eq.LowGain = 0
+					eq.Parent = s
+				end
+			end
+		end
+	end
 end)
 
 local LobbyBuilder = load("LobbyBuilder")
