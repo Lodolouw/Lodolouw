@@ -150,6 +150,140 @@ def ability_aura():
     hum = square(sweep(110, 220, s), 0.5) * env(n, 0.05, s, 1.5) * 0.2
     return mix(rise, hum)
 
+# ----------------------------------------------------------------------
+# GRIDLOCK (floor 6, the level-maker's cube): bright chiptune blips, all
+# squares and noise, on the beat
+# ----------------------------------------------------------------------
+def tone(freq, seconds, duty=0.5, vol=0.5, curve=2.0, attack=0.003):
+    n = int(seconds * RATE)
+    return square(np.cumsum(np.full(n, float(freq))) / RATE, duty) * env(n, attack, seconds, curve) * vol
+
+
+def arp(notes, step, duty=0.5, vol=0.45, curve=1.5):
+    return np.concatenate([tone(f, step, duty, vol, curve) for f in notes])
+
+
+def gd_wake():  # the level starts: a rising arpeggio and a chord
+    return mix(arp([262, 330, 392, 523, 659, 784], 0.07, 0.25), at(tone(523, 0.5, 0.5, 0.35, 1.2), 0.42),
+               at(tone(659, 0.5, 0.25, 0.3, 1.2), 0.42), at(tone(784, 0.5, 0.125, 0.25, 1.2), 0.42))
+
+
+def gd_hop():  # a hop: a quick upward chirp
+    s = 0.12
+    return square(sweep(300, 900, s), 0.25) * env(int(s * RATE), 0.002, s, 2) * 0.5
+
+
+def gd_slam():  # landing hard: a low thump and a crunch
+    s = 0.25
+    n = int(s * RATE)
+    return mix(tri(sweep(160, 40, s)) * env(n, 0.002, s, 2.5) * 0.9, crush(noise(n) * env(n, 0.001, 0.12, 4), 6) * 0.5)
+
+
+def gd_spike():  # tiles spiking up: a sharp rising zip
+    s = 0.18
+    n = int(s * RATE)
+    return mix(square(sweep(200, 1600, s), 0.125) * env(n, 0.002, s, 1.5) * 0.4, crush(noise(n) * env(n, 0.001, 0.06, 3), 4) * 0.3)
+
+
+def gd_portal():  # changing form: a warbling whoosh up and down
+    s = 0.6
+    t = t_of(s)
+    f = 400 + 500 * np.sin(np.pi * t / s) + 60 * np.sin(2 * np.pi * 18 * t)
+    return square(np.cumsum(f) / RATE, 0.5) * env(len(t), 0.03, s, 1.2) * 0.4
+
+
+def gd_ship():  # flying: a buzzing engine (loops well)
+    s = 0.8
+    t = t_of(s)
+    f = 90 + 8 * np.sin(2 * np.pi * 6 * t)
+    return mix(square(np.cumsum(f) / RATE, 0.3) * 0.35, crush(noise(len(t)), 5) * 0.08)
+
+
+def gd_bomb():  # a bomb bursting: a noise pop with a falling tone
+    s = 0.4
+    n = int(s * RATE)
+    return mix(crush(noise(n), 5) * env(n, 0.001, s, 3) * 0.7, square(sweep(500, 60, 0.3), 0.5) * env(int(0.3 * RATE), 0.001, 0.3, 2) * 0.4)
+
+
+def gd_dive():  # the swoop: a long falling sweep
+    s = 0.45
+    return square(sweep(1400, 150, s), 0.25) * env(int(s * RATE), 0.01, s, 1.2) * 0.45
+
+
+def gd_burst():  # a UFO hop: a springy double blip
+    return mix(tone(660, 0.06, 0.25, 0.45), at(tone(990, 0.08, 0.25, 0.45), 0.06))
+
+
+def gd_orb():  # an orb landing: a bright ping
+    return mix(tone(1320, 0.25, 0.5, 0.4, 3), tone(1980, 0.18, 0.125, 0.2, 3))
+
+
+def gd_zoom():  # the zig-zag: a fast up-down trill
+    s = 0.5
+    t = t_of(s)
+    f = 600 + 400 * np.sign(np.sin(2 * np.pi * 14 * t))
+    return square(np.cumsum(f) / RATE, 0.25) * env(len(t), 0.005, s, 1.3) * 0.35
+
+
+def gd_build():  # the music building up: a rising stepped riser and a snare roll
+    notes = [196, 220, 247, 262, 294, 330, 349, 392, 440, 494, 523, 587, 659, 698, 784, 880]
+    rise = arp(notes, 0.11, 0.5, 0.3, 0.8)
+    roll = np.concatenate([crush(noise(int(r * RATE)), 5) * env(int(r * RATE), 0.001, r, 3) * 0.25
+                           for r in np.linspace(0.18, 0.04, 22)])
+    return mix(rise, roll)
+
+
+def gd_drop():  # THE DROP: a huge bass hit and a crash
+    s = 1.0
+    n = int(s * RATE)
+    return mix(square(sweep(110, 45, s), 0.5) * env(n, 0.002, s, 1.8) * 0.8, crush(noise(n), 4) * env(n, 0.001, 0.6, 2.5) * 0.5,
+               arp([523, 392, 262], 0.08, 0.25, 0.3))
+
+
+def gd_stun():  # stunned: a wobbly, dizzy falling tone
+    s = 0.9
+    t = t_of(s)
+    f = np.linspace(700, 250, len(t)) * (1 + 0.08 * np.sin(2 * np.pi * 9 * t))
+    return square(np.cumsum(f) / RATE, 0.5) * env(len(t), 0.01, s, 1.2) * 0.35
+
+
+def gd_flip():  # the gravity flip: a sweep that turns over itself
+    return mix(square(sweep(200, 1200, 0.25), 0.25) * env(int(0.25 * RATE), 0.005, 0.25, 1) * 0.4,
+               at(square(sweep(1200, 200, 0.25), 0.25) * env(int(0.25 * RATE), 0.005, 0.25, 1.5) * 0.4, 0.22))
+
+
+def gd_pad():  # a jump pad: a boingy spring
+    s = 0.3
+    t = t_of(s)
+    f = 250 + 700 * (t / s) + 120 * np.sin(2 * np.pi * 30 * t)
+    return square(np.cumsum(f) / RATE, 0.125) * env(len(t), 0.002, s, 1.5) * 0.45
+
+
+def gd_break():  # GRAVITY FLIP at half health: an alarm arpeggio and a flip
+    alarm = np.concatenate([tone(880 if i % 2 == 0 else 660, 0.09, 0.5, 0.4, 0.8) for i in range(6)])
+    return mix(alarm, at(gd_flip(), 0.5))
+
+
+def gd_death():  # he shatters into cubes: a crash and falling blips
+    s = 0.5
+    n = int(s * RATE)
+    parts = [crush(noise(n), 4) * env(n, 0.001, s, 2.5) * 0.6]
+    for i, f in enumerate([1200, 980, 800, 640, 520, 420, 330, 260]):
+        parts.append(at(tone(f, 0.07, 0.25, 0.35), 0.1 + i * 0.07))
+    return mix(*parts)
+
+
+def gd_attempt():  # "ATTEMPT 1": three countdown beeps and a go
+    return mix(tone(440, 0.1, 0.5, 0.4), at(tone(440, 0.1, 0.5, 0.4), 0.3), at(tone(440, 0.1, 0.5, 0.4), 0.6),
+               at(tone(880, 0.3, 0.5, 0.45, 1.2), 0.9))
+
+
+def gd_complete():  # LEVEL COMPLETE!: a little victory jingle
+    melody = [(523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.25), (784, 0.1), (1047, 0.45)]
+    out = np.concatenate([tone(f, d, 0.25, 0.4, 1.0) for f, d in melody])
+    bass = np.concatenate([tone(f, d, 0.5, 0.25, 1.0) for f, d in [(131, 0.3), (196, 0.35), (262, 0.45)]])
+    return mix(out, bass)
+
 
 SOUNDS = {
     'Sword Swing': sword_swing,
@@ -160,6 +294,27 @@ SOUNDS = {
     'Roll Tick': roll_tick,
     'Legendary Reveal': legendary_reveal,
     'Ability Aura': ability_aura,
+    # Gridlock (floor 6): the names his Config.Bosses[6].Sounds asks for
+    'Gridlock Wake': gd_wake,
+    'Cube Hop': gd_hop,
+    'Cube Slam': gd_slam,
+    'Spikes Up': gd_spike,
+    'Portal Whoosh': gd_portal,
+    'Ship Thrust': gd_ship,
+    'Bomb Drop': gd_bomb,
+    'Ship Dive': gd_dive,
+    'UFO Burst': gd_burst,
+    'Orb Land': gd_orb,
+    'Wave Zoom': gd_zoom,
+    'Drop Build': gd_build,
+    'The Drop': gd_drop,
+    'Gridlock Stun': gd_stun,
+    'Gravity Flip': gd_flip,
+    'Jump Pad': gd_pad,
+    'Gridlock Break': gd_break,
+    'Gridlock Shatter': gd_death,
+    'Attempt Start': gd_attempt,
+    'Level Complete': gd_complete,
 }
 
 
@@ -182,6 +337,9 @@ def save(name, x):
 
 
 if __name__ == '__main__':
+    import sys
     os.makedirs(OUT, exist_ok=True)
+    want = sys.argv[1:]  # (optional: only names starting with these, e.g. Gridlock Cube)
     for name, fn in SOUNDS.items():
-        save(name, fn())
+        if not want or any(name.startswith(w) for w in want):
+            save(name, fn())
