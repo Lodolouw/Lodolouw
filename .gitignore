@@ -15,3 +15,6 @@ __pycache__/
 
 # made by Studio when it imports an .fbx (a copy of its texture)
 *.fbm/
+
+# made by Tools/Weapons/make_models.py (the sheets in Docs/weapons are what to look at)
+Tools/Weapons/out/tiles/
