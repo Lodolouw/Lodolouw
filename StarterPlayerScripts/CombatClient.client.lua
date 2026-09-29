@@ -490,7 +490,9 @@ local function fovPunch(amount)
 		return
 	end
 	if math.abs(fovOffset) < 0.05 then
-		restFov = cam.FieldOfView -- remember where the player's view actually sits
+		-- remember where the player's view actually sits (never counting the
+		-- lock-on's widening for a huge boss: that would stick for good)
+		restFov = cam.FieldOfView - (cam:GetAttribute("LockWide") or 0)
 	end
 	fovOffset = math.clamp(fovOffset + amount, -7, 7) -- hits in quick succession can't stack into a fisheye
 end
@@ -2580,6 +2582,9 @@ local function stepMarkers(dt)
 	markerTick = 0
 	local q, e = neighbour(-1), neighbour(1)
 	local function place(tag, model)
+		if model == lockTarget then
+			model = nil -- (nothing else to switch to: no tag on the one you're locked on)
+		end
 		local part = model and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart"))
 		tag.Adornee = part
 		tag.Enabled = part ~= nil
@@ -2619,14 +2624,14 @@ do
 		if drawn and big >= 20 then
 			close = math.clamp(1 - (flat.Magnitude - big * 0.4) / big, 0, 1)
 		end
-		local back = 12 + big * 0.35 + big * 0.3 * close
-		local up = 4 + big * 0.12 + big * 0.16 * close
+		local back = 12 + big * 0.35 + big * 0.2 * close
+		local up = 4 + big * 0.12 + big * 0.12 * close
 		local camPos = ppos - dir * back + Vector3.new(0, up, 0) + right * 1.5
 		local lookAt = ppos:Lerp(tpos, 0.55 - 0.3 * close)
 		if drawn then
 			lookAt = lookAt + Vector3.new(0, math.max(0, big - 10) * 0.12, 0)
 		end
-		return camPos, lookAt, 18 * close
+		return camPos, lookAt, 10 * close
 	end
 
 	RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
@@ -2721,7 +2726,7 @@ do
 				unlock() -- (the shot takes over from your lock-on)
 			end
 			if not cut.was then
-				cut.was = { type = cam.CameraType, cf = cam.CFrame, fov = (fovOffset ~= 0 and restFov) or cam.FieldOfView }
+				cut.was = { type = cam.CameraType, cf = cam.CFrame, fov = (fovOffset ~= 0 and restFov) or (cam.FieldOfView - (cam:GetAttribute("LockWide") or 0)) }
 				cam.CameraType = Enum.CameraType.Scriptable
 			end
 			-- (a shake shows on a scripted camera only if it's added here)

@@ -450,6 +450,8 @@ local function buildSky()
 		part("MistWall", V3(chord, top - bottom, 1), CFrame.lookAt(p, p + V3(math.sin(ang), 0, math.cos(ang))), RGB(96, 106, 130),
 			merge(DECOR, { Transparency = 0.08, CanTouch = false }))
 	end
+	-- and a ceiling of storm cloud over it all, so no hole of sky shows overhead
+	disc("MistCeiling", at(0, 300, 0), WALL_R * 2 + 20, 4, RGB(80, 90, 114), merge(DECOR, { Transparency = 0.05, CanTouch = false }))
 	-- soft fog drifting just inside it, so its edge never looks flat
 	for i = 0, 7 do
 		local ang = i / 8 * math.pi * 2
