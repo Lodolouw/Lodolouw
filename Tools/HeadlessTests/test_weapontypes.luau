@@ -28,7 +28,19 @@ local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
 local WeaponFX = mount.require(mount.module("ReplicatedStorage/WeaponFX.lua"))
 local W = Config.Weapons
 
-local fails = 0
+-- they have uploaded animations now (those play in the game); this tests the
+-- baked clips the game falls back to without them, so hide the ids here
+local fails0 = 0
+for _, kind in ipairs({ "Fists", "Hammer", "Daggers", "Scythe", "Katana" }) do
+	local a = W.Types[kind].Animations
+	if not (a and a.Idle:match("^rbxassetid://%d+$") and #a.Swings == #W.Types[kind].Swings) then
+		fails0 += 1
+		print("FAIL: " .. kind .. " has an uploaded idle and one uploaded animation per swing")
+	end
+	W.Types[kind].Animations = nil
+end
+
+local fails = fails0
 local function check(ok, msg)
 	if not ok then
 		fails += 1

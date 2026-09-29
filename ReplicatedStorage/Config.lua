@@ -2929,13 +2929,11 @@ Config.Weapons = {
 			ComboCounter = true, -- "12 HITS" climbing while you keep hitting
 			SlamSwing = 3, -- (the finisher's blade hits the floor: a shockwave)
 		},
-		-- (the types below have no uploaded animations yet: their swings are
-		-- drawn in code - WeaponFX.POSES / STANCES - until they do)
+		-- (the types below: animations made in Tools/Animations/weapon_types.py and
+		-- uploaded with upload_animations.bat; without ids their baked clips play)
 		Fists = { -- gauntlets: fast and short - a jab, a hook, an uppercut
-			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
-			-- then publish FistsIdle, FistsSwing1.. from Studio like the sword's and paste the ids;
-			-- until then the baked clips play)
-			Animations = { Idle = "", Swings = { "", "", "" } },
+			-- its uploaded animations (Tools/Animations: upload_animations.bat)
+			Animations = { Idle = "rbxassetid://135523120214627", Swings = { "rbxassetid://89651695203012", "rbxassetid://84109678195624", "rbxassetid://79304465940795" } },
 			AnimCuts = { { 0.1, 0.24 }, { 0.1, 0.26 }, { 0.18, 0.36 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 0.7,
 			Swings = {
@@ -2950,10 +2948,8 @@ Config.Weapons = {
 			ComboCounter = true,
 		},
 		Hammer = { -- slow and heavy: two big swings and an overhead slam
-			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
-			-- then publish HammerIdle, HammerSwing1.. from Studio like the sword's and paste the ids;
-			-- until then the baked clips play)
-			Animations = { Idle = "", Swings = { "", "", "" } },
+			-- its uploaded animations (Tools/Animations: upload_animations.bat)
+			Animations = { Idle = "rbxassetid://128575426696379", Swings = { "rbxassetid://121242455864935", "rbxassetid://122456781582985", "rbxassetid://84478711326775" } },
 			AnimCuts = { { 0.3, 0.56 }, { 0.3, 0.56 }, { 0.46, 0.72 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 1.1,
 			Swings = {
@@ -2969,10 +2965,8 @@ Config.Weapons = {
 			SlamSwing = 3,
 		},
 		Daggers = { -- fast stabs, one in each hand: four quick cuts, the last a crossing slash
-			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
-			-- then publish DaggersIdle, DaggersSwing1.. from Studio like the sword's and paste the ids;
-			-- until then the baked clips play)
-			Animations = { Idle = "", Swings = { "", "", "", "" } },
+			-- its uploaded animations (Tools/Animations: upload_animations.bat)
+			Animations = { Idle = "rbxassetid://94113040659585", Swings = { "rbxassetid://126936759541915", "rbxassetid://101685032051973", "rbxassetid://102338026181663", "rbxassetid://114558344936315" } },
 			AnimCuts = { { 0.08, 0.2 }, { 0.08, 0.2 }, { 0.07, 0.22 }, { 0.16, 0.34 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 0.65,
 			Swings = {
@@ -2988,10 +2982,8 @@ Config.Weapons = {
 			ComboCounter = true,
 		},
 		Scythe = { -- wide, slow sweeps that cut everything round you
-			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
-			-- then publish ScytheIdle, ScytheSwing1.. from Studio like the sword's and paste the ids;
-			-- until then the baked clips play)
-			Animations = { Idle = "", Swings = { "", "", "" } },
+			-- its uploaded animations (Tools/Animations: upload_animations.bat)
+			Animations = { Idle = "rbxassetid://135542125721488", Swings = { "rbxassetid://85625670938609", "rbxassetid://75951784403018", "rbxassetid://134801390482850" } },
 			AnimCuts = { { 0.22, 0.48 }, { 0.22, 0.48 }, { 0.36, 0.8 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 1.0,
 			Swings = {
@@ -3006,10 +2998,8 @@ Config.Weapons = {
 			ComboCounter = true,
 		},
 		Katana = { -- fast, light slashes and a dashing thrust
-			-- its uploaded animations (Tools/Animations: python3 export_types.py --rbxmx,
-			-- then publish KatanaIdle, KatanaSwing1.. from Studio like the sword's and paste the ids;
-			-- until then the baked clips play)
-			Animations = { Idle = "", Swings = { "", "", "" } },
+			-- its uploaded animations (Tools/Animations: upload_animations.bat)
+			Animations = { Idle = "rbxassetid://110792943215320", Swings = { "rbxassetid://139384073255581", "rbxassetid://80295576559950", "rbxassetid://91990342601620" } },
 			AnimCuts = { { 0.1, 0.32 }, { 0.1, 0.32 }, { 0.18, 0.36 } }, -- (when each swing's smear shows: its Cut and Through markers)
 			Window = 0.8,
 			Swings = {
