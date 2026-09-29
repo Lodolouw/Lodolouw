@@ -542,7 +542,7 @@ local function stepCamera(dt)
 			fovOffset = 0
 		end
 		if cam then
-			cam.FieldOfView = restFov + fovOffset
+			cam.FieldOfView = restFov + fovOffset + (cam:GetAttribute("LockWide") or 0)
 		end
 	end
 end
@@ -2501,6 +2501,10 @@ local function unlock()
 		cam.CameraType = savedCameraType
 	end
 	savedCameraType = nil
+	if cam and (cam:GetAttribute("LockWide") or 0) ~= 0 then
+		cam:SetAttribute("LockWide", nil) -- (the view back to normal)
+		cam.FieldOfView = (restFov or 70) + fovOffset
+	end
 end
 
 local function lockOn(model)
@@ -2608,14 +2612,21 @@ do
 		local dir = flat.Unit
 		local right = Vector3.new(-dir.Z, 0, dir.X)
 		local big = math.max(tsize.X, tsize.Y, tsize.Z)
-		local back = 12 + big * 0.35
-		local up = 4 + big * 0.12
+		-- (right up close to a huge boss - King Gavelgrunt - the camera backs
+		-- off and up, looks more at you, and the view widens, so its body
+		-- doesn't swallow you)
+		local close = 0
+		if drawn and big >= 20 then
+			close = math.clamp(1 - (flat.Magnitude - big * 0.4) / big, 0, 1)
+		end
+		local back = 12 + big * 0.35 + big * 0.3 * close
+		local up = 4 + big * 0.12 + big * 0.16 * close
 		local camPos = ppos - dir * back + Vector3.new(0, up, 0) + right * 1.5
-		local lookAt = ppos:Lerp(tpos, 0.55)
+		local lookAt = ppos:Lerp(tpos, 0.55 - 0.3 * close)
 		if drawn then
 			lookAt = lookAt + Vector3.new(0, math.max(0, big - 10) * 0.12, 0)
 		end
-		return camPos, lookAt
+		return camPos, lookAt, 18 * close
 	end
 
 	RunService:BindToRenderStep("LockOnCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
@@ -2661,10 +2672,16 @@ do
 		end
 		stepMarkers(dt)
 		local ppos = hrp.Position + Vector3.new(0, 1.5, 0)
-		local camPos, lookAt = lockView(ppos, tpos, tsize, drawn)
+		local camPos, lookAt, wide = lockView(ppos, tpos, tsize, drawn)
 		if not camPos then
 			return
 		end
+		-- (the wider view for a huge boss close up, eased in and out; kept on the
+		-- camera so the hit punches add to it rather than fight it)
+		local was = cam:GetAttribute("LockWide") or 0
+		local w = was + ((wide or 0) - was) * math.min(1, dt * 4)
+		cam:SetAttribute("LockWide", w)
+		cam.FieldOfView = (restFov or 70) + fovOffset + w
 		local goal = CFrame.lookAt(camPos, lookAt)
 		cam.CFrame = cam.CFrame:Lerp(goal, math.min(1, dt * 10))
 		cam.Focus = CFrame.new(ppos)
