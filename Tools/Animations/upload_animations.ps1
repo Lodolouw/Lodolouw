@@ -5,6 +5,7 @@
 # Finished uploads are remembered in upload\ids.txt, so running it again only
 # does the ones that are missing (no duplicates).
 $ErrorActionPreference = 'Stop'
+$script:badKey = $false
 Add-Type -AssemblyName System.Net.Http
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -16,7 +17,15 @@ $idsFile = Join-Path $dir 'ids.txt'
 Write-Host ''
 Write-Host 'Uploads the weapon animations and puts their IDs in Config.' -ForegroundColor Yellow
 Write-Host ''
-$key = (Read-Host 'Paste your Open Cloud API key').Trim()
+# (the key is long - too long to paste into this window safely - so it's read
+# from the clipboard: copy it on the Roblox page, then run this)
+$key = "$(Get-Clipboard -Raw)".Trim()
+if ($key.Length -lt 40 -or $key -match '\s') {
+    Write-Host 'Copy your API key first (the Copy button on the Roblox page), then press Enter.' -ForegroundColor Yellow
+    Read-Host | Out-Null
+    $key = "$(Get-Clipboard -Raw)".Trim()
+}
+Write-Host "Using the key from your clipboard ($($key.Length) characters, starts $($key.Substring(0, [math]::Min(6, $key.Length)))...)"
 $group = (Read-Host 'Is the game owned by a GROUP? (y/n)').Trim().ToLower()
 if ($group -eq 'y') {
     $gid = (Read-Host 'The group ID').Trim()
@@ -54,6 +63,7 @@ function Upload($name) {
         $res = $http.PostAsync('https://apis.roblox.com/assets/v1/assets', $form).Result
         $body = $res.Content.ReadAsStringAsync().Result
         if ([int]$res.StatusCode -eq 429) { Start-Sleep -Seconds ([math]::Pow(2, $try)); continue }
+        if ([int]$res.StatusCode -eq 401) { $script:badKey = $true; throw "Roblox says the key is wrong ($body)" }
         if (-not $res.IsSuccessStatusCode) { throw "Roblox said $([int]$res.StatusCode): $body" }
         $op = $body | ConvertFrom-Json
         break
@@ -83,8 +93,17 @@ foreach ($line in $order) {
         } catch {
             $failed++
             Write-Host "  $name FAILED: $($_.Exception.Message)" -ForegroundColor Red
+            if ($script:badKey) { break }
         }
     }
+    if ($script:badKey) { break }
+}
+if ($script:badKey) {
+    Write-Host ''
+    Write-Host 'Stopped: Roblox did not accept the key. Check that:' -ForegroundColor Red
+    Write-Host '  - you copied the whole key with the Copy button (not the key''s name)'
+    Write-Host '  - the key has Assets with Read and Write, and 0.0.0.0/0 under Accepted IP Addresses'
+    Write-Host '  - it is switched on (Enabled), and a new key has had a minute to start working'
 }
 
 # into Config: each type's  Animations = { Idle = "...", Swings = { ... } }
@@ -100,7 +119,14 @@ foreach ($line in $order) {
     $text = [regex]::new($pattern).Replace($text, { param($m) $m.Groups[1].Value + $new }, 1)
     Write-Host "  Config: $kind done" -ForegroundColor Cyan
 }
-[IO.File]::WriteAllText($config, $text, $utf8)
+if ($text -ne [IO.File]::ReadAllText($config, $utf8)) {
+    try {
+        (Get-Item $config).IsReadOnly = $false
+        [IO.File]::WriteAllText($config, $text, $utf8)
+    } catch {
+        Write-Host "Couldn't write Config.lua ($($_.Exception.Message)) - paste the IDs below to Claude instead." -ForegroundColor Red
+    }
+}
 
 Write-Host ''
 if ($failed -gt 0) { Write-Host "$failed failed - fix what it says and run it again (the rest are kept)." -ForegroundColor Red }
