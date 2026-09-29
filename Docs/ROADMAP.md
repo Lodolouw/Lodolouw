@@ -46,10 +46,41 @@ sound effects.
 - [ ] Walking up to a machine opens its card. Outside the lobby you can view the Arcade menu but not buy. If you can't afford a roll, the button says "Get tokens".
 - [ ] **Honest rules:** odds always shown, no fake near-misses, and the scroll strip is filled using the real odds.
 
-## 4. The weapon packs
+## 4. The weapons (the big one: 78 in all - full details in `Docs/weapons_plan.md`)
 
-- [ ] **The first two packs: Slime (Oozark) and Cactus (Tuber)**, with 6 weapons each (one per type, Common to Secret). One test weapon goes first so you can play-test the roll.
-- [ ] Then the other 8 packs, one at a time (Burrowmore, Kaze, Revvington, Gridlock, Kongo, Petalina, Scribble, Gavelgrunt). The list is in `Docs/weapons_plan.md`.
+**What every weapon needs:** a 3D model (Blender, like the swords in
+`Tools/Weapons`), its moveset (shared by its type), its ability, sounds, and
+its card picture for the Arcade menu.
+
+- [ ] **The 4 type movesets still missing:** Hammer, Daggers, Scythe, Katana (idle + 3-hit combo each; the katana's quick-draw). Fists and Sword are in.
+- [ ] **The 5 shared Epic moves:** dash-strike, spin, ground slam, leap strike, uppercut (re-coloured per pack).
+- [ ] **The Open Cloud uploader:** one command uploads every model and animation and writes all the IDs into the game - no copying 68 IDs by hand. (You'll need to make an API key once.)
+- [ ] **Starters:** Training Wraps (Fists) ✅ · Iron Sword ✅ (make it the free early-quest weapon)
+
+**Launch packs (4 packs = 24 weapons):**
+
+- [ ] **Slime (Oozark):** Goo Gloves · Jellyblade · Gelatin Hammer · Ooze Daggers · Acid Scythe · *Gelatinous Edge* (Secret)
+- [ ] **Cactus (Tuber):** Prickle Blade · Barrel Cactus Maul · Spine Darts · Desert Reaper · Sandstorm Katana · *Brute Gauntlets*
+- [ ] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
+- [ ] **Dojo (Kaze):** Headband Daggers · Wind Sickle · Rooftop Katana · Ki Knuckles · Rising Dragon · *Super Hammer*
+
+(Each pack is Common → Rare → Epic → Legendary → Mythic → Secret, in that
+order. One test weapon goes first so you can play-test a roll.)
+
+**Update packs (after launch, one per "NEW WEAPON PACK!" update):**
+
+- [ ] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
+- [ ] **Neon (Gridlock):** Beat Katana · Cube Fists · Neon Blade · Drop Hammer · Wave Daggers · *Deadline*
+- [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
+- [ ] **Garden (Petalina):** Petal Blade · Flytrap Gauntlet · Thorn Katana · Harvest Scythe · Pollen Daggers · *Carnation Crusher*
+- [ ] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
+- [ ] **Throne (Gavelgrunt):** Tax Daggers · Royal Scythe · Decree Sword · Belly Bump Fists · Crown Katana · *The Final Gavel*
+
+**Event weapons (come with step 9, 2 per event boss = 16):** Ember Cleaver,
+Tidefang and Voidstar are already modelled; the other 13 are listed in the
+weapons plan.
+
+**Mastery 100 awakening** for every weapon: a new look and a stronger ability.
 
 ## 5. The new screen and the cuts
 
@@ -98,6 +129,7 @@ sound effects.
 
 ## After launch
 
+- The 6 update weapon packs (above).
 - Fishing for pet eggs, and pets.
 - Stronger event bosses.
 - Boss Rush and speedrun boards.
