@@ -3,7 +3,7 @@
 
 	Builds the whole starter lobby out of Parts when the server starts:
 	  * toy-brick island, paths, walls, trees, lamps
-	  * Sell Shop, Upgrade Shop (mushroom house), Armory (blacksmith forge), Prestige Shrine
+	  * Sell Shop, Upgrade Shop (mushroom house), the Arcade (ArcadeBuilder, where the forge was), Prestige Shrine
 	  * the mini Colosseum (its door takes you to the wave arena)
 	  * the castle gate, and the stairs and bridge up to the Spire (the boss floors)
 
@@ -239,7 +239,7 @@ end
 -- that's there, it's used instead of loading the id below.
 local NPC_MODELS = {
 	Toad = { id = 4816047695, height = 4.5, turn = -90 }, -- a real toad, by the mushroom house (Upgrade Shop)
-	Smith = { id = 106244394777485 }, -- Armory (blacksmith forge)
+	Smith = { id = 106244394777485 }, -- (the forge's blacksmith: the forge is gone, the Arcade stands there)
 	Shopkeeper = { id = 91467356738952 }, -- Sell Shop
 }
 
@@ -1456,223 +1456,6 @@ local function buildUpgradeShop(parent)
 
 	addPrompt(top, "Upgrades", "Open Upgrades", "Upgrade Shop", 14)
 	autoZone(m, O * CFrame.new(0, 4, 12), V3(16, 8, 10), "Panel", "Upgrades")
-end
-
-----------------------------------------------------------------------
--- Talisman Workbench (north, faces south)
-----------------------------------------------------------------------
-local function buildCraftBench(parent)
-	-- The Armory: a blacksmith's forge. Stone workshop with a half-timbered
-	-- frame, red tiled gable roof and chimney, an arched door, a glowing
-	-- furnace, an anvil with a talisman being forged above it, a quench
-	-- barrel, weapon rack and a bit of fence. Faces south, towards the plaza.
-	local m = folder(parent, "CraftBench")
-	local O = CFrame.new(Config.Stations.Craft)
-	local stone = RGB(176, 168, 156)
-	local stoneDark = RGB(140, 132, 122)
-	local timber = RGB(92, 62, 40)
-	local iron = RGB(58, 58, 66)
-	local tileA, tileB = RGB(188, 88, 58), RGB(166, 74, 48)
-
-	-- a straight beam from p1 to p2 (local coords), for rafters and braces
-	local function beam(name, p1, p2, thick, color, mat)
-		local a, b = (O * CFrame.new(p1)).Position, (O * CFrame.new(p2)).Position
-		local len = (b - a).Magnitude
-		local mid = a + (b - a) / 2
-		return part(m, name, V3(thick, thick, len), CFrame.lookAt(mid, b), color or timber, mat or Mat.Wood)
-	end
-
-	-- Cobblestone platform
-	part(m, "BaseTrim", V3(35, 0.6, 31), O * CFrame.new(0, 0.3, -3), stoneDark, Mat.Cobblestone)
-	part(m, "Base", V3(34, 1, 30), O * CFrame.new(0, 0.5, -3), RGB(196, 186, 170), Mat.Cobblestone)
-
-	-- Stone room at the back (walls up to the eaves at y=12)
-	local EAVE_Y, RIDGE_Y, HALF_W = 12, 20.5, 16
-	part(m, "BackWall", V3(28, 11, 2), O * CFrame.new(0, 6.5, -17), stone, Mat.Cobblestone)
-	part(m, "SideWallL", V3(2, 11, 13), O * CFrame.new(-13, 6.5, -11), stone, Mat.Cobblestone)
-	part(m, "SideWallR", V3(2, 11, 13), O * CFrame.new(13, 6.5, -11), stone, Mat.Cobblestone)
-	part(m, "FrontWallL", V3(11, 11, 2), O * CFrame.new(-8.5, 6.5, -5), stone, Mat.Cobblestone)
-	part(m, "FrontWallR", V3(11, 11, 2), O * CFrame.new(8.5, 6.5, -5), stone, Mat.Cobblestone)
-	part(m, "OverDoor", V3(6, 3, 2), O * CFrame.new(0, 10.5, -5), stone, Mat.Cobblestone)
-
-	-- Arched wooden door
-	discZ(m, "DoorArchStone", 0.4, 7.6, O * CFrame.new(0, 8, -3.8), stoneDark, Mat.Cobblestone)
-	discZ(m, "DoorArchWood", 0.5, 6, O * CFrame.new(0, 8, -3.7), RGB(110, 72, 44), Mat.WoodPlanks)
-	part(m, "Door", V3(6, 7, 0.5), O * CFrame.new(0, 4.5, -3.7), RGB(110, 72, 44), Mat.WoodPlanks)
-	for _, dx in ipairs({ -1.5, 1.5 }) do
-		part(m, "DoorPlankLine", V3(0.2, 9.5, 0.55), O * CFrame.new(dx, 5.6, -3.65), RGB(80, 52, 32), Mat.Wood)
-	end
-	ball(m, "DoorHandle", 0.6, O * CFrame.new(2, 5, -3.35), GOLD, Mat.Metal)
-
-	-- Half-timbering on the outside of the side walls
-	for _, sx in ipairs({ -1, 1 }) do
-		for _, z in ipairs({ -16.5, -11, -5.5 }) do
-			part(m, "Timber", V3(0.5, 11, 0.9), O * CFrame.new(sx * 14.05, 6.5, z), timber, Mat.Wood)
-		end
-		beam("TimberBrace", V3(sx * 14.1, 1.5, -16.5), V3(sx * 14.1, 11.5, -11), 0.7)
-		beam("TimberBrace", V3(sx * 14.1, 1.5, -5.5), V3(sx * 14.1, 11.5, -11), 0.7)
-		part(m, "WallPlate", V3(0.9, 0.9, 30), O * CFrame.new(sx * 14.5, EAVE_Y, -3), timber, Mat.Wood)
-		-- front posts holding up the roof over the open workshop, with knee braces
-		part(m, "FrontPost", V3(1.2, 11, 1.2), O * CFrame.new(sx * 14.5, 6.5, 11), timber, Mat.Wood)
-		beam("KneeBrace", V3(sx * 14.5, 8.5, 11), V3(sx * 14.5, 11.6, 7), 0.7)
-	end
-
-	-- Stone filling both gables under the roof - over the back wall, and over
-	-- the front wall of the stone room (so there's no open triangle between
-	-- the wall and the roof). Each is a solid triangle that follows the roof's
-	-- slope exactly: two wedges meeting under the ridge, on a low band where
-	-- the walls stop short of the roof's full width.
-	local function gable(z)
-		local rise, run = RIDGE_Y - EAVE_Y, HALF_W
-		local wallHalf = 14 -- the walls reach 14 studs either side
-		local lift = rise * (run - wallHalf) / run -- the roof's height over the wall's ends
-		part(m, "GableBand", V3(wallHalf * 2, lift, 2), O * CFrame.new(0, EAVE_Y + lift / 2, z), stone, Mat.Cobblestone)
-		local h = rise - lift
-		for _, side in ipairs({ -1, 1 }) do
-			-- (a wedge's upright face is at its local +Z, its slope running down
-			-- to -Z: so +Z points in to the middle, and the low tip out to the side)
-			local w = Instance.new("WedgePart")
-			w.Name = "Gable"
-			w.Anchored = true
-			w.Size = V3(2, h, wallHalf)
-			w.CFrame = O * CFrame.fromMatrix(V3(side * wallHalf / 2, EAVE_Y + lift + h / 2, z), V3(0, 0, side), V3(0, 1, 0), V3(-side, 0, 0))
-			w.Color = stone
-			w.Material = Mat.Cobblestone
-			w.TopSurface = Enum.SurfaceType.Smooth
-			w.BottomSurface = Enum.SurfaceType.Smooth
-			w.Parent = m
-		end
-	end
-	gable(-17)
-	gable(-5)
-	-- a little round attic window glowing in the front gable
-	discZ(m, "AtticWindowFrame", 0.4, 3.4, O * CFrame.new(0, 15.6, -3.9), timber, Mat.Wood)
-	local attic = discZ(m, "AtticWindow", 0.45, 2.6, O * CFrame.new(0, 15.6, -3.85), RGB(255, 206, 120), Mat.Neon, { Transparency = 0.15 })
-	part(m, "AtticWindowBar", V3(0.25, 2.6, 0.5), O * CFrame.new(0, 15.6, -3.8), timber, Mat.Wood)
-	part(m, "AtticWindowBar", V3(2.6, 0.25, 0.5), O * CFrame.new(0, 15.6, -3.8), timber, Mat.Wood)
-	local atticLight = Instance.new("PointLight")
-	atticLight.Color = RGB(255, 200, 120)
-	atticLight.Range = 8
-	atticLight.Brightness = 0.6
-	atticLight.Parent = attic
-
-	-- Red tiled gable roof: rows of overlapping tile strips on each slope
-	local run, rise = HALF_W, RIDGE_Y - EAVE_Y
-	local slopeLen = math.sqrt(run * run + rise * rise)
-	for _, side in ipairs({ -1, 1 }) do
-		local down = V3(side * run / slopeLen, -rise / slopeLen, 0)
-		for k = 0, 4 do
-			local d = 1.9 + k * 3.7
-			local c = V3(0, RIDGE_Y + 0.35 + k * 0.05, -3) + down * d
-			local wc = (O * CFrame.new(c)).Position
-			part(m, "RoofTiles", V3(31, 0.7, 4.3), CFrame.lookAt(wc, wc + down), (k % 2 == 0) and tileA or tileB, Mat.Slate)
-		end
-		-- front and back rafters
-		for _, z in ipairs({ 11.6, -17.6 }) do
-			beam("Rafter", V3(side * (run + 0.8), EAVE_Y - 0.4, z), V3(0, RIDGE_Y, z), 0.9)
-		end
-		-- front truss struts
-		beam("Strut", V3(0, EAVE_Y + 0.5, 11.6), V3(side * 8, (EAVE_Y + RIDGE_Y) / 2, 11.6), 0.7)
-	end
-	part(m, "RidgeCap", V3(2.2, 1, 31.6), O * CFrame.new(0, RIDGE_Y + 0.6, -3), RGB(140, 60, 40), Mat.Slate)
-	part(m, "TieBeam", V3(2 * run + 1, 0.9, 0.9), O * CFrame.new(0, EAVE_Y, 11.6), timber, Mat.Wood)
-	part(m, "KingPost", V3(0.9, rise, 0.9), O * CFrame.new(0, EAVE_Y + rise / 2, 11.6), timber, Mat.Wood)
-
-	-- Chimney with smoke
-	part(m, "Chimney", V3(4, 14, 4), O * CFrame.new(-8, 19, -13), stoneDark, Mat.Cobblestone)
-	local cap = part(m, "ChimneyCap", V3(5, 1, 5), O * CFrame.new(-8, 26.5, -13), RGB(110, 104, 96), Mat.Cobblestone)
-	local smoke = Instance.new("Smoke")
-	smoke.Color = RGB(150, 150, 150)
-	smoke.Opacity = 0.15
-	smoke.RiseVelocity = 4
-	smoke.Size = 3
-	smoke.Parent = cap
-
-	-- Furnace with a glowing mouth and real fire
-	part(m, "Furnace", V3(7, 6, 4), O * CFrame.new(8.5, 4, -2), stoneDark, Mat.Cobblestone)
-	part(m, "FurnaceTop", V3(5, 1.5, 3.4), O * CFrame.new(8.5, 7.75, -2.3), stoneDark, Mat.Cobblestone)
-	part(m, "FurnaceMouth", V3(3.8, 3, 0.3), O * CFrame.new(8.5, 3.6, 0.05), RGB(24, 18, 16), Mat.SmoothPlastic)
-	local glowPart = part(m, "FurnaceGlow", V3(3, 2.2, 0.3), O * CFrame.new(8.5, 3.4, 0.1), RGB(255, 130, 40), Mat.Neon)
-	local furnaceLight = Instance.new("PointLight")
-	furnaceLight.Color = RGB(255, 140, 60)
-	furnaceLight.Range = 18
-	furnaceLight.Brightness = 2
-	furnaceLight.Parent = glowPart
-	local fireHolder = part(m, "FurnaceFire", V3(1, 1, 1), O * CFrame.new(8.5, 3.2, -1.2), RGB(0, 0, 0), Mat.SmoothPlastic, {
-		Transparency = 1,
-		CanCollide = false,
-	})
-	local fire = Instance.new("Fire")
-	fire.Size = 2.5
-	fire.Heat = 3
-	fire.Color = RGB(255, 120, 30)
-	fire.SecondaryColor = RGB(255, 210, 80)
-	fire.Parent = fireHolder
-	for i, c in ipairs({ { 12.8, 1.2 }, { 13.4, 2.6 }, { 12.3, 2.9 } }) do
-		ball(m, "Coal" .. i, 1.3, O * CFrame.new(c[1], 1.5, c[2]), RGB(34, 34, 38), Mat.Slate)
-	end
-
-	-- Anvil (the station itself) with a talisman being forged above it
-	part(m, "AnvilBase", V3(2.6, 1.6, 2), O * CFrame.new(-6, 1.8, 3.5), iron, Mat.Metal)
-	part(m, "AnvilWaist", V3(1.4, 1.4, 1.2), O * CFrame.new(-6, 3.3, 3.5), iron, Mat.Metal)
-	local anvilTop = part(m, "AnvilTop", V3(4.4, 1.2, 2), O * CFrame.new(-6, 4.6, 3.5), RGB(78, 80, 92), Mat.Metal)
-	part(m, "AnvilHorn", V3(1.4, 0.8, 1), O * CFrame.new(-8.9, 4.7, 3.5), RGB(78, 80, 92), Mat.Metal)
-
-	local tal = part(m, "TalismanDisc", V3(0.4, 2.6, 2.6), O * CFrame.new(-6, 8, 3.5) * CFrame.Angles(0, math.rad(90), 0), RGB(255, 205, 60), Mat.Metal, {
-		Shape = Enum.PartType.Cylinder,
-		CanCollide = false,
-	})
-	local gem = ball(m, "TalismanGem", 1.1, O * CFrame.new(-6, 8, 3.5), RGB(80, 230, 255), Mat.Neon, { CanCollide = false })
-	fx(tal, { SpinSpeed = 70, BobAmp = 0.4, BobSpeed = 1.6 })
-	fx(gem, { SpinSpeed = 70, BobAmp = 0.4, BobSpeed = 1.6 })
-	local glow = Instance.new("PointLight")
-	glow.Color = RGB(120, 220, 255)
-	glow.Range = 10
-	glow.Brightness = 1
-	glow.Parent = gem
-
-	-- Quench barrel
-	cylinder(m, "Barrel", 3.2, 3, O * CFrame.new(-12, 2.6, 6.5), RGB(130, 88, 54), Mat.WoodPlanks)
-	cylinder(m, "BarrelWater", 0.2, 2.6, O * CFrame.new(-12, 4.25, 6.5), RGB(70, 130, 190), Mat.Glass, { Transparency = 0.2 })
-	for _, y in ipairs({ 1.8, 3.4 }) do
-		cylinder(m, "BarrelBand", 0.3, 3.1, O * CFrame.new(-12, y, 6.5), iron, Mat.Metal)
-	end
-
-	-- Weapon rack against the wall, left of the door
-	part(m, "RackBar", V3(5, 0.4, 0.4), O * CFrame.new(-10.5, 6.5, -3.6), timber, Mat.Wood)
-	for i, x in ipairs({ -12.3, -10.5, -8.7 }) do
-		part(m, "SwordBlade" .. i, V3(0.3, 4.2, 0.8), O * CFrame.new(x, 3.6, -3.4), RGB(200, 204, 214), Mat.Metal)
-		part(m, "SwordGuard" .. i, V3(1.6, 0.3, 0.4), O * CFrame.new(x, 5.8, -3.4), GOLD, Mat.Metal)
-		part(m, "SwordGrip" .. i, V3(0.35, 1.2, 0.35), O * CFrame.new(x, 6.6, -3.4), RGB(90, 56, 34), Mat.Wood)
-	end
-
-	-- Crate of gold ingots
-	part(m, "Crate", V3(3, 3, 3), O * CFrame.new(12, 2.5, 7), RGB(160, 112, 70), Mat.WoodPlanks)
-	for i, x in ipairs({ 11.2, 12.8 }) do
-		part(m, "Ingot" .. i, V3(1.4, 0.5, 0.7), O * CFrame.new(x, 4.25, 7), GOLD, Mat.Metal)
-	end
-	part(m, "Ingot3", V3(1.4, 0.5, 0.7), O * CFrame.new(12, 4.75, 7), GOLD, Mat.Metal)
-
-	-- A little fence down the right side
-	local c = Config.Stations.Craft
-	fence(m, V3(c.X + 17.5, 0, c.Z - 4), V3(c.X + 17.5, 0, c.Z + 10))
-
-	-- The blacksmith (your uploaded Smith model), standing behind the anvil.
-	-- If it can't load, the old blocky smith with apron and hammer appears.
-	avatarNPC(m, NPC_MODELS.Smith, "Blacksmith", facingCustomer(O, -6, -0.5), Config.Stations.Craft.Y + 1, function()
-		local smithBase = O * CFrame.new(0, 0.2, 0) -- npc() expects the floor top at y=0.8; ours is 1.0
-		local smith = npc(m, smithBase, -6, -0.5, RGB(150, 60, 50))
-		smith.Name = "Blacksmith"
-		part(smith, "Apron", V3(3.2, 4.2, 0.3), smithBase * CFrame.new(-6, 4.8, 0.55), RGB(84, 58, 38), Mat.Fabric)
-		part(smith, "HammerHandle", V3(0.45, 3, 0.45), smithBase * CFrame.new(-3.6, 4.4, 0.2), RGB(100, 70, 40), Mat.Wood)
-		part(smith, "HammerHead", V3(1.4, 1.1, 1.1), smithBase * CFrame.new(-3.6, 6.1, 0.2), iron, Mat.Metal)
-		part(smith, "Beard", V3(2.2, 1.4, 0.4), smithBase * CFrame.new(-6, 7.8, 0.95), RGB(120, 70, 40), Mat.Fabric)
-	end)
-
-	titleSign(m, O * CFrame.new(0, 31, -3), "ARMORY", "The blacksmith forges your talismans", RGB(255, 150, 90), 380, 85)
-
-	addPrompt(anvilTop, "Craft", "Forge Talismans", "Blacksmith", 16)
-	autoZone(m, O * CFrame.new(-2, 5, 6), V3(24, 10, 14), "Panel", "Craft")
 end
 
 ----------------------------------------------------------------------
@@ -3378,8 +3161,8 @@ local function buildPetSanctuary(parent)
 end
 
 -- A stream down the east side of the castle: it springs from a grotto in
--- rocks in the north-east corner, runs past the forge and turns its
--- waterwheel, and drains away through a grated culvert in the south-east.
+-- rocks in the north-east corner, runs past the Arcade, and drains away
+-- through a grated culvert in the south-east.
 local function buildRiver(parent)
 	local m = folder(parent, "River")
 	local x0, x1 = 102, 114
@@ -3408,18 +3191,8 @@ local function buildRiver(parent)
 	for x = x0 + 1, x1 - 1, 2 do
 		part(m, "GrateBar", V3(0.5, 3.6, 0.5), CFrame.new(x, 1.8, zS - 0.2), GATE_IRON, Mat.Metal)
 	end
-	-- the forge's waterwheel
-	local wz = Config.Stations.Craft.Z
-	local wx = 108
-	part(m, "WheelAxle", V3(12, 1, 1), CFrame.new(wx - 4, 8, wz), RGB(70, 50, 34), Mat.Wood)
-	for _, dx in ipairs({ -2, 2 }) do
-		part(m, "WheelRim", V3(0.8, 16, 16), CFrame.new(wx + dx, 8, wz), RGB(120, 84, 50), Mat.WoodPlanks, { Shape = Enum.PartType.Cylinder, CanCollide = false })
-	end
-	part(m, "WheelHub", V3(4.4, 12, 12), CFrame.new(wx, 8, wz), WATER, Mat.SmoothPlastic, { Shape = Enum.PartType.Cylinder, Transparency = 1, CanCollide = false })
-	for i = 0, 7 do
-		local a = i / 8 * math.pi
-		part(m, "WheelPaddle", V3(4.6, 15.6, 0.6), CFrame.new(wx, 8, wz) * CFrame.Angles(a, 0, 0), RGB(150, 104, 62), Mat.WoodPlanks, { CanCollide = false })
-	end
+	-- (the forge's waterwheel was here: the Arcade's giant token stands on
+	-- the bank now - ArcadeBuilder)
 end
 
 -- The farm (south-east of the plaza): built chunky and blocky like the rest
@@ -5866,7 +5639,14 @@ function LobbyBuilder.Build()
 		{ "Ground and walls", buildGround },
 		{ "Sell Shop", buildSellShop },
 		{ "Upgrade Shop", buildUpgradeShop },
-		{ "Armory (blacksmith)", buildCraftBench },
+		-- the Arcade, where the forge was (its own module: this one is full)
+		{ "Arcade", function(lobby)
+			local here = script and script.Parent or game:GetService("ServerScriptService")
+			local mod = here and here:FindFirstChild("ArcadeBuilder")
+			if mod then -- (a headless test that builds only this module has none)
+				require(mod).Build(lobby)
+			end
+		end },
 		-- (the Prestige Shrine is gone: the plaza is open paving now)
 		{ "Colosseum gate", Extras.gate },
 		{ "Colosseum", Extras.colosseum },

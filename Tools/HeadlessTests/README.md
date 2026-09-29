@@ -399,6 +399,44 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   spots the server picks, every building block's moment and every style's
   aura - each really draws something, nothing errors or warns, and it all
   tidies itself up.
+- `test_arcade.luau` - THE ARCADE on the server (ArcadeService, and the
+  Arcade Tokens in PlayerService) with a pretend DataStore: 200,000 spins
+  come out at the odds the machines show; the first spin ever is never a
+  Common; a Legendary or better never takes more than `Pity` spins and each
+  machine counts its own; the "ArcadeRoll" action through the real Action
+  remote refuses bad requests, a machine you haven't opened, spinning outside
+  the lobby, too fast and not enough tokens, takes the right price (x1 / x10),
+  gives new weapons, mastery for ones you own (shown at once if held), a
+  token back once mastered, tells every screen and fills the BIG WINS board;
+  a new player's first dummy quest is the small one and a handed-in quest
+  pays a token; a new set of quests every 6 hours, and a finished quest not
+  yet handed in is handed in for you when the set changes (online, or from
+  an old save when you join) - once; a boss's first win pays
+  tokens and opens its machine; tokens and the counters are saved, and a
+  nonsense save is cleaned up.
+- `test_arcade_client.luau` - THE ARCADE on your screen (ArcadeClient),
+  talking to the real server, in the real building (ArcadeBuilder), with
+  pretend imported Slime models: the ROLL button and badge, the machines'
+  screens, the prize pedestal, walking in opening the menu (once) and out
+  closing it, the menu (odds, pity, locked and covered machines), a spin
+  (the camera flies to the machine, the strip lands on the server's pick, the
+  reveal card with the weapon turning round its middle, EQUIP, SPIN AGAIN,
+  DONE, tap to skip), ten at once (a Legendary's reveal, then the grid),
+  someone else's Secret (the machine lights up, their result floats over it,
+  the banner, BIG WINS), two spins on one machine taking turns, the HUD's
+  ArcadeOpen, the token machine, and no spinning outside the lobby or in the
+  intro. `-a snaps` also prints snapshots of the screen for `render_gui.py`.
+- `test_hud.luau` - the HUD's ARCADE TOKENS (Hud.client.lua): the counter
+  bottom-left and its token picture, clicking it opens the Arcade
+  (`ArcadeOpen`), the hint line nudging you to spin, and DEV: +10 Tokens.
+- `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
+  `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
+  gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /
+  UIPadding worked out), and `render_gui.py` paints the snapshots in a grid
+  with captions (`--bg` a picture of the world behind, `--font` the game's
+  FredokaOne if you have it). The Arcade's: `luau test_arcade_client.luau -a
+  snaps > s.txt`, then `python3 render_gui.py s.txt ../../Docs/arcade_screens.png
+  --bg inside.png --font FredokaOne.ttf`.
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

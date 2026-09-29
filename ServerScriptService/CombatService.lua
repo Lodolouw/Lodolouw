@@ -833,6 +833,9 @@ local function showMastery(player, id)
 	end
 end
 
+-- (the Arcade uses it: a duplicate's mastery shows on the card straight away)
+CombatService.ShowMastery = showMastery
+
 local function setMasteryPoints(player, id, points)
 	local before = Config.masteryLevel(masteryPoints(player, id))
 	points = math.clamp(math.floor(points), 0, Config.masteryPointsFor(W.MasteryMax))

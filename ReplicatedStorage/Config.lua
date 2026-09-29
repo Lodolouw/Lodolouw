@@ -23,7 +23,8 @@ Config.TalismanSlots = 3
 Config.Stations = {
 	Sell = Vector3.new(52, 0, 45), -- south-east of the fountain plaza
 	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle
-	Craft = Vector3.new(72, 0, -40), -- the forge, in the Gear Hall on the east side
+	Craft = Vector3.new(72, 0, -40), -- (the forge was here: the Arcade stands there now)
+	Arcade = Vector3.new(75, 0, -41), -- the Arcade (ServerScriptService/ArcadeBuilder), north-east of the fountain
 	Prestige = Vector3.new(0, 0, 0),
 	Quests = Vector3.new(18, 0, 27), -- the Quest Board, by the south road just past the plaza
 }
@@ -311,21 +312,26 @@ end
 ----------------------------------------------------------------------
 -- Daily quests (the Quest Board)
 ----------------------------------------------------------------------
--- Every day (midnight UTC) the Quest Board offers the same PerDay quests
--- to everyone, picked from the pool below - never two of the same kind on
--- one day. You choose ONE of them; finish it, then hand it in at the board
--- for the coins (it gets stamped COMPLETED).
+-- Every `Hours` hours the Quest Board offers the same PerDay quests to
+-- everyone, picked from the pool below - never two of the same kind at once.
+-- You choose ONE of them; finish it, then hand it in at the board for the
+-- coins and `Tokens` Arcade Tokens (it gets stamped COMPLETED). A new
+-- player's very first choice of dummy quest is always the small one
+-- (`First`), so their first token - and their first spin - comes quickly.
 --   kind: arena = dummies beaten in the Colosseum, boss = Spire bosses beaten,
---         sell = items sold, chest = treasure chests opened
+--         chest = treasure chests opened
+-- (the old "sell" quests are gone: loot doesn't drop any more)
 Config.Quests = {
 	PerDay = 3,
+	Hours = 6,
+	Tokens = 1,
+	First = "Arena10",
 	Pool = {
 		{ id = "Arena10", kind = "arena", goal = 10, reward = 80, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Arena30", kind = "arena", goal = 30, reward = 150, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Arena100", kind = "arena", goal = 100, reward = 400, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Boss1", kind = "boss", goal = 1, reward = 300, text = "Defeat a Spire boss" },
 		{ id = "Boss3", kind = "boss", goal = 3, reward = 800, text = "Defeat %d Spire bosses" },
-		{ id = "Sell25", kind = "sell", goal = 25, reward = 150, text = "Sell %d items at the shop" },
 		{ id = "Chest2", kind = "chest", goal = 2, reward = 200, text = "Open %d treasure chests" },
 	},
 }
@@ -334,12 +340,23 @@ for _, q in ipairs(Config.Quests.Pool) do
 	Config.QuestById[q.id] = q
 end
 
--- which day it is for quests (changes at midnight UTC)
+-- which day it is (changes at midnight UTC): the Colosseum's first clear of
+-- the day
 function Config.questDay(t)
 	return math.floor((t or os.time()) / 86400)
 end
 
--- the quests for a given day: the same for everyone, never two of one kind
+-- which set of quests is on the board (a new one every Config.Quests.Hours)
+function Config.questPeriod(t)
+	return math.floor((t or os.time()) / (3600 * (Config.Quests.Hours or 24)))
+end
+
+-- when the board's next set of quests comes (os.time)
+function Config.nextQuestTime(t)
+	return (Config.questPeriod(t) + 1) * 3600 * (Config.Quests.Hours or 24)
+end
+
+-- the quests for a given set: the same for everyone, never two of one kind
 function Config.questsForDay(day)
 	local rng = Random.new(day * 7919 + 17)
 	local pool = table.clone(Config.Quests.Pool)
@@ -3255,6 +3272,104 @@ do
 		{ "DeleteKey", "Delete Key", "Daggers",
 			standIn("DELETE", "Secret", RGB(255, 60, 60), "the screen glitches, a DELETE box appears on the target: huge damage, everything round it shatters") },
 	})
+end
+
+----------------------------------------------------------------------
+-- THE ARCADE: where weapons come from. One machine per weapon pack; a spin
+-- costs Arcade Tokens and gives one of that pack's six weapons. The server
+-- picks the result (ServerScriptService/ArcadeService) before the spin
+-- plays on your screen (StarterPlayerScripts/ArcadeClient); the building
+-- stands where the forge was (ServerScriptService/ArcadeBuilder).
+--   * Odds are shown on every machine (a Roblox rule for paid random items)
+--     and the spinning strip is filled using the real odds.
+--   * PITY: a Legendary or better is guaranteed within `Pity` spins on one
+--     machine (the counter shows on the machine).
+--   * Your FIRST spin ever is Rare or better (said on the machine).
+--   * A weapon you already own gives it mastery points instead
+--     (`Duplicate`), or a token back once it's at mastery 100.
+-- Tokens come from quests (Config.Quests.Tokens), a boss's first clear
+-- (`FirstClear`), and later from the Robux shop.
+----------------------------------------------------------------------
+do
+	local RGB = Color3.fromRGB
+	Config.Arcade = {
+		-- the machines, left to right along the back wall: one per pack in
+		-- Config.Weapons.Packs. Price: tokens for one spin; Ten: for ten at
+		-- once (a little cheaper). Open: open from the start (the Slime
+		-- machine); every other one opens when you beat its pack's boss.
+		-- Body/Side/Light: its paint (in the lobby's palette).
+		Machines = {
+			Slime = { Price = 1, Ten = 9, Open = true, Body = RGB(62, 137, 72), Side = RGB(99, 199, 77), Light = RGB(99, 199, 77) },
+			Knight = { Price = 2, Ten = 18, Body = RGB(58, 68, 102), Side = RGB(139, 155, 180), Light = RGB(254, 174, 52) },
+			Speedway = { Price = 3, Ten = 27, Body = RGB(162, 38, 51), Side = RGB(228, 59, 68), Light = RGB(254, 231, 97) },
+			Jungle = { Price = 4, Ten = 36, Body = RGB(38, 92, 66), Side = RGB(115, 62, 57), Light = RGB(254, 231, 97) },
+			Canvas = { Price = 5, Ten = 45, Body = RGB(234, 212, 170), Side = RGB(38, 43, 68), Light = RGB(0, 153, 219) },
+		},
+		-- the update packs' machines, still under covers ("coming soon")
+		Soon = {
+			{ Id = "Cactus", Boss = "Tuber" },
+			{ Id = "Dojo", Boss = "Kaze" },
+			{ Id = "Neon", Boss = "Gridlock" },
+			{ Id = "Garden", Boss = "Petalina" },
+			{ Id = "Throne", Boss = "Gavelgrunt" },
+		},
+		-- each rarity's chance, in percent (must add up to 100); a pack has one
+		-- weapon of each, so this is each weapon's chance too
+		Odds = { Common = 45, Rare = 30, Epic = 15, Legendary = 7, Mythic = 2.5, Secret = 0.5 },
+		Pity = 30,
+		PityRarities = { "Legendary", "Mythic", "Secret" },
+		FirstSpin = { "Rare", "Epic", "Legendary", "Mythic", "Secret" },
+		Duplicate = { Common = 60, Rare = 90, Epic = 140, Legendary = 220, Mythic = 320, Secret = 500 },
+		-- tokens for beating a Spire floor's boss for the first time
+		FirstClear = { [1] = 5, [2] = 5, [3] = 6, [4] = 6, [5] = 7, [6] = 7, [7] = 8, [8] = 8, [9] = 9, [10] = 10 },
+		-- a spin can't be asked for again sooner than this (seconds)
+		Gap = 0.4,
+		-- how a rarity looks on the machines and in the reveal
+		Colors = {
+			Common = RGB(192, 203, 220), Rare = RGB(0, 153, 219), Epic = RGB(181, 80, 136),
+			Legendary = RGB(254, 174, 52), Mythic = RGB(228, 59, 68), Secret = RGB(255, 255, 255),
+		},
+		Order = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Secret" },
+	}
+end
+
+-- A machine's pack (Config.Weapons.Packs entry), or nil
+function Config.arcadePack(machineId)
+	for _, p in ipairs(Config.Weapons.Packs or {}) do
+		if p.Id == machineId then
+			return p
+		end
+	end
+	return nil
+end
+
+-- The weapon of this rarity in that pack, or nil
+function Config.arcadeWeapon(machineId, rarity)
+	local p = Config.arcadePack(machineId)
+	for _, id in ipairs(p and p.Weapons or {}) do
+		local def = Config.Weapons.List[id]
+		if def and def.Rarity == rarity then
+			return id
+		end
+	end
+	return nil
+end
+
+-- Whether a player with this data may spin that machine (and if not, why)
+function Config.arcadeOpen(data, machineId)
+	local m = Config.Arcade.Machines[machineId]
+	local p = Config.arcadePack(machineId)
+	if not m or not p then
+		return false, "There's no such machine."
+	end
+	if m.Open then
+		return true
+	end
+	local cleared = type(data) == "table" and type(data.Cleared) == "table" and data.Cleared[tostring(p.Floor)]
+	if type(cleared) == "number" and cleared > 0 then
+		return true
+	end
+	return false, "Beat " .. tostring(p.Boss) .. " (Spire floor " .. tostring(p.Floor) .. ") to open this machine."
 end
 
 -- The mastery level `points` mastery points make (1 to MasteryMax), and how far

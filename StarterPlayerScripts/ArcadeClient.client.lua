@@ -1,0 +1,1472 @@
+--[[
+	ArcadeClient  (LocalScript, parent: StarterPlayer > StarterPlayerScripts, name: "ArcadeClient")
+
+	THE ARCADE on your screen (the spins themselves are decided by the
+	server: ArcadeService; the numbers: Config.Arcade; the building:
+	ArcadeBuilder).
+
+	  * THE MENU: walk into the Arcade and it opens (once - close it and it
+	    stays closed until you walk out and back in), or press the ROLL
+	    button on the left, or your token counter. One card per machine on
+	    the left; the one you pick shows its six weapons with their real odds,
+	    which ones you own, the pity bar ("a Legendary or better in 12
+	    spins"), your first spin's promise, and SPIN x1 / SPIN x10. A machine
+	    you haven't opened says whose boss opens it; outside the lobby you
+	    can look but not spin.
+	  * THE SPIN: the camera flies to that machine, a strip of weapon tiles
+	    (filled using the real odds) races past on its screen and slows down
+	    onto what the server already picked. Tap to skip. The landing gets
+	    bigger with the rarity: a blip for a Common, flashing lights for an
+	    Epic, a full-screen reveal for a Legendary or better, rainbows for a
+	    Secret. Then your weapon turns in 3D, with EQUIP / SPIN AGAIN / DONE.
+	    Ten at once: a quick spin onto the best, then all ten in a grid.
+	  * FOR EVERYONE: when anyone spins, that machine's screen lights up and
+	    their result floats over it; a Secret puts a banner on every screen;
+	    the BIG WINS board at the back lists the lobby's latest Legendary-or-
+	    better spins; the marquee bulbs chase; the Slime machine's Secret
+	    weapon turns over the prize pedestal.
+	  * THE TOKEN MACHINE: walk up to it for "Get Tokens" (the Robux shop,
+	    later; for now it says where free tokens come from).
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
+local SoundService = game:GetService("SoundService")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local A = Config.Arcade
+local W = Config.Weapons
+if not A then
+	return
+end
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local Action = Remotes:WaitForChild("Action")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local WeaponFX = nil -- (for the weapons in 3D: loaded when first needed)
+local function weaponFX()
+	if WeaponFX == nil then
+		local ok, mod = pcall(function()
+			return require(ReplicatedStorage:WaitForChild("WeaponFX", 5))
+		end)
+		WeaponFX = ok and mod or false
+	end
+	return WeaponFX or nil
+end
+
+local RGB = Color3.fromRGB
+local FONT = Enum.Font.FredokaOne
+local INK = RGB(24, 20, 37)
+local NIGHT = RGB(38, 43, 68)
+local SLATE = RGB(58, 68, 102)
+local PURPLE = RGB(104, 56, 108)
+local MAGENTA = RGB(181, 80, 136)
+local PINK = RGB(255, 0, 68)
+local CYAN = RGB(44, 232, 245)
+local YELLOW = RGB(254, 231, 97)
+local GOLD = RGB(254, 174, 52)
+local GREEN = RGB(99, 199, 77)
+local RED = RGB(228, 59, 68)
+local WHITE = RGB(255, 255, 255)
+local GREY = RGB(139, 155, 180)
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, RGB(255, 0, 68)),
+	ColorSequenceKeypoint.new(0.2, RGB(247, 118, 34)),
+	ColorSequenceKeypoint.new(0.4, RGB(254, 231, 97)),
+	ColorSequenceKeypoint.new(0.6, RGB(99, 199, 77)),
+	ColorSequenceKeypoint.new(0.8, RGB(44, 232, 245)),
+	ColorSequenceKeypoint.new(1, RGB(181, 80, 136)),
+})
+
+local TILE_SIZE = 150 -- a weapon tile on the spinning strip and in the grid of ten
+local state = nil -- the latest snapshot of your data from the server
+local busy = false -- a spin is being asked for or shown
+
+----------------------------------------------------------------------
+-- Small helpers
+----------------------------------------------------------------------
+local function new(class, props, parent)
+	local i = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		i[k] = v
+	end
+	if parent then
+		i.Parent = parent
+	end
+	return i
+end
+local function tween(inst, t, props, style, dir)
+	local tw = TweenService:Create(inst, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+	tw:Play()
+	return tw
+end
+local function text(parent, props)
+	local l = new("TextLabel", {
+		BackgroundTransparency = 1,
+		Font = FONT,
+		TextColor3 = WHITE,
+		TextScaled = true,
+		TextStrokeColor3 = INK,
+		TextStrokeTransparency = 0.4,
+	}, parent)
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	return l
+end
+local function stroke(parent, color, thickness)
+	return new("UIStroke", { Color = color or WHITE, Thickness = thickness or 3, LineJoinMode = Enum.LineJoinMode.Miter, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, parent)
+end
+local function corner(parent, r)
+	return new("UICorner", { CornerRadius = UDim.new(0, r or 8) }, parent)
+end
+local function button(parent, label, color, props)
+	local b = new("TextButton", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AutoButtonColor = false,
+		Font = FONT,
+		Text = label,
+		TextColor3 = WHITE,
+		TextScaled = true,
+		TextStrokeColor3 = INK,
+		TextStrokeTransparency = 0.3,
+	}, parent)
+	for k, v in pairs(props or {}) do
+		b[k] = v
+	end
+	stroke(b, INK, 3)
+	corner(b, 8)
+	new("UIPadding", { PaddingTop = UDim.new(0.12, 0), PaddingBottom = UDim.new(0.12, 0), PaddingLeft = UDim.new(0.04, 0), PaddingRight = UDim.new(0.04, 0) }, b)
+	local sc = new("UIScale", {}, b)
+	b.MouseEnter:Connect(function()
+		tween(sc, 0.1, { Scale = 1.05 })
+	end)
+	b.MouseLeave:Connect(function()
+		tween(sc, 0.1, { Scale = 1 })
+	end)
+	return b
+end
+-- a round purple token with a gold rim and a star
+local function tokenIcon(parent, size, props)
+	local f = new("Frame", { Size = UDim2.fromOffset(size, size), BackgroundColor3 = GOLD, BorderSizePixel = 0 }, parent)
+	corner(f, math.floor(size / 2))
+	stroke(f, INK, math.max(2, size / 16))
+	local inner = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.72, 0.72), BackgroundColor3 = PURPLE, BorderSizePixel = 0 }, f)
+	corner(inner, math.floor(size / 2))
+	text(inner, { Text = "★", TextColor3 = YELLOW, Size = UDim2.fromScale(1, 1), TextStrokeTransparency = 1 })
+	for k, v in pairs(props or {}) do
+		f[k] = v
+	end
+	return f
+end
+local function rarityColor(rarity)
+	return A.Colors[rarity] or WHITE
+end
+-- a Secret's name (or border) runs through the rainbow
+local rainbows = {} -- [UIGradient] = true (turned every frame)
+local function rainbow(parent)
+	local g = new("UIGradient", { Color = RAINBOW }, parent)
+	rainbows[g] = true
+	return g
+end
+
+-- a rarity's gem: a diamond in its colour (a Secret's runs through the
+-- rainbow), for a weapon whose model isn't to hand (the strip's tiles)
+local function gem(parent, rarity, size, props)
+	local g = new("Frame", {
+		Name = "Gem",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(size, size),
+		Rotation = 45,
+		BackgroundColor3 = rarityColor(rarity),
+		BorderSizePixel = 0,
+	}, parent)
+	stroke(g, INK, math.max(2, size / 14))
+	new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.36, 0.36), Size = UDim2.fromScale(0.3, 0.3), BackgroundColor3 = WHITE, BackgroundTransparency = 0.35, BorderSizePixel = 0, ZIndex = (props and props.ZIndex or 1) + 1 }, g)
+	if rarity == "Secret" then
+		rainbow(g)
+	end
+	for k, v in pairs(props or {}) do
+		g[k] = v
+	end
+	return g
+end
+
+local function squash(s)
+	return string.lower((string.gsub(tostring(s), "[%s_%-]", "")))
+end
+-- a sound from SoundService by name (the first of `names` that's there; silent if none)
+local function play(names, pitch, volume)
+	for _, name in ipairs(type(names) == "table" and names or { names }) do
+		local want = squash(name)
+		for _, s in ipairs(SoundService:GetChildren()) do
+			if s:IsA("Sound") and squash(s.Name) == want then
+				local c = s:Clone()
+				c.PlaybackSpeed = (tonumber(s.PlaybackSpeed) or 1) * (pitch or 1)
+				c.Volume = (tonumber(s.Volume) or 0.5) * (volume or 1)
+				c.Parent = SoundService
+				c:Play()
+				task.delay(3, function()
+					c:Destroy()
+				end)
+				return
+			end
+		end
+	end
+end
+
+local function inLobby()
+	local f = player:GetAttribute("SpireFloor")
+	return (f == nil or f == 0) and not player:GetAttribute("Colosseum") and not player:GetAttribute("Intro")
+end
+
+local function tokens()
+	return state and tonumber(state.Tokens) or 0
+end
+
+-- the machines in the order they stand: the launch packs by floor, then the covered ones
+local MACHINES = {}
+do
+	local packs = {}
+	for _, p in ipairs(W.Packs or {}) do
+		if A.Machines[p.Id] then
+			table.insert(packs, p)
+		end
+	end
+	table.sort(packs, function(a, b)
+		return a.Floor < b.Floor
+	end)
+	for _, p in ipairs(packs) do
+		table.insert(MACHINES, { id = p.Id, pack = p, machine = A.Machines[p.Id] })
+	end
+	for _, s in ipairs(A.Soon or {}) do
+		table.insert(MACHINES, { id = s.Id, soon = s })
+	end
+end
+local function machineEntry(id)
+	for _, e in ipairs(MACHINES) do
+		if e.id == id then
+			return e
+		end
+	end
+	return nil
+end
+
+-- the weapons of a machine, Common first
+local function dropsOf(id)
+	local out = {}
+	for _, rarity in ipairs(A.Order) do
+		local wid = Config.arcadeWeapon(id, rarity)
+		if wid then
+			table.insert(out, { id = wid, rarity = rarity, def = W.List[wid] })
+		end
+	end
+	return out
+end
+
+local function ownedLevel(id)
+	local own = state and state.Weapons and state.Weapons.own
+	local points = own and own[id]
+	if points == nil then
+		return nil
+	end
+	return (Config.masteryLevel(points))
+end
+
+-- a weapon, in 3D, standing up: its voxel model (or nothing yet, if the
+-- server hasn't loaded it)
+local function weaponModel(def)
+	local fx = weaponFX()
+	if not (fx and fx.buildVoxel and def) then
+		return nil
+	end
+	local ok, model, handle = pcall(fx.buildVoxel, def, false)
+	if not ok or not model or not handle then
+		return nil
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide, d.CanTouch, d.CanQuery = false, false, false
+		elseif d:IsA("Trail") or d:IsA("ParticleEmitter") then
+			d:Destroy()
+		end
+	end
+	model.PrimaryPart = handle
+	return model
+end
+
+-- (a held weapon's tip points down its handle's -Z; this turns it to point
+-- up) Where the middle of the standing weapon is from its handle, and how
+-- big it is - for turning it round its middle.
+local STAND = CFrame.Angles(math.rad(90), 0, 0)
+local function standInfo(model)
+	model:PivotTo(STAND)
+	local box, size = model:GetBoundingBox()
+	return box.Position, size
+end
+-- the weapon standing with its middle at `centre`, turned `angle` round
+local function standAt(model, centre, offset, angle)
+	model:PivotTo(CFrame.new(centre) * CFrame.Angles(0, angle, 0) * CFrame.new(-offset) * STAND)
+end
+
+----------------------------------------------------------------------
+-- The screen
+----------------------------------------------------------------------
+local gui = new("ScreenGui", { Name = "Arcade", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 43, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, playerGui)
+gui:SetAttribute("RetroSkip", true)
+local scaler = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
+local uiScale = new("UIScale", {}, scaler)
+local function fit()
+	local cam = Workspace.CurrentCamera
+	if cam then
+		local s = math.clamp(cam.ViewportSize.Y / 1000, 0.5, 1.1)
+		uiScale.Scale = s
+		scaler.Size = UDim2.fromScale(1 / s, 1 / s)
+	end
+end
+fit()
+if Workspace.CurrentCamera then
+	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+end
+
+-- THE ROLL BUTTON: a square beside WEAPONS (the left buttons' empty corner)
+local rollBtn = new("TextButton", {
+	Name = "RollButton",
+	AutoButtonColor = false,
+	BackgroundColor3 = NIGHT,
+	BorderSizePixel = 0,
+	Position = UDim2.new(0, 16 + 112 + 10, 0.44, 5),
+	Size = UDim2.fromOffset(112, 112),
+	Text = "",
+}, scaler)
+stroke(rollBtn, INK, 4)
+local rollScale = new("UIScale", {}, rollBtn)
+do
+	local face = new("Frame", { BackgroundColor3 = MAGENTA, BorderSizePixel = 0, Position = UDim2.fromOffset(6, 5), Size = UDim2.new(1, -12, 1, -13) }, rollBtn)
+	new("UIGradient", { Rotation = 90, Color = ColorSequence.new(RGB(255, 90, 170), RGB(104, 56, 108)) }, face)
+	tokenIcon(face, 50, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10) })
+	text(face, { Text = "Roll", TextScaled = false, TextSize = 22, Position = UDim2.new(0, 0, 1, -30), Size = UDim2.new(1, 0, 0, 28), TextStrokeTransparency = 0 }) -- (like WEAPONS)
+end
+local rollBadge = text(rollBtn, {
+	Name = "Badge",
+	Text = "0",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 8, 0, -8),
+	Size = UDim2.fromOffset(44, 26),
+	BackgroundTransparency = 0,
+	BackgroundColor3 = GOLD,
+	TextColor3 = INK,
+	TextStrokeTransparency = 1,
+	ZIndex = 5,
+	Visible = false,
+})
+corner(rollBadge, 12)
+stroke(rollBadge, INK, 2.5)
+
+-- THE WINDOW
+local dim = new("TextButton", { Name = "Dim", Text = "", AutoButtonColor = false, BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 1 }, scaler)
+local win = new("Frame", { Name = "Window", BackgroundColor3 = INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(980, 680), Visible = false, ZIndex = 2, Active = true }, scaler)
+stroke(win, CYAN, 4)
+new("UIGradient", { Rotation = 90, Color = ColorSequence.new(RGB(58, 32, 88), RGB(18, 14, 34)) }, win)
+local winScale = new("UIScale", {}, win)
+local title = text(win, { Name = "Title", Text = "ARCADE", Position = UDim2.fromOffset(28, 14), Size = UDim2.fromOffset(260, 56), TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 })
+new("UIStroke", { Color = PINK, Thickness = 3 }, title)
+local tokenPill = new("Frame", { Name = "Tokens", BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.new(1, -470, 0, 20), Size = UDim2.fromOffset(170, 46), ZIndex = 3 }, win)
+corner(tokenPill, 23)
+stroke(tokenPill, GOLD, 3)
+tokenIcon(tokenPill, 38, { Position = UDim2.fromOffset(4, 4), ZIndex = 4 })
+local tokenText = text(tokenPill, { Text = "0", Position = UDim2.fromOffset(48, 6), Size = UDim2.new(1, -58, 1, -12), TextColor3 = GOLD, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+local getBtn = button(win, "+ GET TOKENS", GREEN, { Position = UDim2.new(1, -290, 0, 20), Size = UDim2.fromOffset(170, 46), ZIndex = 3 })
+local closeBtn = button(win, "X", RED, { Position = UDim2.new(1, -72, 0, 18), Size = UDim2.fromOffset(50, 50), ZIndex = 3 })
+text(win, { -- (the footer)
+	Text = "The odds shown are the real chances. Your first spin is Rare or better, and a Legendary or better is guaranteed within "
+		.. A.Pity .. " spins on a machine.",
+	Position = UDim2.new(0, 28, 1, -34),
+	Size = UDim2.new(1, -56, 0, 20),
+	TextColor3 = GREY,
+	TextStrokeTransparency = 1,
+	ZIndex = 3,
+})
+
+-- the machines, down the left
+local list = new("ScrollingFrame", {
+	Name = "Machines",
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Position = UDim2.fromOffset(24, 86),
+	Size = UDim2.fromOffset(270, 510),
+	CanvasSize = UDim2.new(),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	ScrollBarThickness = 6,
+	ZIndex = 3,
+}, win)
+new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+
+-- the chosen machine, on the right
+local detail = new("Frame", { Name = "Detail", BackgroundTransparency = 1, Position = UDim2.fromOffset(312, 86), Size = UDim2.fromOffset(644, 510), ZIndex = 3 }, win)
+local dTitle = text(detail, { Text = "", Size = UDim2.fromOffset(644, 44), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+local dSub = text(detail, { Text = "", Position = UDim2.fromOffset(0, 44), Size = UDim2.fromOffset(644, 24), TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 4 })
+local rows = {}
+for i = 1, 6 do
+	local r = new("Frame", { BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 76 + (i - 1) * 46), Size = UDim2.fromOffset(644, 40), ZIndex = 4 }, detail)
+	corner(r, 6)
+	local bar = new("Frame", { BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.fromOffset(10, 40), ZIndex = 5 }, r)
+	corner(bar, 4)
+	rows[i] = {
+		frame = r,
+		bar = bar,
+		rarity = text(r, { Position = UDim2.fromOffset(20, 7), Size = UDim2.fromOffset(122, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
+		name = text(r, { Position = UDim2.fromOffset(146, 7), Size = UDim2.fromOffset(214, 26), TextScaled = false, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
+		kind = text(r, { Position = UDim2.fromOffset(364, 9), Size = UDim2.fromOffset(82, 22), TextScaled = false, TextSize = 17, TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 5 }),
+		odds = text(r, { Position = UDim2.fromOffset(446, 7), Size = UDim2.fromOffset(62, 26), TextScaled = false, TextSize = 22, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
+		owned = text(r, { Position = UDim2.fromOffset(516, 9), Size = UDim2.fromOffset(120, 22), TextScaled = false, TextSize = 16, TextColor3 = GREEN, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
+	}
+end
+local pityLabel = text(detail, { Text = "", Position = UDim2.fromOffset(0, 356), Size = UDim2.fromOffset(644, 24), TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+local pityBack = new("Frame", { BackgroundColor3 = NIGHT, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 384), Size = UDim2.fromOffset(644, 12), ZIndex = 4 }, detail)
+corner(pityBack, 6)
+local pityFill = new("Frame", { BackgroundColor3 = GOLD, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), ZIndex = 5 }, pityBack)
+corner(pityFill, 6)
+local firstLabel = text(detail, { Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Position = UDim2.fromOffset(0, 404), Size = UDim2.fromOffset(644, 26), TextColor3 = YELLOW, ZIndex = 4, Visible = false })
+rainbow(firstLabel)
+local spin1 = button(detail, "SPIN x1", PINK, { Position = UDim2.fromOffset(0, 438), Size = UDim2.fromOffset(312, 66), ZIndex = 4 })
+local spin10 = button(detail, "SPIN x10", MAGENTA, { Position = UDim2.fromOffset(332, 438), Size = UDim2.fromOffset(312, 66), ZIndex = 4 })
+-- (ten cost less than ten ones: the ribbon says how many are free)
+local freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 10, 0, -16), Size = UDim2.fromOffset(92, 26), Rotation = 8,
+	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 6 })
+corner(freeTag, 6)
+stroke(freeTag, INK, 2.5)
+local lockLabel = text(detail, { Text = "", Position = UDim2.fromOffset(0, 438), Size = UDim2.fromOffset(644, 66), TextColor3 = WHITE, BackgroundTransparency = 0, BackgroundColor3 = NIGHT, ZIndex = 4, Visible = false })
+corner(lockLabel, 8)
+new("UIPadding", { PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, lockLabel)
+local message = text(win, { Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -72), Size = UDim2.fromOffset(900, 26), TextColor3 = WHITE, ZIndex = 6 })
+
+local selected = MACHINES[1] and MACHINES[1].id or nil
+local cards = {} -- [id] = the card on the left
+
+local function say(textValue, color)
+	message.Text = textValue or ""
+	message.TextColor3 = color or WHITE
+	message.TextTransparency = 0
+	local mine = textValue
+	task.delay(3.5, function()
+		if message.Text == mine then
+			tween(message, 0.4, { TextTransparency = 1 })
+		end
+	end)
+end
+
+----------------------------------------------------------------------
+-- Filling the menu in
+----------------------------------------------------------------------
+local refresh -- (below)
+
+for i, e in ipairs(MACHINES) do
+	local color = e.machine and e.machine.Light or GREY
+	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundColor3 = NIGHT, BorderSizePixel = 0, Size = UDim2.new(1, -10, 0, 76), LayoutOrder = i, ZIndex = 4 }, list)
+	corner(card, 8)
+	local edge = stroke(card, INK, 3)
+	local band = new("Frame", { BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(0, 12, 1, 0), ZIndex = 5 }, card)
+	corner(band, 6)
+	local name = text(card, { Text = string.upper(e.id), Position = UDim2.fromOffset(22, 8), Size = UDim2.new(1, -30, 0, 32), TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 })
+	local sub = text(card, { Text = "", Position = UDim2.fromOffset(22, 42), Size = UDim2.new(1, -30, 0, 22), TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, TextStrokeTransparency = 1, ZIndex = 5 })
+	cards[e.id] = { card = card, edge = edge, name = name, sub = sub }
+	card.Activated:Connect(function()
+		selected = e.id
+		play({ "UI Blip" }, 1.1, 0.6)
+		refresh()
+	end)
+end
+
+refresh = function()
+	local t = tokens()
+	tokenText.Text = tostring(t)
+	rollBadge.Text = tostring(t)
+	rollBadge.Visible = t > 0
+	local spins = state and state.Arcade and tonumber(state.Arcade.spins) or 0
+	for _, e in ipairs(MACHINES) do
+		local c = cards[e.id]
+		if e.soon then
+			c.sub.Text = "Coming soon"
+		else
+			local open = Config.arcadeOpen(state or {}, e.id)
+			c.sub.Text = open and (e.machine.Price .. (e.machine.Price == 1 and " token a spin" or " tokens a spin")) or ("Beat " .. e.pack.Boss .. " to open")
+		end
+		c.edge.Color = e.id == selected and YELLOW or INK
+		c.card.BackgroundColor3 = e.id == selected and SLATE or NIGHT
+	end
+	local e = machineEntry(selected)
+	if not e then
+		return
+	end
+	local light = e.machine and e.machine.Light or GREY
+	dTitle.Text = string.upper(e.id) .. " MACHINE"
+	dTitle.TextColor3 = light
+	if e.soon then
+		dSub.Text = e.soon.Boss .. "'s pack - coming in an update!"
+	else
+		dSub.Text = e.pack.Boss .. "'s pack  -  Spire floor " .. e.pack.Floor
+	end
+	local drops = e.soon and {} or dropsOf(e.id)
+	for i, r in ipairs(rows) do
+		local d = drops[i]
+		r.frame.Visible = d ~= nil
+		if d then
+			local col = rarityColor(d.rarity)
+			r.bar.BackgroundColor3 = col
+			r.rarity.Text = string.upper(d.rarity)
+			r.rarity.TextColor3 = col
+			r.name.Text = d.def and d.def.Name or d.id
+			r.kind.Text = d.def and d.def.Type or ""
+			r.odds.Text = tostring(A.Odds[d.rarity] or 0) .. "%"
+			local lv = ownedLevel(d.id)
+			r.owned.Text = lv and ("OWNED Lv " .. lv) or ""
+		end
+	end
+	local pity = state and state.Arcade and state.Arcade.pity and tonumber(state.Arcade.pity[e.id]) or 0
+	local left = math.max(1, A.Pity - pity)
+	pityLabel.Visible = not e.soon
+	pityBack.Visible = not e.soon
+	pityLabel.Text = "A LEGENDARY OR BETTER IN " .. left .. (left == 1 and " SPIN" or " SPINS") .. " (at most)"
+	pityFill.Size = UDim2.fromScale(math.clamp(pity / A.Pity, 0, 1), 1)
+	firstLabel.Visible = not e.soon and spins == 0
+	-- what the buttons can do
+	local open, why = false, nil
+	if e.soon then
+		why = "COMING SOON"
+	else
+		open, why = Config.arcadeOpen(state or {}, e.id)
+		if open and not inLobby() then
+			open, why = false, "Go to the Arcade in the lobby to spin!"
+		end
+	end
+	spin1.Visible, spin10.Visible = open, open
+	lockLabel.Visible = not open
+	lockLabel.Text = why or ""
+	if open then
+		local m = e.machine
+		spin1.Text = "SPIN x1  -  " .. m.Price .. (m.Price == 1 and " TOKEN" or " TOKENS")
+		spin10.Text = "SPIN x10  -  " .. m.Ten .. " TOKENS"
+		local free = math.floor((m.Price * 10 - m.Ten) / m.Price)
+		freeTag.Visible = free > 0
+		freeTag.Text = free .. " FREE!"
+		spin1.BackgroundColor3 = t >= m.Price and PINK or SLATE
+		spin10.BackgroundColor3 = t >= m.Ten and MAGENTA or SLATE
+	end
+end
+
+local function openMenu()
+	if player:GetAttribute("Intro") then
+		return false
+	end
+	if not win.Visible then
+		win.Visible, dim.Visible = true, true
+		winScale.Scale = 0.85
+		tween(winScale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+		play({ "UI Blip" }, 1, 0.7)
+	end
+	refresh()
+	return true
+end
+local function closeMenu()
+	win.Visible, dim.Visible = false, false
+end
+closeBtn.Activated:Connect(closeMenu)
+dim.Activated:Connect(closeMenu)
+rollBtn.Activated:Connect(function()
+	rollScale.Scale = 0.9
+	tween(rollScale, 0.2, { Scale = 1 }, Enum.EasingStyle.Back)
+	if win.Visible then
+		closeMenu()
+	else
+		openMenu()
+	end
+end)
+rollBtn.MouseEnter:Connect(function()
+	tween(rollScale, 0.12, { Scale = 1.06 })
+end)
+rollBtn.MouseLeave:Connect(function()
+	tween(rollScale, 0.12, { Scale = 1 })
+end)
+
+-- where tokens come from (the Robux shop goes here later)
+local function showTokens()
+	openMenu()
+	say("Quests give a token every " .. (Config.Quests.Hours or 6) .. " hours, and every boss gives tokens the first time you beat it. Token packs are coming soon!", GOLD)
+end
+getBtn.Activated:Connect(showTokens)
+
+-- anything else can open the menu (the HUD's token counter does)
+do
+	local signal = ReplicatedStorage:FindFirstChild("ArcadeOpen")
+	if not signal then
+		signal = Instance.new("BindableEvent")
+		signal.Name = "ArcadeOpen"
+		signal.Parent = ReplicatedStorage
+	end
+	signal.Event:Connect(function(page)
+		if page == "Tokens" then
+			showTokens()
+		else
+			openMenu()
+		end
+	end)
+end
+
+----------------------------------------------------------------------
+-- The machines in the world (everyone's screen)
+----------------------------------------------------------------------
+local cabinets = {} -- [machine id] = { model, screen, back, title, status, marquee }
+local function trackCabinet(m)
+	if not m:IsA("Model") then
+		return
+	end
+	local id = m:GetAttribute("Machine")
+	local screen = m:FindFirstChild("Screen")
+	local gui2 = screen and screen:FindFirstChildOfClass("SurfaceGui")
+	local back = gui2 and gui2:FindFirstChild("Back")
+	cabinets[id] = {
+		model = m,
+		soon = m:GetAttribute("Soon") == true,
+		screen = screen,
+		back = back,
+		title = back and back:FindFirstChild("Title"),
+		status = back and back:FindFirstChild("Status"),
+		marquee = m:FindFirstChild("Marquee"),
+		flashUntil = 0,
+	}
+end
+for _, m in ipairs(CollectionService:GetTagged("ArcadeCabinet")) do
+	trackCabinet(m)
+end
+CollectionService:GetInstanceAddedSignal("ArcadeCabinet"):Connect(trackCabinet)
+
+-- what each machine's screen says when nobody's spinning (yours: locked or not)
+local function attract(c, id, blink)
+	if not c.status or not c.back or os.clock() < c.flashUntil then
+		return
+	end
+	c.back.BackgroundColor3 = INK
+	if c.soon then
+		return
+	end
+	local open = Config.arcadeOpen(state or {}, id)
+	if open then
+		c.status.Text = blink and "INSERT TOKEN" or ""
+		c.status.TextColor3 = WHITE
+	else
+		c.status.Text = "LOCKED"
+		c.status.TextColor3 = RED
+	end
+end
+
+-- somebody's result floating up over their machine
+local function floatOver(c, line, color, isSecret)
+	local anchor = c.marquee or c.screen
+	if not anchor then
+		return
+	end
+	local bb = new("BillboardGui", { Name = "ArcadeWin", Size = UDim2.fromScale(12, 2.2), StudsOffset = Vector3.new(0, 3.2, 0), AlwaysOnTop = true, LightInfluence = 0, MaxDistance = 160, Adornee = anchor }, anchor)
+	local l = text(bb, { Text = line, Size = UDim2.fromScale(1, 1), TextColor3 = color, TextStrokeTransparency = 0 })
+	if isSecret then
+		rainbow(l)
+	end
+	tween(bb, 4, { StudsOffset = Vector3.new(0, 6.5, 0) }, Enum.EasingStyle.Linear)
+	task.delay(3, function()
+		tween(l, 1, { TextTransparency = 1, TextStrokeTransparency = 1 })
+	end)
+	task.delay(4.1, function()
+		bb:Destroy()
+	end)
+end
+
+-- the banner on every screen when anyone spins a Secret
+local banner = new("Frame", { Name = "SecretBanner", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -90), Size = UDim2.fromOffset(820, 72), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 20 }, scaler)
+corner(banner, 12)
+local bannerEdge = stroke(banner, WHITE, 4)
+rainbow(bannerEdge)
+local bannerText = text(banner, { Text = "", Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -32, 1, -16), ZIndex = 21 })
+rainbow(bannerText)
+local function secretBanner(line)
+	bannerText.Text = line
+	banner.Position = UDim2.new(0.5, 0, 0, -90)
+	tween(banner, 0.5, { Position = UDim2.new(0.5, 0, 0, 18) }, Enum.EasingStyle.Back)
+	play({ "Legendary Reveal", "Level Complete" }, 1, 0.8)
+	task.delay(6, function()
+		if bannerText.Text == line then
+			tween(banner, 0.4, { Position = UDim2.new(0.5, 0, 0, -90) })
+		end
+	end)
+end
+
+-- the best of a list of results ({ id, rarity })
+local RANK = {}
+for i, r in ipairs(A.Order) do
+	RANK[r] = i
+end
+local function best(list)
+	local top = nil
+	for _, r in ipairs(list or {}) do
+		if not top or (RANK[r.rarity] or 0) > (RANK[top.rarity] or 0) then
+			top = r
+		end
+	end
+	return top
+end
+
+-- the lobby hears about every spin (the server's "ArcadeEvent", hooked up
+-- below once it's there)
+local event = nil
+-- A spin on a machine, as the lobby sees it: its screen flashes through the
+-- rarities, lands on the result, and the result floats up over it (a
+-- Secret: a banner on every screen too). Two spins on one machine take turns.
+local function announce(c, name, top)
+	local def = W.List[top.id]
+	local weaponName = def and def.Name or top.id
+	local color = rarityColor(top.rarity)
+	c.flashUntil = os.clock() + 6
+	for i = 1, 14 do
+		if c.back then
+			c.back.BackgroundColor3 = rarityColor(A.Order[(i % #A.Order) + 1])
+			if c.status then
+				c.status.Text = "SPINNING!"
+				c.status.TextColor3 = WHITE
+			end
+		end
+		task.wait(0.09)
+	end
+	if c.back then
+		c.back.BackgroundColor3 = INK
+		if c.status then
+			c.status.Text = string.upper(top.rarity) .. "!"
+			c.status.TextColor3 = color
+		end
+	end
+	floatOver(c, tostring(name) .. ": " .. string.upper(top.rarity) .. " " .. weaponName .. "!", color, top.rarity == "Secret")
+	if top.rarity == "Secret" then
+		secretBanner("★ " .. tostring(name) .. " just spun a SECRET: " .. weaponName .. "! ★")
+	end
+	c.flashUntil = os.clock() + 4 -- (the result stays up a while)
+end
+local function onRoll(userId, name, machineId, shown)
+	local c = cabinets[machineId]
+	local top = best(shown)
+	if not (c and c.back and top) then
+		return
+	end
+	-- (yours shows once your own spin has played; everyone else's straight away)
+	task.delay(userId == player.UserId and 4 or 0, function()
+		c.queue = c.queue or {}
+		table.insert(c.queue, { name = name, top = top })
+		if c.playing then
+			return
+		end
+		c.playing = true
+		while #c.queue > 0 do
+			local e = table.remove(c.queue, 1)
+			announce(c, e.name, e.top)
+			if #c.queue > 0 then
+				task.wait(1.6) -- (a moment on each result before the next)
+			end
+		end
+		c.playing = false
+	end)
+end
+-- THE BIG WINS board: the lobby's latest Legendary-or-better spins (kept by
+-- the server on the ArcadeEvent: "name|rarity|weapon;...")
+local function showWins()
+	local raw = event and event:GetAttribute("BigWins")
+	if type(raw) ~= "string" or raw == "" then
+		return
+	end
+	local lines = {}
+	for entry in string.gmatch(raw, "[^;]+") do
+		local who, rarity, wid = string.match(entry, "^(.-)|(.-)|(.-)$")
+		local def = wid and W.List[wid]
+		if who then
+			table.insert(lines, who .. "  -  " .. string.upper(rarity) .. " " .. (def and def.Name or tostring(wid)))
+		end
+	end
+	for _, board in ipairs(CollectionService:GetTagged("ArcadeWins")) do
+		local g = board:FindFirstChildOfClass("SurfaceGui")
+		local l = g and g:FindFirstChild("Lines")
+		if l then
+			l.Text = table.concat(lines, "\n")
+		end
+	end
+end
+local function hookEvent(ev)
+	if event or not ev then
+		return
+	end
+	event = ev
+	ev.OnClientEvent:Connect(function(kind, ...)
+		if kind == "Roll" then
+			onRoll(...)
+		end
+	end)
+	ev:GetAttributeChangedSignal("BigWins"):Connect(showWins)
+	showWins()
+end
+hookEvent(ReplicatedStorage:FindFirstChild("ArcadeEvent"))
+if not event then
+	task.spawn(function()
+		hookEvent(ReplicatedStorage:WaitForChild("ArcadeEvent", 120))
+	end)
+end
+
+-- THE PRIZE PEDESTAL: the machine's Secret weapon turns over it
+local prizes = {} -- [pedestal] = { model, base }
+local function placePrize(base)
+	if prizes[base] and prizes[base].model and prizes[base].model.Parent then
+		return
+	end
+	local id = Config.arcadeWeapon(base:GetAttribute("Machine") or "Slime", "Secret")
+	local def = id and W.List[id]
+	local model = weaponModel(def)
+	if not model then
+		return
+	end
+	model.Name = "PrizeWeapon"
+	local offset, size = standInfo(model)
+	model.Parent = Workspace
+	prizes[base] = { model = model, base = base, offset = offset, size = size }
+	if not base:FindFirstChild("PrizeSign") then
+		local bb = new("BillboardGui", { Name = "PrizeSign", Size = UDim2.fromScale(9, 2.4), StudsOffset = Vector3.new(0, 7.5, 0), LightInfluence = 0, MaxDistance = 90, Adornee = base }, base)
+		local top = text(bb, { Text = "SECRET", Size = UDim2.fromScale(1, 0.5), TextStrokeTransparency = 0 })
+		rainbow(top)
+		text(bb, { Text = def.Name .. "  -  " .. tostring(A.Odds.Secret) .. "%", Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromScale(1, 0.5), TextStrokeTransparency = 0 })
+	end
+end
+local function tryPrizes()
+	for _, base in ipairs(CollectionService:GetTagged("ArcadePrize")) do
+		placePrize(base)
+	end
+end
+tryPrizes()
+CollectionService:GetInstanceAddedSignal("ArcadePrize"):Connect(placePrize)
+task.spawn(function()
+	local folder = ReplicatedStorage:WaitForChild("WeaponModels", 60)
+	if folder then
+		folder.ChildAdded:Connect(function()
+			task.defer(tryPrizes)
+		end)
+		tryPrizes()
+	end
+end)
+
+-- THE TOKEN MACHINE: "Get Tokens"
+local function hookTokenMachine(m)
+	local body = m:IsA("Model") and m:FindFirstChild("Body")
+	if not body or body:FindFirstChildOfClass("ProximityPrompt") then
+		return
+	end
+	local pp = new("ProximityPrompt", { ActionText = "Get Tokens", ObjectText = "Token Machine", HoldDuration = 0, MaxActivationDistance = 12, RequiresLineOfSight = false }, body)
+	pp.Triggered:Connect(showTokens)
+end
+for _, m in ipairs(CollectionService:GetTagged("ArcadeTokens")) do
+	hookTokenMachine(m)
+end
+CollectionService:GetInstanceAddedSignal("ArcadeTokens"):Connect(hookTokenMachine)
+
+-- the lights: bulbs chasing round the roof, the screens blinking, the
+-- prize turning, Secret names running through the rainbow
+local bulbs = {}
+local function trackBulb(b)
+	if b:IsA("BasePart") then
+		bulbs[b] = b:GetAttribute("Index") or 0
+	end
+end
+for _, b in ipairs(CollectionService:GetTagged("ArcadeBulb")) do
+	trackBulb(b)
+end
+CollectionService:GetInstanceAddedSignal("ArcadeBulb"):Connect(trackBulb)
+
+local lightClock, step = 0, 0
+RunService.RenderStepped:Connect(function(dt)
+	local t = os.clock()
+	for g in pairs(rainbows) do
+		if g.Parent then
+			g.Offset = Vector2.new(math.sin(t * 1.5) * 0.4, 0)
+			g.Rotation = (t * 40) % 360
+		else
+			rainbows[g] = nil
+		end
+	end
+	for base, p in pairs(prizes) do
+		if p.model and p.model.Parent and base.Parent then
+			-- (the pedestal is a cylinder on its side: its height is its X)
+			local centre = base.Position + Vector3.new(0, base.Size.X / 2 + 1 + p.size.Y / 2 + math.sin(t * 1.6) * 0.3, 0)
+			standAt(p.model, centre, p.offset, t * 0.9)
+		end
+	end
+	lightClock = lightClock + dt
+	if lightClock < 0.12 then
+		return
+	end
+	lightClock = 0
+	step = step + 1
+	for b, i in pairs(bulbs) do
+		if b.Parent then
+			b.Color = ((i + step) % 3 == 0) and YELLOW or GOLD
+			b.Transparency = ((i + step) % 3 == 0) and 0 or 0.35
+		else
+			bulbs[b] = nil
+		end
+	end
+	local blink = (step % 10) < 6
+	for id, c in pairs(cabinets) do
+		if c.model.Parent then
+			attract(c, id, blink)
+		else
+			cabinets[id] = nil
+		end
+	end
+end)
+
+----------------------------------------------------------------------
+-- THE SPIN
+----------------------------------------------------------------------
+local show = new("Frame", { Name = "Show", BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10, Active = true }, scaler)
+local flash = new("Frame", { Name = "Flash", BackgroundColor3 = WHITE, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 30 }, show)
+-- the machine's screen
+local screenFrame = new("Frame", { Name = "Screen", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(840, 300), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 11 }, show)
+corner(screenFrame, 14)
+local screenEdge = stroke(screenFrame, GREEN, 8)
+local screenTitle = text(screenFrame, { Text = "", Position = UDim2.fromOffset(20, 10), Size = UDim2.new(1, -40, 0, 50), ZIndex = 12 })
+local window = new("Frame", { Name = "Strip", Position = UDim2.fromOffset(30, 80), Size = UDim2.fromOffset(780, 180), BackgroundColor3 = NIGHT, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 12 }, screenFrame)
+corner(window, 8)
+local strip = new("Frame", { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.fromOffset(10, 180), ZIndex = 13 }, window)
+new("Frame", { Name = "Marker", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(6, 180), BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 16 }, window)
+local markerTop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(28, 28), Rotation = 45, BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 16 }, screenFrame)
+stroke(markerTop, INK, 3)
+local skipHint = text(show, { Text = "TAP TO SKIP", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.42, 170), Size = UDim2.fromOffset(300, 26), TextColor3 = GREY, ZIndex = 12 })
+-- the reveal card
+local card = new("Frame", { Name = "Card", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(560, 560), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 20, Visible = false }, show)
+corner(card, 16)
+local cardEdge = stroke(card, WHITE, 6)
+local cardEdgeRainbow = nil
+local cardScale = new("UIScale", {}, card)
+local rays = new("Frame", { Name = "Rays", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.38), Size = UDim2.fromOffset(10, 10), BackgroundTransparency = 1, ZIndex = 19 }, card)
+for i = 1, 10 do
+	new("Frame", { Name = "Ray", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(34, 900), Rotation = i * 18, BackgroundColor3 = YELLOW, BackgroundTransparency = 0.8, BorderSizePixel = 0, ZIndex = 19 }, rays)
+end
+local cardRarity = text(card, { Text = "", Position = UDim2.fromOffset(20, 14), Size = UDim2.new(1, -40, 0, 56), ZIndex = 22 })
+local cardRarityRainbow = nil
+local view = new("ViewportFrame", { Name = "View", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 76), Size = UDim2.fromOffset(280, 260), BackgroundTransparency = 1, ZIndex = 22, LightColor = WHITE, Ambient = RGB(200, 200, 210) }, card)
+local viewCam = new("Camera", { FieldOfView = 40 }, view)
+view.CurrentCamera = viewCam
+local cardGem = nil -- (the rarity's gem, while the weapon's model isn't to hand)
+local cardName = text(card, { Text = "", Position = UDim2.fromOffset(20, 342), Size = UDim2.new(1, -40, 0, 50), ZIndex = 22 })
+local cardType = text(card, { Text = "", Position = UDim2.fromOffset(20, 392), Size = UDim2.new(1, -40, 0, 26), TextColor3 = GREY, TextStrokeTransparency = 1, ZIndex = 22 })
+local cardNote = text(card, { Text = "", Position = UDim2.fromOffset(20, 422), Size = UDim2.new(1, -40, 0, 34), TextColor3 = GREEN, ZIndex = 22 })
+local CARD_BUTTON = { TextScaled = false, TextSize = 24, Size = UDim2.fromOffset(164, 64), ZIndex = 22 }
+local function cardButton(label, color, x)
+	local b = button(card, label, color, CARD_BUTTON)
+	b.Position = UDim2.fromOffset(x, 474)
+	return b
+end
+local equipBtn = cardButton("EQUIP", GREEN, 20)
+local againBtn = cardButton("SPIN AGAIN", PINK, 198)
+local doneBtn = cardButton("DONE", SLATE, 376)
+-- ten at once: a grid
+local grid = new("Frame", { Name = "Grid", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UDim2.fromOffset(900, 520), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 20, Visible = false }, show)
+corner(grid, 16)
+stroke(grid, CYAN, 5)
+local gridTitle = text(grid, { Text = "", Position = UDim2.fromOffset(20, 10), Size = UDim2.new(1, -40, 0, 44), TextColor3 = YELLOW, ZIndex = 21 })
+-- (five across, two down: each tile has what it gave under it, in the gap)
+local gridCells = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(31, 64), Size = UDim2.fromOffset(838, 364), ZIndex = 21 }, grid)
+new("UIGridLayout", { CellSize = UDim2.fromOffset(TILE_SIZE, TILE_SIZE), CellPadding = UDim2.fromOffset(22, 34), SortOrder = Enum.SortOrder.LayoutOrder }, gridCells)
+local gridAgain = button(grid, "SPIN x10 AGAIN", PINK, { Position = UDim2.new(0.5, -310, 1, -76), Size = UDim2.fromOffset(300, 60), ZIndex = 22 })
+local gridDone = button(grid, "DONE", SLATE, { Position = UDim2.new(0.5, 10, 1, -76), Size = UDim2.fromOffset(300, 60), ZIndex = 22 })
+
+local TILE, GAP = TILE_SIZE, 12
+local skipping = false
+local lastRoll = nil -- { machine, count, results }
+
+local function tileFor(parent, wid, rarity, x)
+	local def = W.List[wid]
+	local col = rarityColor(rarity)
+	local f = new("Frame", { Position = UDim2.fromOffset(x, 15), Size = UDim2.fromOffset(TILE, TILE), BackgroundColor3 = INK, BorderSizePixel = 0, ZIndex = 14 }, parent)
+	corner(f, 10)
+	local edge = stroke(f, col, 5)
+	if rarity == "Secret" then
+		rainbow(edge)
+	end
+	text(f, { Text = string.upper(rarity), Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 0, 22), TextColor3 = col, ZIndex = 15 })
+	gem(f, rarity, 46, { Position = UDim2.fromOffset(TILE / 2, 62), ZIndex = 15 })
+	text(f, { Text = def and def.Name or wid, Position = UDim2.fromOffset(6, 94), Size = UDim2.new(1, -12, 0, 32), ZIndex = 15, TextWrapped = true })
+	text(f, { Text = def and string.upper(def.Type) or "", Position = UDim2.fromOffset(6, 126), Size = UDim2.new(1, -12, 0, 16), TextColor3 = GREY, TextStrokeTransparency = 1, ZIndex = 15 })
+	return f
+end
+
+-- a random weapon from the machine by its real odds (the strip's filler)
+local fillRng = Random.new()
+local function randomDrop(machineId)
+	local x = fillRng:NextNumber() * 100
+	for _, r in ipairs(A.Order) do
+		x = x - (A.Odds[r] or 0)
+		if x < 0 then
+			return Config.arcadeWeapon(machineId, r), r
+		end
+	end
+	return Config.arcadeWeapon(machineId, "Common"), "Common"
+end
+
+-- flies the camera to the machine (and back after)
+local camSaved, camTween = nil, nil
+local function cameraToMachine(machineId)
+	local c = cabinets[machineId]
+	local cam = Workspace.CurrentCamera
+	if not (c and c.screen and cam) then
+		return
+	end
+	camSaved = { type = cam.CameraType }
+	cam.CameraType = Enum.CameraType.Scriptable
+	local s = c.screen
+	local goal = CFrame.lookAt(s.Position + s.CFrame.LookVector * 9 + Vector3.new(0, 1.5, 0), s.Position)
+	camTween = tween(cam, 0.6, { CFrame = goal }, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+end
+local function cameraBack()
+	local cam = Workspace.CurrentCamera
+	if camTween then
+		camTween:Cancel()
+		camTween = nil
+	end
+	if camSaved and cam then
+		cam.CameraType = camSaved.type == Enum.CameraType.Scriptable and Enum.CameraType.Custom or camSaved.type
+	end
+	camSaved = nil
+end
+
+local function endShow()
+	show.Visible = false
+	card.Visible = false
+	grid.Visible = false
+	for _, ch in ipairs(view:GetChildren()) do
+		if ch ~= viewCam then
+			ch:Destroy()
+		end
+	end
+	cameraBack()
+	busy = false
+	openMenu()
+end
+
+-- the strip races past and slows onto `result`; returns when it's landed
+local function runStrip(machineId, result, seconds)
+	for _, ch in ipairs(strip:GetChildren()) do
+		ch:Destroy()
+	end
+	local count, landOn = 46, 40
+	for i = 1, count do
+		local wid, rarity
+		if i == landOn then
+			wid, rarity = result.id, result.rarity
+		else
+			wid, rarity = randomDrop(machineId)
+		end
+		tileFor(strip, wid, rarity, (i - 1) * (TILE + GAP))
+	end
+	strip.Size = UDim2.fromOffset(count * (TILE + GAP), 180)
+	local centre = window.Size.X.Offset / 2
+	local startX = centre - (2 * (TILE + GAP) + TILE / 2)
+	-- (it can stop anywhere on the tile, not always dead centre)
+	local endX = centre - ((landOn - 1) * (TILE + GAP) + TILE / 2) + fillRng:NextNumber(-TILE * 0.3, TILE * 0.3)
+	strip.Position = UDim2.fromOffset(startX, 0)
+	local t0 = os.clock()
+	local lastTile = nil
+	while true do
+		local u = math.clamp((os.clock() - t0) / seconds, 0, 1)
+		if skipping then
+			u = 1
+		end
+		local k = 1 - (1 - u) ^ 4 -- (fast, then slowing right down)
+		local x = startX + (endX - startX) * k
+		strip.Position = UDim2.fromOffset(x, 0)
+		local under = math.floor((centre - x) / (TILE + GAP)) + 1
+		if under ~= lastTile then
+			lastTile = under
+			if not skipping then
+				play({ "Roll Tick", "UI Blip" }, 0.9 + 0.4 * u, 0.5)
+			end
+		end
+		if u >= 1 then
+			break
+		end
+		RunService.RenderStepped:Wait()
+	end
+end
+
+local function flashScreen(color, alpha)
+	flash.BackgroundColor3 = color
+	flash.BackgroundTransparency = alpha or 0.2
+	tween(flash, 0.6, { BackgroundTransparency = 1 })
+end
+
+-- the big reveal of one result
+local function reveal(result, machineId, count)
+	local def = W.List[result.id]
+	local col = rarityColor(result.rarity)
+	local rank = RANK[result.rarity] or 1
+	card.Visible = true
+	cardScale.Scale = 0.3
+	tween(cardScale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+	cardEdge.Color = col
+	if cardEdgeRainbow then
+		cardEdgeRainbow:Destroy()
+		cardEdgeRainbow = nil
+	end
+	if cardRarityRainbow then
+		cardRarityRainbow:Destroy()
+		cardRarityRainbow = nil
+	end
+	cardRarity.Text = string.upper(result.rarity) .. "!"
+	cardRarity.TextColor3 = col
+	if result.rarity == "Secret" then
+		cardEdgeRainbow = rainbow(cardEdge)
+		cardRarityRainbow = rainbow(cardRarity)
+	end
+	cardName.Text = def and def.Name or result.id
+	cardName.TextColor3 = col
+	cardType.Text = (def and def.Type or "") .. (def and def.Ability and def.Ability.Name and ("  -  F: " .. def.Ability.Name) or "")
+	if result.new then
+		cardNote.Text = "NEW WEAPON!"
+		cardNote.TextColor3 = GREEN
+	elseif result.refund then
+		cardNote.Text = "Already mastered: +1 TOKEN back"
+		cardNote.TextColor3 = GOLD
+	else
+		cardNote.Text = "You have it: +" .. tostring(result.mastery or 0) .. " MASTERY"
+		cardNote.TextColor3 = CYAN
+	end
+	-- the weapon itself, turning (or its type's icon, if its model isn't here yet)
+	for _, ch in ipairs(view:GetChildren()) do
+		if ch ~= viewCam then
+			ch:Destroy()
+		end
+	end
+	local model = weaponModel(def)
+	if cardGem then
+		cardGem:Destroy()
+		cardGem = nil
+	end
+	if not model then
+		cardGem = gem(card, result.rarity, 120, { Position = UDim2.new(0.5, 0, 0, 206), ZIndex = 21 })
+	end
+	if model then
+		local offset, size = standInfo(model)
+		model.Parent = view
+		local reach = math.max(size.X, size.Y, size.Z)
+		viewCam.CFrame = CFrame.lookAt(Vector3.new(0, 0, reach * 1.6), Vector3.new(0, 0, 0))
+		task.spawn(function()
+			while model.Parent and card.Visible do
+				standAt(model, Vector3.new(), offset, os.clock() * 1.2)
+				RunService.RenderStepped:Wait()
+			end
+		end)
+	end
+	-- the bigger the rarity, the bigger the moment
+	rays.Visible = rank >= 3
+	for _, r in ipairs(rays:GetChildren()) do
+		r.BackgroundColor3 = col
+	end
+	if rank >= 4 then
+		flashScreen(col, 0.1)
+		show.BackgroundTransparency = 0.25
+		play({ "Legendary Reveal", "Level Complete" }, 1, 1)
+	elseif rank == 3 then
+		flashScreen(col, 0.45)
+		play({ "Level Complete", "Orb Land" }, 1.1, 0.9)
+	else
+		play({ "Orb Land", "UI Blip" }, rank == 2 and 1.2 or 1, 0.8)
+	end
+	if rank >= 3 then
+		task.spawn(function()
+			-- flashing lights round the card
+			for i = 1, (rank >= 5 and 16 or 8) do
+				if not card.Visible then
+					break
+				end
+				cardEdge.Transparency = (i % 2 == 0) and 0 or 0.6
+				task.wait(0.12)
+			end
+			cardEdge.Transparency = 0
+		end)
+	end
+	-- the buttons
+	local canEquip = def and W.Types[def.Type] and player:GetAttribute("Weapon") ~= result.id
+	equipBtn.Visible = canEquip and true or false
+	local m = A.Machines[machineId]
+	local price = m and (count == 10 and m.Ten or m.Price) or 0
+	againBtn.Text = tokens() >= price and "SPIN AGAIN" or "GET TOKENS"
+end
+
+-- (a spin that didn't happen: back to the menu, saying why)
+local function refused(why)
+	busy = false
+	if show.Visible then
+		endShow()
+	end
+	say(why, RED)
+	play({ "UI Blip" }, 0.7, 0.6)
+end
+
+local function roll(machineId, count)
+	if busy then
+		return
+	end
+	local m = A.Machines[machineId]
+	if not m then
+		return
+	end
+	local price = count == 10 and m.Ten or m.Price
+	if tokens() < price then
+		refused("You need " .. price .. (price == 1 and " token" or " tokens") .. " for that. Quests give a token every " .. (Config.Quests.Hours or 6) .. " hours!")
+		return
+	end
+	busy = true
+	local ok, success, answer = pcall(function()
+		return Action:InvokeServer("ArcadeRoll", { machine = machineId, count = count })
+	end)
+	if not ok or not success or type(answer) ~= "table" then
+		refused(ok and tostring(answer or "Couldn't spin.") or "Couldn't reach the server.")
+		return
+	end
+	-- the server has already decided: from here on it's only the show
+	if state then
+		state.Tokens = answer.tokens
+		state.Arcade = state.Arcade or { pity = {} }
+		state.Arcade.spins = answer.spins
+		state.Arcade.pity = state.Arcade.pity or {}
+		state.Arcade.pity[machineId] = answer.pity
+		state.Weapons = state.Weapons or { own = {} }
+		for _, r in ipairs(answer.results or {}) do
+			if r.new then
+				state.Weapons.own[r.id] = state.Weapons.own[r.id] or 0
+			end
+		end
+	end
+	lastRoll = { machine = machineId, count = count, results = answer.results or {} }
+	closeMenu()
+	busy = true
+	skipping = false -- (a tap from here on skips the strip)
+	local e = machineEntry(machineId)
+	local light = e and e.machine and e.machine.Light or GREEN
+	screenEdge.Color = light
+	screenTitle.Text = string.upper(machineId) .. " MACHINE"
+	screenTitle.TextColor3 = light
+	show.Visible, show.BackgroundTransparency = true, 0.55
+	screenFrame.Visible, skipHint.Visible = true, true
+	card.Visible, grid.Visible = false, false
+	cameraToMachine(machineId)
+	play({ "Token Clunk", "UI Blip" }, 1, 1)
+	task.wait(0.35)
+	local top = best(answer.results) or (answer.results or {})[1]
+	if not top then
+		endShow()
+		return
+	end
+	runStrip(machineId, top, count == 10 and 2.2 or 3.8)
+	skipHint.Visible = false
+	task.wait(0.25)
+	screenFrame.Visible = false
+	if count == 10 then
+		-- a Legendary or better still gets its moment first
+		if (RANK[top.rarity] or 0) >= 4 then
+			reveal(top, machineId, count)
+			equipBtn.Visible, againBtn.Visible = false, false
+			doneBtn.Text = "SEE ALL 10"
+			doneBtn.Position = UDim2.fromOffset(198, 474)
+			doneBtn.BackgroundColor3 = GOLD
+			local waiting = true
+			local conn = doneBtn.Activated:Connect(function()
+				waiting = false
+			end)
+			local t0 = os.clock()
+			while waiting and os.clock() - t0 < 6 do
+				task.wait(0.05)
+			end
+			conn:Disconnect()
+			card.Visible = false
+			againBtn.Visible = true
+			doneBtn.Text = "DONE"
+			doneBtn.Position = UDim2.fromOffset(376, 474)
+			doneBtn.BackgroundColor3 = SLATE
+		end
+		for _, ch in ipairs(gridCells:GetChildren()) do
+			if not ch:IsA("UIGridLayout") then
+				ch:Destroy()
+			end
+		end
+		grid.Visible = true
+		local newCount = 0
+		for i, r in ipairs(answer.results) do
+			local cell = tileFor(gridCells, r.id, r.rarity, 0)
+			cell.LayoutOrder = i
+			local note = r.new and "NEW!" or (r.refund and "+1 TOKEN" or ("+" .. tostring(r.mastery or 0) .. " MASTERY"))
+			newCount = newCount + (r.new and 1 or 0)
+			local tag = text(cell, { Text = note, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 5), Size = UDim2.fromOffset(128, 24), BackgroundTransparency = 0, BackgroundColor3 = r.new and GREEN or SLATE, ZIndex = 16 })
+			corner(tag, 6)
+			local sc = new("UIScale", { Scale = 0.2 }, cell)
+			tween(sc, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+			play({ "UI Blip", "Orb Land" }, 1 + i * 0.05, 0.5)
+			task.wait(0.09)
+		end
+		gridTitle.Text = "10 SPINS  -  " .. newCount .. (newCount == 1 and " NEW WEAPON" or " NEW WEAPONS")
+		gridAgain.Text = tokens() >= (e and e.machine and e.machine.Ten or 0) and "SPIN x10 AGAIN" or "GET TOKENS"
+	else
+		reveal(top, machineId, count)
+	end
+end
+
+-- tap to skip the strip
+UserInputService.InputBegan:Connect(function(input)
+	if show.Visible and screenFrame.Visible and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+		skipping = true
+	end
+end)
+
+spin1.Activated:Connect(function()
+	task.spawn(roll, selected, 1)
+end)
+spin10.Activated:Connect(function()
+	task.spawn(roll, selected, 10)
+end)
+equipBtn.Activated:Connect(function()
+	local top = lastRoll and best(lastRoll.results)
+	if not top then
+		return
+	end
+	local ok, success, msg = pcall(function()
+		return Action:InvokeServer("EquipWeapon", top.id)
+	end)
+	cardNote.Text = ok and tostring(msg or "") or "Couldn't reach the server."
+	cardNote.TextColor3 = (ok and success) and GREEN or RED
+	if ok and success then
+		equipBtn.Visible = false
+	end
+end)
+local function again()
+	if not lastRoll then
+		return
+	end
+	local m = A.Machines[lastRoll.machine]
+	local price = m and (lastRoll.count == 10 and m.Ten or m.Price) or math.huge
+	if tokens() < price then
+		endShow()
+		showTokens()
+		return
+	end
+	card.Visible, grid.Visible = false, false
+	busy = false
+	local machineId, count = lastRoll.machine, lastRoll.count
+	cameraBack()
+	task.spawn(roll, machineId, count)
+end
+againBtn.Activated:Connect(again)
+gridAgain.Activated:Connect(again)
+doneBtn.Activated:Connect(function()
+	if doneBtn.Text == "DONE" then
+		endShow()
+	end
+end)
+gridDone.Activated:Connect(endShow)
+
+----------------------------------------------------------------------
+-- Your data
+----------------------------------------------------------------------
+local StateUpdate = Remotes:WaitForChild("StateUpdate")
+StateUpdate.OnClientEvent:Connect(function(d)
+	if type(d) == "table" then
+		state = d
+		refresh()
+	end
+end)
+local request = Remotes:FindFirstChild("RequestState")
+if request then
+	request:FireServer()
+end
+refresh()
+for _, attr in ipairs({ "SpireFloor", "Colosseum", "Intro" }) do
+	player:GetAttributeChangedSignal(attr):Connect(function()
+		rollBtn.Visible = not player:GetAttribute("Intro")
+		if win.Visible then
+			refresh()
+		end
+	end)
+end
+rollBtn.Visible = not player:GetAttribute("Intro")
+
+----------------------------------------------------------------------
+-- Walk in and it opens (the same way as the Quest Board: LobbyActivities)
+----------------------------------------------------------------------
+do
+	local zones = {}
+	local function addZone(z)
+		if z:IsA("BasePart") and z:GetAttribute("Activity") == "Arcade" then
+			zones[z] = true
+		end
+	end
+	for _, z in ipairs(CollectionService:GetTagged("AutoOpenZone")) do
+		addZone(z)
+	end
+	CollectionService:GetInstanceAddedSignal("AutoOpenZone"):Connect(addZone)
+	local function inside(zone, pos, margin)
+		local rel = zone.CFrame:PointToObjectSpace(pos)
+		local half = zone.Size / 2
+		return math.abs(rel.X) <= half.X + margin and math.abs(rel.Y) <= half.Y + margin and math.abs(rel.Z) <= half.Z + margin
+	end
+	local here, opened, settle = false, false, true
+	player.CharacterAdded:Connect(function()
+		settle = true
+	end)
+	local lastLook = 0
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		if now - lastLook < 0.15 then
+			return
+		end
+		lastLook = now
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if not root or player:GetAttribute("Intro") then
+			here, settle = false, true
+			return
+		end
+		local isIn = false
+		for z in pairs(zones) do
+			if z.Parent and inside(z, root.Position, here and 2 or 0) then
+				isIn = true
+				break
+			end
+		end
+		if settle then
+			-- (arriving inside it - a respawn - doesn't pop it open)
+			settle = false
+			here = isIn
+			opened = isIn
+			return
+		end
+		if isIn and not here then
+			here = true
+			if not opened then
+				opened = openMenu()
+			end
+		elseif not isIn and here then
+			here = false
+			opened = false
+			if win.Visible and not busy then
+				closeMenu()
+			end
+		end
+	end)
+end

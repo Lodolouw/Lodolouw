@@ -10,16 +10,23 @@ local ReplicatedStorage = M.services.ReplicatedStorage
 local configModule = Instance.new("ModuleScript")
 configModule.Name = "Config"
 configModule.Parent = ReplicatedStorage
-local Config
+-- (the Arcade is built by its own module, beside LobbyBuilder)
+local arcadeModule = Instance.new("ModuleScript")
+arcadeModule.Name = "ArcadeBuilder"
+arcadeModule.Parent = M.services.ServerScriptService
+local Config, ArcadeBuilder
 local env = M.env({
 	require = function(mod)
 		if mod == configModule then
 			return Config
+		elseif mod == arcadeModule then
+			return ArcadeBuilder
 		end
 		error("require of unknown module " .. tostring(mod))
 	end,
 })
 Config = M.load(S.Config, "Config", env)()
+ArcadeBuilder = M.load(S.ArcadeBuilder, "ArcadeBuilder", env)()
 local lobby = M.load(S.LobbyBuilder, "LobbyBuilder", env)().Build()
 M.run(1)
 local Players = M.services.Players

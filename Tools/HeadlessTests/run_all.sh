@@ -39,6 +39,12 @@ run test_blocks.luau
 run test_moves.luau
 run test_movefx.luau
 run test_swordanims.luau
+# the Arcade: the spins' odds, pity and prices, tokens from quests and bosses
+# (the server), the menu, the spin and the reveal on your screen, and your
+# tokens on the HUD
+run test_arcade.luau
+run test_arcade_client.luau
+run test_hud.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

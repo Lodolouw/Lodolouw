@@ -10,6 +10,7 @@ files = {
     'LobbyActivities': 'StarterPlayerScripts/LobbyActivities.client.lua',
     'BossIntro': 'StarterPlayerScripts/BossIntro.client.lua',
     'LobbyBuilder': 'ServerScriptService/LobbyBuilder.lua',
+    'ArcadeBuilder': 'ServerScriptService/ArcadeBuilder.lua',
     'RetroWorld': 'StarterPlayerScripts/RetroWorld.client.lua',
     'LobbyFX': 'StarterPlayerScripts/LobbyFX.client.lua',
 }

@@ -15,7 +15,7 @@ sound effects.
 
 - [ ] **Gridlock Song**: you're making it. Put it in SoundService as "Gridlock Song" and set `Bpm` in his Config to its tempo.
 - [ ] **Thunder Crack** sound for the walrus king's lightning (8-bit, I can make it).
-- [ ] **Sword sounds**: "Sword Swing", "Sword Hit", "Whirlwind".
+- [x] **Sword sounds**: "Sword Swing", "Sword Hit", "Whirlwind" (made with the weapon sounds, uploaded).
 - [ ] **The level gap after the intro**: you finish at level 3, and Oozark wants level 15. We still need to decide how to close it.
 
 ## 1. Owning weapons
@@ -27,24 +27,27 @@ sound effects.
 
 ## 2. Arcade Tokens
 
-- [ ] The currency itself: saved, shown in the top bar, with a dev button that adds tokens.
-- [ ] **Free ways to earn them** (about 10-15 a week): the daily quest, a login streak (a big day 7), first boss clears (3-5), Colosseum runs, every 10 levels, codes, badges.
+- [x] The currency itself: saved, shown bottom-left (click it for the Arcade) and on the ROLL button, with a dev button that adds tokens.
+- [ ] **Free ways to earn them** (about 10-15 a week):
+  - [x] quests: 1 token each, a new set every 6 hours (a new player's first is a small dummy quest)
+  - [x] first boss clears: 5 (floor 1) up to 10 (floor 10)
+  - [ ] a login streak (a big day 7), Colosseum runs, every 10 levels, codes, badges
 
 ## 3. The arcade machines
 
-- [ ] **A row of cabinets in the lobby**, painted like their bosses: 5 at launch (floors 1, 3, 5, 7, 9), with room for the other 5.
-- [ ] **The ROLL button opens the Arcade menu from anywhere**: one card per machine, showing every drop with its rarity and **odds in %**, the pity bar, the price, and Roll x1 / Roll x10.
-  - Locked machines still show their drops, greyed out with "Beat X to unlock".
-  - A "pack of the week" card at the top with boosted odds.
-- [ ] **The server rolls first**: it takes the tokens and picks the result, including pity (a guaranteed Legendary every N rolls) and duplicates (they become tokens or mastery).
-- [ ] **The show**:
-  1. The camera flies to that machine, and the token goes in with a clunk ("Token Clunk" is already uploaded).
-  2. Weapon tiles scroll across the cabinet's screen and slow down. Epic and above flash the lights; Legendary and above get a full-screen reveal.
-  3. Tap to skip. Roll x10 shows a grid of 10.
-  4. The camera flies back, and you get "Equip now?".
-- [ ] Other players see the cabinet light up, and a Secret sends a banner to the whole server.
-- [ ] Walking up to a machine opens its card. Outside the lobby you can view the Arcade menu but not buy. If you can't afford a roll, the button says "Get tokens".
-- [ ] **Honest rules:** odds always shown, no fake near-misses, and the scroll strip is filled using the real odds.
+- [x] **The Arcade** where the forge and waterwheel were: 5 machines at launch (floors 1, 3, 5, 7, 9), painted like their packs, and the other 5 under covers; the token machine, the prize pedestal and the BIG WINS board (`Docs/arcade.png`).
+- [x] **The ROLL button opens the Arcade menu from anywhere**: one card per machine, showing every drop with its rarity and **odds in %**, the pity bar, the price, and Spin x1 / Spin x10.
+  - [x] Locked machines still show their drops, with "Beat X to open".
+  - [ ] A "pack of the week" card at the top with boosted odds.
+- [x] **The server rolls first**: it takes the tokens and picks the result, including pity (a Legendary or better within 30 spins) and duplicates (mastery, or a token back once mastered). Your first spin is Rare or better.
+- [x] **The show** (`Docs/arcade_screens.png`):
+  1. The camera flies to that machine, and the token goes in with a clunk.
+  2. Weapon tiles scroll across the machine's screen and slow down. Epic and above flash and get rays; Legendary and above a big fanfare.
+  3. Tap to skip. Spin x10 shows a grid of 10 (a Legendary gets its own reveal first).
+  4. The reveal: EQUIP / SPIN AGAIN / DONE, and the camera flies back.
+- [x] Other players see the machine light up and the result float over it, and a Secret sends a banner to the whole server.
+- [x] Walking into the Arcade opens the menu. Outside the lobby you can view it but not spin. If you can't afford another spin, the button says "Get tokens".
+- [x] **Honest rules:** odds always shown, no fake near-misses, and the scroll strip is filled using the real odds.
 
 ## 4. The weapons (the big one: 78 in all - full details in `Docs/weapons_plan.md`)
 
@@ -59,10 +62,10 @@ its card picture for the Arcade menu.
 
 **Launch: a machine on every second floor (1, 3, 5, 7, 9) = 5 packs, 30 weapons.** Your first roll comes right after your first boss.
 
-- [ ] **Slime (Oozark):** Goo Gloves · Jellyblade · Gelatin Hammer · Ooze Daggers · Acid Scythe · *Gelatinous Edge* (Secret)
+- [x] **Slime (Oozark):** Goo Gloves · Jellyblade · Gelatin Hammer · Ooze Daggers · Acid Scythe · *Gelatinous Edge* (Secret)
   - [x] 3D models (`Docs/weapons/slime.png`), abilities with their effects and animations (`Docs/animations/slime_abilities_fx.mp4`)
-  - [ ] You: run the uploader and paste me the IDs, then play-test the pack
-  - [ ] Sounds, and the card pictures for the Arcade menu
+  - [x] You: run the uploader and paste me the IDs, then play-test the pack
+  - [x] Sounds (and the Arcade shows each weapon's 3D model in its reveal)
 - [ ] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
 - [ ] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
 - [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*

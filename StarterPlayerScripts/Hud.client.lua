@@ -3,7 +3,7 @@
 
 	Builds the whole GUI from code (no assets needed):
 	  * left 2x2 buttons: Upgrades, Backpack, Armory (talismans), Prestige (with % badge)
-	  * bottom-left: backpack / coins / power
+	  * bottom-left: Arcade Tokens (click: the Arcade's menu) / coins / level
 	  * top hint banner, bottom goal bar
 	  * bottom middle: THE HEART (your health) - with the potion (flasks) and
 	    the lightning bolt (stamina) either side of it in a fight - drawn by
@@ -849,9 +849,28 @@ local function statRow(icon, order, color)
 			}),
 		}),
 	})
-	-- `icon` is "COIN", an uploaded image id ("rbxassetid://..."), or an emoji
+	-- `icon` is "COIN", "TOKEN", an uploaded image id ("rbxassetid://..."), or an emoji
 	if icon == "COIN" then
 		coinIcon(row, 48, { Position = UDim2.fromOffset(4, 4) })
+	elseif icon == "TOKEN" then
+		-- an Arcade Token: a purple coin with a gold rim and a star (as on the Arcade)
+		local rim = create("Frame", {
+			Name = "Token",
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.fromOffset(48, 48),
+			BackgroundColor3 = C.gold,
+			ZIndex = 2,
+			Parent = row,
+		}, { corner(24), border(3) })
+		local face = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(0.72, 0.72),
+			BackgroundColor3 = RGB(104, 56, 108),
+			ZIndex = 3,
+			Parent = rim,
+		}, { corner(18) })
+		text({ Size = UDim2.fromScale(1, 1), Text = "★", TextSize = 24, TextColor3 = RGB(254, 231, 97), ZIndex = 4, Parent = face })
 	elseif string.sub(icon, 1, 13) == "rbxassetid://" then
 		create("ImageLabel", {
 			Size = UDim2.fromOffset(52, 52),
@@ -873,10 +892,28 @@ local function statRow(icon, order, color)
 		TextColor3 = color or C.white,
 		ZIndex = 2,
 		Parent = row,
-	}, { stroke(3) })
+	}, { stroke(3) }), row
 end
 
-local capText = statRow(BUTTON_ICON_IMAGES.Backpack ~= "" and BUTTON_ICON_IMAGES.Backpack or "🎒", 1)
+-- your Arcade Tokens (the backpack's count used to be here): click it for the
+-- Arcade's menu (ArcadeClient listens on ReplicatedStorage.ArcadeOpen)
+local tokenText, tokenRow = statRow("TOKEN", 1, RGB(254, 231, 97))
+do
+	local click = create("TextButton", {
+		Name = "OpenArcade",
+		Text = "",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 5,
+		Parent = tokenRow,
+	})
+	click.Activated:Connect(function()
+		local open = ReplicatedStorage:FindFirstChild("ArcadeOpen")
+		if open and open:IsA("BindableEvent") then
+			open:Fire()
+		end
+	end)
+end
 local coinText = statRow("COIN", 2, C.gold)
 local prestigeText = statRow("⭐", 3, RGB(254, 231, 97)) -- your level
 
@@ -1411,7 +1448,11 @@ local function renderHint()
 		return
 	end
 	local message
-	if Config.lootCount(state) > 0 then
+	local tokens = tonumber(state.Tokens) or 0
+	if tokens > 0 then
+		message = tokens == 1 and "You have an Arcade Token! Spin it at the Arcade for a weapon!"
+			or ("You have " .. tokens .. " Arcade Tokens! Spin them at the Arcade for weapons!")
+	elseif Config.lootCount(state) > 0 then
 		message = "You're carrying loot - sell it at the Sell Shop!"
 	elseif Config.statPointsLeft(state) > 0 then
 		message = "You have " .. Config.statPointsLeft(state) .. " stat points! Spend them in STATS."
@@ -1439,9 +1480,7 @@ local function renderBars()
 end
 
 local function renderStats()
-	local count = Config.lootCount(state)
-	capText.Text = count .. "/" .. stats.capacity
-	capText.TextColor3 = count >= stats.capacity and C.red or C.white
+	tokenText.Text = tostring(tonumber(state.Tokens) or 0)
 	coinText.Text = Config.format(state.Coins)
 	powerText.Text = "Power: " .. Config.format(state.Power)
 	prestigeText.Text = "LV " .. Config.levelFromPower(state.Power)
@@ -1705,7 +1744,7 @@ do
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -52),
-		Size = UDim2.fromOffset(150, 376),
+		Size = UDim2.fromOffset(150, 456),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = root,
@@ -1739,10 +1778,10 @@ do
 			doAction(what[2])
 		end)
 	end
-	local DEV_LABELS = { Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power", MaxUpgrades = "DEV: Max Upgrades" }
-	for i, kind in ipairs({ "Loot", "Coins", "Power", "MaxUpgrades" }) do
+	local DEV_LABELS = { Tokens = "DEV: +10 Tokens", Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power", MaxUpgrades = "DEV: Max Upgrades" }
+	for i, kind in ipairs({ "Tokens", "Loot", "Coins", "Power", "MaxUpgrades" }) do
 		local b = button({
-			LayoutOrder = i,
+			LayoutOrder = i - 1,
 			Size = UDim2.fromOffset(150, 36),
 			Text = DEV_LABELS[kind],
 			TextSize = 16,

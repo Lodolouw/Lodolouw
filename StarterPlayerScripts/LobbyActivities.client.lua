@@ -4,10 +4,11 @@
 	Your side of two things to do in the lobby:
 
 	  * THE QUEST BOARD - walk up to the wooden board by the south road and
-	    a quest menu pops up with today's three quests - what to do, how far
-	    along you are, the reward, and a HAND IN button once it's done. It
-	    closes with the X, or when you walk away. A gold "!" bobs over the
-	    board while you have one to hand in.
+	    a quest menu pops up with the board's three quests (a new set every
+	    6 hours: Config.Quests.Hours) - what to do, how far along you are,
+	    the reward (an Arcade Token and coins), and a HAND IN button once
+	    it's done. It closes with the X, or when you walk away. A gold "!"
+	    bobs over the board while you have one to hand in.
 
 	  * THE COLOSSEUM - hides other players' dummies (everyone farms on their
 	    own), and shows the wave and the quest (BEAT 5 WAVES) on the screen.
@@ -62,7 +63,7 @@ local GREY = RGB(139, 155, 180)
 ----------------------------------------------------------------------
 -- The Quest Board
 ----------------------------------------------------------------------
-local quests = nil -- today's quests from the server: { day, list = { {id, n, claimed} }, bonus }
+local quests = nil -- the board's quests from the server: { day (the set), list = { {id, n, claimed} }, pick }
 local notes = {} -- the three notes on the board
 local header, footer, status
 local statusUntil = 0
@@ -151,7 +152,7 @@ local function stamp(index)
 	bgRef.Position = home
 end
 
--- A card's button: pick it (if you haven't picked today's quest yet), or
+-- A card's button: pick it (if you haven't picked this set's quest yet), or
 -- hand it in (if it's the one you picked and it's done).
 local function act(index)
 	local pick = quests and quests.pick
@@ -222,7 +223,7 @@ local function buildMenu()
 		gui.Enabled = false
 	end)
 
-	header = label(bg, "DAILY QUESTS", UDim2.fromScale(0.9, 0.11), UDim2.fromScale(0.05, 0.02), RGB(255, 255, 255))
+	header = label(bg, "QUESTS", UDim2.fromScale(0.9, 0.11), UDim2.fromScale(0.05, 0.02), RGB(255, 255, 255))
 	footer = label(bg, "", UDim2.fromScale(0.9, 0.08), UDim2.fromScale(0.05, 0.9), RGB(255, 255, 255))
 	status = label(bg, "", UDim2.fromScale(0.9, 0.07), UDim2.fromScale(0.05, 0.13), RGB(255, 255, 255))
 
@@ -318,7 +319,7 @@ local function buildMenu()
 end
 
 local function timeLeft()
-	local secs = (Config.questDay() + 1) * 86400 - os.time()
+	local secs = Config.nextQuestTime() - os.time()
 	secs = math.max(0, secs)
 	local h = math.floor(secs / 3600)
 	local m = math.floor(secs % 3600 / 60)
@@ -358,7 +359,8 @@ local function render()
 				blk.BackgroundColor3 = (b <= filled) and (done and GREEN or GOLD) or RGB(58, 68, 102)
 			end
 			n.count.Text = mine and (Config.format(q.n) .. " / " .. Config.format(def.goal)) or ""
-			n.reward.Text = Config.format(def.reward) .. " coins"
+			local tk = Config.Quests.Tokens or 0
+			n.reward.Text = (tk > 0 and (tk .. (tk == 1 and " TOKEN + " or " TOKENS + ")) or "") .. Config.format(def.reward) .. " coins"
 			n.frame.BackgroundColor3 = (mine and q.claimed) and PAPER_DONE or PAPER
 			n.stamp.Visible = mine and q.claimed or false
 			if not pick then
@@ -388,9 +390,9 @@ local function render()
 		end
 	end
 	if not pick then
-		footer.Text = "Pick ONE quest for today!  New quests in " .. timeLeft()
+		footer.Text = "Pick ONE quest!  New quests in " .. timeLeft()
 	elseif handedIn then
-		footer.Text = "Done for today!  New quests in " .. timeLeft()
+		footer.Text = "All done!  New quests in " .. timeLeft()
 	else
 		footer.Text = "Finish it, then hand it in here.  New quests in " .. timeLeft()
 	end

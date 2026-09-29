@@ -115,6 +115,13 @@ start("SpireService", SpireService and SpireService.Start) -- the Spire menu and
 local CombatService = load("CombatService")
 start("CombatService", CombatService and CombatService.Start, PlayerService) -- stamina, rolling, punching and flasks in the arenas
 
+-- The Arcade's spins: tokens in, weapons out (needs player data; the building
+-- is part of the lobby: ArcadeBuilder)
+local ArcadeService = load("ArcadeService", 3)
+if PlayerService then
+	start("ArcadeService", ArcadeService and ArcadeService.Start, PlayerService, CombatService)
+end
+
 -- The Spire's second floor. Built after player data and combat are running, so
 -- the HUD and everything else never waits on it - if it's missing or broken,
 -- only the dunes are.

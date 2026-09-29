@@ -2,18 +2,19 @@
 	PlayerService  (ModuleScript, parent: ServerScriptService, name: "PlayerService")
 
 	Server-authoritative game logic for the lobby:
-	  * per-player data (Power = XP, Coins, Loot, Upgrades, Talismans, Stats, Gear) + DataStore saving
+	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot, Upgrades, Talismans, Stats, Gear) + DataStore saving
 	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, stat points, gear
-	  * daily quests (the Quest Board)
+	  * quests (the Quest Board: a new set every 6 hours, each paying an Arcade Token)
 	  * remotes for the HUD
 
 	Hooks for your future arena scripts:
 	    local PlayerService = require(game.ServerScriptService.PlayerService)
 	    PlayerService.AddLoot(player, "Scrap", 3)   --> returns how many actually fit
 	    PlayerService.AddCoins(player, 50)
+	    PlayerService.AddTokens(player, 5, "why they got them")
 	    PlayerService.AddPower(player, 10)
 	    PlayerService.GetData(player)               --> the live data table (or nil)
-	    PlayerService.QuestProgress(player, "arena", 1) --> counts towards today's quests of that kind
+	    PlayerService.QuestProgress(player, "arena", 1) --> counts towards the board's current quests of that kind
 ]]
 
 local Players = game:GetService("Players")
@@ -73,9 +74,10 @@ local function defaultData()
 		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
 		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
 		Stats = {}, -- stat points spent: [stat] = points (see Config.StatPoints)
-		-- today's quests (see Config.Quests): which day they're for, and for
+		-- the board's quests (see Config.Quests): which set they're from (`day`:
+		-- Config.questPeriod, a new set every 6 hours), and for
 		-- each one how far along you are and whether you've handed it in
-		-- (three are offered each day; `pick` is the one you chose, 1-3)
+		-- (three are offered in each set; `pick` is the one you chose, 1-3)
 		Quests = { day = 0, list = {}, pick = nil },
 		-- the Colosseum's 5-wave runs: how many you've cleared, your fastest
 		-- clear (seconds; nil until you've cleared one), and the day you last
@@ -86,10 +88,45 @@ local function defaultData()
 		-- WEAPONS (Config.Weapons): the ones you own, each with its mastery
 		-- points (["IronSword"] = 140), and the one in your hand (nil: fists)
 		Weapons = { own = {}, hold = nil },
+		-- ARCADE TOKENS (Config.Arcade): what the Arcade's machines take
+		Tokens = 0,
+		-- the Arcade: spins ever (the first is Rare or better), and on each
+		-- machine the spins since your last Legendary or better (the pity)
+		Arcade = { spins = 0, pity = {} },
+		QuestsDone = 0, -- quests ever handed in (a new player's first is a small dummy one)
 	}
 end
 
 -- Copy only the fields we know about, so old/edited saves can't break anything
+-- Hands in a quest: its coins and Arcade Tokens, and one more quest done.
+-- Returns what it paid as words ("+1 ARCADE TOKEN and +80 coins!").
+local function payQuest(d, q, def)
+	q.claimed = true
+	d.Coins = (d.Coins or 0) + def.reward
+	local tokens = Config.Quests.Tokens or 0
+	d.Tokens = (d.Tokens or 0) + tokens
+	d.QuestsDone = (d.QuestsDone or 0) + 1
+	if tokens > 0 then
+		return "+" .. tokens .. (tokens == 1 and " ARCADE TOKEN" or " ARCADE TOKENS") .. " and +" .. Config.format(def.reward) .. " coins!"
+	end
+	return "+" .. Config.format(def.reward) .. " coins!"
+end
+
+-- The quest you picked from a set of quests, if it's finished but was never
+-- handed in (the board changed first - it does every 6 hours): it's handed
+-- in for you, so its token isn't lost. Returns what it paid, or nil.
+local function payFinished(d, quests)
+	if type(quests) ~= "table" or type(quests.list) ~= "table" then
+		return nil
+	end
+	local q = quests.list[tonumber(quests.pick) or 0]
+	local def = type(q) == "table" and Config.QuestById[q.id]
+	if def and q.claimed ~= true and type(q.n) == "number" and q.n >= def.goal then
+		return payQuest(d, q, def)
+	end
+	return nil
+end
+
 local function mergeSaved(saved)
 	local d = defaultData()
 	if type(saved) ~= "table" then
@@ -180,9 +217,14 @@ local function mergeSaved(saved)
 			end
 		end
 	end
-	-- quests: only real ones, and only kept if they're still today's
-	-- (anything older is thrown away and today's are dealt out fresh)
-	if type(saved.Quests) == "table" and saved.Quests.day == Config.questDay() and type(saved.Quests.list) == "table" then
+	-- quests: only real ones, and only kept if they're still the board's
+	-- current set (anything older is thrown away and the new set dealt out -
+	-- after its finished quest, if any, is handed in: below)
+	local oldQuests = nil
+	if type(saved.Quests) == "table" and saved.Quests.day ~= Config.questPeriod() then
+		oldQuests = saved.Quests
+	end
+	if type(saved.Quests) == "table" and saved.Quests.day == Config.questPeriod() and type(saved.Quests.list) == "table" then
 		d.Quests.day = saved.Quests.day
 		local pick = tonumber(saved.Quests.pick)
 		d.Quests.pick = (pick and pick >= 1 and pick <= Config.Quests.PerDay) and math.floor(pick) or nil
@@ -261,11 +303,29 @@ local function mergeSaved(saved)
 			d.Weapons.hold = hold
 		end
 	end
+	-- tokens, the Arcade's counters, quests handed in: only sensible numbers
+	local function count(v)
+		return (type(v) == "number" and v == v and v > 0 and v < 1e9) and math.floor(v) or 0
+	end
+	d.Tokens = count(saved.Tokens)
+	d.QuestsDone = count(saved.QuestsDone)
+	if type(saved.Arcade) == "table" then
+		d.Arcade.spins = count(saved.Arcade.spins)
+		if type(saved.Arcade.pity) == "table" then
+			for id in pairs(Config.Arcade and Config.Arcade.Machines or {}) do
+				d.Arcade.pity[id] = count(saved.Arcade.pity[id])
+			end
+		end
+	end
 	-- (everyone has the starter weapons)
 	for _, id in ipairs(W and W.Starters or {}) do
 		if W.List[id] and not d.Weapons.own[id] then
 			d.Weapons.own[id] = 0
 		end
+	end
+	-- a quest finished in an earlier set but never handed in: handed in now
+	if oldQuests then
+		payFinished(d, oldQuests)
 	end
 	return d
 end
@@ -455,20 +515,31 @@ local function nearStation(player, stationName)
 end
 
 ----------------------------------------------------------------------
--- Daily quests
+-- Quests (the Quest Board: a new set every Config.Quests.Hours)
 ----------------------------------------------------------------------
--- Deals out today's quests if the ones you have are from another day.
--- Returns true if it did (so the screen needs the new ones).
+-- Deals out the board's current quests if the ones you have are from an
+-- earlier set (a new set every Config.Quests.Hours). Returns true if it did
+-- (so the screen needs the new ones), and what the old set's finished quest
+-- paid if it hadn't been handed in yet (it is now: payFinished). A player
+-- who's never handed a quest in gets the small dummy quest
+-- (Config.Quests.First) in place of the set's dummy quest, so their first
+-- token comes quickly.
 local function ensureQuests(d)
-	local today = Config.questDay()
-	if d.Quests.day == today and #d.Quests.list == Config.Quests.PerDay then
+	local now = Config.questPeriod()
+	if d.Quests.day == now and #d.Quests.list == Config.Quests.PerDay then
 		return false
 	end
-	d.Quests = { day = today, list = {}, pick = nil }
-	for _, id in ipairs(Config.questsForDay(today)) do
+	local paid = payFinished(d, d.Quests)
+	d.Quests = { day = now, list = {}, pick = nil }
+	local first = (d.QuestsDone or 0) == 0 and Config.QuestById[Config.Quests.First or ""]
+	for _, id in ipairs(Config.questsForDay(now)) do
+		local def = Config.QuestById[id]
+		if first and def and def.kind == first.kind then
+			id = first.id
+		end
 		table.insert(d.Quests.list, { id = id, n = 0, claimed = false })
 	end
-	return true
+	return true, paid
 end
 
 -- Something happened that counts towards quests of this kind
@@ -479,9 +550,12 @@ function PlayerService.QuestProgress(player, kind, amount)
 		return
 	end
 	local d = profile.data
-	local changed = ensureQuests(d)
-	-- (all three count from the start of the day, so whichever you pick
-	-- already has everything you've done today - even before you picked it)
+	local changed, paid = ensureQuests(d)
+	if paid then
+		notify(player, "Your finished quest was handed in for you: " .. paid, "rare")
+	end
+	-- (all three count from the start of the set, so whichever you pick
+	-- already has everything you've done since - even before you picked it)
 	for i, q in ipairs(d.Quests.list) do
 		local def = Config.QuestById[q.id]
 		if def and def.kind == kind and not q.claimed and q.n < def.goal then
@@ -528,6 +602,19 @@ function PlayerService.AddCoins(player, amount)
 	end
 end
 
+-- Arcade Tokens (whole ones; `why`, if given, pops up on their screen)
+function PlayerService.AddTokens(player, amount, why)
+	local profile = profiles[player]
+	amount = math.floor(tonumber(amount) or 0)
+	if profile and amount > 0 then
+		profile.data.Tokens = (profile.data.Tokens or 0) + amount
+		markDirty(player)
+		if why then
+			notify(player, why, "rare")
+		end
+	end
+end
+
 -- A boss on `floorId` died with this player in the arena. Returns true if it
 -- was their first time beating it (BossService pays a bigger reward for that).
 function PlayerService.RecordBossKill(player, floorId)
@@ -541,6 +628,12 @@ function PlayerService.RecordBossKill(player, floorId)
 	local before = d.Cleared[key] or 0
 	d.Cleared[key] = before + 1
 	player:SetAttribute("SpireCleared", highestCleared(d))
+	-- a boss's first clear pays a bundle of Arcade Tokens
+	local tokens = before == 0 and Config.Arcade and Config.Arcade.FirstClear[tonumber(floorId) or 0] or 0
+	if tokens > 0 then
+		d.Tokens = (d.Tokens or 0) + tokens
+		notify(player, "First win! +" .. tokens .. " ARCADE TOKENS - spin them at the Arcade!", "rare")
+	end
 	markDirty(player)
 	PlayerService.QuestProgress(player, "boss", 1)
 	return before == 0
@@ -921,15 +1014,18 @@ handlers.ResetStats = function(player, d)
 	return true, "Stat points refunded."
 end
 
--- Choose today's quest at the Quest Board (arg = its place on the board, 1-3).
--- One a day: once you've picked, that's the one.
+-- Choose a quest at the Quest Board (arg = its place on the board, 1-3).
+-- One per set: once you've picked, that's the one until the next set.
 handlers.PickQuest = function(player, d, index)
 	if not nearStation(player, "Quests") then
 		return false, "Walk up to the Quest Board first!"
 	end
-	ensureQuests(d)
+	local _, paid = ensureQuests(d)
+	if paid then
+		notify(player, "Your finished quest was handed in for you: " .. paid, "rare")
+	end
 	if d.Quests.pick then
-		return false, "You've already picked today's quest."
+		return false, "You've already picked one - new quests come every " .. (Config.Quests.Hours or 24) .. " hours."
 	end
 	local q = type(index) == "number" and d.Quests.list[index]
 	local def = q and Config.QuestById[q.id]
@@ -941,14 +1037,18 @@ handlers.PickQuest = function(player, d, index)
 	return true, "Quest taken: " .. Config.questText(def)
 end
 
--- Hand in today's quest once it's done
+-- Hand in your quest once it's done (coins and Arcade Tokens)
 handlers.ClaimQuest = function(player, d)
 	if not nearStation(player, "Quests") then
 		return false, "Walk up to the Quest Board first!"
 	end
-	if ensureQuests(d) then
+	local fresh, paid = ensureQuests(d)
+	if fresh then
 		markDirty(player)
-		return false, "A new day - new quests!"
+		if paid then
+			return true, "Handed in: " .. paid .. " New quests are up - pick one!"
+		end
+		return false, "New quests are up - pick one!"
 	end
 	local q = d.Quests.pick and d.Quests.list[d.Quests.pick]
 	local def = q and Config.QuestById[q.id]
@@ -961,10 +1061,9 @@ handlers.ClaimQuest = function(player, d)
 	if q.n < def.goal then
 		return false, "Not finished yet!"
 	end
-	q.claimed = true
-	d.Coins = d.Coins + def.reward
+	local message = payQuest(d, q, def)
 	markDirty(player)
-	return true, "+" .. Config.format(def.reward) .. " coins!"
+	return true, message
 end
 
 -- Dev test helpers: Studio, or the game's owner in the real game (Config.isDev)
@@ -979,6 +1078,8 @@ handlers.DevGive = function(player, d, kind)
 		return true, "Gave test loot."
 	elseif kind == "Coins" then
 		d.Coins = d.Coins + 10000
+	elseif kind == "Tokens" then
+		d.Tokens = (d.Tokens or 0) + 10
 	elseif kind == "Power" then
 		d.Power = d.Power + 5000
 	elseif kind == "MaxUpgrades" then
@@ -1368,9 +1469,13 @@ function PlayerService.Start()
 		while true do
 			task.wait(30)
 			for player, profile in pairs(profiles) do
-				if ensureQuests(profile.data) then
+				local fresh, paid = ensureQuests(profile.data)
+				if fresh then
 					markDirty(player)
-					notify(player, "New daily quests on the Quest Board!", "ok")
+					if paid then
+						notify(player, "Your finished quest was handed in for you: " .. paid, "rare")
+					end
+					notify(player, "New quests on the Quest Board!", "ok")
 				end
 			end
 		end
