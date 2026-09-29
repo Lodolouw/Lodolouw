@@ -1135,7 +1135,8 @@ local function swingWeapon(player, st, def, kind, id, locked, swing, now)
 		if not atRoot then
 			return
 		end
-		local hit = targetsInArc(atRoot, player, s.Range, s.Arc, locked)
+		local reach = buff(st, "Reach", os.clock())
+		local hit = targetsInArc(atRoot, player, s.Range + (reach and reach.amount or 0), s.Arc, locked)
 		if #hit == 0 then
 			for _, fn in ipairs(whiffListeners) do
 				pcall(fn, player, atRoot.Position)
@@ -1436,6 +1437,9 @@ function CombatService.Start(playerService)
 			if not def or not (data.Weapons and data.Weapons.own[id]) then
 				return false, "You don't own that weapon."
 			end
+			if not W.Types[def.Type] then
+				return false, def.Type .. " weapons aren't swingable yet - coming soon."
+			end
 			CombatService.Equip(player, id)
 			return true, def.Name .. " equipped!"
 		end)
@@ -1505,6 +1509,19 @@ function CombatService.Start(playerService)
 			end
 			CombatService.Equip(player, nextId)
 			return true, def.Name .. " in hand (" .. def.Rarity .. ") - swing it in a fight."
+		end)
+		-- "DEV: All Weapons": own every pack weapon (to try them in the Weapons panel)
+		PlayerService.AddAction("DevAllWeapons", function(player)
+			if not Config.isDev(player) then
+				return false, "Dev tools are only for the game's owner."
+			end
+			local n = 0
+			for id, def in pairs(W.List) do
+				if def.Pack and PlayerService.GiveWeapon and PlayerService.GiveWeapon(player, id) then
+					n = n + 1
+				end
+			end
+			return true, n > 0 and ("You now own " .. n .. " more weapons - press B.") or "You already own them all."
 		end)
 		PlayerService.AddAction("DevMastery", function(player)
 			if not Config.isDev(player) then

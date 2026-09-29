@@ -201,7 +201,9 @@ local function card(id, def, points, holding, order)
 	stroke(bar, INK, 2)
 	new("Frame", { BackgroundColor3 = level >= W.MasteryMax and GOLD or RGB(70, 160, 255), BorderSizePixel = 0, Size = UDim2.fromScale(math.clamp(into, 0, 1), 1), ZIndex = 5 }, bar)
 	-- equip
-	if holding then
+	if not W.Types[def.Type] then
+		text(c, { Text = "SOON", TextSize = 20, TextColor3 = GREY, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -14), Size = UDim2.fromOffset(140, 40), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+	elseif holding then
 		text(c, { Text = "IN HAND", TextSize = 20, TextColor3 = GREEN, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -14), Size = UDim2.fromOffset(140, 40), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
 	else
 		local b = button(c, "EQUIP", RGB(60, 150, 70), { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -14), Size = UDim2.fromOffset(130, 44), ZIndex = 4 })

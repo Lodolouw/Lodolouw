@@ -3017,6 +3017,7 @@ end
 --   Shield         the next hit on you does nothing (then it breaks)
 --   Thorns         when you're hit, the nearest enemy (within Range, 14) takes Amount x your hit
 --   MoveSpeed      you walk Amount faster (0.2 = +20%)
+--   Reach          your swings reach Amount studs further
 --   NextHit        your next hit deals Amount more (and is a crit); Mark =
 --                  the target then takes Mark more from everyone for MarkTime s
 --   Stacks         (usually Passive) every hit adds a stack; at Max the hit
@@ -3026,6 +3027,148 @@ end
 function Config.blockScale(mastery)
 	local max = Config.Weapons.MasteryMax
 	return 1 + 0.5 * math.clamp(((mastery or 1) - 1) / math.max(1, max - 1), 0, 1)
+end
+
+-- THE LAUNCH WEAPONS (Docs/weapons_plan.md): one pack per Arcade Machine,
+-- on every second floor (1, 3, 5, 7, 9); the even floors' packs come in
+-- updates. Each pack has one weapon of each type, Common to Secret.
+-- Commons and Rares are building blocks (above). Epic and up get their own
+-- moves later (Todo says what): until then a Burst round you stands in.
+-- (Weapons of a type that isn't in Config.Weapons.Types yet can be owned but
+-- swing like fists until that type's moveset is in.)
+do
+	local L = Config.Weapons.List
+	local RGB = Color3.fromRGB
+	local WHITE = RGB(255, 255, 255)
+
+	Config.Weapons.Packs = {}
+
+	-- a pack: its id, floor, boss, colours (main, accent, grip), and its weapons
+	-- in rarity order: { id, name, type, ability, passive? }
+	local function pack(id, floor, boss, main, accent, grip, weapons)
+		local list = {}
+		local rarities = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Secret" }
+		for i, w in ipairs(weapons) do
+			L[w[1]] = {
+				Name = w[2],
+				Type = w[3],
+				Rarity = rarities[i],
+				Pack = id,
+				Colors = { Blade = main, Edge = WHITE, Guard = accent, Grip = grip },
+				Ability = w[4],
+				Passive = w[5],
+			}
+			table.insert(list, w[1])
+		end
+		table.insert(Config.Weapons.Packs, { Id = id, Floor = floor, Boss = boss, Color = main, Weapons = list })
+	end
+
+	-- a stand-in ability for Epic and up, until its own move is made: a burst
+	-- round you (bigger the rarer), plus a little effect, and what it'll be
+	local BURST = { Epic = { 10, 1.8 }, Legendary = { 11, 2.1 }, Mythic = { 12, 2.5 }, Secret = { 13, 3.0 } }
+	local function standIn(name, rarity, color, todo, effects)
+		local b = BURST[rarity]
+		return {
+			Name = name,
+			Cooldown = rarity == "Secret" and 16 or 14,
+			Cost = 25,
+			Aura = color,
+			Effects = effects or {},
+			Burst = { Radius = b[1], Damage = b[2], Delay = 0.15 },
+			Todo = todo,
+		}
+	end
+	local function buffAbility(name, cooldown, color, effects)
+		return { Name = name, Cooldown = cooldown, Cost = 15, Aura = color, Effects = effects }
+	end
+
+	-- 1. SLIME (Oozark)
+	local slime = RGB(110, 230, 90)
+	pack("Slime", 1, "Oozark", slime, RGB(40, 140, 60), RGB(30, 80, 40), {
+		{ "GooGloves", "Goo Gloves", "Fists",
+			buffAbility("Sticky Fists", 12, slime, { { Block = "DamageUp", Amount = 0.15, Time = 4 } }),
+			{ { Block = "Stacks", Max = 5, Amount = 0.5 } } }, -- every punch adds slime; the 5th splats for +50%
+		{ "Jellyblade", "Jellyblade", "Sword",
+			buffAbility("Wobble Guard", 13, slime, { { Block = "Guard", Amount = 0.2, Time = 4 }, { Block = "StaminaOnHit", Amount = 3, Time = 4 } }) },
+		{ "GelatinHammer", "Gelatin Hammer", "Hammer",
+			standIn("Goo Slam", "Epic", slime, "a ground slam that leaves a sticky puddle, slowing enemies for 2 s") },
+		{ "OozeDaggers", "Ooze Daggers", "Daggers",
+			standIn("Slime Trail", "Legendary", slime, "dash through an enemy, leaving a slime trail that hurts over time", { { Block = "MoveSpeed", Amount = 0.2, Time = 3 } }) },
+		{ "AcidScythe", "Acid Scythe", "Scythe",
+			standIn("Acid Rain", "Mythic", slime, "a spinning sweep that flings 3 acid globs; they burst into puddles") },
+		{ "GelatinousEdge", "Gelatinous Edge", "Katana",
+			standIn("Oozark's Jaw", "Secret", slime, "quick-draw: a giant ghostly Oozark jaw chomps everything in front of you", { { Block = "DamageUp", Amount = 0.25, Time = 4 } }) },
+	})
+
+	-- 3. KNIGHT (Burrowmore)
+	local steel, gold = RGB(150, 190, 230), RGB(254, 200, 60)
+	pack("Knight", 3, "Burrowmore", steel, gold, RGB(90, 60, 40), {
+		{ "ShovelHammer", "Shovel Hammer", "Hammer",
+			buffAbility("Dig Slam", 12, gold, { { Block = "NextHit", Amount = 0.6, Time = 5 } }) },
+		{ "RelicDaggers", "Relic Daggers", "Daggers",
+			buffAbility("Treasure Eye", 13, gold, { { Block = "Crit", Amount = 0.15, Time = 4 }, { Block = "StaminaOnHit", Amount = 2, Time = 4 } }) },
+		{ "SpadeScythe", "Spade Scythe", "Scythe",
+			standIn("Dirt Spin", "Epic", steel, "a spin sweep that flings dirt clods around you") },
+		{ "HonourBlade", "Honour Blade", "Katana",
+			standIn("Pogo Drop", "Legendary", gold, "leap up and pogo down onto the target, shovel-drop style") },
+		{ "AnchorFists", "Anchor Fists", "Fists",
+			standIn("Anchor Pull", "Mythic", steel, "throw an anchor on a chain: it pulls you to the target for a slam") },
+		{ "NoQuarter", "No Quarter", "Sword",
+			standIn("No Quarter", "Secret", gold, "your armour cracks gold for 8 s: bigger swings, a gold shockwave on each chop, a meteor finisher",
+				{ { Block = "DamageUp", Amount = 0.3, Time = 8 }, { Block = "Guard", Amount = 0.2, Time = 8 } }) },
+	})
+
+	-- 5. SPEEDWAY (Revvington)
+	local red, flame = RGB(230, 50, 50), RGB(255, 170, 40)
+	pack("Speedway", 5, "Revvington", red, flame, RGB(40, 40, 50), {
+		{ "TyreScythe", "Tyre Scythe", "Scythe",
+			buffAbility("Burnout", 12, flame, { { Block = "MoveSpeed", Amount = 0.2, Time = 4 } }) },
+		{ "NitroKatana", "Nitro Katana", "Katana",
+			buffAbility("Nitro", 14, RGB(80, 200, 255), { { Block = "StaminaRefill", Amount = 1 }, { Block = "MoveSpeed", Amount = 0.15, Time = 3 } }) },
+		{ "PistonPunchers", "Piston Punchers", "Fists",
+			standIn("Piston Dash", "Epic", flame, "a dash-punch forward with a flame trail") },
+		{ "PitStopSabre", "Pit Stop Sabre", "Sword",
+			standIn("Skid Spin", "Legendary", red, "a skid-turn spin hitting all round you in a cloud of tyre smoke") },
+		{ "WheelieWrecker", "Wheelie Wrecker", "Hammer",
+			standIn("Wheelie", "Mythic", flame, "charge forward on a flaming wheel, then slam down") },
+		{ "VictoryLap", "Victory Lap", "Daggers",
+			standIn("Victory Lap", "Secret", flame, "a blur for 6 s: afterimages, every dash hits, a finish-line blast at the end",
+				{ { Block = "MoveSpeed", Amount = 0.3, Time = 6 } }) },
+	})
+
+	-- 7. JUNGLE (Kongo)
+	local leaf, bark = RGB(70, 170, 70), RGB(150, 95, 45)
+	pack("Jungle", 7, "Kongo", leaf, bark, RGB(90, 55, 30), {
+		{ "ChestPoundFists", "Chest Pound Fists", "Fists",
+			buffAbility("Roar", 12, RGB(255, 120, 60), { { Block = "DamageUp", Amount = 0.2, Time = 4 } }) },
+		{ "JungleFang", "Jungle Fang", "Katana",
+			buffAbility("Fang", 14, RGB(220, 40, 60), { { Block = "Lifesteal", Amount = 0.03, Time = 5 } }) },
+		{ "VineScythe", "Vine Scythe", "Scythe",
+			standIn("Vine Swing", "Epic", leaf, "a rope-swing leap forward into a sweeping arc") },
+		{ "BarrelDaggers", "Barrel Daggers", "Daggers",
+			standIn("Barrel Roll", "Legendary", bark, "roll a barrel forward that bowls through enemies") },
+		{ "BarrelHammer", "Barrel Hammer", "Hammer",
+			standIn("Barrel Toss", "Mythic", bark, "rolls barrels (mastery: bigger, two barrels, exploding, a giant golden barrel)") },
+		{ "KongsCrown", "Kong's Crown", "Sword",
+			standIn("Sky Fist", "Secret", RGB(254, 200, 60), "a giant ape fist smashes down from the sky") },
+	})
+
+	-- 9. CANVAS (Scribble)
+	local ink, paper = RGB(40, 40, 60), RGB(245, 240, 225)
+	pack("Canvas", 9, "Scribble", paper, ink, RGB(200, 60, 60), {
+		{ "EraserHammer", "Eraser Hammer", "Hammer",
+			buffAbility("Erase", 12, RGB(255, 150, 190), { { Block = "NextHit", Amount = 0.3, Time = 5, Mark = 0.25, MarkTime = 3 } }) },
+		{ "PencilSword", "Pencil Sword", "Sword",
+			buffAbility("Sharpen", 13, RGB(255, 220, 90), { { Block = "Reach", Amount = 3, Time = 4 }, { Block = "Crit", Amount = 0.1, Time = 4 } }) },
+		{ "InkFists", "Ink Fists", "Fists",
+			standIn("Ink Splash", "Epic", ink, "a ground slam with an ink splash") },
+		{ "DoodleKatana", "Doodle Katana", "Katana",
+			standIn("Doodle Clone", "Legendary", RGB(90, 160, 255), "a dash-slash that leaves a doodle clone; it repeats the slash 1 s later") },
+		{ "CopyPasteScythe", "Copy-Paste Scythe", "Scythe",
+			standIn("Copy-Paste", "Mythic", RGB(90, 160, 255), "2 ink clones copy your sweeps for 5 s") },
+		{ "DeleteKey", "Delete Key", "Daggers",
+			standIn("DELETE", "Secret", RGB(255, 60, 60), "the screen glitches, a DELETE box appears on the target: huge damage, everything round it shatters") },
+	})
 end
 
 -- The mastery level `points` mastery points make (1 to MasteryMax), and how far

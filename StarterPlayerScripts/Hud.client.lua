@@ -1726,7 +1726,7 @@ do
 	end)
 	-- the weapon test: hold the test sword (again: back to fists), and level its
 	-- mastery up a quarter at a time (25, 50, 75, 100, then back to 1)
-	for i, what in ipairs({ { "DEV: Test Sword", "DevTestWeapon" }, { "DEV: Mastery +25", "DevMastery" }, { "DEV: Next Sword", "DevNextWeapon" } }) do
+	for i, what in ipairs({ { "DEV: Test Sword", "DevTestWeapon" }, { "DEV: Mastery +25", "DevMastery" }, { "DEV: Next Sword", "DevNextWeapon" }, { "DEV: All Weapons", "DevAllWeapons" } }) do
 		local b = button({
 			LayoutOrder = 6 + i,
 			Size = UDim2.fromOffset(150, 36),
