@@ -1183,7 +1183,7 @@ function Attacks.CrownGrab(E, token)
 	if flat(E.center - E.pos).Magnitude < 8 then
 		away = unitOr(flat(-E.facing), Z_AXIS)
 	end
-	local spot = inside(E, E.center + away * 34 + Vector3.new(away.Z, 0, -away.X) * (E.rng:NextNumber() * 20 - 10), E.def.Court)
+	local spot = inside(E, E.center + away * 48 + Vector3.new(away.Z, 0, -away.X) * (E.rng:NextNumber() * 28 - 14), E.def.Court)
 	setSlot(E, 1, spot)
 	if not waitUntil(E, token, t0 + a.Tell) then
 		return

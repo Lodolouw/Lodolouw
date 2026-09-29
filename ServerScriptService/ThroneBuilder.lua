@@ -333,7 +333,7 @@ end
 -- The battlements, banners and torches round the edge
 ----------------------------------------------------------------------
 local function buildWalls()
-	local N = 40
+	local N = 56
 	for i = 1, N do
 		local a = (i - 0.5) / N * math.pi * 2
 		local x, z = math.sin(a) * (WALL + 1.5), math.cos(a) * (WALL + 1.5)
@@ -481,7 +481,7 @@ end
 ----------------------------------------------------------------------
 local function buildBounds()
 	local H = 70
-	local N = 40
+	local N = 56
 	for i = 1, N do
 		local a = (i - 0.5) / N * math.pi * 2
 		local x, z = math.sin(a) * WALL, math.cos(a) * WALL

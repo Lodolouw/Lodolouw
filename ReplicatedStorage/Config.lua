@@ -2570,7 +2570,7 @@ Config.Bosses = {
 		Size = 24, -- how wide he is for bumping into him and hits (his belly)
 		Height = 44, -- how tall he is (you're about 5; his crown goes higher still)
 		BodyRadius = 11, -- how thick he is, for your punches
-		WakeRange = 48, -- walk this close to where he fights from and he wakes up
+		WakeRange = 62, -- walk this close to where he fights from and he wakes up
 		-- HIS ENTRANCE (WakeTime seconds): lightning cracks, his eyes light up,
 		-- he stands up on his throne and raises the gavel to the storm, then
 		-- leaps down in front of you and lands with a slam that shakes the
@@ -2580,8 +2580,8 @@ Config.Bosses = {
 		WakeTime = 6.0,
 		IntroDelay = 3.4,
 		WakeSoundLead = 0.3,
-		Court = 48, -- how far from the middle of the courtyard he can go (it's 62 across the middle: his belly stays on it)
-		Leash = 64, -- (the same, measured from where he fights from - Court is the one that counts)
+		Court = 72, -- how far from the middle of the courtyard he can go (it's 87 across the middle: his belly stays on it)
+		Leash = 96, -- (the same, measured from where he fights from - Court is the one that counts)
 		MoveSpeed = { 11, 13, 16 }, -- per round (you run at 20 in a fight)
 		TurnSpeed = { 220, 280, 360 }, -- degrees a second
 		Breather = { { 0.8, 1.3 }, { 0.55, 1.0 }, { 0.4, 0.75 } }, -- the pause between moves, per round
@@ -2604,7 +2604,7 @@ Config.Bosses = {
 		-- rolling out over everything (jump it, or roll through it). Then he's
 		-- worn out for Tired seconds: finish him!
 		FinalAt = 0.1,
-		Final = { Tell = 3.0, Radius = 18, Damage = 50, Knockback = 70, WaveSpeed = 36, WaveReach = 90, WaveHeight = 3,
+		Final = { Tell = 3.0, Radius = 18, Damage = 50, Knockback = 70, WaveSpeed = 40, WaveReach = 125, WaveHeight = 3,
 			WaveThickness = 3, WaveDamage = 40, Tired = 4.5 },
 
 		-- His moves. Tell = the wind-up you see before it hits (every one is at
@@ -2677,7 +2677,7 @@ Config.Bosses = {
 			-- ROCKET HAMMER (round 2): the piston fires the hammer's head at you on
 			-- a chain - a red lane Length long, Width wide - and yanks it back
 			-- along the same lane. Get out of the lane!
-			RocketHammer = { Tell = 0.8, Length = 44, Speed = 75, Width = 8, Damage = 24, Knockback = 55, Hold = 0.35,
+			RocketHammer = { Tell = 0.8, Length = 56, Speed = 75, Width = 8, Damage = 24, Knockback = 55, Hold = 0.35,
 				Recovery = 0.7, Phase = 2, Range = { 10, 60 }, Weight = 2 },
 			-- THE ROYAL FEAST (round 2): servants wheel in a giant roast on a
 			-- platter and he sits down to eat, healing HealRate of his health a
@@ -2691,7 +2691,7 @@ Config.Bosses = {
 			-- and bowls across the courtyard at you, bouncing off the edge
 			-- (Bounces times) and smashing through pillars. Get out of his lane
 			-- (Width wide: the ball's size) - or roll through him. Dizzy after.
-			RoyalRoll = { Tell = 0.9, Speed = 50, Distance = 120, Bounces = 2, Width = 16, Damage = 24, Knockback = 60,
+			RoyalRoll = { Tell = 0.9, Speed = 56, Distance = 170, Bounces = 2, Width = 16, Damage = 24, Knockback = 60,
 				Dizzy = 1.4, Phase = 2, Range = { 14, 70 }, Weight = 2 },
 
 			-- ROYAL EARTHQUAKE (round 3): he jumps sky-high and lands in the middle

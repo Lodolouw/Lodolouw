@@ -22,31 +22,31 @@
 
 local ThronePlan = {}
 
-ThronePlan.Radius = 62
-ThronePlan.Wall = 66 -- the invisible wall round the courtyard
+ThronePlan.Radius = 87 -- (big: he is nine times your height)
+ThronePlan.Wall = 91 -- the invisible wall round the courtyard
 ThronePlan.DoorHalf = 7 -- the gate in the south wall is this wide each way
 
-ThronePlan.PillarRadius = 3.2
+ThronePlan.PillarRadius = 3.6
 ThronePlan.PillarHeight = 22
--- (at the four diagonals, 34 studs out)
+-- (at the four diagonals, 48 studs out)
 ThronePlan.Pillars = {
-	Vector3.new(24, 0, -24),
-	Vector3.new(24, 0, 24),
-	Vector3.new(-24, 0, 24),
-	Vector3.new(-24, 0, -24),
+	Vector3.new(34, 0, -34),
+	Vector3.new(34, 0, 34),
+	Vector3.new(-34, 0, 34),
+	Vector3.new(-34, 0, -34),
 }
 
 ThronePlan.PodiumRadius = 4
 ThronePlan.PodiumHeight = 1.2
 ThronePlan.Podiums = {
-	Vector3.new(46, 0, 0),
-	Vector3.new(-40, 0, 26),
-	Vector3.new(-40, 0, -26),
+	Vector3.new(66, 0, 0),
+	Vector3.new(-56, 0, 36),
+	Vector3.new(-56, 0, -36),
 }
 
-ThronePlan.Throne = Vector3.new(0, 0, -52)
-ThronePlan.Spawn = Vector3.new(0, 0, 54)
-ThronePlan.Home = Vector3.new(0, 0, -14) -- where he fights from, facing the door
+ThronePlan.Throne = Vector3.new(0, 0, -73)
+ThronePlan.Spawn = Vector3.new(0, 0, 78)
+ThronePlan.Home = Vector3.new(0, 0, -22) -- where he fights from, facing the door
 
 -- HIS THRONE is built ThroneScale times its drawing's size (he's huge: so is
 -- his chair). He sleeps sitting on it - at SeatAt, on a cushion SeatHeight
@@ -54,8 +54,8 @@ ThronePlan.Home = Vector3.new(0, 0, -14) -- where he fights from, facing the doo
 -- ThroneFront (just clear of its steps) to rip it out of the floor.
 ThronePlan.ThroneScale = 1.45
 ThronePlan.SeatHeight = 14.5
-ThronePlan.SeatAt = Vector3.new(0, 0, -48.5)
-ThronePlan.ThroneFront = Vector3.new(0, 0, -30)
+ThronePlan.SeatAt = Vector3.new(0, 0, -69.5)
+ThronePlan.ThroneFront = Vector3.new(0, 0, -51)
 
 -- THE FLAGSTONES: a grid of Cell-stud squares; the ones whose middle is at
 -- least Cell/2 inside the courtyard's edge. Returns a list of { x, z }.
