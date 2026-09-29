@@ -86,3 +86,12 @@ python3 export_types.py
 python3 preview_types.py sheet types.png
 python3 preview_types.py video ../../Docs/animations/weapon_types.mp4
 ```
+
+## Uploading many at once (BulkUpload.lua)
+
+You don't have to publish animations one by one. `BulkUpload.lua` is a small
+Studio plugin that uploads every KeyframeSequence in a folder and prints
+`Name = rbxassetid://...` for each one. Paste all the file's text into a
+Script, right-click the Script and choose "Save as Local Plugin", then select
+the `WeaponAnimations` folder and press Plugins > Bulk Upload. Paste the Output
+back, and the IDs go into `Config.Weapons.Types.<Type>.Animations`.
