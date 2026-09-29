@@ -758,7 +758,7 @@ R.GooGloves = {
 		disc(ctx.feet, s.Glow, 6, 0.35)
 		light(at, s.Glow, 14, 0.35)
 		pop(at + V3(0, 3, 0), "STICKY!", s.Light, 5, 0.7)
-		sfx({ "Orb Land", "Punch 2" }, at)
+		sfx({ "Goo Clap", "Orb Land", "Punch 2" }, at)
 	end,
 }
 R.Jellyblade = {
@@ -785,18 +785,19 @@ R.Jellyblade = {
 			shine.CFrame = root.CFrame * CFrame.new(-1.8, 2.2, -1.8)
 		end)
 		ring(ctx.feet, s.Light, 6, 0.3, { size = 0.5 })
-		sfx({ "Orb Land" }, ctx.frame.Position, 0.8)
+		sfx({ "Jelly Wobble", "Orb Land" }, ctx.frame.Position, 0.8)
 	end,
 }
 R.GelatinHammer = {
 	Rise = function(ctx)
 		local s = ctx.style
 		bits({ at = ctx.feet + V3(0, 0.4, 0), colors = { s.Main, s.Light }, count = 8, speed = { 3, 7 }, up = { 3, 6 }, size = 0.4, life = 0.5, transparency = 0.25 })
+		sfx({ "Hammer Swing", "Portal Whoosh" }, ctx.frame.Position, 0.9)
 	end,
 	Slam = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, stepAhead(ctx))
-		slam(ctx, at, 10, { s.Main, s.Light, s.Glow }, { bits = 22, material = Enum.Material.SmoothPlastic })
+		slam(ctx, at, 10, { s.Main, s.Light, s.Glow }, { bits = 22, material = Enum.Material.SmoothPlastic, sound = { "Goo Slam", "Cube Slam", "Boss Slam", "Hammer Hit" } })
 		-- a crown of jelly splashing up
 		for i = 1, 10 do
 			local a = i / 10 * math.pi * 2
@@ -811,6 +812,7 @@ R.GelatinHammer = {
 	end,
 	Puddle = function(ctx)
 		puddle(ahead(ctx, stepAhead(ctx)), 8, 3, ctx.style)
+		sfx({ "Goo Splat" }, ahead(ctx, stepAhead(ctx)), 0.8)
 	end,
 }
 R.OozeDaggers = {
@@ -827,7 +829,7 @@ R.OozeDaggers = {
 				afterimage(ctx.char, s.Glow, 0.3, 0.55)
 			end)
 		end
-		sfx(WHOOSH, ctx.frame.Position, 1.2)
+		sfx({ "Slime Dash", "Portal Whoosh", "Wave Zoom", "Whirlwind" }, ctx.frame.Position, 1)
 	end,
 	Cut = function(ctx)
 		local s = ctx.style
@@ -836,6 +838,7 @@ R.OozeDaggers = {
 		streak(V3(a.X, ctx.feet.Y + 2.5, a.Z), V3(b.X, ctx.feet.Y + 2.5, b.Z), s.Glow, 1.2, 0.35)
 		streak(V3(a.X, ctx.feet.Y + 2.5, a.Z), V3(b.X, ctx.feet.Y + 2.5, b.Z), WHITE, 0.4, 0.2)
 		bits({ at = b + V3(0, 1, 0), colors = { s.Glow, s.Main }, count = 12, speed = { 6, 14 }, up = { 4, 10 }, size = 0.4, life = 0.6 })
+		sfx({ "Dagger Swing", "Sword Swing" }, b, 0.9)
 	end,
 	Trail = function(ctx)
 		local s = ctx.style
@@ -846,6 +849,7 @@ R.OozeDaggers = {
 		for i = 0, n do
 			puddle(a:Lerp(b, i / n), 2.2, 3, s, { steam = s.Light })
 		end
+		sfx({ "Acid Hiss" }, a:Lerp(b, 0.5))
 	end,
 }
 R.AcidScythe = {
@@ -854,10 +858,12 @@ R.AcidScythe = {
 		spin(ctx, 11, s.Glow, s.Light)
 		disc(ctx.feet, s.Glow, 11, 0.3)
 		light(ctx.frame.Position, s.Glow, 22, 0.3)
+		sfx({ "Whirlwind", "Scythe Swing", "Portal Whoosh" }, ctx.frame.Position, 1.1)
 	end,
 	Fling = function(ctx)
 		local s = ctx.style
 		local shot = ctx.step.Shot
+		sfx({ "Acid Fling", "Orb Land" }, ctx.frame.Position)
 		for i = 1, shot.Count do
 			local dirv = (ctx.frame * CFrame.Angles(0, rad((i - 1) / shot.Count * 360), 0)).LookVector
 			local start = ctx.frame.Position + V3(0, 1, 0) + dirv * 1.5
@@ -867,7 +873,7 @@ R.AcidScythe = {
 				local p = start:Lerp(target, u) + V3(0, math.sin(u * math.pi) * 4, 0)
 				return CFrame.new(p)
 			end, function(pos)
-				slam(ctx, onFloor(pos), 5, { s.Glow, s.Main, s.Light }, { bits = 10, size = 0.45, sound = { "Orb Land" } })
+				slam(ctx, onFloor(pos), 5, { s.Glow, s.Main, s.Light }, { bits = 10, size = 0.45, sound = { "Acid Burst", "Orb Land" } })
 				puddle(pos, 5, 3, s, { steam = s.Light })
 			end)
 		end
@@ -879,6 +885,7 @@ R.GelatinousEdge = {
 		light(chest(ctx, 0.2), s.Glow, 10, 0.35)
 		ring(ctx.feet, s.Glow, 3.5, 0.3, { size = 0.35, count = 16 })
 		bits({ at = chest(ctx, 0.3), colors = { s.Glow }, count = 6, speed = { 1, 3 }, up = { 2, 5 }, size = 0.3, life = 0.5, gravity = 0, material = Enum.Material.Neon })
+		sfx({ "Blade Draw", "Katana Swing" }, ctx.frame.Position)
 	end,
 	Jaw = function(ctx)
 		local s = ctx.style
@@ -912,12 +919,12 @@ R.GelatinousEdge = {
 				bot:Destroy()
 			end
 		end)
-		sfx(WHOOSH, ctx.frame.Position, 0.6)
+		sfx({ "Jaw Open", "Portal Whoosh", "Wave Zoom", "Whirlwind" }, ctx.frame.Position, 1)
 	end,
 	Chomp = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, 9)
-		slam(ctx, at, 12, { s.Glow, s.Main, s.Light }, { bits = 26, size = 0.7, sound = BOOM })
+		slam(ctx, at, 12, { s.Glow, s.Main, s.Light }, { bits = 26, size = 0.7, sound = { "Jaw Chomp", "Bomb Drop", "UFO Burst", "Boss Slam" } })
 		pop(at + V3(0, 7, 0), "CHOMP!", s.Glow, 9, 0.9)
 		if ctx.own or nearMe(at, 30) then
 			screenFlash(s.Glow, 0.35, 0.3)

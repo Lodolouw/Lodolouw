@@ -8,6 +8,9 @@
 	    starts (ServerScriptService/WeaponModelLoader); WeaponFX holds them.
 	  * Animations: each weapon ability's animation (Tools/Animations, the
 	    abilities), by the ability's key.
+	  * Sounds: the weapons' sound effects (Tools/Sounds/weapon_sfx.py), by
+	    name with _ for spaces. ServerScriptService/SoundLoader puts each in
+	    SoundService under its name ("Goo_Splat" -> "Goo Splat").
 	Missing ones are fine: a weapon without its model is the blocky one made in
 	code, an ability without its animation still does everything else.
 ]]
@@ -28,4 +31,5 @@ return {
 		Jellyblade = 95397064572099,
 		OozeDaggers = 128814812173522,
 	},
+	Sounds = {},
 }

@@ -328,13 +328,14 @@ local function findSound(name)
 	end
 	return nil
 end
-local function playAt(name, parent, pitch)
+local function playAt(name, parent, pitch, volume)
 	local template = findSound(name)
 	if not (template and parent and parent.Parent) then
 		return false
 	end
 	local s = template:Clone()
 	s.PlaybackSpeed = template.PlaybackSpeed * (pitch or 1)
+	s.Volume = (tonumber(template.Volume) or 0.5) * (volume or 1)
 	s.RollOffMaxDistance = 100
 	local group = SoundService:FindFirstChild("Effects")
 	if group and group:IsA("SoundGroup") then
@@ -928,10 +929,12 @@ local SWING_THEMES = {
 	Slime = {
 		light = RGBc(190, 255, 120), main = RGBc(105, 210, 70), deep = RGBc(40, 110, 35),
 		blob = { RGBc(105, 210, 70), RGBc(150, 240, 95), RGBc(60, 160, 50) }, blobSee = 0.15,
+		swingSound = "Goo Swish", splatSound = "Goo Splat", hitSound = "Goo Hit",
 		-- the Acid Scythe: glowing acid that hisses where it lands
 		Mythic = {
 			light = RGBc(235, 255, 150), main = RGBc(120, 255, 60), deep = RGBc(45, 120, 20),
 			blob = { RGBc(120, 255, 60), RGBc(190, 255, 90) }, blobSee = 0, neon = true, sizzle = true,
+			swingSound = "Acid Swish", splatSound = "Acid Hiss", hitSound = "Goo Hit",
 		},
 		-- Gelatinous Edge: Oozark's own jelly - see-through goo with glowing
 		-- hearts, a wave of jelly off every cut, his eyes popping out of it
@@ -939,6 +942,7 @@ local SWING_THEMES = {
 			light = RGBc(214, 255, 120), main = RGBc(105, 210, 70), deep = RGBc(26, 70, 24),
 			blob = { RGBc(105, 210, 70), RGBc(130, 225, 85) }, blobSee = 0.35, hearts = RGBc(214, 255, 120),
 			wave = true, eyes = true,
+			swingSound = "Jelly Swing", splatSound = "Goo Splat", hitSound = "Goo Hit", waveSound = "Jelly Wave", eyeSound = "Eye Pop",
 		},
 	},
 }
@@ -1007,8 +1011,26 @@ local function fadeAway(p, time, props)
 		p:Destroy()
 	end)
 end
+-- a sound at a spot (a little invisible part to play it from)
+local function soundAt(name, pos, pitch, volume)
+	if not findSound(name) then
+		return
+	end
+	local p = fxPart("SwingSound", Vector3.new(0.2, 0.2, 0.2), CFrame.new(pos), GLOW, 1, false)
+	playAt(name, p, pitch, volume)
+	task.delay(2, function()
+		p:Destroy()
+	end)
+end
+WeaponFX.soundAt = soundAt
+local lastSplat = 0
 local function splat(b)
 	local t = b.theme
+	-- (not every splat: a pitter-patter, not a wall of noise)
+	if t.splatSound and os.clock() - lastSplat > 0.07 then
+		lastSplat = os.clock()
+		soundAt(t.splatSound, b.pos, 0.85 + math.random() * 0.4, 0.35)
+	end
 	local r = b.size * (2.6 + math.random() * 1.6)
 	local disc = fxPart("Splat", Vector3.new(0.08, r, r), CFrame.new(b.pos.X, b.floor + 0.05, b.pos.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		t.deep:Lerp(t.main, 0.5), t.neon and 0.2 or 0.25, t.neon, Enum.PartType.Cylinder)
@@ -1077,6 +1099,9 @@ local function jellyWave(theme, path, centre)
 	if #path < 3 then
 		return
 	end
+	if theme.waveSound then
+		soundAt(theme.waveSound, path[math.ceil(#path / 2)], 1, 0.9)
+	end
 	for i = 1, #path - 1 do
 		local a, b = path[i], path[i + 1]
 		local mid = (a + b) / 2
@@ -1109,6 +1134,9 @@ local function oozarkEyes(theme, at, floor)
 			TweenService:Create(pupil, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.35, 0.35, 0.35) }):Play()
 		end)
 		task.delay(0.35, function()
+			if eye.Parent and x < 0 and theme.eyeSound then
+				soundAt(theme.eyeSound, eye.Position, 0.9 + math.random() * 0.25, 0.8)
+			end
 			if eye.Parent then
 				for _ = 1, 3 do
 					flingGoo(theme, eye.Position, Vector3.new(math.random() * 10 - 5, 6 + math.random() * 5, math.random() * 10 - 5), 0.35, floor)
@@ -1202,6 +1230,9 @@ local function swingFx(h, on, starting)
 	local floor = hrp and hrp.Position.Y - 3 or tipPos.Y - 4
 	if starting then
 		fx.path = {}
+		if fx.theme.swingSound then
+			playAt(fx.theme.swingSound, fx.part, 0.95 + math.random() * 0.1, fx.tier >= 6 and 1 or 0.8)
+		end
 		fx.last, fx.lastT, fx.acc = tipPos, now, 0
 		for _ = 1, fx.fling.burst do
 			flingGoo(fx.theme, tipPos, Vector3.new(math.random() * 16 - 8, 6 + math.random() * 8, math.random() * 16 - 8), fx.fling.size, floor)
@@ -1330,6 +1361,9 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 	end
 	-- Legendary and up: goo splatters off what you hit
 	if tier >= 4 then
+		if theme.hitSound then
+			soundAt(theme.hitSound, position, 0.95 + math.random() * 0.1, heavy and 1 or 0.8)
+		end
 		local fling = FLING[math.min(tier, 6)]
 		for _ = 1, (heavy and 10 or 6) + tier do
 			flingGoo(theme, position, Vector3.new(math.random() * 20 - 10, 8 + math.random() * 10, math.random() * 20 - 10),

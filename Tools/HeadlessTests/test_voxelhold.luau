@@ -134,6 +134,23 @@ local function fakeModel(key)
 	return m
 end
 
+-- the swing sounds, in SoundService like the game has them (SoundLoader)
+for _, name in ipairs({ "Goo Swish", "Goo Splat", "Acid Swish", "Acid Hiss", "Jelly Swing", "Jelly Wave", "Eye Pop", "Goo Hit" }) do
+	local snd = Instance.new("Sound")
+	snd.Name = name
+	snd.Volume, snd.PlaybackSpeed, snd.TimeLength = 0.6, 1, 0.4
+	snd.Parent = M.services.SoundService
+end
+local function soundsPlaying()
+	local out = {}
+	for _, d in ipairs(M.workspace:GetDescendants()) do
+		if d:IsA("Sound") then
+			out[d.Name] = (out[d.Name] or 0) + 1
+		end
+	end
+	return out
+end
+
 local folder = Instance.new("Folder")
 folder.Name = "WeaponModels"
 folder.Parent = ReplicatedStorage
@@ -231,6 +248,12 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 				check(((names.GooHeart or 0) > 0) == (tier >= 6), key .. ": glowing hearts in the goo only on the Secret")
 				check(((names.JellyWave or 0) > 0) == (tier >= 6), key .. ": the jelly wave only on the Secret")
 				check(((names.OozarkEye or 0) > 0) == (tier >= 6), key .. ": Oozark's eyes only on the Secret")
+				local heard = soundsPlaying()
+				local swingSound = ({ [3] = "Goo Swish", [4] = "Goo Swish", [5] = "Acid Swish", [6] = "Jelly Swing" })[tier]
+				check(swingSound == nil or (heard[swingSound] or 0) > 0, key .. ": its swing sound plays (" .. tostring(swingSound) .. ")")
+				check(((heard["Jelly Wave"] or 0) > 0) == (tier >= 6), key .. ": the jelly wave's sound only on the Secret")
+				step(0.5)
+				check(tier < 6 or (soundsPlaying()["Eye Pop"] or 0) > 0, key .. ": the eyes pop with a sound")
 				h.handle.CFrame = start
 				step(3)
 				local left = folder and #folder:GetChildren() or 0

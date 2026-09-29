@@ -5,6 +5,8 @@ API key, so nothing has to be published by hand:
 
 - the voxel weapons' 3D models (`Tools/Weapons/out/models/*.fbx`)
 - the weapon abilities' animations (`Tools/Animations/abilities/*.rbxmx`)
+- the weapons' sound effects (`Tools/Sounds/out/weapons/*.ogg`, made by
+  `Tools/Sounds/weapon_sfx.py`)
 
 ## Steps (Windows)
 
@@ -25,6 +27,11 @@ API key, so nothing has to be published by hand:
 Uploads are remembered (in `%LOCALAPPDATA%\Lodolouw\assets.txt`, with a
 fingerprint of each file), so running it again only uploads what's new or
 changed, and still prints every ID.
+
+Roblox limits how many sounds an account can upload each month, and may ask
+for an ID-verified account for audio. If a sound is refused, the rest still go
+through; a refused one can be swapped for a Toolbox sound renamed to the same
+name in SoundService.
 
 Upload with the account (or group) that owns the game: Roblox only lets a game
 load models and play animations owned by its owner.

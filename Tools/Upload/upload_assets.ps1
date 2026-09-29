@@ -1,6 +1,7 @@
 # Uploads everything the game loads from Roblox with an Open Cloud API key:
 #   * the voxel weapons' models  (Tools\Weapons\out\models\<key>.fbx)
 #   * the weapon abilities' animations  (Tools\Animations\abilities\<key>.rbxmx)
+#   * the weapons' sound effects  (Tools\Sounds\out\weapons\<name>.ogg)
 # then copies ALL their ids (as ReplicatedStorage\AssetIds.lua) to your clipboard,
 # to paste to Claude. Run it by double-clicking upload_assets.bat.
 #
@@ -32,6 +33,12 @@ if (Test-Path $anims) {
         $items += [pscustomobject]@{ Kind = 'Animation'; Key = $_.BaseName; Path = $_.FullName; Type = 'model/x-rbxm' }
     }
 }
+$sounds = Join-Path $tools 'Sounds\out\weapons'
+if (Test-Path $sounds) {
+    Get-ChildItem $sounds -Filter *.ogg | Sort-Object Name | ForEach-Object {
+        $items += [pscustomobject]@{ Kind = 'Audio'; Key = $_.BaseName; Path = $_.FullName; Type = 'audio/ogg' }
+    }
+}
 if ($items.Count -eq 0) { Write-Host 'Nothing to upload (pull first?)' -ForegroundColor Red; exit }
 
 # what's been uploaded before: "Kind:Key:fingerprint = id"
@@ -49,7 +56,7 @@ foreach ($it in $items) {
 $todo = @($items | Where-Object { -not $mem.ContainsKey($_.Tag) })
 
 Write-Host ''
-Write-Host ("{0} models and animations here, {1} to upload." -f $items.Count, $todo.Count) -ForegroundColor Yellow
+Write-Host ("{0} models, animations and sounds here, {1} to upload." -f $items.Count, $todo.Count) -ForegroundColor Yellow
 Write-Host ''
 $badKey = $false
 if ($todo.Count -gt 0) {
@@ -95,7 +102,7 @@ if ($todo.Count -gt 0) {
             break
         }
         if (-not $op) { throw 'Roblox kept saying "too many" - wait a minute and run it again' }
-        for ($i = 0; $i -lt 30; $i++) {
+        for ($i = 0; $i -lt 60; $i++) {
             if ($op.done -and $op.response) { return $op.response.assetId }
             if ($op.done -and $op.error) { throw "Roblox refused it: $($op.error.message)" }
             Start-Sleep -Seconds 2
@@ -134,6 +141,11 @@ foreach ($it in ($items | Where-Object { $_.Kind -eq 'Model' })) {
 $lines += "`t},"
 $lines += "`tAnimations = {"
 foreach ($it in ($items | Where-Object { $_.Kind -eq 'Animation' })) {
+    if ($mem.ContainsKey($it.Tag)) { $lines += ("`t`t{0} = {1}," -f $it.Key, $mem[$it.Tag]) }
+}
+$lines += "`t},"
+$lines += "`tSounds = {"
+foreach ($it in ($items | Where-Object { $_.Kind -eq 'Audio' })) {
     if ($mem.ContainsKey($it.Tag)) { $lines += ("`t`t{0} = {1}," -f $it.Key, $mem[$it.Tag]) }
 }
 $lines += "`t},"
