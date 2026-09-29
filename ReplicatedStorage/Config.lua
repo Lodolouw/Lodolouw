@@ -2931,17 +2931,19 @@ Config.Weapons = {
 		},
 		-- (the types below: animations made in Tools/Animations/weapon_types.py and
 		-- uploaded with upload_animations.bat; without ids their baked clips play)
-		Fists = { -- gauntlets: fast and short - a jab, a hook, an uppercut
-			-- its uploaded animations (Tools/Animations: upload_animations.bat)
-			Animations = { Idle = "rbxassetid://135523120214627", Swings = { "rbxassetid://89651695203012", "rbxassetid://84109678195624", "rbxassetid://79304465940795" } },
-			AnimCuts = { { 0.1, 0.24 }, { 0.1, 0.26 }, { 0.18, 0.36 } }, -- (when each swing's smear shows: its Cut and Through markers)
-			Window = 0.7,
-			Swings = {
-				{ Damage = 1.0, Lock = 0.38, Contact = 0.45, Cost = 7, Range = 6.5, Arc = 45, Lunge = 2.5 }, -- a right jab
-				{ Damage = 1.0, Lock = 0.38, Contact = 0.45, Cost = 7, Range = 6.5, Arc = 55, Lunge = 2.5 }, -- a left hook
-				{ Damage = 1.5, Lock = 0.55, Contact = 0.5, Cost = 11, Range = 7, Arc = 45, Lunge = 4 }, -- a rising uppercut
+		Fists = { -- gauntlets: they punch exactly like your bare fists (the same
+			-- punch animations, timing, step and whoosh - CombatClient's playPunch);
+			-- the gauntlets just sit on your hands and hit harder
+			UsePunch = true,
+			-- (its own animations, made and uploaded but not used while UsePunch is on:
+			-- Idle 135523120214627, Swings 89651695203012, 84109678195624, 79304465940795)
+			Window = 0.85, -- (Config.Combat.Combo's)
+			Swings = { -- Lock / Contact: the punch's (Combat.PunchLock x Combo.Recovery, PunchContact)
+				{ Damage = 1.0, Lock = 0.42, Contact = 0.45, Cost = 7, Range = 8, Arc = 45, Lunge = 2.5 }, -- a jab
+				{ Damage = 1.0, Lock = 0.42, Contact = 0.45, Cost = 7, Range = 8, Arc = 55, Lunge = 2.5 }, -- another
+				{ Damage = 1.5, Lock = 0.67, Contact = 0.45, Cost = 11, Range = 8, Arc = 45, Lunge = 4 }, -- the big one
 			},
-			Sounds = { Swing = "Fist Swing", Hit = "Sword Hit" },
+			-- (no Sounds: your punches' own whoosh and hits)
 			HitStop = 0.05,
 			HeavyHitStop = 0.11,
 			ImpactFrames = true,

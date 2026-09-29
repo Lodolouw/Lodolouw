@@ -1049,7 +1049,7 @@ local function tryPunch()
 	else
 		CombatAction:FireServer("Punch", nil, comboSwing)
 	end
-	if swingDef then
+	if swingDef and not kind.UsePunch then
 		-- the blade's own swing, straight away: WeaponFX (it winds up, holds a
 		-- heartbeat, then cuts, with its whoosh)
 		Weapon.fx.swing(player, comboSwing)
@@ -1865,10 +1865,12 @@ do
 			return
 		end
 		local heavy = crit or (tonumber(weight) or 1) >= 3
-		Weapon.fx.hitStop(player, heavy and (kind.HeavyHitStop or 0.12) or (kind.HitStop or 0.06))
-		local _, hrp = charParts()
-		local dir = hrp and typeof(at) == "Vector3" and (at - hrp.Position) or nil
-		Weapon.fx.slashMark(at, dir, heavy, Weapon.fx.isGolden(player))
+		if not kind.UsePunch then -- (gauntlets land like your punches: no blade marks)
+			Weapon.fx.hitStop(player, heavy and (kind.HeavyHitStop or 0.12) or (kind.HitStop or 0.06))
+			local _, hrp = charParts()
+			local dir = hrp and typeof(at) == "Vector3" and (at - hrp.Position) or nil
+			Weapon.fx.slashMark(at, dir, heavy, Weapon.fx.isGolden(player))
+		end
 		if heavy and kind.ImpactFrames ~= false then
 			impactAt = os.clock()
 		end

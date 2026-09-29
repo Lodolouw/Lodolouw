@@ -1123,7 +1123,9 @@ local function hold(plr, char, id, def, tracks)
 	-- the weapon type's baked animations, if it has them (and no uploaded ones)
 	local kind = W.Types[def.Type]
 	local ids = animsOf(def)
-	local clips = not (ids and #ids.swings > 0) and WeaponFX.clipsFor(def.Type) or nil
+	-- (gauntlets punch with your own punch animations: nothing here moves the body)
+	local punch = kind ~= nil and kind.UsePunch == true
+	local clips = not punch and not (ids and #ids.swings > 0) and WeaponFX.clipsFor(def.Type) or nil
 	-- a second one in the left hand (gauntlets, daggers): held still at the
 	-- hand; the string's poses swing the left arm for its blows
 	local off = (clips and clips.offhand) or WeaponFX.OFFHAND[def.Type]
@@ -1146,6 +1148,9 @@ local function hold(plr, char, id, def, tracks)
 	end
 	local base = stanceOf(def)
 	local g = base.Grip
+	if punch and off then
+		g = off -- (the right gauntlet sits on the hand just like the left one)
+	end
 	handle.CFrame = arm.CFrame * gripAt(g[1], g[2])
 	-- held by a Motor6D (Right Arm -> Handle), so the uploaded animations can
 	-- swing the blade too (they pose "Handle" under "Right Arm"). Made in
@@ -1198,6 +1203,7 @@ local function hold(plr, char, id, def, tracks)
 		abilityN = plr:GetAttribute("AbilityN"),
 		animIds = animsOf(def),
 		clips = clips,
+		punch = punch,
 		tracks = tracks or (plr == Players.LocalPlayer and loadTracks(char, def) or nil),
 		seen = setmetatable({}, { __mode = "k" }), -- the animation tracks we've whooshed for
 	}
@@ -1615,6 +1621,15 @@ local function stepOne(plr, h, dt)
 		h.anim, h.springs, h.weights, h.clock, h.freeze = anim, springs, weights, clock, freeze
 		h.frozenTrack, h.trackFreeze = frozenTrack, trackFreeze
 	end
+	if h.punch then
+		-- gauntlets: your punch animations swing the arms and the gauntlets ride
+		-- on your hands (tucked away while you drink)
+		local wantParent = h.char:GetAttribute("Drinking") == nil and h.char or nil
+		if h.model.Parent ~= wantParent then
+			h.model.Parent = wantParent
+		end
+		return
+	end
 	-- everyone else's swings and abilities: when their counters change
 	if plr ~= Players.LocalPlayer then
 		local sn = plr:GetAttribute("SwingN")
@@ -1789,7 +1804,7 @@ end
 -- your own swing, the moment you press (swing `n` of the string)
 function WeaponFX.swing(plr, n)
 	local h = held[plr]
-	if h and not h.none then
+	if h and not h.none and not h.punch then
 		local track = h.tracks and h.tracks.swings[n]
 		if track and loaded(track) then
 			-- the uploaded swing. Chained, it hands over at once (each one
@@ -1814,7 +1829,7 @@ end
 -- your own ability, the moment you press (at this tier)
 function WeaponFX.spin(plr, tierIndex)
 	local h = held[plr]
-	if h and not h.none then
+	if h and not h.none and not h.punch then
 		stopSwings(h, 0.05)
 		startSpin(h, tierIndex)
 	end
@@ -1823,6 +1838,9 @@ end
 -- hit-stop: your swing freezes for a blink (and shudders) as the blade bites
 function WeaponFX.hitStop(plr, seconds)
 	local h = held[plr]
+	if h and not h.none and h.punch then
+		return
+	end
 	if h and not h.none and h.anim then
 		h.freeze = math.max(h.freeze, seconds or 0.05)
 	end

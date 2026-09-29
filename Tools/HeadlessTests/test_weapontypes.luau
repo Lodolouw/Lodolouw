@@ -31,7 +31,7 @@ local W = Config.Weapons
 -- they have uploaded animations now (those play in the game); this tests the
 -- baked clips the game falls back to without them, so hide the ids here
 local fails0 = 0
-for _, kind in ipairs({ "Fists", "Hammer", "Daggers", "Scythe", "Katana" }) do
+for _, kind in ipairs({ "Hammer", "Daggers", "Scythe", "Katana" }) do -- (gauntlets punch: no animations of their own)
 	local a = W.Types[kind].Animations
 	if not (a and a.Idle:match("^rbxassetid://%d+$") and #a.Swings == #W.Types[kind].Swings) then
 		fails0 += 1
@@ -322,9 +322,39 @@ local function apart(a, b)
 	return math.deg(math.acos(math.clamp((r00 + r11 + r22 - 1) / 2, -1, 1)))
 end
 
+-- gauntlets: your own punches (CombatClient's punch animations) - WeaponFX
+-- only puts one on each hand and never moves the body
+do
+	check(W.Types.Fists.UsePunch == true, "Fists: punch like bare fists")
+	me:SetAttribute("Weapon", pick.Fists)
+	step(0.3)
+	local model = weapon(char)
+	local h = WeaponFX._held[me]
+	check(model ~= nil and h ~= nil and h.punch == true and h.clips == nil and h.tracks == nil, "Fists: in hand, no clips or animations of their own")
+	local offhand = false
+	for _, d in ipairs(model and model:GetDescendants() or {}) do
+		if d.Name == "OffGrip" and d.Part0 == char["Left Arm"] then
+			offhand = true
+		end
+	end
+	check(offhand, "Fists: one on each hand")
+	local before = { RS = J.RS.Transform, LS = J.LS.Transform, Root = J.Root.Transform }
+	WeaponFX.swing(me, 1)
+	WeaponFX.hitStop(me, 0.1)
+	step(0.8)
+	local moved = 0
+	for key, cf in pairs(before) do
+		moved = math.max(moved, apart(J[key].Transform, cf))
+	end
+	check(h.anim == nil and moved < 0.01, ("Fists: nothing here moves the body (%.2f degrees)"):format(moved))
+end
+
 for _, kind in ipairs(ORDER) do
 	local T = W.Types[kind]
 	check(T ~= nil, kind .. ": has a moveset in Config")
+	if T.UsePunch then
+		continue
+	end
 	local clips = WeaponFX.clipsFor(kind)
 	check(clips ~= nil and #clips.swings == #T.Swings, kind .. ": baked clips for its idle and every swing")
 	local id = pick[kind]
