@@ -1857,6 +1857,14 @@ function WeaponFX.start()
 	RunService.Stepped:Connect(function(_, dt)
 		step(dt)
 	end)
+	-- warm up the baked clips: unpack every type's now (one a frame), so the
+	-- first time anyone equips one there's no hitch
+	task.spawn(function()
+		for name in pairs(CLIPS or {}) do
+			WeaponFX.clipsFor(name)
+			task.wait()
+		end
+	end)
 	-- warm up the sounds, so the first swing isn't silent
 	task.spawn(function()
 		local list = {}
