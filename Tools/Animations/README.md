@@ -94,5 +94,5 @@ also writes each animation as its own file in `upload/`. Double-click
 `upload_animations.bat` on Windows: it asks for an Open Cloud API key (with Assets
 read + write) and your user or group ID, uploads every file, and writes the IDs
 straight into `Config.Weapons.Types.<Type>.Animations`. Uploads that worked are
-remembered in `upload/ids.txt`, so running it again only does the missing ones.
+remembered in `%LOCALAPPDATA%\Lodolouw\animation_ids.txt`, so running it again only does the missing ones.
 (Studio's own AssetService:CreateAssetAsync is switched off by Roblox for now.)

@@ -2,7 +2,7 @@
 # writes the IDs straight into ReplicatedStorage\Config.lua (Rojo syncs it to
 # Studio). Run it by double-clicking upload_animations.bat.
 #
-# Finished uploads are remembered in upload\ids.txt, so running it again only
+# Finished uploads are remembered in %LOCALAPPDATA%\Lodolouw\animation_ids.txt, so running it again only
 # does the ones that are missing (no duplicates).
 $ErrorActionPreference = 'Stop'
 $script:badKey = $false
@@ -12,7 +12,11 @@ Add-Type -AssemblyName System.Net.Http
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $dir = Join-Path $here 'upload'
 $config = Join-Path $here '..\..\ReplicatedStorage\Config.lua'
-$idsFile = Join-Path $dir 'ids.txt'
+# (kept outside the project: Windows' ransomware protection / OneDrive can stop
+# scripts writing inside Documents)
+$idsDir = Join-Path $env:LOCALAPPDATA 'Lodolouw'
+New-Item -ItemType Directory -Force -Path $idsDir | Out-Null
+$idsFile = Join-Path $idsDir 'animation_ids.txt'
 
 Write-Host ''
 Write-Host 'Uploads the weapon animations and puts their IDs in Config.' -ForegroundColor Yellow
@@ -88,8 +92,8 @@ foreach ($line in $order) {
         try {
             $id = Upload $name
             $ids[$name] = $id
-            [IO.File]::AppendAllText($idsFile, "$name = $id`r`n")
             Write-Host "  $name -> $id" -ForegroundColor Green
+            try { [IO.File]::AppendAllText($idsFile, "$name = $id`r`n") } catch { Write-Host "    (couldn't remember it: $($_.Exception.Message))" -ForegroundColor DarkYellow }
         } catch {
             $failed++
             Write-Host "  $name FAILED: $($_.Exception.Message)" -ForegroundColor Red
