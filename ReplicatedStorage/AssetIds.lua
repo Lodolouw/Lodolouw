@@ -12,6 +12,20 @@
 	code, an ability without its animation still does everything else.
 ]]
 return {
-	Models = {},
-	Animations = {},
+	Models = {
+		AcidScythe = 104140984967278,
+		GelatinHammer = 131062277349121,
+		GelatinousEdge = 110987894693619,
+		GooGloves = 82980152557659,
+		Jellyblade = 96243509826192,
+		OozeDaggers = 124118509862140,
+	},
+	Animations = {
+		AcidScythe = 124092425504751,
+		GelatinHammer = 112687185619293,
+		GelatinousEdge = 95554663647047,
+		GooGloves = 108600089777652,
+		Jellyblade = 95397064572099,
+		OozeDaggers = 128814812173522,
+	},
 }
