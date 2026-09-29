@@ -140,6 +140,18 @@ def main():
             f.write(head + '\n' + '\n'.join(body) + '\n</roblox>\n')
         print('saved', os.path.normpath(out), os.path.getsize(out) // 1024, 'KB')
 
+        # ... and each one on its own, for upload_animations.bat (one file = one animation)
+        each = os.path.join(HERE, 'upload')
+        os.makedirs(each, exist_ok=True)
+        for kind, names in wt.STRINGS.items():
+            for name in names:
+                with open(os.path.join(each, name + '.rbxmx'), 'w') as f:
+                    f.write(head + '\n' + ex.sequence_xml(wt.ANIMS[name], 1) + '\n</roblox>\n')
+        with open(os.path.join(each, 'order.txt'), 'w') as f:
+            for kind, names in wt.STRINGS.items():
+                f.write(kind + ' ' + ' '.join(names) + '\n')
+        print('saved', len(os.listdir(each)) - 1, 'files in', os.path.normpath(each))
+
 
 if __name__ == '__main__':
     main()

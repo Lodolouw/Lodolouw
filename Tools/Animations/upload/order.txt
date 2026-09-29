@@ -1,0 +1,5 @@
+Fists FistsIdle FistsSwing1 FistsSwing2 FistsSwing3
+Hammer HammerIdle HammerSwing1 HammerSwing2 HammerSwing3
+Daggers DaggersIdle DaggersSwing1 DaggersSwing2 DaggersSwing3 DaggersSwing4
+Scythe ScytheIdle ScytheSwing1 ScytheSwing2 ScytheSwing3
+Katana KatanaIdle KatanaSwing1 KatanaSwing2 KatanaSwing3

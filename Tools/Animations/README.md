@@ -87,11 +87,12 @@ python3 preview_types.py sheet types.png
 python3 preview_types.py video ../../Docs/animations/weapon_types.mp4
 ```
 
-## Uploading many at once (BulkUpload.lua)
+## Uploading many at once (upload_animations.bat)
 
-You don't have to publish animations one by one. `BulkUpload.lua` is a small
-Studio plugin that uploads every KeyframeSequence in a folder and prints
-`Name = rbxassetid://...` for each one. Paste all the file's text into a
-Script, right-click the Script and choose "Save as Local Plugin", then select
-the `WeaponAnimations` folder and press Plugins > Bulk Upload. Paste the Output
-back, and the IDs go into `Config.Weapons.Types.<Type>.Animations`.
+You don't have to publish animations one by one. `python3 export_types.py --rbxmx`
+also writes each animation as its own file in `upload/`. Double-click
+`upload_animations.bat` on Windows: it asks for an Open Cloud API key (with Assets
+read + write) and your user or group ID, uploads every file, and writes the IDs
+straight into `Config.Weapons.Types.<Type>.Animations`. Uploads that worked are
+remembered in `upload/ids.txt`, so running it again only does the missing ones.
+(Studio's own AssetService:CreateAssetAsync is switched off by Roblox for now.)
