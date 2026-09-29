@@ -139,121 +139,110 @@ WeaponFX.POSES = {
 WeaponFX.SPIN_COIL = { Root = { 10, 0, -60 }, RS = { -10, -90, 70 }, LS = { -60, 0, -20 }, RH = { -10, 0, -10 }, LH = { -10, 0, -20 }, Neck = { 0, 0, 40 }, Grip = { -85, 0 }, Hop = { 0 } }
 WeaponFX.SPIN = { Root = { 12, 0, 0 }, RS = { -10, -85, 95 }, LS = { -80, 0, 0 }, RH = { -12, 0, 0 }, LH = { -12, 0, 0 }, Neck = { 0, 0, 0 }, Grip = { -85, 0 }, Hop = { 0 } }
 
--- THE OTHER TYPES (drawn in code until they have uploaded animations). Each
--- has its own stance, and its string's poses are written as changes to that
--- stance (P fills in the rest), in the same degrees as above.
-local function P(base, over)
-	local out = {}
-	for key, value in pairs(base) do
-		out[key] = table.clone(over[key] or value)
-	end
-	return out
-end
+-- THE OTHER TYPES (drawn in code until they have uploaded animations): each
+-- has its own stance and string. They're worked out, not guessed: the spec
+-- (Tools/Weapons/poses/genposes.py) says where each hand goes and which way
+-- the weapon points (and, for two-handed weapons, keeps the left hand on the
+-- handle wherever it can reach), and posesolve.py finds the joint angles.
+-- BEGIN GENERATED POSES (Tools/Weapons/poses/genposes.py: change the spec there and run it)
 WeaponFX.STANCES = {
-	-- gauntlets: a boxer's guard, both fists up
-	Fists = { Root = { 8, 0, -15 }, RS = { -15, -25, 75 }, LS = { -15, 25, -75 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
-	-- the hammer: held across the body in both hands, head up, feet wide
-	Hammer = { Root = { 6, 0, -22 }, RS = { -15, -35, 45 }, LS = { -10, -40, 50 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 16 }, Grip = { -10, 0 }, Hop = { 0 } },
-	-- daggers: low and coiled, a blade forward in each hand
-	Daggers = { Root = { 14, 0, -6 }, RS = { -5, -10, 45 }, LS = { -5, 10, -45 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -80, 0 }, Hop = { 0 } },
-	-- the scythe: the long pole upright on the right, blade high over your shoulder
-	Scythe = { Root = { 4, 0, -24 }, RS = { -20, -20, 50 }, LS = { -10, -45, 60 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 14 }, Grip = { 10, 0 }, Hop = { 0 } },
-	-- the katana: a calm middle guard, blade forward
-	Katana = { Root = { 6, 0, -16 }, RS = { -10, -30, 60 }, LS = { -10, -35, 60 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 12 }, Grip = { -60, 0 }, Hop = { 0 } },
+	Fists = { Root = { 8, 0, -15 }, RS = { -3, 36, 105 }, LS = { 11, -40, -96 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
+	Hammer = { Root = { 6, 0, -15 }, RS = { -19, 43, 57 }, LS = { 18, -57, -71 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 12 }, Grip = { 11, 0 }, Hop = { 0 } },
+	Daggers = { Root = { 14, 0, -6 }, RS = { 34, 11, 70 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -45, 0 }, Hop = { 0 } },
+	Scythe = { Root = { 4, 0, -10 }, RS = { 1, -9, 42 }, LS = { 5, 17, -21 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 8 }, Grip = { 39, -96 }, Hop = { 0 } },
+	Katana = { Root = { 6, 0, -8 }, RS = { 43, 15, 54 }, LS = { 72, -10, -17 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -39, 43 }, Hop = { 0 } },
 }
-do
-	local F, H, D, S, K = WeaponFX.STANCES.Fists, WeaponFX.STANCES.Hammer, WeaponFX.STANCES.Daggers, WeaponFX.STANCES.Scythe, WeaponFX.STANCES.Katana
-	WeaponFX.POSES.Fists = {
-		{ -- a right jab
-			coil = P(F, { Root = { 4, 0, -28 }, RS = { -20, -15, 45 } }),
-			cut = P(F, { Root = { 12, 0, 22 }, RS = { -5, 10, 95 }, LS = { -15, 25, -60 }, Neck = { 5, 0, -5 } }),
-			follow = P(F, { Root = { 14, 0, 26 }, RS = { -5, 12, 92 }, LS = { -15, 25, -60 }, Neck = { 5, 0, -8 } }),
-		},
-		{ -- a left hook
-			coil = P(F, { Root = { 6, 0, 28 }, LS = { -45, -30, -60 }, RS = { -15, -25, 60 } }),
-			cut = P(F, { Root = { 12, 0, -30 }, LS = { -15, 45, -92 }, RS = { -15, -25, 60 }, Neck = { 5, 0, 25 } }),
-			follow = P(F, { Root = { 12, 0, -38 }, LS = { -10, 55, -86 }, RS = { -15, -25, 60 }, Neck = { 5, 0, 30 } }),
-		},
-		{ -- the uppercut: dip, then drive up off the floor
-			coil = P(F, { Root = { 22, 0, -25 }, RS = { 0, 0, -5 }, RH = { 0, 0, -30 }, LH = { 0, 0, -35 } }),
-			cut = P(F, { Root = { -12, 0, 18 }, RS = { -10, 15, 170 }, Neck = { -15, 0, 0 }, Hop = { 0.6 } }),
-			follow = P(F, { Root = { -10, 0, 20 }, RS = { -10, 15, 162 }, Neck = { -12, 0, 0 }, Hop = { 0.3 } }),
-		},
-	}
-	WeaponFX.POSES.Hammer = {
-		{ -- a heavy diagonal: from high over the right shoulder down across
-			coil = P(H, { Root = { -10, 0, -45 }, RS = { -40, -45, 170 }, LS = { -30, -30, 150 }, Neck = { 0, 0, 35 }, Grip = { -60, 0 } }),
-			cut = P(H, { Root = { 25, 0, 15 }, RS = { 0, 20, 85 }, LS = { -5, 10, 80 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Grip = { -80, 0 } }),
-			follow = P(H, { Root = { 32, 0, 42 }, RS = { 10, 50, 45 }, LS = { 5, 40, 40 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Neck = { 0, 0, -30 }, Grip = { -80, 15 } }),
-		},
-		{ -- a sweeping backhand at chest height
-			coil = P(H, { Root = { 10, 0, 50 }, RS = { 10, 70, 60 }, LS = { 0, 60, 55 }, Neck = { 0, 0, -35 }, Grip = { -80, 20 } }),
-			cut = P(H, { Root = { 12, 0, -10 }, RS = { -20, -30, 92 }, LS = { -20, -20, 85 }, Grip = { -80, 0 } }),
-			follow = P(H, { Root = { 5, 0, -58 }, RS = { -15, -65, 95 }, LS = { -15, -55, 88 }, Neck = { -5, 0, 38 }, Grip = { -75, -10 } }),
-		},
-		{ -- the overhead slam: up with a little leap, and everything comes down with it
-			coil = P(H, { Root = { -20, 0, -8 }, RS = { 0, 0, 205 }, LS = { 0, 0, 195 }, Neck = { -20, 0, 5 }, Grip = { -40, 0 }, Hop = { 0.7 } }),
-			cut = P(H, { Root = { 42, 0, 0 }, RS = { 0, 5, 82 }, LS = { 0, -5, 78 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 15, 0, 0 }, Grip = { -80, 0 } }),
-			follow = P(H, { Root = { 36, 0, 0 }, RS = { 0, 5, 72 }, LS = { 0, -5, 68 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 20, 0, 0 }, Grip = { -80, 0 } }),
-		},
-	}
-	WeaponFX.POSES.Daggers = {
-		{ -- a right stab
-			coil = P(D, { Root = { 10, 0, -25 }, RS = { -10, -25, 20 } }),
-			cut = P(D, { Root = { 18, 0, 18 }, RS = { 0, 5, 95 }, Neck = { -6, 0, -8 } }),
-			follow = P(D, { Root = { 18, 0, 20 }, RS = { 0, 8, 92 }, Neck = { -6, 0, -8 } }),
-		},
-		{ -- a left stab
-			coil = P(D, { Root = { 10, 0, 25 }, LS = { -10, 25, -20 } }),
-			cut = P(D, { Root = { 18, 0, -18 }, LS = { 0, -5, -95 }, Neck = { -6, 0, 12 } }),
-			follow = P(D, { Root = { 18, 0, -20 }, LS = { 0, -8, -92 }, Neck = { -6, 0, 12 } }),
-		},
-		{ -- a right slash across
-			coil = P(D, { Root = { 8, 0, -40 }, RS = { -30, -70, 110 }, Neck = { -6, 0, 30 } }),
-			cut = P(D, { Root = { 16, 0, 10 }, RS = { 0, 25, 92 } }),
-			follow = P(D, { Root = { 18, 0, 40 }, RS = { 10, 65, 60 }, Neck = { -6, 0, -25 } }),
-		},
-		{ -- both blades crossing, with a hop in
-			coil = P(D, { Root = { 0, 0, 0 }, RS = { -30, -40, 150 }, LS = { -30, 40, -150 }, Hop = { 0.35 } }),
-			cut = P(D, { Root = { 24, 0, 0 }, RS = { 0, 40, 82 }, LS = { 0, -40, -82 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 } }),
-			follow = P(D, { Root = { 24, 0, 0 }, RS = { 10, 60, 50 }, LS = { 10, -60, -50 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 } }),
-		},
-	}
-	WeaponFX.POSES.Scythe = {
-		{ -- a wide sweep, right to left, blade low
-			coil = P(S, { Root = { 0, 0, -65 }, RS = { -50, -80, 80 }, LS = { -40, -60, 70 }, Neck = { 0, 0, 40 }, Grip = { -80, 0 } }),
-			cut = P(S, { Root = { 12, 0, 0 }, RS = { -40, 0, 90 }, LS = { -35, 10, 85 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Grip = { -85, 0 } }),
-			follow = P(S, { Root = { 16, 0, 62 }, RS = { -30, 70, 80 }, LS = { -30, 70, 75 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Neck = { 0, 0, -35 }, Grip = { -85, 10 } }),
-		},
-		{ -- sweeping back, left to right
-			coil = P(S, { Root = { 10, 0, 58 }, RS = { -30, 70, 70 }, LS = { -30, 65, 68 }, Neck = { 0, 0, -38 }, Grip = { -85, 10 } }),
-			cut = P(S, { Root = { 8, 0, -5 }, RS = { -40, -10, 90 }, LS = { -35, -5, 85 }, Grip = { -85, 0 } }),
-			follow = P(S, { Root = { 2, 0, -62 }, RS = { -45, -80, 85 }, LS = { -40, -70, 80 }, Neck = { 0, 0, 40 }, Grip = { -80, 0 } }),
-		},
-		{ -- a full turn with the blade out
-			coil = P(S, { Root = { 8, 0, -90 }, RS = { -55, -85, 80 }, LS = { -45, -70, 70 }, Neck = { 0, 0, 45 }, Grip = { -85, 0 } }),
-			cut = P(S, { Root = { 14, 0, 40 }, RS = { -45, 0, 90 }, LS = { -40, 0, 85 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Grip = { -90, 0 } }),
-			follow = P(S, { Root = { 16, 0, 160 }, RS = { -40, 30, 88 }, LS = { -35, 30, 82 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Neck = { 0, 0, -40 }, Grip = { -90, 0 } }),
-		},
-	}
-	WeaponFX.POSES.Katana = {
-		{ -- a fast flat cut, right to left
-			coil = P(K, { Root = { 0, 0, -45 }, RS = { -35, -60, 110 }, LS = { -30, -50, 100 }, Neck = { 0, 0, 32 }, Grip = { -80, 0 } }),
-			cut = P(K, { Root = { 14, 0, 12 }, RS = { -10, 20, 92 }, LS = { -10, 25, 88 }, Grip = { -82, 0 } }),
-			follow = P(K, { Root = { 18, 0, 45 }, RS = { 0, 60, 70 }, LS = { 0, 60, 66 }, Neck = { 0, 0, -30 }, Grip = { -80, 15 } }),
-		},
-		{ -- a rising cut, low left to high right
-			coil = P(K, { Root = { 14, 0, 38 }, RS = { 15, 65, 45 }, LS = { 10, 60, 42 }, Neck = { 0, 0, -32 }, Grip = { -70, 25 } }),
-			cut = P(K, { Root = { 8, 0, -8 }, RS = { -12, -10, 108 }, LS = { -12, -5, 104 }, Grip = { -78, 0 } }),
-			follow = P(K, { Root = { -4, 0, -45 }, RS = { -8, -25, 128 }, LS = { -8, -20, 124 }, Neck = { -8, 0, 35 }, Grip = { -60, -10 } }),
-		},
-		{ -- the dashing thrust
-			coil = P(K, { Root = { -5, 0, -35 }, RS = { -10, -15, 55 }, LS = { -10, -20, 55 }, RH = { 0, 0, 10 }, Grip = { -88, 0 } }),
-			cut = P(K, { Root = { 32, 0, 0 }, RS = { 0, 0, 96 }, LS = { 0, -5, 94 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -90, 0 } }),
-			follow = P(K, { Root = { 26, 0, 8 }, RS = { 0, 0, 92 }, LS = { 0, -5, 90 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -90, 0 } }),
-		},
-	}
-end
+WeaponFX.POSES.Fists = {
+	{ -- a right jab
+		coil = { Root = { 4, 0, -28 }, RS = { -5, 22, 87 }, LS = { 11, -40, -96 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
+		cut = { Root = { 12, 0, 22 }, RS = { -4, 31, 95 }, LS = { 11, -37, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, -5 }, Grip = { -90, 0 }, Hop = { 0 } },
+		follow = { Root = { 14, 0, 26 }, RS = { -4, 32, 94 }, LS = { 11, -37, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, -8 }, Grip = { -90, 0 }, Hop = { 0 } },
+	},
+	{ -- a left hook
+		coil = { Root = { 6, 0, 28 }, RS = { -2, 35, 103 }, LS = { 18, 27, -110 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
+		cut = { Root = { 12, 0, -30 }, RS = { -2, 35, 103 }, LS = { 12, -44, -88 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 25 }, Grip = { -90, 0 }, Hop = { 0 } },
+		follow = { Root = { 12, 0, -38 }, RS = { -2, 35, 103 }, LS = { 11, -60, -82 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 5, 0, 30 }, Grip = { -90, 0 }, Hop = { 0 } },
+	},
+	{ -- the uppercut: dip, then drive up off the floor
+		coil = { Root = { 22, 0, -25 }, RS = { -7, 28, 33 }, LS = { 14, -41, -95 }, RH = { 0, 0, -30 }, LH = { 0, 0, -35 }, Neck = { 5, 0, 12 }, Grip = { -90, 0 }, Hop = { 0 } },
+		cut = { Root = { -12, 0, 18 }, RS = { 57, 79, 105 }, LS = { 14, -40, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { -15, 0, 0 }, Grip = { -90, 0 }, Hop = { 0.6 } },
+		follow = { Root = { -10, 0, 20 }, RS = { 58, 87, 107 }, LS = { 14, -41, -95 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { -12, 0, 0 }, Grip = { -90, 0 }, Hop = { 0.3 } },
+	},
+}
+WeaponFX.POSES.Hammer = {
+	{ -- a heavy diagonal: from high over the right shoulder, over the top and down across
+		coil = { Root = { -10, 0, -45 }, RS = { -16, 26, 172 }, LS = { -84, -49, -216 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 35 }, Grip = { -19, 0 }, Hop = { 0 } },
+		cut = { Root = { 25, 0, 15 }, RS = { 40, 12, 58 }, LS = { -7, -52, -74 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Neck = { 0, 0, 12 }, Grip = { -88, 0 }, Hop = { 0 } },
+		follow = { Root = { 32, 0, 42 }, RS = { 25, 44, 38 }, LS = { 14, -39, -36 }, RH = { 0, 0, -32 }, LH = { 0, 0, -42 }, Neck = { 0, 0, -30 }, Grip = { -98, 0 }, Hop = { 0 } },
+	},
+	{ -- a sweeping backhand at chest height, across the front
+		coil = { Root = { 10, 0, 50 }, RS = { 104, 5, 48 }, LS = { -16, -35, -80 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, -35 }, Grip = { -175, 0 }, Hop = { 0 } },
+		cut = { Root = { 12, 0, -10 }, RS = { 92, 5, 72 }, LS = { -84, -31, -122 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { 0, 0, 12 }, Grip = { -73, 0 }, Hop = { 0 } },
+		follow = { Root = { 5, 0, -58 }, RS = { 80, 4, 118 }, LS = { -107, -40, -180 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { -5, 0, 38 }, Grip = { 12, 0 }, Hop = { 0 } },
+	},
+	{ -- the overhead slam: up with a little leap, and everything comes down with it
+		coil = { Root = { -20, 0, -8 }, RS = { -30, 17, 176 }, LS = { -69, -24, -202 }, RH = { -6, 0, -10 }, LH = { -6, 0, -18 }, Neck = { -20, 0, 5 }, Grip = { -14, 0 }, Hop = { 0.7 } },
+		cut = { Root = { 42, 0, 0 }, RS = { 44, 1, 58 }, LS = { -48, -60, -101 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 15, 0, 0 }, Grip = { -83, 0 }, Hop = { 0 } },
+		follow = { Root = { 36, 0, 0 }, RS = { -82, 47, 102 }, LS = { -110, -40, -138 }, RH = { 0, 0, -42 }, LH = { 0, 0, -52 }, Neck = { 20, 0, 0 }, Grip = { -112, 0 }, Hop = { 0 } },
+	},
+}
+WeaponFX.POSES.Daggers = {
+	{ -- a right stab
+		coil = { Root = { 10, 0, -25 }, RS = { 1, -2, 38 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -29, 0 }, Hop = { 0 } },
+		cut = { Root = { 18, 0, 18 }, RS = { 92, 10, 73 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, -8 }, Grip = { -73, 0 }, Hop = { 0 } },
+		follow = { Root = { 18, 0, 20 }, RS = { 110, 5, 77 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, -8 }, Grip = { -78, 0 }, Hop = { 0 } },
+	},
+	{ -- a left stab
+		coil = { Root = { 10, 0, 25 }, RS = { 16, 4, 62 }, LS = { 4, 3, -45 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -39, 0 }, Hop = { 0 } },
+		cut = { Root = { 18, 0, -18 }, RS = { 16, 1, 62 }, LS = { 76, -13, -58 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 12 }, Grip = { -38, 0 }, Hop = { 0 } },
+		follow = { Root = { 18, 0, -20 }, RS = { 16, 1, 62 }, LS = { 79, -10, -57 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 12 }, Grip = { -37, 0 }, Hop = { 0 } },
+	},
+	{ -- a right slash across
+		coil = { Root = { 8, 0, -40 }, RS = { -53, -35, 62 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 30 }, Grip = { -59, 0 }, Hop = { 0 } },
+		cut = { Root = { 16, 0, 10 }, RS = { -20, 34, 90 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -69, 0 }, Hop = { 0 } },
+		follow = { Root = { 18, 0, 40 }, RS = { -12, 67, 84 }, LS = { 31, -10, -66 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, -25 }, Grip = { -72, 0 }, Hop = { 0 } },
+	},
+	{ -- both blades crossing, with a hop in
+		coil = { Root = { 0, 0, 0 }, RS = { 11, 5, 157 }, LS = { -54, 52, -82 }, RH = { 0, 0, -18 }, LH = { 0, 0, -24 }, Neck = { -6, 0, 6 }, Grip = { -97, 0 }, Hop = { 0.35 } },
+		cut = { Root = { 24, 0, 0 }, RS = { 51, 16, 55 }, LS = { 23, -33, -40 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 }, Neck = { -6, 0, 6 }, Grip = { -84, 0 }, Hop = { 0 } },
+		follow = { Root = { 24, 0, 0 }, RS = { 73, -16, 35 }, LS = { 53, -19, -7 }, RH = { 0, 0, -30 }, LH = { 0, 0, -38 }, Neck = { -6, 0, 6 }, Grip = { -89, 0 }, Hop = { 0 } },
+	},
+}
+WeaponFX.POSES.Scythe = {
+	{ -- a wide sweep, right to left, blade low
+		coil = { Root = { 0, 0, -60 }, RS = { 112, -23, 131 }, LS = { 121, -71, 30 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 40 }, Grip = { -10, -120 }, Hop = { 0 } },
+		cut = { Root = { 12, 0, 0 }, RS = { 96, -17, 79 }, LS = { 93, -131, 60 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Neck = { 0, 0, 8 }, Grip = { -75, -83 }, Hop = { 0 } },
+		follow = { Root = { 16, 0, 62 }, RS = { 75, 4, 40 }, LS = { 43, -111, 62 }, RH = { 0, 0, -25 }, LH = { 0, 0, -32 }, Neck = { 0, 0, -35 }, Grip = { -162, -88 }, Hop = { 0 } },
+	},
+	{ -- sweeping back, left to right
+		coil = { Root = { 10, 0, 58 }, RS = { 78, 9, 41 }, LS = { -16, -61, -14 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, -38 }, Grip = { -158, -88 }, Hop = { 0 } },
+		cut = { Root = { 8, 0, -5 }, RS = { 67, -11, 65 }, LS = { -96, -45, -124 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 8 }, Grip = { -76, -88 }, Hop = { 0 } },
+		follow = { Root = { 2, 0, -62 }, RS = { 113, -23, 131 }, LS = { -123, -24, -185 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 40 }, Grip = { -7, -89 }, Hop = { 0 } },
+	},
+	{ -- a full turn with the blade out
+		coil = { Root = { 8, 0, -90 }, RS = { 113, -21, 134 }, LS = { -125, -9, -179 }, RH = { 0, 0, -8 }, LH = { 0, 0, -16 }, Neck = { 0, 0, 45 }, Grip = { -16, -119 }, Hop = { 0 } },
+		cut = { Root = { 14, 0, 40 }, RS = { 97, -17, 80 }, LS = { -113, -37, -132 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Neck = { 0, 0, 8 }, Grip = { -75, -83 }, Hop = { 0 } },
+		follow = { Root = { 16, 0, 160 }, RS = { 102, -17, 82 }, LS = { -110, -36, -125 }, RH = { -8, 0, -20 }, LH = { -8, 0, -26 }, Neck = { 0, 0, -40 }, Grip = { -85, -78 }, Hop = { 0 } },
+	},
+}
+WeaponFX.POSES.Katana = {
+	{ -- a fast flat cut, right to left
+		coil = { Root = { 0, 0, -45 }, RS = { 6, 36, 153 }, LS = { 73, -70, -54 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 32 }, Grip = { -3, -104 }, Hop = { 0 } },
+		cut = { Root = { 14, 0, 12 }, RS = { 111, 2, 72 }, LS = { 72, -53, -14 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -97, -190 }, Hop = { 0 } },
+		follow = { Root = { 18, 0, 45 }, RS = { 92, 7, 41 }, LS = { 77, -32, -36 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, -30 }, Grip = { -152, -191 }, Hop = { 0 } },
+	},
+	{ -- a rising cut, low left to high right
+		coil = { Root = { 14, 0, 38 }, RS = { 67, 3, 35 }, LS = { 69, -21, -40 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, -32 }, Grip = { -180, -221 }, Hop = { 0 } },
+		cut = { Root = { 8, 0, -8 }, RS = { 113, 8, 74 }, LS = { 89, -34, -24 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -42, -231 }, Hop = { 0 } },
+		follow = { Root = { -4, 0, -45 }, RS = { 90, 88, 96 }, LS = { 72, -94, -47 }, RH = { 0, 0, -8 }, LH = { 0, 0, -18 }, Neck = { -8, 0, 35 }, Grip = { -54, -228 }, Hop = { 0 } },
+	},
+	{ -- the dashing thrust
+		coil = { Root = { -5, 0, -20 }, RS = { 113, 0, 88 }, LS = { 73, -55, -16 }, RH = { 0, 0, 10 }, LH = { 0, 0, -18 }, Neck = { 0, 0, 6 }, Grip = { -90, -225 }, Hop = { 0 } },
+		cut = { Root = { 32, 0, 0 }, RS = { 115, 4, 73 }, LS = { 74, -54, -22 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -74, -225 }, Hop = { 0 } },
+		follow = { Root = { 26, 0, 8 }, RS = { 115, 2, 74 }, LS = { 74, -54, -22 }, RH = { 0, 0, -45 }, LH = { 0, 0, -55 }, Neck = { 10, 0, 0 }, Grip = { -73, -225 }, Hop = { 0 } },
+	},
+}
+-- END GENERATED POSES
 
 -- a weapon's stance (its type's, or the sword's)
 local function stanceOf(def)
@@ -587,12 +576,12 @@ end
 function BUILDERS.Hammer(def, golden)
 	local k = blockKit(def, golden)
 	k.handle = k.piece("Handle", Vector3.new(0.4, 0.4, 1.2), CFrame.new(), k.grip)
-	k.piece("Shaft", Vector3.new(0.34, 0.34, 3.4), CFrame.new(0, 0, -2.2), k.grip)
+	k.piece("Shaft", Vector3.new(0.34, 0.34, 2.8), CFrame.new(0, 0, -1.9), k.grip)
 	k.piece("Pommel", Vector3.new(0.55, 0.55, 0.45), CFrame.new(0, 0, 0.75), k.accent)
-	local head = k.piece("Head", Vector3.new(2.8, 1.5, 1.5), CFrame.new(0, 0, -4.4), k.metal, k.shine)
-	k.piece("FaceL", Vector3.new(0.3, 1.7, 1.7), CFrame.new(-1.45, 0, -4.4), k.accent)
-	k.piece("FaceR", Vector3.new(0.3, 1.7, 1.7), CFrame.new(1.45, 0, -4.4), k.accent)
-	k.piece("Band", Vector3.new(2.9, 0.3, 1.6), CFrame.new(0, 0, -4.4), k.glow, Enum.Material.Neon)
+	local head = k.piece("Head", Vector3.new(2.4, 1.4, 1.4), CFrame.new(0, 0, -3.8), k.metal, k.shine)
+	k.piece("FaceL", Vector3.new(0.3, 1.6, 1.6), CFrame.new(-1.25, 0, -3.8), k.accent)
+	k.piece("FaceR", Vector3.new(0.3, 1.6, 1.6), CFrame.new(1.25, 0, -3.8), k.accent)
+	k.piece("Band", Vector3.new(2.5, 0.3, 1.5), CFrame.new(0, 0, -3.8), k.glow, Enum.Material.Neon)
 	return k.model, k.handle, k.trails(head, Vector3.new(0, 0, 0.8), Vector3.new(0, 0, -0.8), Vector3.new(0, 0, 2), Vector3.new(0, 0, -1)), head
 end
 -- a dagger: a short blade (one in each hand: see OFFHAND)
@@ -630,10 +619,7 @@ function BUILDERS.Katana(def, golden)
 	return k.model, k.handle, k.trails(blade, Vector3.new(0, 0, 1.2), Vector3.new(0, 0, -2.1), Vector3.new(0, 0, 1.8), Vector3.new(0, 0, -2.6)), blade
 end
 -- the types that hold a second one in the left hand, and how it's held
-WeaponFX.OFFHAND = {
-	Fists = { -90, 0 },
-	Daggers = { -80, 0 },
-}
+WeaponFX.OFFHAND = { Fists = { -90, 0 }, Daggers = { -40, 0 } }
 
 -- the 3D weapons (Tools/Weapons: pixel sprites made 3D in Blender, imported
 -- into ReplicatedStorage with Studio's 3D Importer): how long each is (studs,

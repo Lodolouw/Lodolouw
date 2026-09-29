@@ -41,7 +41,11 @@ for line in open(src):
     if not p:
         continue
     if p[0] == "TYPE":
-        types.append((p[1], " ".join(p[2:]), [], []))
+        types.append((p[1], " ".join(p[2:]), [], [], [], [None]))
+    elif p[0] == "OFFGRIP":
+        types[-1][5][0] = cf([float(v) for v in p[1:13]])
+    elif p[0] == "OFFPIECE":
+        types[-1][4].append((p[1], tuple(float(v) for v in p[2:5]), tuple(int(v) for v in p[5:8]), cf([float(v) for v in p[8:20]])))
     elif p[0] == "PIECE":
         types[-1][2].append((p[1], tuple(float(v) for v in p[2:5]), tuple(int(v) for v in p[5:8]), cf([float(v) for v in p[8:20]])))
     elif p[0] == "POSE":
@@ -51,7 +55,7 @@ for line in open(src):
             bits = chunk.split()
             joints[bits[0]] = cf([float(v) for v in bits[1:13]])
         types[-1][3].append((parts[0], joints, parts[-1] == "smear"))
-pieces = []
+pieces, offPieces, offGrip = [], [], [None]
 SC0 = cf([1, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
 SC1 = cf([-0.5, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0])
 RC = cf([0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0])
@@ -80,7 +84,12 @@ def character(j):
     polys = []
     torso = RC @ j["Root"] @ inv(RC)  # the whole body, turned and leaned by the root joint
     polys += box(torso, (2, 2, 1), SHIRT)
-    polys += box(torso @ LC0 @ j["LS"] @ inv(LC1), (1, 2, 1), SKIN)
+    LA = torso @ LC0 @ j["LS"] @ inv(LC1)
+    polys += box(LA, (1, 2, 1), SKIN)
+    if offGrip[0] is not None:
+        oh = LA @ offGrip[0]
+        for name, size, color, off in offPieces:
+            polys += box(oh @ off, size, color)
     polys += box(torso @ RHC0 @ j["RH"] @ inv(RHC1), (1, 2, 1), PANTS)
     polys += box(torso @ LHC0 @ j["LH"] @ inv(LHC1), (1, 2, 1), PANTS)
     A = torso @ SC0 @ j["RS"] @ inv(SC1)
@@ -113,6 +122,8 @@ def render(polys, yaw, pitch, size, label, trailPts=None):
     if trailPts and len(trailPts) > 1:
         pts = [project(V, p, size, scale)[0] for p in trailPts]
         d.line(pts, fill=(255, 255, 255, 170), width=6)
+    fl = [project(V, np.array([x, -3.0, z]), size, scale)[0] for x, z in ((-6, 0), (6, 0))] if abs(yaw) < 45 else [project(V, np.array([0, -3.0, z]), size, scale)[0] for z in (-6, 6)]
+    d.line(fl, fill=(90, 100, 140, 255), width=2)
     items = []
     for pts, col in polys:
         Q = [V @ p for p in pts]
@@ -132,19 +143,21 @@ def render(polys, yaw, pitch, size, label, trailPts=None):
 
 
 
-size = 230
-cols = max(1 + 2 * sum(1 for l, _, _ in poses if l.endswith("CUT")) for _, _, _, poses in types)
-cellH = size + 44
-sheet = Image.new("RGB", (cols * size + (cols + 1) * 8, 110 + len(types) * (cellH + 40)), (24, 20, 37))
+size = 200
+cols = max(1 + 2 * sum(1 for l, _, _ in poses if l.endswith("CUT")) for _, _, _, poses, _, _ in types)
+cellH = 2 * size + 6 + 26
+sheet = Image.new("RGB", (cols * size + (cols + 1) * 8, 110 + len(types) * (cellH + 44)), (24, 20, 37))
 d = ImageDraw.Draw(sheet)
 d.text((sheet.width // 2, 36), "THE WEAPON TYPES  -  STANCE AND EVERY SWING", font=ImageFont.truetype(BOLD, 38), fill=(254, 231, 97), anchor="mm")
-d.text((sheet.width // 2, 76), "drawn from the real code: gauntlets, hammer, daggers, scythe and katana (blocky stand-in models)",
+d.text((sheet.width // 2, 76), "top: from the front (their right hand on your left)   bottom: from their right side (facing right)",
        font=ImageFont.truetype(BOLD, 18), fill=(192, 203, 220), anchor="mm")
-lf = ImageFont.truetype(BOLD, 16)
+lf = ImageFont.truetype(BOLD, 15)
 tf = ImageFont.truetype(BOLD, 24)
-for r, (kind, name, pcs, poses) in enumerate(types):
+for r, (kind, name, pcs, poses, opcs, og) in enumerate(types):
     pieces[:] = pcs
-    y0 = 110 + r * (cellH + 40)
+    offPieces[:] = opcs
+    offGrip[0] = og[0]
+    y0 = 110 + r * (cellH + 44)
     d.text((12, y0 + 4), kind.upper() + "  (" + name + ")", font=tf, fill=(255, 255, 255))
     c = 0
     trail = []
@@ -158,7 +171,8 @@ for r, (kind, name, pcs, poses) in enumerate(types):
             trail.append(tipAt)
         x = 8 + c * (size + 8)
         d.text((x + size // 2, y0 + 44), label.replace("SWING ", "#"), font=lf, fill=(200, 205, 225), anchor="mm")
-        sheet.paste(render(polys, -30, 10, size, "", trail[:]), (x, y0 + 56))
+        sheet.paste(render(polys, 0, 8, size, "", trail[:]), (x, y0 + 56))
+        sheet.paste(render(polys, 90, 4, size, "", trail[:]), (x, y0 + 56 + size + 6))
         c += 1
 sheet.save(out)
 print("wrote", out)

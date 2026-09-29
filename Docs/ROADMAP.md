@@ -20,10 +20,10 @@ sound effects.
 
 ## 1. Owning weapons
 
-- [ ] Weapons you own are **saved** (the list, which one is equipped, and each one's mastery).
-- [ ] The weapon list in Config: name, type, rarity, colours and ability for each.
-- [ ] The other **weapon types' movesets**: Hammer, Daggers, Scythe and Katana (Fists and Sword already work).
-- [ ] The **ability building blocks** (damage up, lifesteal, shield, dash-strike, spin, slam...) so abilities from Common to Epic are quick to make.
+- [x] Weapons you own are **saved** (the list, which one is equipped, and each one's mastery), with a Weapons panel (press B) to equip them.
+- [x] The weapon list in Config: all 30 launch weapons (name, type, rarity, colours and ability for each).
+- [x] The other **weapon types' movesets**: gauntlets, Hammer, Daggers, Scythe and Katana (drawn in code, with blocky stand-in models; preview `Docs/weapon_types.png`).
+- [x] The **ability building blocks** (damage up, lifesteal, shield, guard, stacks, marks, speed, reach, bursts...) with their glow on screen.
 
 ## 2. Arcade Tokens
 
@@ -52,7 +52,7 @@ sound effects.
 `Tools/Weapons`), its moveset (shared by its type), its ability, sounds, and
 its card picture for the Arcade menu.
 
-- [ ] **The 4 type movesets still missing:** Hammer, Daggers, Scythe, Katana (idle + 3-hit combo each; the katana's quick-draw). Fists and Sword are in.
+- [x] **The type movesets:** gauntlets, Hammer, Daggers, Scythe, Katana (drawn in code). Still to come: the katana's quick-draw, and uploaded animations to replace the code-drawn ones if you want them smoother.
 - [ ] **The 5 shared Epic moves:** dash-strike, spin, ground slam, leap strike, uppercut (re-coloured per pack).
 - [ ] **The Open Cloud uploader:** one command uploads every model and animation and writes all the IDs into the game - no copying 68 IDs by hand. (You'll need to make an API key once.)
 - [ ] **Starters:** Training Wraps (Fists) ✅ · Iron Sword ✅ (make it the free early-quest weapon)

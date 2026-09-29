@@ -1,6 +1,11 @@
 --!nocheck
 -- Headless test of the WEAPON TYPES in WeaponFX (gauntlets, hammer, daggers,
--- scythe, katana): see the checks below.
+-- scythe, katana): each one in hand (two for gauntlets and daggers), its own
+-- stance, and every swing of its string - an arm really swings, the smear
+-- shows through the cut, the feet stay down, and it settles back.
+--   luau test_weapontypes.luau            every check
+--   luau test_weapontypes.luau -a trace   which way the weapon points, every frame of every swing
+--   luau test_weapontypes.luau -a poses   the blocks and poses for render_weapontypes.py
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -188,6 +193,39 @@ for id, def in pairs(W.List) do
 end
 me:SetAttribute("SpireFloor", 2)
 
+-- -a trace: the weapon's direction (in the character's own space) every
+-- frame through each swing: which way it points (degrees round from
+-- straight ahead, + = to your left) and how high (degrees up)
+if MODE == "trace" then
+	local function body()
+		return root.C0 * root.Transform * root.C1:Inverse()
+	end
+	for _, kind in ipairs(ORDER) do
+		me:SetAttribute("Weapon", pick[kind])
+		step(1.5)
+		local h = WeaponFX._held[me]
+		for n, s in ipairs(W.Types[kind].Swings) do
+			local m = WeaponFX.swingMoments(s)
+			local line = {}
+			WeaponFX.swing(me, n)
+			local start = t
+			step(s.Lock + 0.1, function()
+				local arm = body() * shoulder.C0 * shoulder.Transform * shoulder.C1:Inverse()
+				local g = arm * h.weld.C0
+				local d = g:VectorToWorldSpace(Vector3.new(0, 0, -1))
+				local az = math.deg(math.atan2(-d.X, -d.Z))
+				local el = math.deg(math.asin(math.clamp(d.Y, -1, 1)))
+				local tt = t - start
+				local mark = (math.abs(tt - m.contact) < 1 / 120) and "*" or ""
+				table.insert(line, string.format("%s%.0f/%.0f", mark, az, el))
+			end)
+			print(("TRACE %s %d contact@%.2fs: %s"):format(kind, n, m.contact, table.concat(line, " ")))
+		end
+		step(WeaponFX.SETTLE + 0.4)
+	end
+	return
+end
+
 -- -a poses: prints each type's blocks and poses for render_weapontypes.py
 if MODE == "poses" then
 	for _, kind in ipairs(ORDER) do
@@ -203,6 +241,22 @@ if MODE == "poses" then
 					local o = (p == h.handle) and CFrame.new() or w.C0
 					print(string.format("PIECE %s %.2f %.2f %.2f %d %d %d %s", p.Name, p.Size.X, p.Size.Y, p.Size.Z,
 						math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5), table.concat({ o:GetComponents() }, " ")))
+				end
+			end
+		end
+		-- the second one in the left hand: its grip on the left arm, and its blocks
+		for _, p in ipairs(h.model:GetChildren()) do
+			local og = p:IsA("Part") and p:FindFirstChild("OffGrip")
+			if og then
+				print("OFFGRIP " .. table.concat({ og.C0:GetComponents() }, " "))
+				for _, q in ipairs(h.model:GetChildren()) do
+					local w = q:IsA("Part") and q:FindFirstChildOfClass("Weld")
+					if q == p or (w and w.Part0 == p) then
+						local c = q.Color
+						local o = (q == p) and CFrame.new() or w.C0
+						print(string.format("OFFPIECE %s %.2f %.2f %.2f %d %d %d %s", q.Name, q.Size.X, q.Size.Y, q.Size.Z,
+							math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5), table.concat({ o:GetComponents() }, " ")))
+					end
 				end
 			end
 		end
