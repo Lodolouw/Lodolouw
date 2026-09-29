@@ -161,6 +161,8 @@ I decided to make the game **simple, like Blox Fruits**: few things to understan
 
 ### Weapon types and abilities (decided)
 
+**The full weapon list (draft, updated): `Docs/weapons_plan.md`** - 2 starters, 10 packs x 6 (one of each type, Common/Rare/Epic/Legendary/Mythic/Secret, Uncommon dropped), 16 event weapons; abilities stay modest (shared building blocks) until Legendary, big from Mythic; lifesteal instead of heals; launch with 4 packs; an Open Cloud uploader planned so animation IDs aren't copied by hand. Where it differs from the notes below, the plan file wins.
+
 - **6 weapon types, all melee** (nothing reaches past sword length, so no boss can be cheesed from safety - that's why spears and staffs were cut):
   1. **Fists / Gauntlets** - fast, short reach (the starter).
   2. **Sword** - balanced, easy.
