@@ -3000,6 +3000,69 @@ local function buildRiver(parent)
 	-- top of its arch now - ArcadeBuilder)
 end
 
+-- The trading spot (east of the plaza, between the Quest Board and the
+-- stream): two picnic benches with checked cloths and a signpost. Each
+-- bench is a Model tagged "TradeBench" (the trading system meets there).
+local TRADE_BENCHES = { { 70, 23, 12 }, { 73, 43, -9 } } -- x, z, turn (degrees)
+local function buildPicnic(parent)
+	local m = folder(parent, "TradingSpot")
+	local WOOD_L, WOOD_D = RGB(176, 124, 78), RGB(120, 80, 48)
+	local CLOTH_A, CLOTH_B = RGB(228, 59, 68), RGB(255, 255, 255)
+	local deco = { CanCollide = false, CastShadow = false }
+	for i, b in ipairs(TRADE_BENCHES) do
+		local bench = Instance.new("Model")
+		bench.Name = "PicnicBench" .. i
+		local o = CFrame.new(b[1], 0, b[2]) * CFrame.Angles(0, math.rad(b[3]), 0)
+		local function at(x, y, z)
+			return o * CFrame.new(x, y, z)
+		end
+		-- the table top (planks), and a red and white checked cloth over it
+		for k = -2, 2 do
+			part(bench, "TablePlank", V3(9, 0.5, 0.78), at(0, 3.25, k * 0.8), (k % 2 == 0) and WOOD_L or RGB(164, 114, 70), Mat.WoodPlanks)
+		end
+		for cx = 0, 5 do
+			for cz = 0, 2 do
+				part(bench, "Cloth", V3(1, 0.06, 1), at(-2.5 + cx, 3.53, -1 + cz), ((cx + cz) % 2 == 0) and CLOTH_A or CLOTH_B, Mat.Fabric, deco)
+			end
+		end
+		-- the seats either side
+		for _, z in ipairs({ -2.9, 2.9 }) do
+			part(bench, "Seat", V3(9, 0.45, 1.3), at(0, 1.9, z), WOOD_L, Mat.WoodPlanks)
+		end
+		-- A-frame legs at both ends, and a bar joining them under the seats
+		for _, x in ipairs({ -3.6, 3.6 }) do
+			for _, sz in ipairs({ -1, 1 }) do
+				part(bench, "Leg", V3(0.5, 4.1, 0.5), at(x, 1.7, sz * 1.9) * CFrame.Angles(math.rad(sz * 38), 0, 0), WOOD_D, Mat.Wood)
+			end
+			part(bench, "SeatBar", V3(0.5, 0.4, 7), at(x, 1.55, 0), WOOD_D, Mat.Wood)
+		end
+		bench:SetAttribute("Bench", i)
+		CollectionService:AddTag(bench, "TradeBench")
+		bench.Parent = m
+	end
+	-- the signpost between them
+	local sx, sz = 80, 33
+	part(m, "SignPost", V3(0.6, 7, 0.6), CFrame.new(sx, 3.5, sz), WOOD_D, Mat.Wood)
+	local board = part(m, "SignBoard", V3(5, 1.6, 0.35), CFrame.new(sx, 6.2, sz) * CFrame.Angles(0, math.rad(90), 0), WOOD_L, Mat.WoodPlanks) -- (its words face the plaza)
+	local g = Instance.new("SurfaceGui")
+	g.Name = "Gui"
+	g.Face = Enum.NormalId.Front
+	g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	g.PixelsPerStud = 40
+	g.Parent = board
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Size = UDim2.fromScale(1, 1)
+	l.Font = Enum.Font.FredokaOne
+	l.Text = "TRADING"
+	l.TextScaled = true
+	l.TextColor3 = RGB(58, 34, 20)
+	l.Parent = g
+	for _, x in ipairs({ -2.3, 2.3 }) do
+		part(m, "SignNail", V3(0.3, 0.3, 0.1), board.CFrame * CFrame.new(x, 0, -0.2), RGB(60, 60, 70), Mat.Metal, deco)
+	end
+end
+
 -- The farm (south-east of the plaza): built chunky and blocky like the rest
 -- of the castle, in the game's pixel palette. A half-timbered cottage with a
 -- stepped tile roof and a smoking chimney, long rows of crops in tilled
@@ -4315,6 +4378,7 @@ local function buildCastle(parent)
 	-- (the training field is gone: the Colosseum stands there now)
 	buildRiver(m)
 	buildFarm(m)
+	buildPicnic(m)
 end
 
 ----------------------------------------------------------------------
