@@ -35,7 +35,7 @@
 	                                        returns face, holder
 	  WindowKit.shine(frame, strength)      light stripes across a coloured face
 	  WindowKit.chip(parent, text, color, props)  a little pixel-font tag
-	  WindowKit.badge(parent) / setBadge(b, v)    the red count in a corner
+	  WindowKit.badge(parent) / setBadge(b, v)    the gold count in a corner (99+ at most)
 	  WindowKit.big(parent, props)          big white words with an ink edge
 	  WindowKit.x(parent, props)            the red close button
 	  WindowKit.tab(parent, key, label, props)    a menu's side tab; :on(bool)
@@ -414,7 +414,7 @@ function K.shine(frame, strength)
 	return f
 end
 
--- the red count in a button's corner (hidden until setBadge gives it something)
+-- the gold count in a button's corner (hidden until setBadge gives it something)
 function K.badge(parent)
 	local b = new("TextLabel", {
 		Name = "Badge",
@@ -422,12 +422,12 @@ function K.badge(parent)
 		Position = UDim2.new(1, -6, 0, 6),
 		Size = UDim2.fromOffset(34, 34),
 		AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundColor3 = C.Red,
+		BackgroundColor3 = C.Yellow, -- (a warm gold with dark words: red looked alarming)
 		Font = K.FONT,
 		Text = "",
-		TextColor3 = C.White,
-		TextSize = 22,
-		TextStrokeTransparency = 0.4,
+		TextColor3 = C.Ink,
+		TextSize = 21,
+		TextStrokeTransparency = 1,
 		Visible = false,
 		ZIndex = (parent.ZIndex or 1) + 6,
 	}, parent)
@@ -440,7 +440,7 @@ function K.setBadge(b, v)
 	if v == nil or v == false or v == 0 or v == "" then
 		b.Visible = false
 	else
-		b.Text = tostring(v)
+		b.Text = (type(v) == "number" and v > 99) and "99+" or tostring(v)
 		b.Visible = true
 	end
 end
