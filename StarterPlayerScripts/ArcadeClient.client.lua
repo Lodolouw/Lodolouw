@@ -563,7 +563,7 @@ end
 UI.dTitle = WK.label(UI.banner, { Name = "MachineName", Text = "", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 30, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 104), Size = UDim2.fromOffset(620, 32), ZIndex = 8 })
 UI.dSub = WK.label(UI.banner, { Name = "Pack", Text = "", TextScaled = false, TextSize = 21, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 138), Size = UDim2.fromOffset(620, 24), ZIndex = 8 })
 UI.firstLabel = WK.label(UI.detail, { Name = "FirstSpin", Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Font = WK.TITLE_FONT, TextWrapped = true, BackgroundTransparency = 0, BackgroundColor3 = YELLOW,
-	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, 14), Size = UDim2.fromOffset(330, 50), Rotation = 3, ZIndex = 9, Visible = false })
+	AnchorPoint = Vector2.new(0, 0), Position = UDim2.fromOffset(20, 16), Size = UDim2.fromOffset(330, 50), Rotation = -3, ZIndex = 9, Visible = false }) -- (on the banner's dark left side: never over the boss)
 WK.outline(UI.firstLabel, INK, 3)
 new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, UI.firstLabel)
 

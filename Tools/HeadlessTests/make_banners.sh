@@ -44,9 +44,9 @@ banner Speedway revvington rev --orbit -15 --dist 19 --height 1 --look-dy 0.5 --
 # Jungle: Kongo going bananas (round 2: red face, pounding his chest)
 banner Jungle kongo mad --dist 19 --height -7 --look-dy 4 --place 0.66,0.42 --fov 38 --burst 0,-0.05 \
 	--tint 255,110,70 --shade 30,20,60 &
-# Canvas: Scribble running at you
-banner Canvas scribble run --orbit -30 --dist 13 --height -3 --look-dy 6 --place 0.66,0.42 --fov 46 --strength 0.8 \
-	--tint 80,170,255 --shade 20,20,80 &
+# Canvas: Scribble in round 3, glitching into every colour (a deeper sky than the paper-white one, or it washes out)
+banner Canvas scribble rainbow --orbit -25 --dist 13 --height -3 --look-dy 4 --place 0.66,0.48 --fov 46 \
+	--sky '30,90,200|150,200,245' --tint 255,190,80 --shade 50,20,90 &
 wait
 # Cactus: the Brute's RAGE! - arms up, crown on
 banner Cactus tuber roar --orbit -25 --dist 32 --height -8 --look-dy 6 --place 0.66,0.52 --fov 42 \
@@ -61,7 +61,7 @@ banner Neon gridlock roar --orbit 10 --dist 20 --height -4 --place 0.66,0.5 --fo
 banner Garden petalina wicked --orbit -10 --dist 28 --height -8 --look-dy 3 --place 0.66,0.45 --fov 40 \
 	--tint 255,70,90 --shade 40,20,50 &
 # Throne: King Gavelgrunt, round 3 - no crown, no mercy, the gavel up
-banner Throne gavelgrunt rage --orbit -10 --dist 54 --height -14 --look-dy 5 --place 0.66,0.52 --fov 42 --radius 20 \
+banner Throne gavelgrunt rage --orbit -25 --dist 64 --height -6 --look-dy 10 --place 0.64,0.52 --fov 44 --radius 20 \
 	--tint 255,190,70 --shade 40,20,60 &
 wait
 
