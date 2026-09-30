@@ -10,9 +10,10 @@
 	    stays closed until you walk out and back in), or press the ARCADE
 	    button, or your token counter. A bright arcade cabinet: the marquee
 	    (ARCADE in lights, bulbs chasing round it, your tokens, + GET TOKENS,
-	    the X); every machine as a big button in a row (its Secret prize on
-	    it, a padlock while it's shut); and the picked machine's screen - its
-	    six prizes on a shelf (big pictures, the real chance of each in big
+	    the X); then every pack, one under another, as a wide banner of its
+	    boss mid an epic move (its name, boss and price on it; dimmed with
+	    a padlock while it's shut). Tap a banner and its spin menu drops
+	    down under it (and it scrolls to the top): its six prizes on a shelf (big pictures, the real chance of each in big
 	    numbers, OWNED stamps, the rare ones glowing, all bobbing), the
 	    JACKPOT METER ("a Legendary or better in 12 spins"), your first
 	    spin's promise, and two huge buttons, SPIN x1 and SPIN x10 (a
@@ -480,7 +481,8 @@ UI.CAB_TOP, UI.CAB_BOTTOM = RGB(84, 40, 140), RGB(30, 16, 56) -- the cabinet
 UI.SCREEN = RGB(22, 14, 42) -- the machine's screen
 UI.BULB_OFF = RGB(120, 40, 110)
 UI.SOFT = RGB(200, 190, 240) -- quiet words on the dark screen
-UI.W_W, UI.W_H = 1060, 888
+UI.W_W, UI.W_H = 1060, 868
+UI.BANNER_H, UI.DETAIL_H, UI.SOON_H, UI.GAP = 150, 398, 96, 12 -- a pack's banner; the spin menu under it (a coming one's)
 
 -- (the window holds the cabinet and its hard shadow, so both pop together)
 local win = new("Frame", { Name = "Window", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(UI.W_W, UI.W_H), Visible = false, ZIndex = 2 }, scaler)
@@ -520,61 +522,42 @@ WK.outline(UI.tokenPill, INK, 3)
 tokenIcon(UI.tokenPill, 46, { Position = UDim2.fromOffset(6, 6), ZIndex = 6 })
 UI.tokenText = WK.label(UI.tokenPill, { Name = "Count", Text = "0", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 26, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(60, 10), Size = UDim2.new(1, -68, 0, 38), ZIndex = 6 })
 
--- the machines, in a row
+-- THE PACKS, one under another: each a wide banner - its boss mid an epic
+-- move (a picture filmed from the game: Tools/HeadlessTests/make_banners.sh,
+-- uploaded as "Banner_<pack>"; until then one drawn in its colours) with its
+-- name, its boss and its price. Tap one and its spin menu drops down under it.
 local list = new("ScrollingFrame", {
 	Name = "Machines",
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	Position = UDim2.fromOffset(24, 110),
-	Size = UDim2.new(1, -48, 0, 132),
+	Size = UDim2.new(1, -48, 1, -110 - 58),
 	CanvasSize = UDim2.new(),
-	AutomaticCanvasSize = Enum.AutomaticSize.X,
-	ScrollingDirection = Enum.ScrollingDirection.X,
-	ScrollBarThickness = 6,
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	ScrollBarThickness = 8,
 	ScrollBarImageColor3 = YELLOW,
 	ZIndex = 3,
 }, UI.cab)
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder }, list)
-new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) }, list)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, Padding = UDim.new(0, UI.GAP), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 10), PaddingRight = UDim.new(0, 4) }, list)
 
--- the picked machine's screen
-UI.detail = new("Frame", { Name = "Detail", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Position = UDim2.fromOffset(24, 252), Size = UDim2.new(1, -48, 0, UI.W_H - 252 - 58), ZIndex = 3 }, UI.cab)
+-- the picked pack's spin menu (it sits in the list, right under its banner)
+UI.detail = new("Frame", { Name = "Detail", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Size = UDim2.new(1, -14, 0, UI.DETAIL_H), ClipsDescendants = true, LayoutOrder = 3, ZIndex = 4 }, list)
 UI.detailEdge = WK.outline(UI.detail, INK, 4)
--- THE BANNER across the top of the screen: the machine's boss mid an epic
--- move (a picture filmed from the game: Tools/HeadlessTests/make_banners.sh,
--- uploaded as "Banner_<pack>"); until it's uploaded, one drawn in its colours
-UI.banner = new("Frame", { Name = "Banner", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 176), ClipsDescendants = true, ZIndex = 4 }, UI.detail)
-UI.bannerGrad = new("UIGradient", { Rotation = 0, Color = ColorSequence.new(GREY, INK) }, UI.banner)
-UI.bannerStripes = {}
-for k = 0, 7 do
-	local st = new("Frame", { Name = "Stripe", BackgroundColor3 = WHITE, BackgroundTransparency = 0.88, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset(420 + k * 90, 88), Size = UDim2.fromOffset(34, 420), Rotation = 24, ZIndex = 4 }, UI.banner)
-	table.insert(UI.bannerStripes, st)
-end
-UI.bannerBoss = WK.label(UI.banner, { Name = "BossWord", Text = "", Font = WK.TITLE_FONT, TextColor3 = WHITE, TextTransparency = 0.78, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(560, 110), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
-UI.bannerPic = new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Crop, ZIndex = 5, Visible = false }, UI.banner)
-UI.bannerZoom = new("UIScale", {}, UI.bannerPic) -- (a slow push in, like a film)
--- (a dark fade on the left, so the words read over any picture)
-do
-	local fade = new("Frame", { Name = "Fade", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Size = UDim2.new(0.6, 0, 1, 0), ZIndex = 6 }, UI.banner)
-	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) }) }, fade)
-	new("Frame", { Name = "Edge", BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -4), Size = UDim2.new(1, 0, 0, 4), ZIndex = 7 }, UI.banner)
-end
-UI.dTitle = WK.label(UI.banner, { Name = "MachineName", Text = "", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 30, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 104), Size = UDim2.fromOffset(620, 32), ZIndex = 8 })
-UI.dSub = WK.label(UI.banner, { Name = "Pack", Text = "", TextScaled = false, TextSize = 21, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 138), Size = UDim2.fromOffset(620, 24), ZIndex = 8 })
 UI.firstLabel = WK.label(UI.detail, { Name = "FirstSpin", Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Font = WK.TITLE_FONT, TextWrapped = true, BackgroundTransparency = 0, BackgroundColor3 = YELLOW,
-	AnchorPoint = Vector2.new(0, 0), Position = UDim2.fromOffset(20, 16), Size = UDim2.fromOffset(330, 50), Rotation = -3, ZIndex = 9, Visible = false }) -- (on the banner's dark left side: never over the boss)
+	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, 220), Size = UDim2.fromOffset(330, 36), Rotation = 2, ZIndex = 9, Visible = false })
 WK.outline(UI.firstLabel, INK, 3)
-new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, UI.firstLabel)
+new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, UI.firstLabel)
 
 -- the prize shelf: six UI.tiles
 UI.TILE_W, UI.TILE_H, UI.TILE_GAP = 152, 204, 12
 UI.tiles = {}
 do
-	local left = math.floor(((UI.W_W - 48) - (6 * UI.TILE_W + 5 * UI.TILE_GAP)) / 2)
+	local left = math.floor(((UI.W_W - 48 - 14) - (6 * UI.TILE_W + 5 * UI.TILE_GAP)) / 2)
 	for i = 1, 6 do
 		-- (each tile's middle: they pop in from there)
-		local home = UDim2.fromOffset(left + (i - 1) * (UI.TILE_W + UI.TILE_GAP) + UI.TILE_W / 2, 84 + 108 + UI.TILE_H / 2)
+		local home = UDim2.fromOffset(left + (i - 1) * (UI.TILE_W + UI.TILE_GAP) + UI.TILE_W / 2, 16 + UI.TILE_H / 2)
 		local glow = new("Frame", { Name = "Glow", BackgroundColor3 = GOLD, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = home, Size = UDim2.fromOffset(UI.TILE_W + 18, UI.TILE_H + 18), ZIndex = 4, Visible = false }, UI.detail)
 		corner(glow, 14)
 		local glowScale = new("UIScale", {}, glow)
@@ -607,15 +590,15 @@ do
 end
 
 -- the jackpot meter (the pity)
-WK.label(UI.detail, { Name = "MeterTitle", Text = "JACKPOT METER", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 410), Size = UDim2.fromOffset(200, 20), ZIndex = 5 })
-UI.pityLabel = WK.label(UI.detail, { Name = "Pity", Text = "", TextScaled = false, TextSize = 19, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(212, 407), Size = UDim2.new(1, -232, 0, 24), ZIndex = 5 })
-UI.pityBar = WK.progress(UI.detail, { Name = "PityBar", Color = GOLD, Position = UDim2.fromOffset(20, 434), Size = UDim2.new(1, -76, 0, 24), ZIndex = 5 })
+WK.label(UI.detail, { Name = "MeterTitle", Text = "JACKPOT METER", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 232), Size = UDim2.fromOffset(200, 20), ZIndex = 5 })
+UI.pityLabel = WK.label(UI.detail, { Name = "Pity", Text = "", TextScaled = false, TextSize = 19, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(212, 229), Size = UDim2.fromOffset(440, 24), ZIndex = 5 })
+UI.pityBar = WK.progress(UI.detail, { Name = "PityBar", Color = GOLD, Position = UDim2.fromOffset(20, 256), Size = UDim2.new(1, -76, 0, 24), ZIndex = 5 })
 UI.pityBack = UI.pityBar.frame
-UI.pityStar = WK.label(UI.detail, { Name = "Star", Text = "★", TextColor3 = YELLOW, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -36, 0, 446), Size = UDim2.fromOffset(44, 44), ZIndex = 6 })
+UI.pityStar = WK.label(UI.detail, { Name = "Star", Text = "★", TextColor3 = YELLOW, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -36, 0, 268), Size = UDim2.fromOffset(44, 44), ZIndex = 6 })
 
 -- the two big buttons (or why you can't spin)
-local spin1 = WK.button(UI.detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(20, 480), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
-local spin10 = WK.button(UI.detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.new(0.5, 6, 0, 480), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
+local spin1 = WK.button(UI.detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(20, 298), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
+local spin10 = WK.button(UI.detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.new(0.5, 6, 0, 298), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
 UI.pulse1, UI.pulse10 = new("UIScale", {}, spin1), new("UIScale", {}, spin10)
 -- (ten cost less than ten ones: the sticker says how many are free)
 UI.freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 24, 0, -18), Size = UDim2.fromOffset(122, 28), Rotation = 8,
@@ -625,7 +608,7 @@ stroke(UI.freeTag, INK, 2.5)
 UI.pressMe = text(spin1, { Name = "PressMe", Text = "PRESS ME!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, -14, 0, 4), Size = UDim2.fromOffset(150, 30), Rotation = -8,
 	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 8, Visible = false })
 stroke(UI.pressMe, INK, 2.5)
-UI.lockLabel = WK.label(UI.detail, { Name = "Locked", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, BackgroundTransparency = 0, BackgroundColor3 = RGB(60, 44, 96), Position = UDim2.fromOffset(20, 480), Size = UDim2.new(1, -40, 0, 84), ZIndex = 6, Visible = false })
+UI.lockLabel = WK.label(UI.detail, { Name = "Locked", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, BackgroundTransparency = 0, BackgroundColor3 = RGB(60, 44, 96), Position = UDim2.fromOffset(20, 298), Size = UDim2.new(1, -40, 0, 84), ZIndex = 6, Visible = false })
 WK.outline(UI.lockLabel, INK, 3)
 new("UIPadding", { PaddingTop = UDim.new(0.24, 0), PaddingBottom = UDim.new(0.24, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, UI.lockLabel)
 
@@ -642,7 +625,7 @@ new("UITextSizeConstraint", { MaxTextSize = 18 }, UI.footer)
 UI.message = WK.label(win, { Name = "Message", Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -47), Size = UDim2.new(1, -48, 0, 30), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 6 })
 
 local selected = MACHINES[1] and MACHINES[1].id or nil
-UI.cards = {} -- [id] = the machine's button in the row
+UI.cards = {} -- [id] = the pack's banner in the list
 
 local function say(textValue, color)
 	UI.message.Text = textValue or ""
@@ -681,33 +664,39 @@ end
 ----------------------------------------------------------------------
 local refresh -- (below)
 
--- the prize a machine shows off on its button: its Secret
-function UI.showOff(e)
-	if e.soon then
-		return nil
-	end
-	local drops = dropsOf(e.id)
-	return drops[#drops]
-end
-
 for i, e in ipairs(MACHINES) do
-	local color = e.machine and e.machine.Light or GREY
-	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 112), LayoutOrder = i, ZIndex = 4 }, list)
-	local scale = new("UIScale", {}, card)
+	local color = e.machine and e.machine.Light or RGB(120, 108, 160)
+	local boss = e.soon and e.soon.Boss or e.pack.Boss
+	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.new(1, -14, 0, UI.BANNER_H), LayoutOrder = i * 2, ZIndex = 4 }, list)
 	new("Frame", { Name = "Shadow", BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -6, 1, -6), ZIndex = 4 }, card)
-	local face = new("Frame", { Name = "Face", BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(1, -6, 1, -6), ZIndex = 5 }, card)
+	local face = new("Frame", { Name = "Face", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.new(1, -6, 1, -6), ClipsDescendants = true, ZIndex = 5 }, card)
+	new("UIGradient", { Color = ColorSequence.new(color, color:Lerp(INK, 0.75)) }, face)
 	local edge = WK.outline(face, INK, 3)
-	WK.shine(face, 0.18)
-	local name = WK.label(face, { Name = "Name", Text = string.upper(e.id), Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, TextScaled = false, TextSize = 12, Position = UDim2.fromOffset(4, 5), Size = UDim2.new(1, -8, 0, 16), ZIndex = 7 })
-	local prize = UI.showOff(e)
-	local image = prize and iconFor(prize.def, prize.id, 150)
-	local pic = new("ImageLabel", { Name = "Pic", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 52), Size = UDim2.fromOffset(56, 56), Image = image or "",
-		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = 7, Visible = image ~= nil }, face)
-	local mark = WK.label(face, { Name = "Mark", Text = e.soon and "?" or "★", Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 52), Size = UDim2.fromOffset(44, 44), ZIndex = 7, Visible = image == nil })
-	local lock = WK.label(face, { Name = "Lock", Text = "🔒", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, 18), Size = UDim2.fromOffset(34, 34), Rotation = 10, ZIndex = 8, Visible = false })
-	local sub = WK.label(face, { Name = "Sub", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, TextWrapped = true, Position = UDim2.new(0, 4, 1, -28), Size = UDim2.new(1, -8, 0, 24), ZIndex = 7 })
-	new("UITextSizeConstraint", { MaxTextSize = 16 }, sub)
-	UI.cards[e.id] = { card = card, scale = scale, face = face, edge = edge, name = name, pic = pic, mark = mark, lock = lock, sub = sub }
+	-- (the drawn banner, until its picture is uploaded: stripes, the boss's name)
+	for k = 0, 7 do
+		new("Frame", { Name = "Stripe", BackgroundColor3 = WHITE, BackgroundTransparency = 0.88, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(420 + k * 90, UI.BANNER_H / 2), Size = UDim2.fromOffset(34, 400), Rotation = 24, ZIndex = 5 }, face)
+	end
+	WK.label(face, { Name = "BossWord", Text = string.upper(boss), Font = WK.TITLE_FONT, TextColor3 = WHITE, TextTransparency = 0.78, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(540, 90), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 })
+	local bannerId = type(AssetIds) == "table" and AssetIds.Icons and AssetIds.Icons["Banner_" .. e.id]
+	local pic = new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Crop, ZIndex = 6, Visible = bannerId ~= nil }, face)
+	if bannerId then
+		Pictures.show(pic, bannerId)
+	end
+	local zoom = new("UIScale", {}, pic) -- (the open one pushes in slowly, like a film)
+	local shut = new("Frame", { Name = "Shut", BackgroundColor3 = INK, BackgroundTransparency = 0.5, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 7, Visible = false }, face)
+	-- (a dark fade on the left, so the words read over any picture)
+	local fade = new("Frame", { Name = "Fade", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Size = UDim2.new(0.62, 0, 1, 0), ZIndex = 7 }, face)
+	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) }) }, fade)
+	WK.label(face, { Name = "MachineName", Text = string.upper(e.id) .. " MACHINE", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 28, TextColor3 = color:Lerp(WHITE, 0.35), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 20), Size = UDim2.fromOffset(600, 32), ZIndex = 8 })
+	WK.label(face, { Name = "Pack", Text = e.soon and (boss .. "'s pack - coming in an update!") or (boss .. "'s pack  -  Spire floor " .. e.pack.Floor), TextScaled = false, TextSize = 20, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 56), Size = UDim2.fromOffset(600, 24), ZIndex = 8 })
+	local chip = WK.label(face, { Name = "Price", Text = "", TextScaled = false, TextSize = 18, BackgroundTransparency = 0, BackgroundColor3 = YELLOW, Position = UDim2.fromOffset(22, 94), Size = UDim2.fromOffset(200, 32), ZIndex = 8 })
+	WK.outline(chip, INK, 2.5)
+	-- (the ones that aren't open say so, bottom right)
+	local tap = WK.label(face, { Name = "Tap", Text = "TAP TO OPEN", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 12, TextColor3 = INK, BackgroundTransparency = 0, BackgroundColor3 = WHITE,
+		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -12), Size = UDim2.fromOffset(150, 28), ZIndex = 8 })
+	WK.outline(tap, INK, 2.5)
+	UI.cards[e.id] = { card = card, face = face, edge = edge, pic = pic, zoom = zoom, shut = shut, chip = chip, tap = tap }
 	card.Activated:Connect(function()
 		if selected ~= e.id then
 			selected = e.id
@@ -717,12 +706,12 @@ for i, e in ipairs(MACHINES) do
 	end)
 	card.MouseEnter:Connect(function()
 		if selected ~= e.id then
-			tween(scale, 0.12, { Scale = 1.05 })
+			edge.Color = WHITE
 		end
 	end)
 	card.MouseLeave:Connect(function()
 		if selected ~= e.id then
-			tween(scale, 0.12, { Scale = 1 })
+			edge.Color = INK
 		end
 	end)
 end
@@ -735,53 +724,59 @@ refresh = function()
 	rollBadge.Text = tostring(t)
 	rollBadge.Visible = t > 0
 	local spins = state and state.Arcade and tonumber(state.Arcade.spins) or 0
-	for _, e in ipairs(MACHINES) do
+	local idx = 1
+	for i, e in ipairs(MACHINES) do
 		local c = UI.cards[e.id]
 		local open = not e.soon and Config.arcadeOpen(state or {}, e.id)
+		local words
 		if e.soon then
-			c.sub.Text = "Coming soon"
+			words = "COMING SOON"
+		elseif open then
+			words = e.machine.Price .. (e.machine.Price == 1 and " token a spin" or " tokens a spin")
 		else
-			c.sub.Text = open and (e.machine.Price .. (e.machine.Price == 1 and " token a spin" or " tokens a spin")) or ("Beat " .. e.pack.Boss .. " to open")
+			words = "🔒 Beat " .. e.pack.Boss .. " to open"
 		end
-		c.lock.Visible = not e.soon and not open
-		c.pic.ImageColor3 = open and WHITE or RGB(120, 110, 150)
+		c.chip.Text = words
+		c.chip.Size = UDim2.fromOffset(math.floor(#words * 10 + 28), 32)
+		c.chip.BackgroundColor3 = open and YELLOW or RGB(214, 204, 246)
+		c.shut.Visible = not open
 		local picked = e.id == selected
 		c.edge.Color = picked and YELLOW or INK
 		c.edge.Thickness = picked and 5 or 3
-		c.scale.Scale = picked and 1.08 or 1
-		c.face.BackgroundColor3 = (e.machine and e.machine.Light or GREY):Lerp(RGB(40, 30, 60), (open or picked) and 0 or 0.45)
+		c.tap.Visible = not picked
+		c.zoom.Scale = 1.02
+		if picked then
+			idx = i
+		end
 	end
 	local e = machineEntry(selected)
 	if not e then
 		return
 	end
 	local light = e.machine and e.machine.Light or GREY
-	UI.dTitle.Text = string.upper(e.id) .. " MACHINE"
-	UI.dTitle.TextColor3 = light:Lerp(WHITE, 0.35)
 	UI.detailEdge.Color = light
-	-- the banner: the boss's picture, or one drawn in the machine's colours
-	UI.bannerGrad.Color = ColorSequence.new(light, light:Lerp(INK, 0.75))
-	UI.bannerBoss.Text = string.upper(e.soon and e.soon.Boss or e.pack.Boss)
-	local bannerId = type(AssetIds) == "table" and AssetIds.Icons and AssetIds.Icons["Banner_" .. e.id]
-	UI.bannerPic.Visible = bannerId ~= nil
-	if bannerId and UI.bannerFor ~= e.id then
-		Pictures.show(UI.bannerPic, bannerId)
-		-- (it slides in when you pick another machine)
-		UI.bannerPic.Position = UDim2.fromScale(0.56, 0.5)
-		tween(UI.bannerPic, 0.35, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Quint)
-	end
-	UI.bannerFor = e.id
-	if e.soon then
-		UI.dSub.Text = e.soon.Boss .. "'s pack - coming in an update!"
-	else
-		UI.dSub.Text = e.pack.Boss .. "'s pack  -  Spire floor " .. e.pack.Floor
-	end
-	local drops = e.soon and {} or dropsOf(e.id)
+	-- the spin menu drops down under the picked banner, and that banner
+	-- scrolls up to the top
 	local popIn = UI.shownMachine ~= e.id
+	local h = e.soon and UI.SOON_H or UI.DETAIL_H
+	UI.detail.LayoutOrder = idx * 2 + 1
+	if popIn then
+		UI.detail.Size = UDim2.new(1, -14, 0, 0)
+		tween(UI.detail, 0.3, { Size = UDim2.new(1, -14, 0, h) }, Enum.EasingStyle.Quint)
+		local y = 4 + (idx - 1) * (UI.BANNER_H + UI.GAP)
+		pcall(function()
+			tween(list, 0.3, { CanvasPosition = Vector2.new(0, y) }, Enum.EasingStyle.Quint)
+		end)
+	elseif UI.detailH ~= h then
+		UI.detail.Size = UDim2.new(1, -14, 0, h)
+	end
+	UI.detailH = h
+	UI.lockLabel.Position = UDim2.fromOffset(20, e.soon and 6 or 298)
+	local drops = e.soon and {} or dropsOf(e.id)
 	UI.shownMachine = e.id
 	for i, r in ipairs(UI.tiles) do
 		local d = drops[i]
-		r.frame.Visible = true
+		r.frame.Visible = d ~= nil -- (a coming pack: no prizes to show yet)
 		r.glow.Visible = false
 		if d then
 			local col = rarityColor(d.rarity)
@@ -818,24 +813,6 @@ refresh = function()
 				r.glow.Visible = true
 				r.glow.BackgroundColor3 = secret and RGB(255, 255, 255) or col
 			end
-		else
-			-- (a machine that's coming: six mystery boxes)
-			r.frame.BackgroundColor3 = RGB(70, 58, 104)
-			r.band.BackgroundColor3 = RGB(50, 40, 80)
-			r.rarity.Text = "???"
-			r.rarity.TextColor3 = WHITE
-			r.name.Text = ""
-			r.icon.Visible = false
-			r.gem.Visible = false
-			r.spot.Visible = false
-			r.odds.Text = "?"
-			r.owned.Visible = false
-			if r.rainbow then
-				r.edge.Thickness = 3
-				rainbows[r.rainbow] = nil
-				r.rainbow:Destroy()
-				r.rainbow = nil
-			end
 		end
 		if popIn then
 			r.scale.Scale, r.glowScale.Scale = 0.4, 0.4
@@ -850,7 +827,7 @@ refresh = function()
 	UI.pityLabel.Visible = not e.soon
 	UI.pityBack.Visible = not e.soon
 	UI.pityStar.Visible = not e.soon
-	UI.pityLabel.Text = "A LEGENDARY OR BETTER IN " .. left .. (left == 1 and " SPIN" or " SPINS") .. " (at most)"
+	UI.pityLabel.Text = "LEGENDARY OR BETTER IN " .. left .. (left == 1 and " SPIN" or " SPINS") .. " OR LESS"
 	UI.pityBar:set(pity / A.Pity)
 	UI.firstLabel.Visible = not e.soon and spins == 0
 	-- what the buttons can do
@@ -908,7 +885,10 @@ do
 		UI.pulse1.Scale = UI.canSpin1 and (1 + 0.025 * math.sin(clock * 5)) or 1
 		UI.pulse10.Scale = UI.canSpin10 and (1 + 0.025 * math.sin(clock * 5 + 1.5)) or 1
 		UI.pityStar.Rotation = math.sin(clock * 3) * 12
-		UI.bannerZoom.Scale = 1.05 + 0.03 * math.sin(clock * 0.45)
+		local open = UI.cards[selected]
+		if open then
+			open.zoom.Scale = 1.05 + 0.03 * math.sin(clock * 0.45)
+		end
 		if UI.pressMe.Visible then
 			UI.pressMe.Position = UDim2.new(0, -14, 0, 4 - math.abs(math.sin(clock * 6)) * 8)
 		end

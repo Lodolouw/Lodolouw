@@ -915,9 +915,10 @@ are gone (the Shrine of Growth stays as decoration). Armour gear is gone too
 
 **The Arcade's menu** (`StarterPlayerScripts/ArcadeClient`, preview
 `Docs/arcade_menu.png`): a bright arcade cabinet - ARCADE in lights with
-chasing bulbs, every machine as a big button, the picked machine's six prizes
-as big glowing tiles with their real odds, the JACKPOT METER, and two huge
-SPIN buttons ("PRESS ME!" bounces on it before your first spin).
+chasing bulbs, then every pack as a wide banner of its boss mid an epic move
+(`Docs/arcade_banners.png`). Tap one and its spin menu drops down under it:
+the six prizes as big glowing tiles with their real odds, the JACKPOT METER,
+and two huge SPIN buttons ("PRESS ME!" bounces on it before your first spin).
 
 **Pictures load fast:** every uploaded picture is a decal, which Roblox can
 only show as a slow thumbnail - so `ServerScriptService/PictureLoader` looks up

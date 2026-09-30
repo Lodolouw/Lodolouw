@@ -410,7 +410,11 @@ check(lobbyMusic.Volume < 0.1, "and the lobby's song steps aside (" .. lobbyMusi
 ----------------------------------------------------------------------
 -- The menu
 ----------------------------------------------------------------------
-check(textOn(detail, "^SLIME MACHINE$") ~= nil, "the Slime machine is picked first")
+local function openUnder(id)
+	local c = list:FindFirstChild(id)
+	return c ~= nil and detail.LayoutOrder == c.LayoutOrder + 1
+end
+check(openUnder("Slime") and textOn(list:FindFirstChild("Slime"), "^SLIME MACHINE$") ~= nil, "the Slime pack is picked first: its spin menu is open under its banner")
 for _, r in ipairs(A.Order) do
 	local id = Config.arcadeWeapon("Slime", r)
 	check(textOn(detail, "^" .. string.upper(r) .. "$") and textOn(detail, "^" .. string.gsub(W.List[id].Name, "%-", "%%-") .. "$"), "it lists the " .. r .. " weapon")
@@ -447,7 +451,7 @@ local knightCard = list:FindFirstChild("Knight")
 local knightBoss = Config.arcadePack("Knight").Boss
 check(knightCard and textOn(knightCard, "Beat " .. knightBoss .. " to open"), "the Knight machine's card says whose boss opens it")
 press(knightCard)
-check(textOn(detail, "^KNIGHT MACHINE$") and textOn(detail, "Beat " .. knightBoss .. " %(Spire floor"), "picking it: locked, saying why")
+check(openUnder("Knight") and textOn(detail, "Beat " .. knightBoss .. " %(Spire floor"), "picking it: its menu drops down under its banner, locked, saying why")
 snap("A LOCKED MACHINE|each machine opens when you beat its boss; the odds show anyway")
 check(not spin1.Visible and not spin10.Visible, "no SPIN buttons on a locked machine")
 press(list:FindFirstChild("Cactus"))
