@@ -219,7 +219,7 @@ def brass(freq, seconds, vol=1.0):
 
 
 def timpani(freq, seconds=0.7, vol=1.0):
-    n = n_of(seconds)
+    n = len(sweep(freq, freq, seconds))  # (make_sfx's length for these seconds)
     body = sine(sweep(freq * 1.06, freq, seconds)) * env(n, 0.002, seconds, 2.0)
     body += 0.35 * sine(sweep(freq * 2.12, freq * 2, seconds)) * env(n, 0.002, seconds * 0.5, 2.5)
     head = shape(noise(n), hi=1500)[:n] * env(n, 0.001, 0.05, 3) * 0.5
@@ -228,7 +228,7 @@ def timpani(freq, seconds=0.7, vol=1.0):
 
 def boom(f0=100, f1=32, seconds=0.9, vol=1.0):
     """a deep hit (a little driven, so small speakers still feel it)"""
-    n = n_of(seconds)
+    n = len(sweep(f0, f1, seconds))  # (make_sfx's length for these seconds)
     x = sine(sweep(f0, f1, seconds)) * env(n, 0.002, seconds, 1.8)
     return np.tanh(2.2 * x) * vol
 

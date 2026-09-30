@@ -3,6 +3,7 @@
 #   * the weapon abilities' animations  (Tools\Animations\abilities\<key>.rbxmx)
 #   * the weapons' sound effects  (Tools\Sounds\out\weapons\<name>.ogg)
 #   * the Arcade's music and sounds  (Tools\Sounds\out\arcade\<name>.ogg)
+#   * floors 7-10's boss sounds  (Tools\Sounds\out\bosses\<name>.ogg)
 #   * the weapons' icons  (Tools\Weapons\out\icons\<key>.png, as decals)
 #   * the living coin and token's pictures  (Tools\Icons\out\money\<name>.png, as decals)
 # then copies ALL their ids (as ReplicatedStorage\AssetIds.lua) to your clipboard,
@@ -36,7 +37,7 @@ if (Test-Path $anims) {
         $items += [pscustomobject]@{ Kind = 'Animation'; Key = $_.BaseName; Path = $_.FullName; Type = 'model/x-rbxm' }
     }
 }
-foreach ($folder in @('Sounds\out\weapons', 'Sounds\out\arcade')) {
+foreach ($folder in @('Sounds\out\weapons', 'Sounds\out\arcade', 'Sounds\out\bosses')) {
     $sounds = Join-Path $tools $folder
     if (Test-Path $sounds) {
         Get-ChildItem $sounds -Filter *.ogg | Sort-Object Name | ForEach-Object {
@@ -96,7 +97,7 @@ if ($todo.Count -gt 0) {
         $request = @{
             assetType = $it.Kind
             displayName = $it.Key
-            description = $(if ($it.Path -like '*\money\*') { 'Money icon' } elseif ($it.Kind -eq 'Decal') { 'Weapon icon' } elseif ($it.Path -like '*\arcade\*') { 'Arcade sound' } else { 'Weapon ' + $it.Kind.ToLower() })
+            description = $(if ($it.Path -like '*\money\*') { 'Money icon' } elseif ($it.Kind -eq 'Decal') { 'Weapon icon' } elseif ($it.Path -like '*\arcade\*') { 'Arcade sound' } elseif ($it.Path -like '*\bosses\*') { 'Boss sound' } else { 'Weapon ' + $it.Kind.ToLower() })
             creationContext = @{ creator = $creator }
         } | ConvertTo-Json -Depth 5 -Compress
         $op = $null

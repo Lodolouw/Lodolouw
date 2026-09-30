@@ -10,6 +10,8 @@ API key, so nothing has to be published by hand:
 - the living coin and Arcade Token's pictures (`Tools/Icons/out/money/*.png`,
   8 each, made by `Tools/Icons/make_token_icons.py`), as decals - the screen
   flips through them (ReplicatedStorage/MoneyIcons)
+- floors 7-10's boss sound effects (`Tools/Sounds/out/bosses/*.ogg`, made by
+  `Tools/Sounds/boss_sfx.py`: Kongo, Petalina, Scribble, King Gavelgrunt)
 - the Arcade's music and sounds (`Tools/Sounds/out/arcade/*.ogg`, made by
   `Tools/Sounds/arcade_sfx.py`): its song, the spin's build-up, the
   heartbeat, the landings and the jackpots
