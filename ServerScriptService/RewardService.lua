@@ -452,9 +452,11 @@ local function saveSettings(player, d, arg)
 end
 
 ----------------------------------------------------------------------
--- THE COMMUNITY CHEST in the lobby: a red and gold chest on a stone slab,
--- glowing, with a sign over it and a walk-up box in front (Activity =
--- "Community": RewardsMenu opens its window when you walk in)
+-- THE COMMUNITY CHEST in the lobby: a big wooden treasure chest with gold
+-- corners and bands on a two-step stone dais, its rounded lid propped half
+-- open with gold light and coins glowing inside and rays rising out of it,
+-- a few coins and gems spilled in front, a sign over it and a walk-up box in
+-- front (Activity = "Community": RewardsMenu opens its window when you walk in)
 ----------------------------------------------------------------------
 function RewardService.BuildChest()
 	local old = workspace:FindFirstChild("CommunityChest")
@@ -481,36 +483,89 @@ function RewardService.BuildChest()
 		p.Parent = model
 		return p
 	end
-	local RED, RED_D = Color3.fromRGB(229, 59, 68), Color3.fromRGB(158, 32, 48)
-	local GOLD = Color3.fromRGB(255, 182, 46)
-	part("Slab", Vector3.new(9, 0.6, 7), CFrame.new(0, 0.3, 0), Color3.fromRGB(150, 150, 165), Enum.Material.Slate)
-	part("Base", Vector3.new(6, 3, 4), CFrame.new(0, 2.1, 0), RED)
-	part("Lid", Vector3.new(6.2, 1.6, 4.2), CFrame.new(0, 4.4, 0), RED_D)
-	part("Trim", Vector3.new(6.3, 0.4, 4.3), CFrame.new(0, 3.6, 0), GOLD, Enum.Material.Neon, { CanCollide = false })
-	for _, x in ipairs({ -2.3, 2.3 }) do
-		part("Band", Vector3.new(0.6, 4.7, 4.35), CFrame.new(x, 2.95, 0), GOLD, Enum.Material.SmoothPlastic, { CanCollide = false })
+	local RGB = Color3.fromRGB
+	local WOOD, WOOD_D = RGB(158, 84, 52), RGB(115, 62, 57)
+	local GOLD, GOLD_D = RGB(254, 174, 52), RGB(214, 132, 36)
+	local STONE, STONE_D = RGB(139, 155, 180), RGB(90, 105, 136)
+	local deco = { CanCollide = false, CastShadow = false }
+	-- the dais: two steps of stone with a gold edge on top
+	part("Slab", Vector3.new(11, 0.8, 9), CFrame.new(0, 0.4, 0), STONE_D, Enum.Material.Slate)
+	part("SlabTop", Vector3.new(8.6, 0.6, 6.6), CFrame.new(0, 1.1, 0), STONE, Enum.Material.Slate)
+	for _, e in ipairs({ { 0, -3.3, 8.8, 0.2 }, { 0, 3.3, 8.8, 0.2 }, { -4.3, 0, 0.2, 6.8 }, { 4.3, 0, 0.2, 6.8 } }) do
+		part("SlabEdge", Vector3.new(e[3], 0.14, e[4]), CFrame.new(e[1], 1.42, e[2]), GOLD, Enum.Material.Neon, deco)
 	end
-	local lock = part("Lock", Vector3.new(1, 1.2, 0.4), CFrame.new(0, 3.5, 2.25), GOLD, Enum.Material.Neon, { CanCollide = false })
+	-- the chest: wooden planks, gold corners, a gold band round the foot
+	local B = 1.4 -- (the chest's bottom)
+	part("Base", Vector3.new(6, 3, 4), CFrame.new(0, B + 1.5, 0), WOOD, Enum.Material.WoodPlanks)
+	for _, y in ipairs({ B + 1.0, B + 2.0 }) do
+		part("Plank", Vector3.new(6.05, 0.12, 4.05), CFrame.new(0, y, 0), WOOD_D, Enum.Material.Wood, deco)
+	end
+	part("FootBand", Vector3.new(6.3, 0.4, 4.3), CFrame.new(0, B + 0.2, 0), GOLD, Enum.Material.Metal)
+	part("RimBand", Vector3.new(6.3, 0.35, 4.3), CFrame.new(0, B + 2.85, 0), GOLD, Enum.Material.Metal)
+	for _, x in ipairs({ -2.95, 2.95 }) do
+		for _, z in ipairs({ -1.95, 1.95 }) do
+			part("Corner", Vector3.new(0.55, 3.1, 0.55), CFrame.new(x, B + 1.55, z), GOLD, Enum.Material.Metal)
+		end
+	end
+	for _, x in ipairs({ -1.6, 1.6 }) do
+		part("Band", Vector3.new(0.5, 3.05, 4.1), CFrame.new(x, B + 1.5, 0), GOLD_D, Enum.Material.Metal, deco)
+	end
+	-- the lock: a gold plate with a keyhole
+	part("LockPlate", Vector3.new(1.2, 1.4, 0.3), CFrame.new(0, B + 2.3, -2.1), GOLD, Enum.Material.Metal, deco)
+	part("Keyhole", Vector3.new(0.25, 0.5, 0.1), CFrame.new(0, B + 2.2, -2.27), RGB(24, 20, 37), Enum.Material.SmoothPlastic, deco)
+	-- inside: gold light and a heap of coins peeking over the rim
+	local glow = part("Glow", Vector3.new(5.6, 0.3, 3.6), CFrame.new(0, B + 2.8, 0), RGB(255, 220, 110), Enum.Material.Neon, deco)
+	for k, c in ipairs({ { -1.8, -0.8 }, { -0.6, 0.4 }, { 0.7, -0.5 }, { 1.9, 0.6 }, { 0.1, 1.1 }, { -1.3, 1.0 }, { 1.4, -1.1 } }) do
+		part("Coin", Vector3.new(1.0, 1.0, 1.0), CFrame.new(c[1], B + 3.0 + (k % 3) * 0.15, c[2]), GOLD, Enum.Material.Metal, { Shape = Enum.PartType.Ball, CanCollide = false, CastShadow = false })
+	end
+	-- the lid, rounded (three steps), hinged at the back and propped open
+	local hinge = CFrame.new(0, B + 3.0, 2.05) * CFrame.Angles(math.rad(32), 0, 0)
+	local function lid(name, size, y, color, material)
+		return part(name, size, hinge * CFrame.new(0, y, -2.05), color, material)
+	end
+	local lidMain = lid("Lid", Vector3.new(6.2, 0.9, 4.2), 0.45, WOOD, Enum.Material.WoodPlanks)
+	lid("LidMid", Vector3.new(6.2, 0.6, 3.4), 1.2, WOOD, Enum.Material.WoodPlanks)
+	lid("LidTop", Vector3.new(6.2, 0.4, 2.2), 1.7, WOOD, Enum.Material.WoodPlanks)
+	for _, x in ipairs({ -2.95, -1.6, 1.6, 2.95 }) do
+		part("LidBand", Vector3.new(0.5, 0.95, 4.3), hinge * CFrame.new(x, 0.45, -2.05), GOLD, Enum.Material.Metal, deco)
+		part("LidBand", Vector3.new(0.5, 0.65, 3.5), hinge * CFrame.new(x, 1.2, -2.05), GOLD, Enum.Material.Metal, deco)
+		part("LidBand", Vector3.new(0.5, 0.45, 2.3), hinge * CFrame.new(x, 1.7, -2.05), GOLD, Enum.Material.Metal, deco)
+	end
+	part("LidEdge", Vector3.new(6.3, 0.3, 0.3), hinge * CFrame.new(0, 0.15, -4.15), GOLD, Enum.Material.Metal, deco)
+	-- rays of light rising out of it
+	for k, r in ipairs({ { -1.6, 8, -12 }, { 0, 10, 4 }, { 1.7, 7, 14 } }) do
+		part("Ray", Vector3.new(0.9, r[2], 0.2), CFrame.new(r[1], B + 3 + r[2] / 2, -0.4) * CFrame.Angles(0, 0, math.rad(r[3])), RGB(255, 230, 140), Enum.Material.Neon,
+			{ Transparency = 0.75 + k * 0.03, CanCollide = false, CanQuery = false, CastShadow = false })
+	end
+	-- coins and gems spilled on the dais in front
+	for _, c in ipairs({ { -2.4, -2.9, 20 }, { -1.2, -3.1, -40 }, { 1.8, -2.8, 70 }, { 2.9, -3.0, 10 } }) do
+		part("SpilledCoin", Vector3.new(0.18, 0.9, 0.9), CFrame.new(c[1], 1.5, c[2]) * CFrame.Angles(0, math.rad(c[3]), math.rad(90)), GOLD, Enum.Material.Metal,
+			{ Shape = Enum.PartType.Cylinder, CanCollide = false, CastShadow = false })
+	end
+	for _, g in ipairs({ { -0.3, -3.0, RGB(181, 80, 136) }, { 3.3, -2.3, RGB(228, 59, 68) }, { -3.3, -2.2, RGB(104, 56, 108) } }) do
+		part("Gem", Vector3.new(0.6, 0.6, 0.6), CFrame.new(g[1], 1.75, g[2]) * CFrame.Angles(math.rad(45), math.rad(45), 0), g[3], Enum.Material.Neon, deco)
+	end
 	local light = Instance.new("PointLight")
 	light.Color = GOLD
-	light.Range = 14
-	light.Brightness = 1.6
-	light.Parent = lock
+	light.Range = 16
+	light.Brightness = 1.8
+	light.Parent = glow
 	local sparkle = Instance.new("ParticleEmitter")
 	sparkle.Name = "Sparkle"
 	sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	sparkle.Color = ColorSequence.new(GOLD)
-	sparkle.Rate = 6
-	sparkle.Lifetime = NumberRange.new(1, 1.6)
-	sparkle.Speed = NumberRange.new(1, 2)
-	sparkle.SpreadAngle = Vector2.new(60, 60)
+	sparkle.Rate = 8
+	sparkle.Lifetime = NumberRange.new(1.2, 2)
+	sparkle.Speed = NumberRange.new(2, 4)
+	sparkle.SpreadAngle = Vector2.new(25, 25)
+	sparkle.EmissionDirection = Enum.NormalId.Top
 	sparkle.LightEmission = 1
-	sparkle.Parent = model:FindFirstChild("Lid")
+	sparkle.Parent = glow
 	-- the sign over it
 	local sign = Instance.new("BillboardGui")
 	sign.Name = "Sign"
 	sign.Size = UDim2.fromOffset(260, 80)
-	sign.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
+	sign.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
 	sign.MaxDistance = 90
 	sign.LightInfluence = 0
 	local function line(text, y, h, color)
@@ -528,7 +583,7 @@ function RewardService.BuildChest()
 	end
 	line("COMMUNITY CHEST", 0, 0.55, Color3.fromRGB(254, 231, 97))
 	line("Join the community: " .. Config.rewardText(R.Group), 0.55, 0.4, Color3.new(1, 1, 1))
-	sign.Parent = model:FindFirstChild("Lid")
+	sign.Parent = lidMain
 	-- the walk-up box, between the chest and the path
 	local zone = part("AutoOpenZone", Vector3.new(14, 8, 7), CFrame.new(0, 4, 6), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, {
 		Transparency = 1,

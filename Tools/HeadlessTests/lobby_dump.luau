@@ -81,7 +81,14 @@ local function modelOf(d)
 	end
 	return 0
 end
-local roots = { lobby, M.workspace:FindFirstChild("RetroWorld") }
+-- (and the community chest, built by RewardService)
+local okChest, errChest = pcall(function()
+	M.load(S.files["ServerScriptService/RewardService.lua"], "RewardService", env)().BuildChest()
+end)
+if not okChest then
+	print("-- (no community chest: " .. tostring(errChest) .. ")")
+end
+local roots = { lobby, M.workspace:FindFirstChild("RetroWorld"), M.workspace:FindFirstChild("CommunityChest") }
 for _, r in ipairs(roots) do
 	for _, d in ipairs(r and r:GetDescendants() or {}) do
 		if d:IsA("BasePart") then
