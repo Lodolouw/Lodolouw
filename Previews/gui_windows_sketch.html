@@ -139,11 +139,13 @@ h2 span { color: var(--gold); }
       <div class="in"><b class="ck" style="font-size:1.2em">Beat 5 Waves</b><div class="meter"><b style="width:60%;background:var(--blue)"></b><em>3 / 5</em></div>
         <div class="row" style="justify-content:space-between"><span class="px" style="font-size:.5em;color:#6b5f8a">NEW IN 4:12:08</span><span class="row" style="gap:.3em"><span class="token" style="width:1.1em;height:1.1em"></span><b class="px" style="font-size:.6em">+1</b></span></div></div>
     </div>
-    <!-- FIGHT -->
-    <div style="position:absolute;left:50%;bottom:11%;transform:translateX(-50%);display:grid;gap:.5em;justify-items:center">
-      <div class="btn green" style="font-size:2.6em;padding:.15em 1.6em;box-shadow:.12em .14em 0 var(--ink)">FIGHT</div>
-      <div class="ck" style="color:#fff;font-size:1.1em;text-shadow:.08em .1em 0 var(--ink)">Next: Floor 3 · Knight Burrowmore</div>
+    <!-- next goal: points you to the Spire, you walk there -->
+    <div style="position:absolute;left:50%;top:5%;transform:translateX(-50%)" class="win">
+      <div class="in row" style="padding:.4em .7em;gap:.6em"><span style="font-size:1.8em">🗼</span><div><div class="px" style="font-size:.55em;color:#6b5f8a">NEXT GOAL</div><b class="ck" style="font-size:1.3em">Climb the Spire · Floor 3</b></div><b class="ck" style="font-size:1.3em;color:var(--blue)">86m</b></div>
     </div>
+    <!-- guide trail on the ground to the Spire -->
+    <div style="position:absolute;left:49%;bottom:22%;width:2%;height:22%;background:repeating-linear-gradient(0deg,rgba(255,226,106,.95) 0 18%,transparent 18% 32%);clip-path:polygon(30% 0,70% 0,100% 100%,0 100%)"></div>
+    <div style="position:absolute;left:47.4%;top:18%;width:5.2%;height:30%;background:linear-gradient(rgba(255,226,106,0),rgba(255,226,106,.55));filter:blur(.2em)"></div>
     <!-- xp bar -->
     <div style="position:absolute;left:24%;right:24%;bottom:3%;display:flex;gap:.6em;align-items:center">
       <b class="ck" style="color:#fff;font-size:1.5em;text-shadow:.08em .1em 0 var(--ink)">LV 12</b>
@@ -161,7 +163,7 @@ h2 span { color: var(--gold); }
       <div style="width:4.5em;height:3.2em;margin:.3em auto 0;background:linear-gradient(#e5394a 0 45%,var(--ink) 45% 52%,#b92735 52%);border:.25em solid var(--ink);box-shadow:0 0 1.2em #ffe26a"></div>
     </div>
     <span class="cap" style="left:1%;top:1%">A</span><span class="cap" style="left:1%;bottom:17%">B</span><span class="cap" style="right:1%;top:1%">C</span>
-    <span class="cap" style="right:26.5%;top:27%">D</span><span class="cap" style="left:39%;bottom:22%">E</span><span class="cap" style="left:22%;bottom:3%">F</span>
+    <span class="cap" style="right:26.5%;top:27%">D</span><span class="cap" style="left:36%;top:5%">E</span><span class="cap" style="left:22%;bottom:3%">F</span>
     <span class="cap" style="right:1%;bottom:16%">G</span><span class="cap" style="left:60%;bottom:52%">H</span>
   </div>
   <ul class="legend">
@@ -169,7 +171,7 @@ h2 span { color: var(--gold); }
     <li><span class="k">B</span><b>Coins and Tokens</b>, big, each with a + that opens its shop tab.</li>
     <li><span class="k">C</span><b>Free gift timer</b>, then <b>Rewards</b> (login calendar, codes, updates) and <b>Settings</b>.</li>
     <li><span class="k">D</span><b>Today's quest</b>, folds down with _.</li>
-    <li><span class="k">E</span><b>One big FIGHT button</b> that takes you to your next floor. A new player always knows what to do.</li>
+    <li><span class="k">E</span><b>Next goal</b> (top middle): where to go next and how far. A glowing trail on the ground and a light beam over the Spire lead the way, but you walk there and pick your floor yourself.</li>
     <li><span class="k">F</span><b>Level and XP</b>, with a 2X tag while a boost is on.</li>
     <li><span class="k">G</span><b>Playtime bonus and friend bonus</b>: free, and they grow the longer you stay and the more friends you bring.</li>
     <li><span class="k">H</span><b>Community chest</b> in the lobby: join your group and claim tokens.</li>
