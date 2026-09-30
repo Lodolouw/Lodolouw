@@ -2636,20 +2636,48 @@ local function buildGreatHall(parent)
 		coneRoof(m, V3(tx, H + 17.5, z1), 10, 28, ROOF_RED, 12)
 		wallTorch(m, V3(sx * (PASS + 2.5), 10, z1), V3(0, 0, 1))
 	end
-	-- the passage's vault and the arch over its front
-	part(m, "PassageRoof", V3(PASS * 2 + 0.2, H - 24, depth), CFrame.new(0, 24 + (H - 24) / 2, zc), KEEP_STONE, Mat.Cobblestone)
-	for k = 0, 11 do
-		local a0, a1 = k / 12 * math.pi, (k + 1) / 12 * math.pi
-		local R = PASS
-		local p0 = V3(math.cos(a0) * R, 12 + math.sin(a0) * R, z1 + 0.4)
-		local p1 = V3(math.cos(a1) * R, 12 + math.sin(a1) * R, z1 + 0.4)
-		local mid = (p0 + p1) / 2
-		part(m, "Voussoir", V3(2.2, 1.4, (p1 - p0).Magnitude + 0.3), CFrame.lookAt(mid, mid + (p1 - p0).Unit, V3(0, 0, 1)), KEEP_DARK, Mat.Cobblestone)
-		-- (fill the corners above the round arch)
-		local x = -R + (k + 0.5) * (2 * R / 12)
-		local top = 12 + math.sqrt(math.max(0, R * R - x * x))
-		part(m, "ArchFill", V3(2 * R / 12 + 0.02, 24 - top, 1.2), CFrame.new(x, (top + 24) / 2, z1 - 0.4), KEEP_STONE, Mat.Cobblestone)
+	-- the passage's vault: a round barrel roof (thin slices following the
+	-- curve, so from inside it arches overhead instead of being one flat
+	-- slab), the arch ring on both ends, and inside stone ribs across the
+	-- roof on pilasters, a dark base along the walls and torches between
+	local R = PASS
+	local SPRING = 12
+	local function vaultY(x) -- the underside of the vault at x
+		return SPRING + math.sqrt(math.max(0, R * R - x * x))
 	end
+	for x0 = -R, R - 1 do
+		local bottom = math.min(vaultY(x0 + 0.001), vaultY(x0 + 0.999))
+		part(m, "PassageVault", V3(1.02, H - bottom, depth), CFrame.new(x0 + 0.5, (H + bottom) / 2, zc), KEEP_STONE, Mat.Cobblestone)
+	end
+	local function ring(name, r, z, w, th, color)
+		for k = 0, 11 do
+			local a0, a1 = k / 12 * math.pi, (k + 1) / 12 * math.pi
+			local p0 = V3(math.cos(a0) * r, SPRING + math.sin(a0) * r, z)
+			local p1 = V3(math.cos(a1) * r, SPRING + math.sin(a1) * r, z)
+			local mid = (p0 + p1) / 2
+			part(m, name, V3(w, th, (p1 - p0).Magnitude + 0.3), CFrame.lookAt(mid, mid + (p1 - p0).Unit, V3(0, 0, 1)), color, Mat.Cobblestone)
+		end
+	end
+	ring("Voussoir", R, z1 + 0.4, 2.2, 1.4, KEEP_DARK)
+	ring("Voussoir", R, z0 - 0.4, 2.2, 1.4, KEEP_DARK)
+	local RIBS = { z0 + 2, zc - 6, zc + 6, z1 - 2 }
+	for i, rz in ipairs(RIBS) do
+		ring("VaultRib", R - 0.6, rz, 2.2, 1.2, KEEP_DARK)
+		for _, sx in ipairs({ -1, 1 }) do
+			part(m, "Pilaster", V3(1.2, SPRING, 2.2), CFrame.new(sx * (R - 0.6), SPRING / 2, rz), KEEP_DARK, Mat.Cobblestone)
+			part(m, "PilasterCap", V3(1.7, 0.8, 2.8), CFrame.new(sx * (R - 0.85), SPRING - 0.1, rz), KEEP_DARK, Mat.Cobblestone)
+			-- a torch halfway to the next rib
+			local nz = RIBS[i + 1]
+			if nz and i % 2 == 1 then
+				wallTorch(m, V3(sx * R, 8, (rz + nz) / 2), V3(-sx, 0, 0))
+			end
+		end
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "PassageDado", V3(0.4, 2.6, depth - 0.4), CFrame.new(sx * (R - 0.2), 1.3, zc), KEEP_DARK, Mat.Cobblestone)
+		part(m, "PassageBand", V3(0.5, 0.7, depth - 0.4), CFrame.new(sx * (R - 0.25), SPRING - 0.35, zc), KEEP_DARK, Mat.Cobblestone)
+	end
+
 	-- one long red roof along the whole keep
 	local roofH, run = 16, depth / 2 + 1
 	for _, s in ipairs({ -1, 1 }) do
