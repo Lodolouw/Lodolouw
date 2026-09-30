@@ -436,7 +436,7 @@ local function buildGround(parent)
 	-- south: past the spawn to the south gate, with branches to the Sell
 	-- Shop and into the colosseum
 	pathSlab("PathToYard", -8, 17, 8, SOUTH_WALL) -- (right up to the gate's paving)
-	pathSlab("PathEastWest", 8, 38, 29, 52)
+	pathSlab("PathEastWest", 8, 38, 44, 52) -- (right up to the Quest Board)
 	pathSlab("PathEastWest", -12, 84, -8, 96)
 	curbAlongZ(23.5, 37.5, 8.5)
 	curbAlongZ(52.5, 93.5, 8.5) -- (a gap where the farm path joins)
@@ -3070,7 +3070,7 @@ end
 -- hay, big leafy trees, and a chunky wooden fence open to the road.
 local FARM = {
 	CREAM = RGB(234, 212, 170), TIMBER = RGB(115, 62, 57), DARK = RGB(62, 39, 49),
-	WOOD = RGB(184, 111, 80), TAN = RGB(228, 166, 114), ROOF = RGB(190, 74, 47), ROOF2 = RGB(162, 38, 51),
+	WOOD = RGB(184, 111, 80), TAN = RGB(228, 166, 114), ROOF = RGB(38, 92, 66), ROOF2 = RGB(25, 60, 62), -- (green: red roofs beside the red tower roofs read as one blob from above)
 	STONE = RGB(139, 155, 180), STONE2 = RGB(90, 105, 136), LEAF = RGB(99, 199, 77), LEAF2 = RGB(62, 137, 72),
 	LEAF3 = RGB(38, 92, 66), SOIL = RGB(115, 62, 57), RIDGE = RGB(184, 111, 80), DIRT = RGB(228, 166, 114),
 	ORANGE = RGB(247, 118, 34), GOLD = RGB(254, 174, 52), YELLOW = RGB(254, 231, 97), RED = RGB(228, 59, 68),
@@ -4357,6 +4357,71 @@ local function buildIsland(parent)
 	kill.Touched:Connect(washBack)
 end
 
+-- The long grey walls, dressed on the lobby side so they don't look bare:
+-- stone buttresses up the east, west and south walls, a torch on every
+-- other one, and red and blue banners hanging between them
+local function buildWallDressing(parent)
+	local m = folder(parent, "WallDressing")
+	local IN = 115 -- (the inner face of the east and west walls)
+	local function buttress(pos, out, torch)
+		-- `pos`: where it meets the wall, on the ground; `out`: into the lobby
+		local along = V3(out.Z, 0, -out.X)
+		local cf = CFrame.fromMatrix(pos, along, V3(0, 1, 0), -out)
+		part(m, "Buttress", V3(3.6, WALL_HEIGHT - 4, 2.4), cf * CFrame.new(0, (WALL_HEIGHT - 4) / 2, -1.2), STONE_DARK, Mat.Cobblestone)
+		part(m, "ButtressFoot", V3(4.4, 3, 3.4), cf * CFrame.new(0, 1.5, -1.7), STONE_DARK, Mat.Cobblestone)
+		part(m, "ButtressCap", V3(4.2, 1, 3), cf * CFrame.new(0, WALL_HEIGHT - 3.5, -1.5), STONE, Mat.Cobblestone)
+		if torch then
+			wallTorch(m, pos + out * 2.4 + V3(0, 14, 0), out)
+		end
+	end
+	local n = 0
+	for _, side in ipairs({ { -IN, V3(1, 0, 0) }, { IN, V3(-1, 0, 0) } }) do
+		for z = -96, 100, 28 do
+			n += 1
+			buttress(V3(side[1], 0, z), side[2], n % 2 == 0)
+			if z + 14 < 110 then
+				banner(m, V3(side[1], 26, z + 14), side[2], (n % 2 == 0) and BANNER_RED or BANNER_BLUE)
+			end
+		end
+	end
+	for x = -100, 100, 28 do
+		if math.abs(x) > SOUTH_GATE_HALF + 16 then
+			n += 1
+			buttress(V3(x, 0, SOUTH_WALL - 3), V3(0, 0, -1), n % 2 == 0)
+			if math.abs(x + 14) > SOUTH_GATE_HALF + 16 and x + 14 < 110 then
+				banner(m, V3(x + 14, 26, SOUTH_WALL - 3), V3(0, 0, -1), (n % 2 == 0) and BANNER_BLUE or BANNER_RED)
+			end
+		end
+	end
+end
+
+-- A little flower garden on the lawn between the Quest Board's path and the
+-- farm: a round bed with a stone edge and a blossom tree, flowers, and two
+-- park benches looking at it
+local function buildGarden(parent)
+	local m = folder(parent, "Garden")
+	local cx, cz = 27, 61
+	cylinder(m, "BedEdge", 0.8, 11, CFrame.new(cx, 0.4, cz), STONE, Mat.Cobblestone)
+	cylinder(m, "BedSoil", 0.9, 9.6, CFrame.new(cx, 0.45, cz), RGB(115, 62, 57), Mat.Ground)
+	blossomTree(m, cx, cz, 0.8)
+	flowers(m, cx - 2.5, cz + 2, 2)
+	flowers(m, cx + 2.5, cz - 2, 2)
+	for _, f in ipairs({ { cx - 11, cz - 3 }, { cx + 11, cz + 2 }, { cx - 7, cz + 7 } }) do
+		flowers(m, f[1], f[2], 3)
+	end
+	bush(m, cx + 13, cz - 5, 0.8)
+	bush(m, cx - 14, cz + 5, 0.7)
+	-- the park benches, on the north side facing the bed
+	for _, bx in ipairs({ cx - 4.5, cx + 4.5 }) do
+		local o = CFrame.new(bx, 0, cz - 8.5)
+		part(m, "BenchSeat", V3(5, 0.4, 1.6), o * CFrame.new(0, 1.8, 0), WOOD, Mat.WoodPlanks)
+		part(m, "BenchBack", V3(5, 1.4, 0.3), o * CFrame.new(0, 2.9, -0.8) * CFrame.Angles(math.rad(-10), 0, 0), WOOD, Mat.WoodPlanks)
+		for _, lx in ipairs({ -2.1, 2.1 }) do
+			part(m, "BenchLeg", V3(0.4, 1.7, 1.4), o * CFrame.new(lx, 0.85, 0), RGB(50, 48, 56), Mat.Metal)
+		end
+	end
+end
+
 local function buildCastle(parent)
 	local m = folder(parent, "Castle")
 	buildKeep(m)
@@ -4379,6 +4444,8 @@ local function buildCastle(parent)
 	buildRiver(m)
 	buildFarm(m)
 	buildPicnic(m)
+	buildWallDressing(m)
+	buildGarden(m)
 end
 
 ----------------------------------------------------------------------

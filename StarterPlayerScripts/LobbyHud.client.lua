@@ -203,6 +203,7 @@ do
 		Visible = false,
 	})
 	ui.goal = holder
+	new("UIScale", { Scale = 0.8 }, holder) -- (a bit smaller: it covered a lot of the view)
 	ui.goalIcon = K.icon(face, "Spire", { Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(62, 62), ZIndex = 3 })
 	K.label(face, {
 		Name = "Kicker",
@@ -499,7 +500,7 @@ do
 		Material = Enum.Material.Neon,
 		Color = C.Yellow,
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(160, 3.5, 3.5),
+		Size = Vector3.new(44, 1.6, 1.6),
 		Transparency = 1,
 	}, folder)
 end
@@ -673,9 +674,10 @@ local function follow(dt)
 	local dist = flat.Magnitude
 	ui.goalFar.Text = math.floor(dist) .. "m"
 	-- the beam stands on the goal
-	trail.beam.CFrame = CFrame.new(to.X, to.Y - zone.Size.Y / 2 + 80, to.Z) * CFrame.Angles(0, 0, math.pi / 2)
-	-- (soft: a guide, not a floodlight - and gone once you're close)
-	trail.beam.Transparency = dist < 30 and 1 or 0.86
+	trail.beam.CFrame = CFrame.new(to.X, to.Y - zone.Size.Y / 2 + 22, to.Z) * CFrame.Angles(0, 0, math.pi / 2)
+	-- (soft: a guide, not a floodlight - short and thin, so from high up it
+	-- doesn't streak across the view - and gone once you're close)
+	trail.beam.Transparency = dist < 30 and 1 or 0.9
 	if dist < 14 then
 		for _, dash in ipairs(trail.dashes) do
 			dash.Transparency = 1
