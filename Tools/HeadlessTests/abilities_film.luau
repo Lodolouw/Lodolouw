@@ -248,6 +248,29 @@ local function frame(id, since, root)
 	realPrint("END")
 end
 
+-- props (a thrown anchor, a rolling wheel) are parts welded to one anchored
+-- root that moves: Roblox carries welded parts along, the pretend Roblox
+-- doesn't - so each weld's offset is noted when it's made (the root still
+-- where it was built) and the part put back on it after every step
+local weldOffsets = {}
+local function captureWelds()
+	local f = M.workspace:FindFirstChild("MoveFX")
+	for _, w in ipairs(f and f:GetDescendants() or {}) do
+		if w.ClassName == "WeldConstraint" and not weldOffsets[w] and w.Part0 and w.Part1 then
+			weldOffsets[w] = w.Part0.CFrame:ToObjectSpace(w.Part1.CFrame)
+		end
+	end
+end
+local function followWelds()
+	for w, off in pairs(weldOffsets) do
+		if w.Parent and w.Part0 and w.Part1 and w.Part1.Parent then
+			w.Part1.CFrame = w.Part0.CFrame * off
+		else
+			weldOffsets[w] = nil
+		end
+	end
+end
+
 local timers = {}
 local function after(dt, fn)
 	table.insert(timers, { at = t + dt, fn = fn })
@@ -268,7 +291,9 @@ local function run(seconds, id, t0)
 			end
 		end
 		stepTweens()
+		captureWelds()
 		RunService.Heartbeat:Fire(dt)
+		followWelds()
 		if n % 2 == 0 then
 			frame(id, t - t0, char.HumanoidRootPart.CFrame)
 		end
