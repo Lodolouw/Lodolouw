@@ -328,7 +328,7 @@ end
 local function machineSpots(count)
 	local spots = {}
 	local cx, cz, r = CX, 5, 22 -- (the curve's middle and radius)
-	local look = V3(CX, 0, 14) -- (they all look at this spot, just inside the arch)
+	local look = V3(CX, 0, 14) -- (they all look at this spot, just inside the steps)
 	local stepA = math.rad(26)
 	for i = 1, count do
 		local a = (i - (count + 1) / 2) * stepA
@@ -362,7 +362,7 @@ function ArcadeBuilder.Build(parent)
 		neon(m, "FloorEdgeGlow", V3(sx - X0, 0.3, 0.12), at((X0 + sx) / 2, FT - 0.4, Z1 + 0.06), MAGENTA, deco)
 		neon(m, "FloorEdgeGlow", V3(X1 - (CX + 9), 0.3, 0.12), at((CX + 9 + X1) / 2, FT - 0.4, Z1 + 0.06), MAGENTA, deco)
 	end
-	-- the trim round the carpet (inside the walls, and across the arch)
+	-- the trim round the carpet (inside the walls, and across the front)
 	do
 		local y = FT + 0.06
 		local inX0, inX1 = X0 + WALL_T + 0.25, X1 - WALL_T - 0.25
