@@ -825,3 +825,68 @@ dies. Open it from your bag (the **GEAR** button under the left buttons, or
 Everything is decided on the server (`PlayerService`): the client only asks.
 Items, rarities, odds, sets and stats all live in `ReplicatedStorage.Items`.
 
+
+## The new GUI (being built: the lobby screen, rewards and the Index are in)
+
+The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
+`Config.NewHud = true` turns it on (false brings the old HUD's buttons back).
+
+**Step 1 - the lobby screen** (`StarterPlayerScripts/LobbyHud`, preview
+`Docs/new_gui_lobby.png`):
+- **Left:** four big picture buttons - SHOP, BAG, ARCADE, INDEX - with red
+  badges for what's waiting (tokens to spin, weapons to add to the Index, the
+  starter pack after your first boss), and STATS and GEAR under them.
+- **Bottom left:** your coins and tokens (the token's **+** opens the shop).
+- **Top middle: the NEXT GOAL** - pick a quest, spin your tokens, hand in a
+  finished quest, train in the Colosseum until you're close to the next
+  floor's level, or climb the Spire - with how far it is. A **glowing trail**
+  runs along the ground from your feet towards it and a **beam of light**
+  stands on it. There's no FIGHT button: you walk there and choose yourself.
+- **Right:** the **free gift's clock** (tap it when it says READY!),
+  **REWARDS** and **SETTINGS**, then **today's quest** (fold it with _). They
+  sit a little lower than the top corner so Roblox's player list can't
+  cover them.
+- **By the level bar:** "2X XP 12:30", "2X COINS", "LUCK +50%" while a boost
+  or pass is on. **Bottom right:** the corner bonuses (more XP for time in
+  this server and for friends in it with you - hover for what they are).
+- It hides in fights, in the intro and while a menu is open. The old left
+  buttons, stats strip, hint line and the GEAR / WEAPONS / ROLL squares are
+  hidden; the level bar, the heart and the dev tools stay.
+
+**Step 2 - Rewards, the Index and the community chest** (preview
+`Docs/new_gui_rewards.png`):
+- **REWARDS** (`StarterPlayerScripts/RewardsMenu`, green): **Login** - the
+  seven-day calendar (claimed days, today's CLAIM, day 7's big one; miss a
+  day and it starts again); **Gift** - the free gift's clock, today's count
+  and what the next gifts are; **Codes** - type one, REDEEM; **Updates** -
+  what's new and its gift. The newest update opens by itself the first time
+  a returning player joins after it comes out.
+- **THE INDEX** (`StarterPlayerScripts/IndexMenu`, purple): **Weapons** -
+  every weapon pack by pack; ones you haven't found are dark "???" shapes
+  (with their rarity), a new find has CLAIM; **Bosses** - the ten floors,
+  beaten or not; **Collector** - the collector bar and its rewards.
+- **THE COMMUNITY CHEST** in the lobby (on the grass west of the plaza, by
+  the path; built by `RewardService.BuildChest`, at `Config.Rewards.ChestAt`):
+  walk up and its window opens - join the community, claim once. **Put your
+  community's number in `Config.Rewards.GroupId`** (until then it says the
+  community isn't linked yet).
+
+**The menus** (`ReplicatedStorage/Menus`): see-through - the world blurs and
+dims behind, and the menu floats over it: a big title top left, tabs down the
+left side, your money top right and a red X. One at a time; Esc closes it and
+so does going into a fight; the server's messages show on top. Each menu's
+script defines it with `Menus.define`; older windows (the Arcade, Gear,
+Weapons, Stats) open through `Menus.external`.
+
+**The pieces** (`ReplicatedStorage/WindowKit`): picture buttons, cards with
+hard shadows, tabs, badges, chips, bars, the coin and token, and the menus'
+**pixel icons** (`Tools/Icons/make_ui_icons.py`, 31 of them). Until the icons
+are uploaded (`Tools/Upload/upload_assets.bat`, as `UI_<name>`) a simple
+stand-in picture shows instead.
+
+**On the server** (`RewardService`, `ShopService`, tested by
+`test_rewards_shop.luau`): the login streak, the free gift, codes, update
+gifts, the Index and collector bar, the community chest, looks (titles and
+auras everyone sees), settings, the corner bonuses, timed boosts; the Robux
+shop (every purchase handed out exactly once, gifts, passes, Daily Items, no
+paid random items where Roblox doesn't allow them) and the Arcade's luck.

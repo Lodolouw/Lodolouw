@@ -454,6 +454,29 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   when bought; Daily Items; luck (the passes, the boost, the odds, a real spin).
   It moves the calendar with `M.dayShift` (os.time only) instead of playing
   through whole days.
+- `test_lobbyhud.luau` - THE NEW LOBBY SCREEN (LobbyHud) and THE MENUS'
+  HOST (ReplicatedStorage/Menus), with the old HUD beside them and a pretend
+  server on a little lobby of walk-up boxes: the old left buttons, stats strip
+  and hint hide (the level bar stays); the picture buttons and badges; coins
+  and tokens; the NEXT GOAL in order (hand in a quest, spin tokens, pick a
+  quest, train, climb the Spire), the trail on the ground pointing at it, the
+  distance, the beam over it, and the trail going once you're there; the gift
+  clock counting down and a tap claiming it only when ready; rewards' badge;
+  boost tags with their time; the corner bonuses; hiding in fights. The menus:
+  opening over a blurred, dimmed world with title, tabs and page, tabs
+  switching, the server's messages on top, Esc and fights closing it,
+  "Coming soon!", older windows through Menus.external. `-a snaps` prints a
+  snapshot (with the menu icons as if uploaded) for `render_gui.py`
+  (`Docs/new_gui_lobby.png`, over a picture of the lobby).
+- `test_rewards_menus.luau` - THE REWARDS MENU and THE INDEX (RewardsMenu,
+  IndexMenu) with a pretend server: the login calendar (claimed days,
+  today's CLAIM, tomorrow, a missed day back to day 1), the gift's clock and
+  CLAIM only when ready, codes (what you type is sent and survives a
+  redraw), update gifts, the newest update opening by itself once, the
+  community chest's window opening as you walk up and closing as you leave,
+  the Index (found / "???" with rarity, CLAIM a find, bosses beaten or not,
+  the collector level and its rewards). `-a snaps` for `render_gui.py`
+  (`Docs/new_gui_rewards.png`).
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /

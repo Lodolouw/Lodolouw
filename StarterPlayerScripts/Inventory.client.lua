@@ -1087,7 +1087,7 @@ local function closeWindow()
 	tween(dim, 0.12, { BackgroundTransparency = 1 })
 	task.delay(0.12, function()
 		win.Visible, dim.Visible = false, false
-		gearBtn.Visible = true
+		gearBtn.Visible = Config.NewHud == false
 	end)
 end
 gearBtn.Activated:Connect(function()
@@ -1110,6 +1110,16 @@ gearBtn.MouseLeave:Connect(function()
 end)
 closeBtn.Activated:Connect(closeWindow)
 dim.Activated:Connect(closeWindow)
+-- (the new lobby screen has its own GEAR button: LobbyHud, through Menus)
+if Config.NewHud ~= false then
+	gearBtn.Visible = false
+end
+do
+	local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 5))
+	if ok and type(Menus) == "table" then
+		Menus.external.Gear = openWindow
+	end
+end
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return

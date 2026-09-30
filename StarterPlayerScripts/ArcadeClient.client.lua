@@ -459,6 +459,10 @@ local rollBadge = text(rollBtn, {
 })
 corner(rollBadge, 12)
 stroke(rollBadge, INK, 2.5)
+-- (the new lobby screen has its own ARCADE button: LobbyHud)
+if Config.NewHud ~= false then
+	rollBtn.Visible = false
+end
 
 -- THE WINDOW, in the old-computer window look (ReplicatedStorage/WindowKit):
 -- a lavender window with a magenta title bar and a hard shadow, over a
@@ -768,6 +772,13 @@ do
 			openMenu()
 		end
 	end)
+	-- (the new menus' buttons open it too: ReplicatedStorage/Menus)
+	local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 5))
+	if ok and type(Menus) == "table" then
+		Menus.external.Arcade = function()
+			openMenu()
+		end
+	end
 end
 
 ----------------------------------------------------------------------

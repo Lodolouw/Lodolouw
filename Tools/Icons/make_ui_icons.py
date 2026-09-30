@@ -1,5 +1,5 @@
 """THE MENU ICONS: pixel art for every button and tab of the new interface
-(Previews/gui_windows_sketch.html) - 32 x 32, drawn in the game's look: bright
+(Previews/gui_windows_sketch.html and the lobby screen) - 32 x 32, drawn in the game's look: bright
 colours lit from the top left, a darker underside, and a thick dark outline,
 blown up to 256 x 256 without smoothing.
 
@@ -480,6 +480,35 @@ def icon_bolt():
     return finish(cv)
 
 
+def icon_stats():
+    cv = Canvas()
+    cv.rect(3, 18, 9, 28, RED)                                                   # three bars, rising
+    cv.rect(12, 12, 18, 28, GOLD)
+    cv.rect(21, 6, 27, 28, GREEN)
+    cv.rect(2, 28, 29, 30, BROWN)                                                # the ground they stand on
+    def star(x, y, r, c):
+        pts = []
+        for i in range(10):
+            a = -math.pi / 2 + i * math.pi / 5
+            rr = r if i % 2 == 0 else r * 0.45
+            pts.append((x + rr * math.cos(a), y + rr * math.sin(a)))
+        cv.poly(pts, c)
+    star(9, 8, 6, YEL)                                                           # a point to spend
+    return finish(cv)
+
+
+def icon_gear():
+    cv = Canvas()
+    cv.poly([(6, 12), (10, 5), (22, 5), (26, 12), (26, 26), (6, 26)], STEEL)     # a knight's helmet
+    cv.poly([(8, 12), (11, 7), (16, 6), (16, 25), (8, 25)], STEEL_L)
+    cv.rect(15, 3, 17, 26, GOLD)                                                 # the crest down the middle
+    cv.rect(8, 14, 24, 17, INK[:3])                                              # the eye slit
+    for x in (11, 21):
+        cv.rect(x - 1, 20, x + 1, 23, GREY_D)                                    # breathing holes
+    cv.rect(5, 26, 27, 29, GOLD_D)                                               # the rim
+    return finish(cv)
+
+
 ICONS = {
     'Shop': icon_shop, 'Bag': icon_bag, 'Arcade': icon_arcade, 'Index': icon_index, 'Gift': icon_gift,
     'Rewards': icon_rewards, 'Settings': icon_settings, 'Featured': icon_featured, 'Tickets': icon_ticket,
@@ -487,7 +516,7 @@ ICONS = {
     'Titles': icon_title, 'Bosses': icon_crown, 'Goals': icon_trophy, 'Revive': icon_revive, 'Spin': icon_spin,
     'BossRush': icon_bossrush, 'Luck': icon_clover, 'Playtime': icon_playtime, 'Friends': icon_friends,
     'Spire': icon_spire, 'Lock': icon_lock, 'Codes': icon_codes, 'Updates': icon_updates,
-    'Flask': icon_flask, 'Bolt': icon_bolt,
+    'Flask': icon_flask, 'Bolt': icon_bolt, 'Stats': icon_stats, 'Gear': icon_gear,
 }
 
 

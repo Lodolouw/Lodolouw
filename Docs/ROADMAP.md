@@ -95,11 +95,12 @@ weapons plan.
 ## 5. The new screen and the cuts
 
 - [ ] **The window look everywhere** (you asked for old-computer windows, made loud): `ReplicatedStorage/WindowKit` - the Arcade has it (`Docs/arcade_screens.png`); next the HUD, the Weapons panel, the Quest Board, the Spire menu and the pop-ups.
-- [ ] **The new GUI** (sketch: `Previews/gui_sketch.html`):
-  - a top bar with level + XP, coins and **Arcade Tokens [+]**
-  - four buttons: **ROLL, BAG, SHOP, QUESTS**, with red dots
-  - the weapon card
-  - in a fight, the lobby things slide away
+- [ ] **The new GUI** (sketch: `Previews/gui_windows_sketch.html`), in steps:
+  - [x] the server side: rewards, the shop's safe receipts, passes, boosts, luck (`RewardService`, `ShopService`)
+  - [x] **1. The lobby screen**: picture buttons with badges, coins and tokens, the next goal with a trail on the ground and a beam, the gift clock, today's quest, boost tags, corner bonuses; the see-through menus (`Docs/new_gui_lobby.png`)
+  - [x] **2. Rewards** (login calendar, free gift, codes, updates) + **the Index** (weapons, bosses, collector) + **the community chest** (`Docs/new_gui_rewards.png`; put your community's number in `Config.Rewards.GroupId`)
+  - [ ] 3. The shop (featured, tickets, tokens, daily items, passes, looks)
+  - [ ] 4. The bag, the fight screen's window look, settings
 - [ ] **Cut the old loot**: armour gear, boss chests, talismans, the upgrade shop and the sell shop / backpack counter. Old players' gear turns into Arcade Tokens once, so nobody loses out.
 - [ ] Decide: keep stat points, or let your level alone make you stronger?
 

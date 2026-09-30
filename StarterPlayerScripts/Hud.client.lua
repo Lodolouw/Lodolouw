@@ -1453,7 +1453,7 @@ end
 local function renderHint()
 	-- in a Spire arena the lobby's advice is noise: the fight has the top of the
 	-- screen (the boss's name and health bar live there)
-	hintBanner.Visible = player:GetAttribute("SpireFloor") == nil and not player:GetAttribute("Colosseum")
+	hintBanner.Visible = Config.NewHud == false and player:GetAttribute("SpireFloor") == nil and not player:GetAttribute("Colosseum")
 	if not state then
 		hint.Text = "Loading..."
 		return
@@ -1642,7 +1642,30 @@ Remotes.StateUpdate.OnClientEvent:Connect(function(data)
 	end
 end)
 
-Remotes.Notify.OnClientEvent:Connect(toast)
+Remotes.Notify.OnClientEvent:Connect(function(message, kind)
+	-- (while a new menu covers the screen, it shows the message itself: Menus)
+	if player:GetAttribute("MenuOpen") then
+		return
+	end
+	toast(message, kind)
+end)
+
+-- THE NEW LOBBY SCREEN (LobbyHud) has its own buttons, money and next goal:
+-- the old left buttons, stats strip and hint line hide while Config.NewHud
+-- is on. STATS opens from its button through ReplicatedStorage/Menus.
+if Config.NewHud ~= false then
+	leftCol.Visible = false
+	statCol.Visible = false
+	hintBanner.Visible = false
+end
+do
+	local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 5))
+	if ok and type(Menus) == "table" then
+		Menus.external.Stats = function()
+			openPanel("Stats", true)
+		end
+	end
+end
 
 Remotes.OpenPanel.OnClientEvent:Connect(function(name)
 	openPanel(name, true)

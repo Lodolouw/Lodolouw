@@ -314,6 +314,16 @@ openBtn.Activated:Connect(function()
 end)
 closeBtn.Activated:Connect(closeWindow)
 dim.Activated:Connect(closeWindow)
+-- (the new lobby screen has its own BAG button: LobbyHud, through Menus)
+if Config.NewHud ~= false then
+	openBtn.Visible = false
+end
+do
+	local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 5))
+	if ok and type(Menus) == "table" then
+		Menus.external.Weapons = openWindow
+	end
+end
 fistsBtn.Activated:Connect(function()
 	local ok, msg = ask("EquipWeapon", nil)
 	setStatus(msg, ok)

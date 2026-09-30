@@ -19,7 +19,9 @@ import argparse
 import json
 import os
 
-from PIL import Image, ImageDraw, ImageFont
+import math
+
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -143,6 +145,34 @@ def gradient_image(size, keys, rot):
     return img.convert("RGBA")
 
 
+def fade_mask(size, box, fade):
+    """a UIGradient's Transparency as a mask over `box` (turned by its Rotation)"""
+    out = Image.new("L", size, 0)
+    if not box:
+        return out
+    x0, y0, x1, y1 = box
+    w, h = max(1, x1 - x0), max(1, y1 - y0)
+    keys = sorted(fade["keys"], key=lambda k: k[0])
+    n = 512
+    strip = Image.new("L", (n, 1))
+    px = strip.load()
+    for i in range(n):
+        t = i / (n - 1)
+        a, b = keys[0], keys[-1]
+        for j in range(len(keys) - 1):
+            if keys[j][0] <= t <= keys[j + 1][0]:
+                a, b = keys[j], keys[j + 1]
+                break
+        u = min(1, max(0, (t - a[0]) / max(1e-6, b[0] - a[0])))
+        px[i, 0] = int(255 * (1 - (a[1] + (b[1] - a[1]) * u)))
+    # (spread across the box's diagonal, turned, then cut to the box)
+    d = int(math.hypot(w, h)) + 2
+    sq = strip.resize((d, d), Image.NEAREST).rotate(-fade.get("rot", 0), resample=Image.NEAREST)
+    left, top = (d - w) // 2, (d - h) // 2
+    out.paste(sq.crop((left, top, left + w, top + h)), (x0, y0))
+    return out
+
+
 def colour(c, alpha=1.0):
     return (c[0], c[1], c[2], int(255 * max(0.0, min(1.0, alpha))))
 
@@ -165,7 +195,7 @@ def shape_mask(size, pts, radius, grow=0.0, width=0):
         x0, y0, x1, y1 = bounds(s)
         g = grow * SS
         box = [x0 - g, y0 - g, x1 + g, y1 + g]
-        r = max(0, (radius + grow) * SS)
+        r = max(0, min((radius + grow) * SS, (x1 - x0) / 2, (y1 - y0) / 2))
         if width:
             d.rounded_rectangle(box, radius=r, outline=255, width=max(1, int(width * SS)))
         else:
@@ -180,6 +210,8 @@ def shape_mask(size, pts, radius, grow=0.0, width=0):
 
 ICON_IDS = {}  # asset id -> a weapon's key (the test's "ICONMAP id key" lines)
 ICON_DIR = os.path.join(REPO, "Tools", "Weapons", "out", "icons")
+UI_ICON_DIR = os.path.join(REPO, "Tools", "Icons", "out", "ui")
+MONEY_ICON_DIR = os.path.join(REPO, "Tools", "Icons", "out", "money")
 PACK_PICTURE = {}  # weapon id -> (picture, box) from Docs/weapons
 
 
@@ -273,6 +305,8 @@ def paint(items, bg):
             else:
                 fill = Image.new("RGBA", size, colour(it["c"]))
             m = m.point(lambda v: int(v * alpha))
+            if it.get("fade"):
+                m = ImageChops.multiply(m, fade_mask(size, m.getbbox(), it["fade"]))
             layer.paste(fill, (0, 0), m)
             img = Image.alpha_composite(img, clipped(layer, it))
         elif kind == "text":
@@ -283,12 +317,16 @@ def paint(items, bg):
             import re
             m = re.search(r"id=(\d+)", it.get("src", ""))
             key = m and ICON_IDS.get(m.group(1))
-            path = key and os.path.join(ICON_DIR, key + ".png")
+            # (a menu icon "UI_Shop" is Tools/Icons/out/ui/Shop.png: pixel art, kept sharp)
+            ui = key and key.startswith("UI_")
+            path = key and (os.path.join(UI_ICON_DIR, key[3:] + ".png") if ui else os.path.join(ICON_DIR, key + ".png"))
+            if key and not ui and not os.path.exists(path):
+                path = os.path.join(MONEY_ICON_DIR, key + ".png")  # (the living coin / token: Coin_1.png ...)
             if path and os.path.exists(path):
                 pic = Image.open(path).convert("RGBA")
                 x0, y0, x1, y1 = [v * SS for v in bounds(it["pts"])]
                 k = min((x1 - x0) / pic.width, (y1 - y0) / pic.height)
-                p = pic.resize((max(1, int(pic.width * k)), max(1, int(pic.height * k))), Image.LANCZOS)
+                p = pic.resize((max(1, int(pic.width * k)), max(1, int(pic.height * k))), Image.NEAREST if ui else Image.LANCZOS)
                 layer = Image.new("RGBA", size, (0, 0, 0, 0))
                 layer.paste(p, (int((x0 + x1) / 2 - p.width / 2), int((y0 + y1) / 2 - p.height / 2)), p)
                 img = Image.alpha_composite(img, clipped(layer, it))

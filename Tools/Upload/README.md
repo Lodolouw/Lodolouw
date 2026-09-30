@@ -19,6 +19,10 @@ API key, so nothing has to be published by hand:
   `Tools/Weapons/make_icons.py`), as decals - the Arcade and the Weapons panel
   show them (a brand-new decal can take a little while to pass Roblox's
   check; until then it shows blank)
+- the menus' pixel icons (`Tools/Icons/out/ui/*.png`, made by
+  `Tools/Icons/make_ui_icons.py`), as decals named `UI_<name>` - the new
+  lobby buttons and menus show them (until they're uploaded, a simple
+  stand-in picture shows instead)
 
 ## Steps (Windows)
 

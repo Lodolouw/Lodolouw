@@ -6,6 +6,7 @@
 #   * floors 7-10's boss sounds  (Tools\Sounds\out\bosses\<name>.ogg)
 #   * the weapons' icons  (Tools\Weapons\out\icons\<key>.png, as decals)
 #   * the living coin and token's pictures  (Tools\Icons\out\money\<name>.png, as decals)
+#   * the menus' pixel icons  (Tools\Icons\out\ui\<name>.png, as decals called UI_<name>)
 # then copies ALL their ids (as ReplicatedStorage\AssetIds.lua) to your clipboard,
 # to paste to Claude. Run it by double-clicking upload_assets.bat.
 #
@@ -51,6 +52,12 @@ foreach ($folder in @('Weapons\out\icons', 'Icons\out\money')) {
         Get-ChildItem $icons -Filter *.png | Sort-Object Name | ForEach-Object {
             $items += [pscustomobject]@{ Kind = 'Decal'; Key = $_.BaseName; Path = $_.FullName; Type = 'image/png' }
         }
+    }
+}
+$uiIcons = Join-Path $tools 'Icons\out\ui'
+if (Test-Path $uiIcons) {
+    Get-ChildItem $uiIcons -Filter *.png | Sort-Object Name | ForEach-Object {
+        $items += [pscustomobject]@{ Kind = 'Decal'; Key = ('UI_' + $_.BaseName); Path = $_.FullName; Type = 'image/png' }
     }
 }
 if ($items.Count -eq 0) { Write-Host 'Nothing to upload (pull first?)' -ForegroundColor Red; exit }

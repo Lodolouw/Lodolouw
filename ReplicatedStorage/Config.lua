@@ -3581,6 +3581,14 @@ for _, name in ipairs({
 end
 
 ----------------------------------------------------------------------
+-- THE NEW GUI (Previews/gui_windows_sketch.html): the new lobby screen
+-- (StarterPlayerScripts/LobbyHud) and the see-through menus
+-- (ReplicatedStorage/Menus). Set to false to bring the old HUD's buttons
+-- back (and LobbyHud doesn't start).
+----------------------------------------------------------------------
+Config.NewHud = true
+
+----------------------------------------------------------------------
 -- THE NEW GUI's REWARDS (ServerScriptService/RewardService; the Rewards
 -- window, the Index and the lobby's corner icons draw them). Everything a
 -- player can claim is decided and paid by the server. A reward is a table
@@ -3656,6 +3664,9 @@ Config.Rewards = {
 	-- says the community isn't linked yet).
 	GroupId = 0,
 	Group = { Tokens = 3, Title = "Member" },
+	-- where the chest stands: on the grass west of the plaza, just north of the
+	-- east-west path (it faces the path; its walk-up box is between the two)
+	ChestAt = Vector3.new(-50, 0, 18),
 	-- THE CORNER BONUSES (on XP): +PerStep% for every StepMinutes you've been
 	-- in this server, up to Max%; and +PerFriend% for each Roblox friend in
 	-- the server with you, up to Max%
@@ -3704,12 +3715,14 @@ end
 ----------------------------------------------------------------------
 Config.Shop = {
 	-- DEVELOPER PRODUCTS (bought again and again). Gift = can be bought for
-	-- another player in the server (the gift button).
+	-- another player in the server (the gift button). (The Tokens tab works
+	-- out how much more each bigger pack gives from these numbers - never a
+	-- made-up "bonus".)
 	Products = {
 		Tokens10 = { ProductId = 0, Price = 99, Tokens = 10, Name = "Handful", Gift = true, Random = true },
 		Tokens25 = { ProductId = 0, Price = 229, Tokens = 25, Name = "Pouch", Gift = true, Random = true },
-		Tokens60 = { ProductId = 0, Price = 499, Tokens = 60, Name = "Sack", Bonus = 20, Gift = true, Random = true },
-		Tokens150 = { ProductId = 0, Price = 1199, Tokens = 150, Name = "Treasure Chest", Bonus = 30, Gift = true, Random = true },
+		Tokens60 = { ProductId = 0, Price = 499, Tokens = 60, Name = "Sack", Gift = true, Random = true },
+		Tokens150 = { ProductId = 0, Price = 1199, Tokens = 150, Name = "Treasure Chest", Gift = true, Random = true },
 		Revive3 = { ProductId = 0, Price = 29, Revives = 3, Name = "Revive x3", Gift = true },
 		Spin3 = { ProductId = 0, Price = 45, Tokens = 3, Name = "Spin x3", Gift = true, Random = true },
 		Rush3 = { ProductId = 0, Price = 35, Rushes = 3, Name = "Boss Rush x3", Gift = true },
@@ -3728,6 +3741,12 @@ Config.Shop = {
 		InstantTen = { PassId = 0, Price = 29, Name = "Instant x10" }, -- the x10 spin skips straight to the results
 	},
 	VIP = { XP = 0.5, Coins = 0.25, FriendXP = 10, Title = "VIP" },
+	-- TICKETS in fights (used by themselves; Settings can turn each off):
+	-- a REVIVE stands you back up at half health when a hit would finish you
+	-- in a boss fight (this many per fight); a BOSS RUSH makes a win on a boss
+	-- you've beaten before pay RushMultiplier times as much (and chests)
+	RevivesPerFight = 1,
+	RushMultiplier = 2,
 	BoostLuck = 1.5, -- a Luck boost (the login streak's) = the +50% luck pass while it lasts
 	-- DAILY ITEMS: Count looks from the pool, for coins, the same for everyone
 	-- each day (a new set at midnight UTC)

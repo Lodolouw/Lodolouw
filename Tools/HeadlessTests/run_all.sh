@@ -50,6 +50,11 @@ run test_moneyicons.luau
 # the new GUI's server side: rewards, the shop's Robux receipts (each paid
 # exactly once), gifts, passes, Daily Items, luck
 run test_rewards_shop.luau
+# the new lobby screen (next goal and its trail, gift clock, quest, boosts)
+# and the menus' host (see-through, tabs, one at a time)
+run test_lobbyhud.luau
+# the Rewards menu, the Index and the community chest's window
+run test_rewards_menus.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

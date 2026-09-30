@@ -8,7 +8,8 @@
 	  * CODES and UPDATE GIFTS (Config.Rewards.Codes / Updates)
 	  * THE INDEX - each weapon pays once when you first own it, and every
 	    find and first boss win fills the COLLECTOR bar, whose levels pay out
-	  * the COMMUNITY CHEST (join the group, claim once)
+	  * the COMMUNITY CHEST (join the group, claim once) - and the chest itself,
+	    built in the lobby (RewardService.BuildChest, at Config.Rewards.ChestAt)
 	  * the CORNER BONUSES on XP: time in this server, friends in it with you
 	  * LOOKS: the title over your head and the aura round you (anyone can
 	    see them), which title/aura you wear, and your SETTINGS
@@ -451,8 +452,101 @@ local function saveSettings(player, d, arg)
 end
 
 ----------------------------------------------------------------------
+-- THE COMMUNITY CHEST in the lobby: a red and gold chest on a stone slab,
+-- glowing, with a sign over it and a walk-up box in front (Activity =
+-- "Community": RewardsMenu opens its window when you walk in)
+----------------------------------------------------------------------
+function RewardService.BuildChest()
+	local old = workspace:FindFirstChild("CommunityChest")
+	if old then
+		old:Destroy()
+	end
+	local at = R.ChestAt or Vector3.new(-50, 0, 18)
+	local origin = CFrame.new(at) * CFrame.Angles(0, math.pi, 0) -- (its front, -Z, faces the path)
+	local model = Instance.new("Model")
+	model.Name = "CommunityChest"
+	local function part(name, size, offset, color, material, props)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = origin * offset
+		p.Color = color
+		p.Material = material or Enum.Material.SmoothPlastic
+		p.Anchored = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		for k, v in pairs(props or {}) do
+			p[k] = v
+		end
+		p.Parent = model
+		return p
+	end
+	local RED, RED_D = Color3.fromRGB(229, 59, 68), Color3.fromRGB(158, 32, 48)
+	local GOLD = Color3.fromRGB(255, 182, 46)
+	part("Slab", Vector3.new(9, 0.6, 7), CFrame.new(0, 0.3, 0), Color3.fromRGB(150, 150, 165), Enum.Material.Slate)
+	part("Base", Vector3.new(6, 3, 4), CFrame.new(0, 2.1, 0), RED)
+	part("Lid", Vector3.new(6.2, 1.6, 4.2), CFrame.new(0, 4.4, 0), RED_D)
+	part("Trim", Vector3.new(6.3, 0.4, 4.3), CFrame.new(0, 3.6, 0), GOLD, Enum.Material.Neon, { CanCollide = false })
+	for _, x in ipairs({ -2.3, 2.3 }) do
+		part("Band", Vector3.new(0.6, 4.7, 4.35), CFrame.new(x, 2.95, 0), GOLD, Enum.Material.SmoothPlastic, { CanCollide = false })
+	end
+	local lock = part("Lock", Vector3.new(1, 1.2, 0.4), CFrame.new(0, 3.5, 2.25), GOLD, Enum.Material.Neon, { CanCollide = false })
+	local light = Instance.new("PointLight")
+	light.Color = GOLD
+	light.Range = 14
+	light.Brightness = 1.6
+	light.Parent = lock
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "Sparkle"
+	sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkle.Color = ColorSequence.new(GOLD)
+	sparkle.Rate = 6
+	sparkle.Lifetime = NumberRange.new(1, 1.6)
+	sparkle.Speed = NumberRange.new(1, 2)
+	sparkle.SpreadAngle = Vector2.new(60, 60)
+	sparkle.LightEmission = 1
+	sparkle.Parent = model:FindFirstChild("Lid")
+	-- the sign over it
+	local sign = Instance.new("BillboardGui")
+	sign.Name = "Sign"
+	sign.Size = UDim2.fromOffset(260, 80)
+	sign.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
+	sign.MaxDistance = 90
+	sign.LightInfluence = 0
+	local function line(text, y, h, color)
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Position = UDim2.fromScale(0, y)
+		l.Size = UDim2.fromScale(1, h)
+		l.Font = Enum.Font.FredokaOne
+		l.Text = text
+		l.TextScaled = true
+		l.TextColor3 = color
+		l.TextStrokeTransparency = 0
+		l.TextStrokeColor3 = Color3.fromRGB(24, 20, 37)
+		l.Parent = sign
+	end
+	line("COMMUNITY CHEST", 0, 0.55, Color3.fromRGB(254, 231, 97))
+	line("Join the community: " .. Config.rewardText(R.Group), 0.55, 0.4, Color3.new(1, 1, 1))
+	sign.Parent = model:FindFirstChild("Lid")
+	-- the walk-up box, between the chest and the path
+	local zone = part("AutoOpenZone", Vector3.new(14, 8, 7), CFrame.new(0, 4, 6), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, {
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+	})
+	zone:SetAttribute("Activity", "Community")
+	game:GetService("CollectionService"):AddTag(zone, "AutoOpenZone")
+	model.Parent = workspace
+	return model
+end
+
+----------------------------------------------------------------------
 function RewardService.Start(playerService)
 	PlayerService = playerService
+	pcall(RewardService.BuildChest)
 	local actions = {
 		RewardLogin = claimLogin,
 		RewardGift = claimGift,

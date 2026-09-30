@@ -85,6 +85,29 @@ local function childOf(obj, class)
 	return nil
 end
 
+-- a UIGradient's see-through-ness: { keys = { {t, transparency}, ... }, rot },
+-- or nil if it has none
+local function fadeOf(obj)
+	local g = childOf(obj, "UIGradient")
+	local seq = g and g.Transparency
+	if type(seq) ~= "table" then
+		return nil
+	end
+	local first = rawget(seq, 1)
+	local keys = {}
+	if type(first) == "table" and rawget(first, "__type") == nil then
+		for _, kp in ipairs(first) do
+			table.insert(keys, { tonumber(rawget(kp, 1)) or 0, tonumber(rawget(kp, 2)) or 0 })
+		end
+	elseif type(first) == "number" then
+		keys = { { 0, first }, { 1, tonumber(rawget(seq, 2)) or first } }
+	end
+	if #keys == 0 then
+		return nil
+	end
+	return { keys = keys, rot = tonumber(g.Rotation) or 0 }
+end
+
 -- a UIGradient's colours: { {t, r, g, b}, ... } and its turn
 local function gradientOf(obj)
 	local g = childOf(obj, "UIGradient")
@@ -113,7 +136,9 @@ end
 
 return function(root, caption, SW, SH)
 	SW, SH = SW or 1280, SH or 720
-	print("SNAP " .. caption)
+	if caption then -- (nil: more of the snapshot before, e.g. a second ScreenGui under it)
+		print("SNAP " .. caption)
+	end
 	local frames = {}
 	local laidOut = {} -- [child] = { x, y, w, h } from its parent's layout
 
@@ -273,7 +298,7 @@ return function(root, caption, SW, SH)
 			local alpha = tonumber(obj.BackgroundTransparency) or 0
 			local grad = gradientOf(obj)
 			if alpha < 0.99 and obj.ClassName ~= "ViewportFrame" then
-				print(encode({ k = "rect", pts = pts, c = rgb(obj.BackgroundColor3, { 163, 162, 165 }), t = alpha, r = radius, grad = grad }))
+				print(encode({ k = "rect", pts = pts, c = rgb(obj.BackgroundColor3, { 163, 162, 165 }), t = alpha, r = radius, grad = grad, fade = fadeOf(obj) }))
 			end
 			local stroke = childOf(obj, "UIStroke")
 			local border = stroke and (stroke.ApplyStrokeMode and stroke.ApplyStrokeMode.Name == "Border" or not TEXT[obj.ClassName])

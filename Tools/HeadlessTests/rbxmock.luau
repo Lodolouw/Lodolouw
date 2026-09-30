@@ -680,7 +680,7 @@ local SIGNAL_NAMES = {
 	Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true, MouseEnter = true,
 	MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true, Changed = true, FocusLost = true,
 	Ended = true, Played = true, Loaded = true, SelectionGained = true, SelectionLost = true, TouchTap = true,
-	PromptShown = true, PromptHidden = true, TriggerEnded = true, OnInvoke = true,
+	PromptShown = true, PromptHidden = true, TriggerEnded = true, OnInvoke = true, AttributeChanged = true,
 }
 
 function Instance.new(className, parent)
@@ -958,6 +958,10 @@ function methods.SetAttribute(self, name, value)
 	local was = attrs[name]
 	attrs[name] = value
 	if was ~= value then
+		local any = rawget(self, "__signals").AttributeChanged
+		if any then
+			any:Fire(name)
+		end
 		local s = rawget(self, "__attrSignals")[name]
 		if s then
 			s:Fire()
