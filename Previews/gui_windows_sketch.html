@@ -410,11 +410,8 @@ h2 span { color: var(--gold); }
         <div class="wcard r-legendary" style="width:55%;margin:0 auto;aspect-ratio:1"><div class="blade"></div></div>
         <b class="ck" style="font-size:1.6em;text-align:center">Ooze Daggers</b>
         <div class="meter" style="height:1.4em"><b style="width:55%;background:var(--green)"></b><em>MASTERY 4 · 55%</em></div>
-        <div style="display:grid;gap:.25em;font-size:.95em">
-          <div class="row" style="justify-content:space-between;background:#fff;border:.18em solid var(--ink);padding:.2em .4em"><b>[Q] Slime Trail</b><span class="px" style="font-size:.55em">MAS 1</span></div>
-          <div class="row" style="justify-content:space-between;background:#fff;border:.18em solid var(--ink);padding:.2em .4em"><b>[E] Goo Pounce</b><span class="px" style="font-size:.55em">MAS 3</span></div>
-          <div class="row" style="justify-content:space-between;background:var(--paperdim);border:.18em solid var(--ink);padding:.2em .4em;color:#6b5f8a"><b>🔒 [R] Ooze Storm</b><span class="px" style="font-size:.55em">MAS 6</span></div>
-        </div>
+        <div style="background:#fff;border:.18em solid var(--ink);padding:.35em .45em;font-size:.95em"><b>[F] Slime Trail</b><div style="font-weight:500;margin-top:.15em">Dash forward leaving a trail of goo that slows the boss.</div></div>
+        <div style="background:var(--paperdim);border:.18em solid var(--ink);padding:.3em .45em;font-size:.9em;color:#6b5f8a"><b>Next upgrade at Mastery 25</b> · a longer trail 🔒</div>
         <div class="btn green" style="font-size:1.3em">EQUIPPED</div>
       </div>
     </div>
@@ -423,7 +420,7 @@ h2 span { color: var(--gold); }
   <ul class="legend">
     <li><span class="k">A</span><b>Filter and search</b>, for when players own dozens of weapons.</li>
     <li><span class="k">B</span><b>Whole card in the rarity colour</b>, big diagonal weapon art (the real icons from the models), the type top left, the name in chunky italics, a green E corner on the one you're holding.</li>
-    <li><span class="k">C</span><b>Details</b>: mastery bar, each ability with its key and the mastery it unlocks at, and EQUIP.</li>
+    <li><span class="k">C</span><b>Details</b>: mastery bar, the weapon's ability [F] and what it does, its next upgrade (at mastery 25, 50, 75 and 100), and EQUIP.</li>
   </ul>
 </section>
 
@@ -488,24 +485,34 @@ h2 span { color: var(--gold); }
       <div class="bar red"><span class="t">KING GAVELGRUNT</span><span class="chip gold" style="color:var(--ink)">ROUND 2</span></div>
       <div class="in" style="padding:.45em"><div class="meter" style="height:1.5em"><b style="width:58%;background:linear-gradient(var(--red),#a3202e)"></b><em>58%</em></div></div>
     </div>
-    <div class="win" style="left:1.8%;bottom:4%;width:30%">
-      <div class="in" style="padding:.55em">
-        <div class="row"><span style="width:2.4em;height:2.2em;background:var(--red);clip-path:polygon(50% 100%,0 35%,15% 5%,50% 22%,85% 5%,100% 35%);flex:none"></span><div class="meter" style="flex:1;height:1.4em"><b style="width:80%;background:var(--red)"></b><em>240 / 300</em></div></div>
-        <div class="row"><span style="font-size:1.6em;width:1.5em;text-align:center">⚡</span><div class="meter" style="flex:1;height:1em"><b style="width:55%;background:var(--yellow)"></b></div><span class="chip teal">🧪 3</span></div>
+    <!-- your vitals, as in the game now: flasks, the heart, the bolt, centred over the level bar -->
+    <div style="position:absolute;left:50%;bottom:10.5%;transform:translateX(-50%);display:flex;align-items:center;gap:1em;white-space:nowrap">
+      <b class="px" style="color:#fff;font-size:.8em;text-shadow:.15em .15em 0 var(--ink)"><span style="color:var(--gold)">HP</span> 240/300</b>
+      <span class="ck" style="color:#fff;font-size:1.3em;text-shadow:.08em .1em 0 var(--ink)">×3 🧪</span>
+      <span style="width:4.2em;height:3.8em;background:var(--red);clip-path:polygon(50% 100%,0 35%,15% 5%,50% 22%,85% 5%,100% 35%);filter:drop-shadow(.2em .2em 0 var(--ink))"></span>
+      <span style="font-size:2.4em;filter:drop-shadow(.08em .08em 0 var(--ink))">⚡</span>
+    </div>
+    <!-- the level bar, as now -->
+    <div style="position:absolute;left:34%;right:34%;bottom:3.5%;border:.25em solid var(--ink);background:linear-gradient(var(--yellow),var(--gold));height:2.4em;display:flex;justify-content:space-between;align-items:center;padding:0 .6em">
+      <b class="px" style="font-size:.75em">LV. 12</b><b class="px" style="font-size:.65em">640 / 1000</b>
+    </div>
+    <!-- the weapon card, as now, with its one ability -->
+    <div class="win" style="right:1.8%;bottom:4%;width:23%">
+      <div class="bar" style="background:var(--legendary)"><span class="t">OOZE DAGGERS</span></div>
+      <div class="in" style="padding:.45em;gap:.35em">
+        <div class="row" style="justify-content:space-between"><b class="ck" style="font-size:1.1em">[F] Slime Trail</b><span class="chip teal">READY</span></div>
+        <div class="meter" style="height:1.1em"><b style="width:55%;background:var(--green)"></b><em>MASTERY 4</em></div>
       </div>
     </div>
-    <div style="position:absolute;right:1.8%;bottom:4%;display:flex;gap:.6em;align-items:end">
-      <div class="pic teal" style="width:5.4em"><span class="ico" style="font-size:2em">🌀</span><span class="lb">Q</span></div>
-      <div class="pic pink" style="width:5.4em"><span class="ico" style="font-size:2em">💥</span><span class="lb">E</span><div style="position:absolute;inset:0;background:conic-gradient(rgba(0,0,0,.55) 0 40%,transparent 40%)"></div></div>
-      <div class="pic" style="width:5.4em;background:#5d5680"><span class="ico" style="font-size:2em;opacity:.5">🔒</span><span class="lb">R</span></div>
-    </div>
-    <span class="cap" style="left:18.5%;top:2%">A</span><span class="cap" style="left:30%;top:24%">B</span><span class="cap" style="left:1%;bottom:17%">C</span><span class="cap" style="right:1%;bottom:17%">D</span>
+    <!-- key hints -->
+    <div class="px" style="position:absolute;left:0;right:0;bottom:18%;text-align:center;color:#fff;font-size:.5em;opacity:.8;text-shadow:.15em .15em 0 var(--ink)">CLICK swing · F ability · SHIFT roll · SPACE jump · R flask · TAB lock on</div>
+    <span class="cap" style="left:18.5%;top:2%">A</span><span class="cap" style="left:30%;top:24%">B</span><span class="cap" style="left:36%;bottom:12%">C</span><span class="cap" style="right:1%;bottom:17%">D</span>
   </div>
   <ul class="legend">
     <li><span class="k">A</span><b>Boss bar</b> in a red window, the only big thing on screen.</li>
     <li><span class="k">B</span><b>Floor banner</b> fades in when you arrive, then goes.</li>
-    <li><span class="k">C</span><b>Your bars with real numbers</b>, stamina and flasks together.</li>
-    <li><span class="k">D</span><b>Abilities</b> with a cooldown sweep. Locked ones show the mastery they need. All lobby buttons hide; "hide others' effects" is in Settings.</li>
+    <li><span class="k">C</span><b>Your vitals stay as they are now</b>: flasks, the heart and the stamina bolt in the middle, HP as a number, the gold level bar under them. They just get the window look.</li>
+    <li><span class="k">D</span><b>Your weapon card</b>, like now: its one ability [F] with a cooldown, and the mastery bar. The lobby buttons hide in a fight; "hide others' effects" is in Settings.</li>
   </ul>
 </section>
 
