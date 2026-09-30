@@ -2,8 +2,8 @@
 	PlayerService  (ModuleScript, parent: ServerScriptService, name: "PlayerService")
 
 	Server-authoritative game logic for the lobby:
-	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot, Upgrades, Talismans) + DataStore saving
-	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping
+	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot) + DataStore saving
+	  * the Sell Shop
 	  * quests (the Quest Board: a new set every 6 hours, each paying an Arcade Token)
 	  * remotes for the HUD
 
@@ -51,18 +51,11 @@ local function defaultData()
 	for _, m in ipairs(Config.Materials) do
 		loot[m.id] = 0
 	end
-	local ups = {}
-	for _, u in ipairs(Config.Upgrades) do
-		ups[u.id] = 0
-	end
 	return {
 		Power = 0,
 		Coins = 0,
 		Prestige = 0,
 		Loot = loot,
-		Upgrades = ups,
-		Owned = {},
-		Equipped = {},
 		Cleared = {}, -- ["1"] = how many times you've killed floor 1's boss
 		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
 		-- the board's quests (see Config.Quests): which set they're from (`day`:
@@ -182,12 +175,47 @@ local function oldGearTokens(saved, oldPrestige)
 	return math.min(n, OLD_GEAR.Max)
 end
 
+-- THE OLD SHOP, REFUNDED. The Upgrade Shop and the talismans were taken out
+-- of the game too; a save from before then still lists what was bought.
+-- The coins spent on them come back, once - up to Max in all.
+local OLD_SHOP = {
+	Max = 50000,
+	-- the upgrades' prices: { first level's price, how much dearer each level is, most levels }
+	Upgrades = { Backpack = { 100, 1.55, 40 }, PowerGain = { 150, 1.6, 50 }, SellValue = { 200, 1.6, 50 }, WalkSpeed = { 300, 1.7, 40 } },
+	-- the talismans' prices in coins
+	Talismans = { Might = 200, Fortune = 400, Vigor = 600, Haste = 800, Greed = 1500, Titan = 5000 },
+}
+
+-- how many coins an old save's upgrades and talismans cost
+local function oldShopRefund(saved)
+	local n = 0
+	if type(saved.Upgrades) == "table" then
+		for id, price in pairs(OLD_SHOP.Upgrades) do
+			local level = saved.Upgrades[id]
+			if type(level) == "number" and level == level and level > 0 then
+				for l = 0, math.min(math.floor(level), price[3]) - 1 do
+					n = n + math.floor(price[1] * price[2] ^ l)
+				end
+			end
+		end
+	end
+	if type(saved.Owned) == "table" then
+		for id, price in pairs(OLD_SHOP.Talismans) do
+			if saved.Owned[id] == true then
+				n = n + price
+			end
+		end
+	end
+	return math.min(n, OLD_SHOP.Max)
+end
+
 -- A save, checked: only known things and sensible numbers are kept. Returns
--- the data, and how many Arcade Tokens the old gear became (OLD_GEAR).
+-- the data, how many Arcade Tokens the old gear became (OLD_GEAR) and how
+-- many coins the old shop gave back (OLD_SHOP).
 local function mergeSaved(saved)
 	local d = defaultData()
 	if type(saved) ~= "table" then
-		return d, 0
+		return d, 0, 0
 	end
 	if type(saved.Power) == "number" then
 		d.Power = saved.Power
@@ -209,27 +237,10 @@ local function mergeSaved(saved)
 			end
 		end
 	end
-	if type(saved.Upgrades) == "table" then
-		for id in pairs(d.Upgrades) do
-			if type(saved.Upgrades[id]) == "number" then
-				d.Upgrades[id] = saved.Upgrades[id]
-			end
-		end
-	end
-	if type(saved.Owned) == "table" then
-		for id in pairs(Config.TalismanById) do
-			if saved.Owned[id] == true then
-				d.Owned[id] = true
-			end
-		end
-	end
-	if type(saved.Equipped) == "table" then
-		for id in pairs(Config.TalismanById) do
-			if saved.Equipped[id] == true and d.Owned[id] then
-				d.Equipped[id] = true
-			end
-		end
-	end
+	-- (the Upgrade Shop and talismans are gone: the coins spent on them come
+	-- back, once - OLD_SHOP, above)
+	local refund = oldShopRefund(saved)
+	d.Coins = d.Coins + refund
 	if type(saved.Cleared) == "table" then
 		for floorId in pairs(Config.Bosses or {}) do
 			local n = saved.Cleared[tostring(floorId)]
@@ -406,7 +417,7 @@ local function mergeSaved(saved)
 	if oldQuests then
 		payFinished(d, oldQuests)
 	end
-	return d, swapped
+	return d, swapped, refund
 end
 
 -- the highest Spire floor this player has ever cleared (0 = none yet)
@@ -544,7 +555,7 @@ end
 -- Newer Roblox characters can be driven by a physics-based ControllerManager
 -- instead of the classic Humanoid movement. When one is present, how fast you
 -- actually move comes from ControllerManager.BaseMoveSpeed (default 16) and
--- Humanoid.WalkSpeed is ignored - which is why the Swift Boots upgrade changed
+-- Humanoid.WalkSpeed is ignored - which is why the old Swift Boots upgrade changed
 -- the WalkSpeed number but not your real speed. So set both.
 local function applyMoveSpeed(char, speed)
 	for _, inst in ipairs(char:GetDescendants()) do
@@ -874,29 +885,6 @@ end
 ----------------------------------------------------------------------
 -- Actions (called through the Action RemoteFunction; return ok, message)
 ----------------------------------------------------------------------
-handlers.BuyUpgrade = function(player, d, id)
-	local def = type(id) == "string" and Config.UpgradeById[id]
-	if not def then
-		return false, "Unknown upgrade."
-	end
-	if not nearStation(player, "Upgrades") then
-		return false, "Walk up to the Upgrade Shop first!"
-	end
-	local level = d.Upgrades[id] or 0
-	if level >= def.maxLevel then
-		return false, "Already maxed out!"
-	end
-	local cost = Config.upgradeCost(def, level)
-	if d.Coins < cost then
-		return false, "Not enough coins (need " .. Config.format(cost) .. ")."
-	end
-	d.Coins = d.Coins - cost
-	d.Upgrades[id] = level + 1
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true, def.name .. " is now level " .. (level + 1) .. "!"
-end
-
 handlers.Sell = function(player, d, arg)
 	if not nearStation(player, "Sell") then
 		return false, "Walk up to the Sell Shop first!"
@@ -932,66 +920,6 @@ handlers.Sell = function(player, d, arg)
 	markDirty(player)
 	PlayerService.QuestProgress(player, "sell", items)
 	return true, "Sold " .. items .. (items == 1 and " item" or " items") .. " for " .. Config.format(coins) .. " coins!"
-end
-
-handlers.Craft = function(player, d, id)
-	local t = type(id) == "string" and Config.TalismanById[id]
-	if not t then
-		return false, "Unknown talisman."
-	end
-	if not nearStation(player, "Craft") then
-		return false, "Walk up to the Workbench first!"
-	end
-	if d.Owned[id] then
-		return false, "You already crafted that one."
-	end
-	if d.Coins < t.cost.coins then
-		return false, "Not enough coins."
-	end
-	for matId, need in pairs(t.cost.materials) do
-		if (d.Loot[matId] or 0) < need then
-			return false, "Missing materials."
-		end
-	end
-	d.Coins = d.Coins - t.cost.coins
-	for matId, need in pairs(t.cost.materials) do
-		d.Loot[matId] = d.Loot[matId] - need
-	end
-	d.Owned[id] = true
-	local equipped = false
-	if Config.equippedCount(d) < Config.TalismanSlots then
-		d.Equipped[id] = true
-		equipped = true
-	end
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true, "Crafted " .. t.name .. (equipped and " and equipped it!" or "! Equip it from the list.")
-end
-
-handlers.Equip = function(player, d, id)
-	if type(id) ~= "string" or not Config.TalismanById[id] or not d.Owned[id] then
-		return false, "You don't own that talisman."
-	end
-	if d.Equipped[id] then
-		return false, "Already equipped."
-	end
-	if Config.equippedCount(d) >= Config.TalismanSlots then
-		return false, "All talisman slots are full. Unequip one first."
-	end
-	d.Equipped[id] = true
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true, "Equipped " .. Config.TalismanById[id].name .. "."
-end
-
-handlers.Unequip = function(player, d, id)
-	if type(id) ~= "string" or not d.Equipped[id] then
-		return false, "That talisman isn't equipped."
-	end
-	d.Equipped[id] = nil
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true, "Unequipped."
 end
 
 -- Choose a quest at the Quest Board (arg = its place on the board, 1-3).
@@ -1062,11 +990,6 @@ handlers.DevGive = function(player, d, kind)
 		d.Tokens = (d.Tokens or 0) + 10
 	elseif kind == "Power" then
 		d.Power = d.Power + 5000
-	elseif kind == "MaxUpgrades" then
-		for _, u in ipairs(Config.Upgrades) do
-			d.Upgrades[u.id] = u.maxLevel
-		end
-		applyCharacterStats(player, false)
 	else
 		return false, "Unknown dev action."
 	end
@@ -1137,7 +1060,7 @@ local function onPlayerAdded(player)
 		return
 	end
 
-	local data, swapped = mergeSaved(saved)
+	local data, swapped, refund = mergeSaved(saved)
 	local profile = { data = data, canSave = ok }
 	profiles[player] = profile
 	ensureQuests(profile.data)
@@ -1174,6 +1097,13 @@ local function onPlayerAdded(player)
 		task.delay(6, function()
 			if player.Parent then
 				notify(player, "* Armour gear is gone from the game: your old gear and chests became " .. swapped .. " Arcade Tokens!", "rare")
+			end
+		end)
+	end
+	if refund > 0 then
+		task.delay(9, function()
+			if player.Parent then
+				notify(player, "* The Upgrade Shop and talismans are gone: you got back the " .. Config.format(refund) .. " coins you spent on them!", "rare")
 			end
 		end)
 	end

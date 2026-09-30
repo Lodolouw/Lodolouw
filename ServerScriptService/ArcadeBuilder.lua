@@ -258,7 +258,7 @@ local MACHINE_SCALE = 1.5
 function ArcadeBuilder.Build(parent)
 	local A = Config.Arcade
 	local m = folder(parent, "Arcade")
-	local O = CFrame.new(Config.Stations.Arcade or Config.Stations.Craft)
+	local O = CFrame.new(Config.Stations.Arcade)
 	local function at(x, y, z)
 		return O * CFrame.new(x, y, z)
 	end

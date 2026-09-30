@@ -13,17 +13,15 @@ local Config = {}
 Config.GameName = "Boss Grow" -- working title, rename freely
 Config.BaseHealth = 100
 Config.BaseWalkSpeed = 24 -- your speed outside a fight (the lobby is big: quicker than Roblox's 16)
-Config.BaseCapacity = 20 -- backpack slots before upgrades
+Config.BaseCapacity = 20 -- backpack slots (the Sell Shop's loot)
 Config.RequireProximity = true -- shops only work when you stand near them
 Config.StationRange = 34 -- studs
 Config.MaxPrestige = 0 -- (prestige is gone)
-Config.TalismanSlots = 3
 
 -- Where the shops stand. Used by the lobby builder AND by server range checks.
 Config.Stations = {
 	Sell = Vector3.new(52, 0, 45), -- (the Sell Shop was here: it's gone, the Quest Board stands there now)
-	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle
-	Craft = Vector3.new(72, 0, -40), -- (the forge was here: the Arcade stands there now)
+	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle (the Upgrade Shop was here: it's just a house now)
 	Arcade = Vector3.new(75, 0, -41), -- the Arcade (ServerScriptService/ArcadeBuilder), north-east of the fountain
 	Prestige = Vector3.new(0, 0, 0),
 	Quests = Vector3.new(48, 0, 45), -- the Quest Board, where the Sell Shop was (east of the plaza, up the little path off the road)
@@ -441,87 +439,13 @@ function Config.statBonus(d)
 end
 
 ----------------------------------------------------------------------
--- Loot materials (dropped by bosses later, sold or used for crafting)
+-- Loot materials (sold at the Sell Shop)
 ----------------------------------------------------------------------
 Config.Materials = {
 	{ id = "Scrap", name = "Scrap Metal", color = Color3.fromRGB(170, 176, 190), sell = 5 },
 	{ id = "Shard", name = "Shadow Shard", color = Color3.fromRGB(150, 90, 255), sell = 25 },
 	{ id = "Ember", name = "Ember Core", color = Color3.fromRGB(255, 125, 40), sell = 120 },
 	{ id = "Void", name = "Void Crystal", color = Color3.fromRGB(60, 220, 255), sell = 600 },
-}
-
-----------------------------------------------------------------------
--- Upgrades (bought with coins at the Upgrade Shop)
-----------------------------------------------------------------------
-Config.Upgrades = {
-	{
-		id = "Backpack", name = "Bigger Backpack", icon = "🎒", color = Color3.fromRGB(70, 170, 110),
-		desc = "+5 backpack slots per level",
-		perLevel = 5, maxLevel = 40, baseCost = 100, growth = 1.55,
-		effect = function(level) return "+" .. (level * 5) .. " slots" end,
-	},
-	{
-		id = "PowerGain", name = "Training Gloves", icon = "🥊", color = Color3.fromRGB(230, 80, 90),
-		desc = "+10% Power per hit per level",
-		perLevel = 0.10, maxLevel = 50, baseCost = 150, growth = 1.6,
-		effect = function(level) return "+" .. (level * 10) .. "% Power" end,
-	},
-	{
-		id = "SellValue", name = "Silver Tongue", icon = "💰", color = Color3.fromRGB(230, 180, 50),
-		desc = "+8% coins from selling per level",
-		perLevel = 0.08, maxLevel = 50, baseCost = 200, growth = 1.6,
-		effect = function(level) return "+" .. (level * 8) .. "% coins" end,
-	},
-	{
-		id = "WalkSpeed", name = "Swift Boots", icon = "👟", color = Color3.fromRGB(70, 150, 240),
-		desc = "+1 walk speed per level (outside fights)",
-		-- Raised from 15: at the old cap (16+15=31 studs/sec) it was a bit low
-		-- to clearly see the run animation blend in. Cost still grows the
-		-- same way per level, so this doesn't make it free - just reachable.
-		perLevel = 1, maxLevel = 40, baseCost = 300, growth = 1.7,
-		effect = function(level) return "+" .. level .. " speed" end,
-	},
-}
-
-function Config.upgradeCost(def, level)
-	return math.floor(def.baseCost * def.growth ^ level)
-end
-
-----------------------------------------------------------------------
--- Talismans (crafted at the workbench, equipped in limited slots)
--- bonus kinds: PowerGain, SellValue, MaxHealth, WalkSpeed, Capacity
-----------------------------------------------------------------------
-Config.Talismans = {
-	{
-		id = "Might", name = "Talisman of Might", icon = "💪", color = Color3.fromRGB(230, 80, 90),
-		bonus = "PowerGain", value = 0.15, desc = "+15% Power gain",
-		cost = { coins = 200, materials = { Scrap = 10 } },
-	},
-	{
-		id = "Fortune", name = "Talisman of Fortune", icon = "🍀", color = Color3.fromRGB(70, 190, 100),
-		bonus = "SellValue", value = 0.20, desc = "+20% coins from selling",
-		cost = { coins = 400, materials = { Scrap = 15, Shard = 3 } },
-	},
-	{
-		id = "Vigor", name = "Talisman of Vigor", icon = "❤️", color = Color3.fromRGB(240, 100, 140),
-		bonus = "MaxHealth", value = 0.25, desc = "+25% max health",
-		cost = { coins = 600, materials = { Scrap = 20, Shard = 5 } },
-	},
-	{
-		id = "Haste", name = "Talisman of Haste", icon = "⚡", color = Color3.fromRGB(250, 210, 60),
-		bonus = "WalkSpeed", value = 0.10, desc = "+10% walk speed",
-		cost = { coins = 800, materials = { Shard = 8 } },
-	},
-	{
-		id = "Greed", name = "Talisman of Greed", icon = "🧿", color = Color3.fromRGB(80, 170, 255),
-		bonus = "Capacity", value = 0.25, desc = "+25% backpack space",
-		cost = { coins = 1500, materials = { Shard = 10, Ember = 2 } },
-	},
-	{
-		id = "Titan", name = "Titan's Talisman", icon = "👑", color = Color3.fromRGB(255, 190, 50),
-		bonus = "PowerGain", value = 0.40, desc = "+40% Power gain",
-		cost = { coins = 5000, materials = { Ember = 6, Void = 2 } },
-	},
 }
 
 -- (Prestige is gone: levels are the true progress now. These stay only so
@@ -541,40 +465,10 @@ for _, m in ipairs(Config.Materials) do
 	Config.MaterialById[m.id] = m
 end
 
-Config.UpgradeById = {}
-for _, u in ipairs(Config.Upgrades) do
-	Config.UpgradeById[u.id] = u
-end
-
-Config.TalismanById = {}
-for _, t in ipairs(Config.Talismans) do
-	Config.TalismanById[t.id] = t
-end
 
 ----------------------------------------------------------------------
 -- Derived stats (shared so the HUD and the server always agree)
 ----------------------------------------------------------------------
-function Config.talismanBonus(data, kind)
-	local total = 0
-	for id, on in pairs(data.Equipped or {}) do
-		local t = Config.TalismanById[id]
-		if on and t and t.bonus == kind then
-			total = total + t.value
-		end
-	end
-	return total
-end
-
-function Config.equippedCount(data)
-	local n = 0
-	for _, on in pairs(data.Equipped or {}) do
-		if on then
-			n = n + 1
-		end
-	end
-	return n
-end
-
 function Config.lootCount(data)
 	local n = 0
 	for _, count in pairs(data.Loot or {}) do
@@ -585,9 +479,9 @@ end
 
 -- How fast a player moves. In a FIGHT (a Spire arena, the Colosseum, the
 -- intro's fight) everyone moves at the same speed, Config.Combat.ArenaWalkSpeed
--- - no upgrades or talismans: the fights are about dodging, not outrunning.
--- Outside a fight: BaseWalkSpeed plus Swift Boots and talismans. Every place
--- that sets walk speed asks this, so they can't disagree.
+-- - the fights are about dodging, not outrunning. Outside a fight:
+-- BaseWalkSpeed. Every place that sets walk speed asks this, so they can't
+-- disagree.
 function Config.walkSpeedFor(player, d)
 	if player then
 		local intro = player:GetAttribute("Intro")
@@ -598,26 +492,16 @@ function Config.walkSpeedFor(player, d)
 	return d and Config.stats(d).walkSpeed or Config.BaseWalkSpeed
 end
 
+-- What your level makes of you (Config.LevelBonus): Power from training,
+-- max health; and the Sell Shop's backpack and coins, walk speed outside
+-- fights. (The Upgrade Shop and talismans are gone.)
 function Config.stats(d)
-	local up = d.Upgrades or {}
-	local U = Config.UpgradeById
 	local points = Config.statBonus(d)
-
-	local powerMult = (1 + U.PowerGain.perLevel * (up.PowerGain or 0))
-		* (1 + Config.talismanBonus(d, "PowerGain"))
-		* (1 + points.Power / 100)
-
-	local coinMult = (1 + U.SellValue.perLevel * (up.SellValue or 0))
-		* (1 + Config.talismanBonus(d, "SellValue"))
-
-	local capacity = math.floor(
-		(Config.BaseCapacity + U.Backpack.perLevel * (up.Backpack or 0)) * (1 + Config.talismanBonus(d, "Capacity"))
-	)
-
-	local walkSpeed = (Config.BaseWalkSpeed + U.WalkSpeed.perLevel * (up.WalkSpeed or 0))
-		* (1 + Config.talismanBonus(d, "WalkSpeed"))
-
-	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")) + points.Health)
+	local powerMult = 1 + points.Power / 100
+	local coinMult = 1
+	local capacity = Config.BaseCapacity
+	local walkSpeed = Config.BaseWalkSpeed
+	local maxHealth = math.floor(Config.BaseHealth + points.Health)
 
 	return {
 		powerMult = powerMult,
@@ -1221,7 +1105,7 @@ Config.Intro = {
 	-- What beating it gives you
 	Reward = {
 		Tokens = 1, -- the chest Oozlet drops holds your first Arcade Token (a spin at the Arcade)
-		Coins = 100, -- enough for a first upgrade
+		Coins = 100,
 		Level = 3, -- you're at least this level after
 	},
 
@@ -2809,7 +2693,7 @@ Config.Combat = {
 		Death = { Name = "8bit death sound", Volume = 0.85 },
 	},
 	ArenaWalkSpeed = 20, -- everyone's speed in a fight (Spire, Colosseum, the intro), whatever
-	-- their boots or talismans: a boss can only press you if you can't simply outrun it
+	-- anything else: a boss can only press you if you can't simply outrun it
 	-- your punch damage = the floor's recommended Power, times
 	-- (your Power / recommended Power) ^ DamageCurve, kept between Min and Max
 	DamageCurve = 0.5,

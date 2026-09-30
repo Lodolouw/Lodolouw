@@ -22,7 +22,7 @@ You are continuing work on my Roblox game. Read this whole message before doing 
    - Levels come from Power. Total Power for a level = 17.9 × (level − 1)³, up to level 256.
    - **No stat points any more (decided, removed):** every level makes you a little stronger at everything by itself - damage, max health, defence and Power from training (`Config.LevelBonus`). Old saves' spent points are dropped; the plaza's Shrine of Growth is just decoration now.
    - **Armour gear and boss chests were removed (decided, done):** weapons from the Arcade are the loot now. Bosses pay Power (and Arcade Tokens the first time); the intro's chest holds your first Arcade Token. Old saves' gear and unopened chests became Arcade Tokens once (`OLD_GEAR` in `PlayerService`: chest / Common-Rare piece 1, Epic 2, Legendary 5, Mythic 10, Secret 25, at most 100; the next save leaves them out). `Items.lua` and the Inventory (gear window, G key) are deleted. Don't bring gear back.
-   - **Upgrades** (backpack, gloves, sell value, Swift Boots) and **talismans** (3 slots, crafted at the Armory/blacksmith) give more ways to get stronger.
+   - **The Upgrade Shop and talismans were removed (decided, done).** Old saves got the coins they spent back once (`OLD_SHOP` in `PlayerService`, at most 50,000). Walk speed outside fights is `Config.BaseWalkSpeed`. The mushroom house stays as the toad's house (no sign, arrow or walk-up).
    - Levels are **Blox Fruits-style**: max 256 (the level bar says MAX LEVEL there).
    - **Prestige was removed completely** (on purpose). Old prestige was converted into Oozark chests once (and those into Arcade Tokens now). `Config.MaxPrestige = 0`, and there's no prestige sign. Don't bring it back.
 3. **Fight bosses** in **the Spire**. Each floor is a boss with a recommended level:
@@ -79,7 +79,7 @@ The whole lobby is built by LobbyBuilder. Its pieces are, in order: ground and w
 - **The plaza:** a fountain plaza with lamp posts, cobble paths and auto curbs. The Prestige Shrine is gone and the plaza is open paving.
 - **Shops:**
   - **Sell Shop**: gone (I said there's no reason for it: nothing drops to sell any more). The Quest Board stands where it was. (The Sell/Backpack panel code in Hud and the "Sell" action are still there, unreachable, until the loot is cut.)
-  - **Upgrade Shop**: the **mushroom house** on the **cove**, with an **8-bit frog** shopkeeper. It sits at the end of a natural dirt path with log steps, and there's a **pier**.
+  - **The toad's mushroom house** (it was the Upgrade Shop) on the **cove**, with an **8-bit frog**. It sits at the end of a natural dirt path with log steps, and there's a **pier**.
   - **Armory / blacksmith** in the east **Gear Hall**. The forge and its waterwheel are gone: **the Arcade** stands where the forge was (see "The Arcade" below).
 - **Pet Sanctuary tower:** built, but **empty** (pets aren't made yet), and dressed as **under construction** (I asked): scaffolding round the tower's front, a yellow tower crane behind it with its hook down, striped barriers and cones across the gate, an "UNDER CONSTRUCTION - PETS COMING SOON!" sign, planks and stone blocks piled up (LobbyBuilder `buildPetSanctuary`, folder "Construction").
 - **The farm:** a Stardew-style farm with a cottage, crop rows, a windmill with 8-bit stepped spinning sails, a coop, a well and a scarecrow. The entrance is open, with no gate.
@@ -142,7 +142,7 @@ I decided to make the game **simple, like Blox Fruits**: few things to understan
 - **Pets:** hatched from eggs bought with Coins (and rare boss eggs); a bonus like +XP, +coins or +damage; 1 equipped at first, more slots later.
 - **Trading:** only weapons and pets. No market / Auction House.
 - **What Robux buys:** go faster (2x XP, 2x Coins, token packs, an extra pet slot, lucky hatching) and look cool (weapon skins, auras, victory dances, a VIP tag), plus private servers.
-- **What gets CUT:** armour gear (helmet, chest, boots and their sets) ✅ cut, boss chests (bosses give Tokens, Power and sometimes a rare egg instead) ✅ cut, talismans and the upgrade shop (still to do). The screen shrinks to **4 buttons: Roll, Inventory, Shop, Quests**, with Level, Coins and Tokens at the top. Existing players' gear is turned into Arcade Tokens once, so nobody loses out.
+- **What gets CUT:** armour gear (helmet, chest, boots and their sets) ✅ cut, boss chests (bosses give Tokens, Power and sometimes a rare egg instead) ✅ cut, talismans and the upgrade shop ✅ cut. The screen shrinks to **4 buttons: Roll, Inventory, Shop, Quests**, with Level, Coins and Tokens at the top. Existing players' gear is turned into Arcade Tokens once, so nobody loses out.
 - **What stays the same:** the bosses, the Colosseum, the intro, combat and the daily quests.
 - **No "evil" tricks:** no fake timers, no fake free-Robux, no misleading thumbnails, no fake near-misses. Fair and exciting, within Roblox's rules.
 - **Launch = weapons only, no pets.** Pets (from fishing) are the first big update after launch.
@@ -319,7 +319,7 @@ At mastery 100 a weapon can be **awakened** (a new look + a stronger special). S
 - `Main.server.lua`: a Script. It builds the world and then starts each service inside `pcall`.
 - `LobbyBuilder.lua`: builds the entire lobby, the mini colosseum, the real Colosseum arena and the dummy templates.
   **WARNING:** it is right at Roblox's **200 top-level locals limit (about 193 used)**. Put new code inside the existing `Extras` function block, or inside `do ... end` blocks. Never add new top-level `local`s.
-- `PlayerService.lua`: DataStore with session locking, the movement anti-cheat guard, request rate limits, daily quests, stats and upgrades.
+- `PlayerService.lua`: DataStore with session locking, the movement anti-cheat guard, request rate limits, daily quests, and the one-time swaps for old saves (gear to tokens, the old shop to coins).
 - `CombatService.lua`: server-authoritative combat: punches, the owner filter, damage, the shield block, and Disintegrate.
 - `ColosseumService.lua`: the Colosseum wave arena (details below).
 - `BossService.lua`: what every boss shares: an encounter's life (asleep, waking, fighting, the break at half health, resetting, dead + rewards), targets, publishing actions for the screens, timing, hitting players, the surface-boss brain (choose an attack by distance, do it, breathe), moving and turning, shock rings and burning puddles. It loads each boss's own file and hands it the shared helpers (`Boss.init(kit)`; the list is `makeKit`).
@@ -736,7 +736,7 @@ The build order is 1 → 3 + 4 → 2 → 5 + 6.
 **Also asked for: more bosses** (my goal is 20+). Floors 3 to 10 are done: Knight Burrowmore, Kaze, Speedy Revvington, Gridlock, Kongo, Petalina, Scribble and King Gavelgrunt (see their sections above). The plan now is 10 bosses, then the Nightmare, Eclipse and Doom versions of the Spire (see "The boss lineup") - ask me before starting them.
 
 ### The dev console
-A small red **DEV** button bottom-right (Hud) opens the dev console: +Loot, +Coins, +Power, Max Upgrades, Replay Intro, and **Set Level** (type a level: your Power becomes that level's - so everything feels as it would for a real player at that level; coins untouched); in a fight CombatClient adds "DEV: Incoming hit"; and every Spire floor is open (no need to beat the one below). Who gets it: `Config.isDev(player)` - always in Studio, and in the real game the game's owner (when a person owns it, not a group) plus anyone in `Config.DevUserIds`. The server sets the player attribute `Dev` (only so the screen shows the button) and **every dev action checks `Config.isDev` again on the server**, so nobody else can use them. I playtest in the real Roblox (fullscreen), so keep dev tools working there - owner-only.
+A small red **DEV** button bottom-right (Hud) opens the dev console: +10 Tokens, +Loot, +Coins, +Power, Replay Intro, and **Set Level** (type a level: your Power becomes that level's - so everything feels as it would for a real player at that level; coins untouched); in a fight CombatClient adds "DEV: Incoming hit"; and every Spire floor is open (no need to beat the one below). Who gets it: `Config.isDev(player)` - always in Studio, and in the real game the game's owner (when a person owns it, not a group) plus anyone in `Config.DevUserIds`. The server sets the player attribute `Dev` (only so the screen shows the button) and **every dev action checks `Config.isDev` again on the server**, so nobody else can use them. I playtest in the real Roblox (fullscreen), so keep dev tools working there - owner-only.
 
 ### Adding a boss
 1. Copy `ServerScriptService/Bosses/_Template.lua` and `ReplicatedStorage/BossBodies/_Template.lua`, naming both copies after the new boss's short name (e.g. `Frostjaw.lua`). Their headers explain everything.

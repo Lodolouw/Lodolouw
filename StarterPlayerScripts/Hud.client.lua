@@ -2,13 +2,12 @@
 	Hud  (LocalScript, parent: StarterPlayer > StarterPlayerScripts, name: "Hud")
 
 	Builds the whole GUI from code (no assets needed):
-	  * left 2x2 buttons: Upgrades, Backpack, Armory (talismans), Prestige (with % badge)
 	  * bottom-left: Arcade Tokens (click: the Arcade's menu) / coins / level
 	  * top hint banner, bottom goal bar
 	  * bottom middle: THE HEART (your health) - with the potion (flasks) and
 	    the lightning bolt (stamina) either side of it in a fight - drawn by
 	    ReplicatedStorage/Vitals
-	  * panels: Upgrade Shop, Sell Shop / Backpack, Talisman Workbench, Prestige
+	  * panels: Sell Shop / Backpack
 
 	The server owns all data; this script only displays it and sends requests.
 ]]
@@ -221,19 +220,11 @@ local COIN_SOUND = "coin2"
 
 -- One motif per action, so buying, selling, crafting and prestiging each feel distinct.
 local ACTION_CHIMES = {
-	BuyUpgrade = { { speed = 1.05, volume = 0.55, soundName = COIN_SOUND } },
 	Sell = {
 		{ speed = 1.1, volume = 0.5, soundName = COIN_SOUND },
 		{ delay = 0.06, speed = 1.35, volume = 0.45, soundName = COIN_SOUND },
 		{ delay = 0.12, speed = 1.6, volume = 0.4, soundName = COIN_SOUND },
 	},
-	Craft = {
-		{ speed = 0.85, volume = 0.5, sound = HIT_SOUND },
-		{ delay = 0.05, speed = 1.3, volume = 0.4 },
-		{ delay = 0.16, speed = 1.75, volume = 0.35 },
-	},
-	Equip = { { speed = 1.2, volume = 0.45 } },
-	Unequip = { { speed = 0.8, volume = 0.4 } },
 	Prestige = {
 		{ speed = 1.0, volume = 0.6, sound = HIT_SOUND },
 		{ delay = 0.12, speed = 1.19, volume = 0.55 },
@@ -581,8 +572,8 @@ end
 ----------------------------------------------------------------------
 -- HUD: left buttons
 ----------------------------------------------------------------------
--- Big square buttons in a 2x2 grid:  Upgrades | Backpack
---                                     Armory   | Prestige
+-- Big square buttons (none are made any more: the new lobby screen,
+-- LobbyHud, has its own)
 local BUTTON_SIZE = 112
 local BUTTON_GAP = 10
 
@@ -591,9 +582,7 @@ local BUTTON_GAP = 10
 -- it between the quotes as "rbxassetid://123456789". Any left empty keep
 -- their emoji icon.
 local BUTTON_ICON_IMAGES = {
-	Upgrades = "rbxassetid://109878847284339",
 	Backpack = "rbxassetid://125324688627530",
-	Armory = "",
 	Prestige = "rbxassetid://115477290507288",
 }
 
@@ -668,9 +657,7 @@ local leftCol = create("Frame", {
 -- shop CFrames/rotations as LobbyBuilder, pushed forward past the counter to
 -- the customer side and turned 180° to face back in at it.
 local STATION_APPROACH = {
-	Upgrades = CFrame.new(Config.Stations.Upgrades) * CFrame.Angles(0, math.rad(Config.StationTurn.Upgrades or -90), 0) * CFrame.new(0, 0, 13) * CFrame.Angles(0, math.pi, 0), -- (in front of the toad)
 	Backpack = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(Config.StationTurn.Sell or 90), 0) * CFrame.new(0, 0, 11) * CFrame.Angles(0, math.pi, 0),
-	Craft = CFrame.new(Config.Stations.Craft) * CFrame.new(0, 0, 9) * CFrame.Angles(0, math.pi, 0),
 	Prestige = CFrame.new(Config.Stations.Prestige) * CFrame.new(0, 0, 12) * CFrame.Angles(0, math.pi, 0),
 }
 
@@ -792,8 +779,8 @@ local function hudButton(name, icon, colors, order, panelName, stationCFrame)
 	return b
 end
 
--- (Upgrades, Backpack and Armory have no buttons any more: walk up to the
--- Upgrade Shop, the Sell Shop or the forge to use them.)
+-- (the Upgrade Shop and the talismans' Armory are gone; the Backpack has no
+-- button any more: walk up to the Sell Shop to use it)
 -- (the STATS and GEAR buttons are gone with stat points and armour gear: your
 -- level alone makes you stronger now - Config.LevelBonus)
 
@@ -1043,85 +1030,6 @@ local levelUpLabel = text({
 local levelUpToken = 0
 
 ----------------------------------------------------------------------
--- Panel: Upgrade Shop
-----------------------------------------------------------------------
-local upgradeRows = {}
-do
-	local p = makePanel("Upgrades", "UPGRADE SHOP", RGB(70, 150, 255), 500)
-	for i, def in ipairs(Config.Upgrades) do
-		local row = create("Frame", {
-			LayoutOrder = i,
-			Size = UDim2.new(1, -10, 0, 86),
-			BackgroundColor3 = C.row,
-			Parent = p.body,
-		}, { corner(14) })
-		text({
-			Position = UDim2.fromOffset(10, 11),
-			Size = UDim2.fromOffset(64, 64),
-			BackgroundTransparency = 0,
-			BackgroundColor3 = def.color,
-			Text = def.icon,
-			TextSize = 36,
-			Parent = row,
-		}, { corner(14), border(2.5) })
-		text({
-			Position = UDim2.fromOffset(88, 8),
-			Size = UDim2.new(1, -270, 0, 28),
-			Text = def.name,
-			TextSize = 24,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		text({
-			Position = UDim2.fromOffset(88, 36),
-			Size = UDim2.new(1, -270, 0, 20),
-			Text = def.desc,
-			TextSize = 16,
-			TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		local lvl = text({
-			Position = UDim2.fromOffset(88, 58),
-			Size = UDim2.new(1, -270, 0, 20),
-			TextSize = 16,
-			TextColor3 = C.green,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		local buy = button({
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(150, 54),
-			Parent = row,
-		})
-		buy.Activated:Connect(function()
-			doAction("BuyUpgrade", def.id)
-		end)
-		local coin = coinIcon(buy, 30, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0) })
-		upgradeRows[def.id] = { lvl = lvl, buy = buy, coin = coin }
-	end
-
-	p.refresh = function()
-		for _, def in ipairs(Config.Upgrades) do
-			local ui = upgradeRows[def.id]
-			local level = state.Upgrades[def.id] or 0
-			ui.lvl.Text = "Lv. " .. level .. "/" .. def.maxLevel .. "   |   " .. def.effect(level)
-			if level >= def.maxLevel then
-				ui.buy.Text = "MAX"
-				ui.coin.Visible = false
-				paint(ui.buy, false, C.green)
-			else
-				local cost = Config.upgradeCost(def, level)
-				ui.buy.Text = "    " .. Config.format(cost) -- room on the left for the coin picture
-				ui.coin.Visible = true
-				paint(ui.buy, state.Coins >= cost, C.green)
-			end
-		end
-	end
-end
-
-----------------------------------------------------------------------
 -- Panel: Sell Shop / Backpack (one panel, two modes)
 ----------------------------------------------------------------------
 local sellUI = { rows = {} }
@@ -1218,127 +1126,6 @@ do
 		end
 		sellUI.all.Text = "SELL ALL   " .. Config.format(total * stats.coinMult) .. " coins"
 		paint(sellUI.all, total > 0, C.green)
-	end
-end
-
-----------------------------------------------------------------------
--- Panel: Talisman Workbench
-----------------------------------------------------------------------
-local craftUI = { rows = {} }
-
-local function colorize(str, ok)
-	local hex = ok and "#7CFF9B" or "#FF6B6B"
-	return '<font color="' .. hex .. '">' .. str .. "</font>"
-end
-
-local function canCraft(t)
-	if state.Coins < t.cost.coins then
-		return false
-	end
-	for matId, need in pairs(t.cost.materials) do
-		if (state.Loot[matId] or 0) < need then
-			return false
-		end
-	end
-	return true
-end
-
-do
-	local p = makePanel("Craft", "ARMORY", RGB(230, 90, 60), 580)
-	craftUI.slots = text({
-		LayoutOrder = 0,
-		Size = UDim2.new(1, -10, 0, 30),
-		TextSize = 22,
-		Parent = p.body,
-	}, { stroke(2.5) })
-
-	for i, t in ipairs(Config.Talismans) do
-		local row = create("Frame", {
-			LayoutOrder = i,
-			Size = UDim2.new(1, -10, 0, 92),
-			BackgroundColor3 = C.row,
-			Parent = p.body,
-		}, { corner(14) })
-		text({
-			Position = UDim2.fromOffset(10, 14),
-			Size = UDim2.fromOffset(64, 64),
-			BackgroundTransparency = 0,
-			BackgroundColor3 = t.color,
-			Text = t.icon,
-			TextSize = 34,
-			Parent = row,
-		}, { corner(32), border(2.5) })
-		text({
-			Position = UDim2.fromOffset(88, 6),
-			Size = UDim2.new(1, -250, 0, 26),
-			Text = t.name,
-			TextSize = 22,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		text({
-			Position = UDim2.fromOffset(88, 32),
-			Size = UDim2.new(1, -250, 0, 20),
-			Text = t.desc,
-			TextSize = 16,
-			TextColor3 = C.gold,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		local recipe = text({
-			Position = UDim2.fromOffset(88, 54),
-			Size = UDim2.new(1, -250, 0, 34),
-			TextSize = 15,
-			RichText = true,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			Parent = row,
-		})
-		local btn = button({
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -10, 0.5, 0),
-			Size = UDim2.fromOffset(130, 52),
-			Parent = row,
-		})
-		btn.Activated:Connect(function()
-			doAction(btn:GetAttribute("Action") or "Craft", t.id)
-		end)
-		craftUI.rows[t.id] = { recipe = recipe, btn = btn }
-	end
-
-	p.refresh = function()
-		craftUI.slots.Text = "Equipped " .. Config.equippedCount(state) .. "/" .. Config.TalismanSlots .. "   |   Craft, then equip!"
-		for _, t in ipairs(Config.Talismans) do
-			local ui = craftUI.rows[t.id]
-			if state.Owned[t.id] then
-				if state.Equipped[t.id] then
-					ui.recipe.Text = colorize("Equipped", true)
-					ui.btn.Text = "UNEQUIP"
-					ui.btn:SetAttribute("Action", "Unequip")
-					paint(ui.btn, true, C.orange)
-				else
-					ui.recipe.Text = colorize("Owned - not equipped", true)
-					ui.btn.Text = "EQUIP"
-					ui.btn:SetAttribute("Action", "Equip")
-					paint(ui.btn, true, C.blue)
-				end
-			else
-				local parts = {}
-				for _, m in ipairs(Config.Materials) do
-					local need = t.cost.materials[m.id]
-					if need then
-						local have = state.Loot[m.id] or 0
-						table.insert(parts, colorize(m.name .. " " .. have .. "/" .. need, have >= need))
-					end
-				end
-				table.insert(parts, colorize(Config.format(t.cost.coins) .. " coins", state.Coins >= t.cost.coins))
-				ui.recipe.Text = table.concat(parts, "  |  ")
-				ui.btn.Text = "CRAFT"
-				ui.btn:SetAttribute("Action", "Craft")
-				paint(ui.btn, canCraft(t), C.green)
-			end
-		end
 	end
 end
 
@@ -1697,8 +1484,8 @@ do
 			doAction(what[2])
 		end)
 	end
-	local DEV_LABELS = { Tokens = "DEV: +10 Tokens", Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power", MaxUpgrades = "DEV: Max Upgrades" }
-	for i, kind in ipairs({ "Tokens", "Loot", "Coins", "Power", "MaxUpgrades" }) do
+	local DEV_LABELS = { Tokens = "DEV: +10 Tokens", Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power" }
+	for i, kind in ipairs({ "Tokens", "Loot", "Coins", "Power" }) do
 		local b = button({
 			LayoutOrder = i - 1,
 			Size = UDim2.fromOffset(150, 36),

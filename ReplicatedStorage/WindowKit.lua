@@ -511,9 +511,29 @@ end
 
 -- the red close button (a TextButton with a hard shadow)
 function K.x(parent, props)
-	local b = K.button(parent, "✕", C.Red, props)
+	local b = K.button(parent, "", C.Red, props)
 	b.Name = "Close"
-	b.Font = K.FONT
+	-- the cross: two white bars (the fonts have no "✕" - it came out blank)
+	for i, turn in ipairs({ 45, -45 }) do
+		local bar = new("Frame", {
+			Name = "Cross" .. i,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(0.78, 0, 0, 9),
+			Rotation = turn,
+			BackgroundColor3 = C.White,
+			BorderSizePixel = 0,
+			ZIndex = b.ZIndex + 1,
+		}, b)
+		outline(bar, C.Ink, 2)
+	end
+	b:GetPropertyChangedSignal("ZIndex"):Connect(function()
+		for _, c in ipairs(b:GetChildren()) do
+			if c:IsA("Frame") and string.sub(c.Name, 1, 5) == "Cross" then
+				c.ZIndex = b.ZIndex + 1
+			end
+		end
+	end)
 	return b
 end
 

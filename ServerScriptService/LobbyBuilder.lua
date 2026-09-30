@@ -3,7 +3,7 @@
 
 	Builds the whole starter lobby out of Parts when the server starts:
 	  * toy-brick island, paths, walls, trees, lamps
-	  * Upgrade Shop (mushroom house), the Arcade (ArcadeBuilder, where the forge was), the Quest Board (where the Sell Shop was)
+	  * the toad's mushroom house (the Upgrade Shop was here), the Arcade (ArcadeBuilder, where the forge was), the Quest Board (where the Sell Shop was)
 	  * the mini Colosseum (its door takes you to the wave arena)
 	  * the castle gate, and the stairs and bridge up to the Spire (the boss floors)
 
@@ -934,10 +934,10 @@ local function buildDecor(parent)
 end
 
 ----------------------------------------------------------------------
--- Upgrade Shop (east side, faces west)
+-- The toad's mushroom house (the Upgrade Shop was here; it's gone)
 ----------------------------------------------------------------------
 local function buildUpgradeShop(parent)
-	-- The Upgrade Shop: a mushroom house. Round stone-and-brick stem with
+	-- A mushroom house. Round stone-and-brick stem with
 	-- timber beams, a big stepped red cap with white spots and a floppy tip,
 	-- glowing windows, an arched door, a little mushroom annex on the side,
 	-- plants and lanterns. The shopkeeper stands at a counter out front.
@@ -1036,10 +1036,7 @@ local function buildUpgradeShop(parent)
 	local annexWin = part(m, "AnnexWindow", V3(1.8, 1.8, 0.4), O * CFrame.new(AX, 4.6, AZ + 3.55), RGB(255, 206, 120), Mat.Neon, { Transparency = 0.15 })
 
 	-- The toad sits right in the middle, out front of the stem, facing the
-	-- path. Players teleporting in land a few studs in front of him, on the
-	-- welcome mat (Hud's station spot, local z = 13). The "Open Upgrades"
-	-- prompt hangs on an invisible marker right by him.
-	local top = anchorPart(m, "PromptSpot", O * CFrame.new(0, 3, 9.5))
+	-- path, on the welcome mat.
 	-- an 8-bit frog, built from blocks, sitting on the step facing you
 	do
 		local frog = Instance.new("Model")
@@ -1094,34 +1091,9 @@ local function buildUpgradeShop(parent)
 		light.Parent = lantern
 	end
 
-	-- A pixel-art arrow floating above the cap, pointing up: chunky green
-	-- cubes with a light edge, bobbing (and a small glow under it)
-	local ARROW = {
-		"...L...",
-		"..LGG..",
-		".LGGGG.",
-		"LGGGGGG",
-		"..LGG..",
-		"..LGG..",
-		"..LGG..",
-	}
-	local green, light = RGB(99, 199, 77), RGB(190, 240, 140)
-	local cube = 1.1
-	for y, row in ipairs(ARROW) do
-		for x = 1, #row do
-			local ch = string.sub(row, x, x)
-			if ch ~= "." then
-				local p = part(m, "ArrowPixel", V3(cube, cube, cube), O * CFrame.new((x - 4) * cube, 38 + (#ARROW - y) * cube, STEM_Z), ch == "L" and light or green, Mat.Neon, { CanCollide = false, CanQuery = false })
-				fx(p, { BobAmp = 0.8, BobSpeed = 2 })
-			end
-		end
-	end
-
-	titleSign(m, O * CFrame.new(0, 46, STEM_Z), "UPGRADES", "Spend coins to grow stronger", RGB(120, 200, 255), 340, 90)
 	part(m, "Mat", V3(10, 0.3, 4), O * CFrame.new(0, 0.95, 11.6), RGB(90, 170, 255), Mat.Neon, { Transparency = 0.35, CanCollide = false })
-
-	addPrompt(top, "Upgrades", "Open Upgrades", "Upgrade Shop", 14)
-	autoZone(m, O * CFrame.new(0, 4, 12), V3(16, 8, 10), "Panel", "Upgrades")
+	-- (the Upgrade Shop is gone: no sign, no arrow and no walk-up any more -
+	-- it's just the toad's house now)
 end
 
 ----------------------------------------------------------------------

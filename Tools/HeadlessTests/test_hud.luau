@@ -92,7 +92,7 @@ mount.runClient("StarterPlayerScripts/Hud.client.lua", me)
 M.run(1)
 local function send(tokens)
 	remotes.StateUpdate.OnClientEvent:Fire({
-		Power = 100, Coins = 50, Tokens = tokens, Loot = {}, Upgrades = {}, Talismans = {}, Stats = {},
+		Power = 100, Coins = 50, Tokens = tokens, Loot = {},
 		Weapons = { own = {} }, Quests = { day = 0, list = {} },
 	})
 	M.run(M.now() + 0.5)

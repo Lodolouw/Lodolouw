@@ -10,11 +10,9 @@ arena will plug in later.
 - **Procedurally-built lobby** (toy-brick island, paths, tall mossy castle
   walls, trees, lamps)
 - **Sell Shop** — sell loot materials for coins
-- **Upgrade Shop** — spend coins on 4 permanent-per-run upgrades (backpack
-  size, power gain, sell value, walk speed)
-- **Talisman Workbench** — craft 6 talismans from coins + materials, equip up
-  to 3 at once for stat bonuses
-- **Prestige Shrine** — reset Power/Coins/Upgrades for permanent multipliers
+- (The Upgrade Shop, the talismans and prestige are gone: your level alone
+  makes you stronger, and weapons come from the Arcade. The Upgrade Shop's
+  mushroom house stays as the toad's house.)
 - **The Colosseum** — walk through the mini colosseum's door (south-west of
   the plaza) into your own wave arena: dummies hop in wave after wave, the
   King last. This is where you level up. (The old training pads are gone.)
@@ -58,14 +56,14 @@ StarterPlayer/StarterPlayerScripts/
 ## How it fits together
 
 - **Config.lua** is the single source of truth for every number (the
-  Colosseum, upgrade costs, talisman recipes, prestige formulas). Both
+  Colosseum, the bosses, the Arcade, the shop). Both
   the server and the client require it, so they always agree.
 - **LobbyBuilder.lua** runs once on the server at startup and builds every
   Part/Model/GUI-anchor in Workspace. Nothing here is a real asset — it's all
   `Instance.new("Part")` calls. Decorative pieces are tagged `"FX"` so the
   client can animate them without the server doing any per-frame work.
-- **PlayerService.lua** owns all player data (Power, Coins, Loot, Upgrades,
-  Talismans, Prestige), validates every action server-side (never trust the
+- **PlayerService.lua** owns all player data (Power, Coins, Arcade Tokens,
+  weapons, quests, rewards), validates every action server-side (never trust the
   client), and pushes state snapshots to each player's HUD. It also exposes
   `PlayerService.AddLoot/AddCoins/AddPower/GetData` for your future arena
   scripts to call when a boss dies.
@@ -102,10 +100,7 @@ boss arena" — that's your teleport hook once the arena place/area exists.
   `SoundService` (see `COIN_SOUND` / `playNamedSound` in Hud.client.lua) - if
   that Sound gets renamed or removed it falls back to `PING_SOUND`.
 - `Config.RequireProximity` / `Config.StationRange` control whether shop
-  actions require standing near the station (on by default). The left-side
-  Upgrades/Backpack/Talismans/Prestige buttons teleport the player to that
-  station's spot when clicked, so a purchase from the panel never fails
-  with "walk up to the X first."
+  actions require standing near the station (on by default).
 - All 6 files were checked for structural syntax correctness (balanced
   brackets/parens/braces and every `function`/`if`/`for`/`while`/`do`/`repeat`
   block correctly matched with `end`), and every RemoteEvent/RemoteFunction
@@ -791,7 +786,7 @@ the other three are Iron Swords in everything but their looks), then fists.
   **Whirlwind**. Until you add them the swings are silent and hits use the
   punch sounds.
 
-## Gear (removed)
+## Gear, the Upgrade Shop and talismans (removed)
 
 Armour gear (helmets, chestplates, boots, gauntlets and their sets) and the
 bosses' treasure chests are gone: **weapons from the Arcade are the loot now**,
@@ -815,6 +810,12 @@ and your level makes you stronger (`Config.LevelBonus`). What that changed:
   out, so it can't be swapped twice.
 - The G key, the gear window (`Inventory`) and `ReplicatedStorage/Items` are
   gone.
+- **The Upgrade Shop and the talismans are gone too.** Walk speed outside
+  fights is `Config.BaseWalkSpeed` for everyone, Power from training and max
+  health come from your level. The mushroom house on the cove stays (the
+  toad's house) without its sign, arrow or walk-up. An old save gets back the
+  coins it spent on upgrades and talismans, once, up to **50,000** (`OLD_SHOP`
+  in `PlayerService.lua`), with a message. (DEV: Max Upgrades is gone.)
 
 ## The new GUI (the lobby screen, rewards, the Index, the shop, the Bag and Settings)
 
@@ -909,7 +910,7 @@ adds a little damage, max health, defence and Power from training
 (`Config.LevelBonus` - tune the numbers there); your max health goes up the
 moment you level. The STATS button, its panel and the plaza shrine's walk-up
 are gone (the Shrine of Growth stays as decoration). Armour gear is gone too
-(see "Gear (removed)" above).
+(see "Gear, the Upgrade Shop and talismans (removed)" above).
 
 **The menus** (`ReplicatedStorage/Menus`): see-through - the world blurs and
 dims behind, and the menu floats over it: a big title top left, tabs down the

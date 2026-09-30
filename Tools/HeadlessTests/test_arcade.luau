@@ -17,7 +17,8 @@
 --     first win pays a bundle (and opens its machine), DEV: +10 Tokens, and
 --     tokens and the Arcade's counters are saved - a nonsense save is cleaned up
 --   * the board's Colosseum clear quest counts clears
---   * an old save's armour gear and boss chests become Arcade Tokens, once
+--   * an old save's armour gear and boss chests become Arcade Tokens, once,
+--     and the coins it spent on upgrades and talismans come back, once
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -61,6 +62,8 @@ local saves = {
 		Chests = { ["0"] = 1, ["1"] = 3, ["2"] = "x" },
 		Items = { a = { id = "SquishyGloves" }, b = { id = "OozarkCrown" }, c = { id = "SecretCoin" }, d = { id = "GoneLongAgo" }, e = "x" },
 		Gear = { Weapon = "a", Helmet = "c" },
+		-- and bought from the Upgrade Shop and crafted talismans
+		Upgrades = { PowerGain = 2, Backpack = 0, Nope = 9 }, Owned = { Might = true, Vigor = false },
 	},
 	u_1008 = { Power = 100, Coins = 100, Tokens = 0, Chests = { ["1"] = 5000 } },
 }
@@ -541,6 +544,10 @@ local want = 3 + 2 + 4 + 1 + 5 + 25 + 1
 check(gd and gd.Tokens == want, "old gear and chests become tokens (" .. tostring(gd and gd.Tokens) .. ", want " .. want .. ")")
 check(gd and gd.Items == nil and gd.Gear == nil and gd.Chests == nil and gd.NextId == nil and gd.BestLevel == nil, "and they're gone from the data")
 check(hd and hd.Tokens == 100, "at most 100 tokens (" .. tostring(hd and hd.Tokens) .. ")")
+-- Training Gloves level 2 (150 + 240) and the Talisman of Might (200)
+check(gd and gd.Coins == 100 + 150 + 240 + 200, "the coins spent in the old shop come back (" .. tostring(gd and gd.Coins) .. ")")
+check(gd and gd.Upgrades == nil and gd.Owned == nil and gd.Equipped == nil, "and the upgrades and talismans are gone from the data")
+check(hd and hd.Coins == 100, "nothing bought, nothing back")
 step(6.5)
 local swapNotice = 0
 for _, n in ipairs(notices) do
@@ -551,11 +558,11 @@ end
 check(swapNotice == 2, "each is told how many (" .. swapNotice .. "): " .. table.concat(notices, " | "))
 Players.PlayerRemoving:Fire(golf)
 step(1)
-check(saves.u_1007 and saves.u_1007.Tokens == want and saves.u_1007.Items == nil and saves.u_1007.Chests == nil, "the save leaves the old gear out")
+check(saves.u_1007 and saves.u_1007.Tokens == want and saves.u_1007.Items == nil and saves.u_1007.Chests == nil and saves.u_1007.Upgrades == nil, "the save leaves the old gear and shop out")
 Players.PlayerAdded:Fire(golf)
 step(0.5)
 gd = PS.GetData(golf)
-check(gd and gd.Tokens == want, "so it's only ever swapped once (" .. tostring(gd and gd.Tokens) .. ")")
+check(gd and gd.Tokens == want and gd.Coins == 690, "so it's only ever swapped once (" .. tostring(gd and gd.Tokens) .. ", " .. tostring(gd and gd.Coins) .. ")")
 
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))
