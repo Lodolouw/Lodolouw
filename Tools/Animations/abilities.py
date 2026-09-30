@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import combo  # noqa: E402
 import weapon_types as wt  # noqa: E402
-from anims import DirAnim, unit  # noqa: E402
+from anims import DirAnim, ease, mix_dir, slerp, unit  # noqa: E402
 from weapon_types import K, TypeSwing, two_hand  # noqa: E402
 
 ABILITIES = {}  # weapon id -> (its type, its animation)
@@ -132,6 +132,343 @@ ABILITIES['GelatinousEdge'] = ('Katana', TypeSwing(
     ]))
 
 
+def turned(p, yaw):
+    """a direction pose with the whole body turned round by yaw degrees (+ to
+    the left), rigidly: the chest (leaning and all), the arms, the weapon, the
+    look and the legs all go round together (the legs hang off the chest, so
+    they come round with it)"""
+    if not yaw:
+        return p
+    import r6
+    c, s = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    rot = np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+    p = dict(p)
+    p['arm'] = tuple(rot @ np.asarray(v, float) for v in p['arm'])
+    for k in ('larm', 'lfwd', 'look'):
+        if k in p:
+            p[k] = rot @ np.asarray(p[k], float)
+    # (the chest: turned as a whole, then back into the root's lean, tilt and
+    # turn - CFrame.Angles' X, Y, Z in the root joint's own frame)
+    r0 = r6.JOINTS['RootJoint'][3][:3, :3]
+    n = r0.T @ rot @ chest_rot(p['root']) @ r0
+    p['root'] = (math.degrees(math.atan2(-n[1, 2], n[2, 2])), math.degrees(math.asin(float(np.clip(n[0, 2], -1, 1)))),
+                 math.degrees(math.atan2(-n[0, 1], n[0, 0])))
+    return p
+
+
+class Poses(DirAnim):
+    """key poses (a DirAnim) with what the swings have too: `two` keeps the left
+    hand on the handle every frame (studs along it, as two_hand; a key's `grip`
+    0 lets go - a one-handed stance), `hit` is the big moment (its marker),
+    `trail` the smear (Cut, Through) - or `marks`, all its moments (name,
+    time). A key pose's `yaw` turns the whole body round (a spin: 360 is right
+    round to the left, -360 to the right) - the rest of it is posed as if
+    facing forward"""
+
+    def __init__(self, name, keys, two=None, hit=None, trail=None, marks=None):
+        if two is not None:
+            keys = [(t, two_hand(p, two) if p.get('grip', 1.0) > 0 else p, e) for t, p, e in keys]
+        DirAnim.__init__(self, name, keys, priority='Action3')
+        self.two, self.hit, self.trail = two, hit, trail
+        if marks is not None:
+            self.marks = marks
+
+    def at(self, t):
+        p = DirAnim.at(self, t)
+        yaw, grip = p.pop('yaw', 0.0), p.pop('grip', 1.0)
+        if self.two is not None and grip > 0:
+            held = two_hand(p, self.two)
+            for k in ('larm', 'lfwd'):
+                p[k] = slerp(p.get(k, held[k]), held[k], grip) if grip < 1 else held[k]
+        return turned(p, yaw)
+
+
+class Swing(TypeSwing):
+    """a TypeSwing that can spin either way: after a spin to the right too,
+    it settles forward into the stance instead of unwinding back round"""
+
+    def at(self, t):
+        last = self.keys[-1][0]
+        if t <= last:
+            return TypeSwing.at(self, t)
+        end = self.on_plane(last)
+        lean, tilt, turn = end['root']
+        while abs(turn) > 180:
+            step = 360 if turn > 0 else -360
+            turn -= step
+            if 'legspin' in end:
+                end['legspin'] -= step
+        end['root'] = (lean, tilt, turn)
+        return mix_dir(end, dict(self.idle, legspin=0.0), ease('inout', (t - last) / (self.settle - last)))
+
+
+def shown(anim, *moments):
+    """the moments the preview's sheet shows: (time, what's happening)"""
+    anim.show = list(moments)
+    return anim
+
+
+# ======================================================================
+# KNIGHT
+# ======================================================================
+def chest_rot(root):
+    """the chest's rotation for a root (lean, tilt, turn), as dir_transforms has it"""
+    import r6
+    _, _, _, c0, c1 = r6.JOINTS['RootJoint']
+    return (c0 @ r6.transforms({'Root': tuple(root)})['RootJoint'] @ r6.inv(c1))[:3, :3]
+
+
+def planted(root, legs):
+    """legs (a LEG name, or (left, right)) pointing where they're told in the
+    character's own space whatever the chest does - dir_transforms hangs them
+    off the chest (they lean and turn with it), so that's taken back off"""
+    legs = wt.LEG[legs] if isinstance(legs, str) else legs
+    back = chest_rot(root).T
+    return tuple(tuple(back @ unit(v)) for v in legs)
+
+
+def feet_of(p):
+    """where a pose's legs really point, in the character's own space (for
+    planted: to keep a stance's feet where they are)"""
+    rot = chest_rot(p['root'])
+    return tuple(tuple(rot @ unit(v)) for v in p['legs'])
+
+
+def key(root, legs, arm, larm=None, look=AHEAD, hop=0.0, lfwd=None, yaw=None):
+    """a key pose like pose(), its legs planted (planted) - and `yaw`, the
+    whole body turned round (see Poses)"""
+    p = pose(root, planted(root, legs), arm, larm, look=look, hop=hop, lfwd=lfwd)
+    if yaw is not None:
+        p['yaw'] = yaw
+    return p
+
+
+def hands(root, at, b, e):
+    """the weapon arm pointed so the right hand lands `at` - studs from the
+    middle of the chest, in the chest's own space (x right, y up, -z forward) -
+    holding the weapon along b, its front towards e. Two hands only meet near
+    the middle (R6 arms don't bend): in front of the chest or the face"""
+    rot = chest_rot(root)
+    b = unit(b)
+    joint = np.array([1.0, 0.5, 0.0])  # (the right shoulder, on the chest)
+    d = unit(np.asarray(at, float) - joint)
+    for _ in range(8):
+        # (the hand hangs half a stud off the arm's line, to its side)
+        dr = rot @ d
+        side = rot.T @ np.cross(dr, unit(b - (b @ dr) * dr))
+        d = unit(np.asarray(at, float) - joint - 0.5 * side)
+    return (rot @ d, b, unit(e))
+
+
+def chop(root, at, b):
+    """a hammer in both hands (see hands), its head's face (+X) leading a chop
+    round the body's left-right axis: the face turns with it, never flips"""
+    b = unit(b)
+    return hands(root, at, b, np.cross(b, (1.0, 0.0, 0.0)))
+
+
+# SHOVEL HAMMER - Dig Slam: heave it up over your head, chop the spade down
+# into the ground in front of you (0.28, the dirt bursts), lever it and toss
+# the dirt back over your right shoulder
+def hammer(root, legs, at, b, look=AHEAD, hop=0.0):
+    return key(root, legs, chop(root, at, b), look=look, hop=hop)
+
+
+H_FEET = feet_of(wt.H_IDLE)
+DIG_FEET = ((-0.30, -1, -0.62), (0.30, -1, 0.50))  # (stepped in, the weight over the front foot)
+ABILITIES['ShovelHammer'] = ('Hammer', shown(Poses('ShovelHammerAbility', [
+    (0.00, dict(wt.H_IDLE, grip=0.0), 'linear'),
+    (0.12, hammer((-10, 0, -6), H_FEET, (0.1, 1.40, -0.95), (0.03, 0.92, 0.40), look=(0, 0.35, -1), hop=0.06), 'out'),
+    (0.19, hammer((-20, 0, -4), H_FEET, (0.1, 1.45, -0.95), (0.03, 0.64, 0.77), look=(0, 0.4, -1), hop=0.1), 'inout'),
+    (0.245, hammer((10, 0, -4), 'lunge', (0.1, 0.60, -1.25), (0.0, 0.85, -0.52), look=AHEAD), 'in'),
+    (0.28, hammer((32, 0, -4), DIG_FEET, (0.1, -0.50, -1.05), (-0.10, -0.72, -0.68), look=DOWN), 'linear'),
+    (0.34, hammer((35, 0, -4), DIG_FEET, (0.1, -0.60, -1.0), (-0.10, -0.80, -0.58), look=DOWN), 'out'),
+    (0.40, hammer((18, 0, -8), DIG_FEET, (0.1, -0.85, -0.75), (-0.10, -0.35, -0.93), look=DOWN), 'inout'),
+    (0.44, hammer((2, 0, -14), DIG_FEET, (0.2, 0.50, -1.2), (0.10, 0.95, -0.30), look=AHEAD), 'in'),
+    (0.49, hammer((-18, 0, -28), 'back', (0.45, 1.30, -0.85), (0.35, 0.40, 0.85), look=(0, 0.3, -1), hop=0.06), 'out'),
+    (0.60, dict(wt.H_IDLE, grip=0.0), 'inout'),
+], two=(-0.8, -0.3), hit=0.28, trail=(0.22, 0.30)),
+    (0.0, 'STANCE'), (0.19, 'HEAVED UP'), (0.28, 'DIG'), (0.34, 'DUG IN'), (0.40, 'LEVER'), (0.49, 'TOSS')))
+
+# RELIC DAGGERS - Treasure Eye: both blades snap up crossed in an X in front
+# of your eyes (0.12, the golden glint), then a cocky twirl of the right one
+# and back to the stance
+D_X = pose((-6, 0, 0), 'square', hands((-6, 0, 0), (0.50, 0.98, -1.05), (-0.70, 0.70, -0.12), (0.70, 0.70, 0.0)),
+           (0.40, 0.40, -0.82), look=(0, 0.0, -1), lfwd=(-0.70, 0.70, 0.0))
+D_X2 = pose((-9, 3, 2), 'square', hands((-9, 3, 2), (0.50, 1.02, -1.03), (-0.68, 0.72, -0.10), (0.72, 0.68, 0.0)),
+            (0.40, 0.42, -0.81), look=(0.08, 0.1, -1), lfwd=(-0.70, 0.70, 0.0))
+
+
+def twirl(b, e):
+    """the right dagger spinning round the fist, the arm out to the side"""
+    return pose((-4, 3, -6), 'square', (unit((0.45, -0.25, -0.86)), unit(b), unit(e)), (-0.15, -0.60, -1.0),
+                look=(0.12, 0.05, -1), lfwd=(0, 1, 0))
+
+
+ABILITIES['RelicDaggers'] = ('Daggers', shown(Poses('RelicDaggersAbility', [
+    (0.00, wt.D_IDLE, 'linear'),
+    (0.12, D_X, 'snap'),
+    (0.21, D_X2, 'inout'),
+    (0.26, twirl((0, 1, 0), (1, 0, 0)), 'inout'),
+    (0.30, twirl((1, 0, 0), (0, -1, 0)), 'linear'),
+    (0.34, twirl((0, -1, 0), (-1, 0, 0)), 'linear'),
+    (0.38, twirl((-1, 0, 0), (0, 1, 0)), 'linear'),
+    (0.42, twirl((0, 1, 0), (1, 0, 0)), 'out'),
+    (0.50, wt.D_IDLE, 'inout'),
+], hit=0.12), (0.0, 'STANCE'), (0.12, 'GLINT'), (0.21, 'HOLD'), (0.30, 'TWIRL'), (0.38, 'TWIRL'), (0.5, 'STANCE')))
+
+# SPADE SCYTHE - Dirt Spin: drop low, wound round to the left, then the whole
+# body spins right round the other way with the blade skimming the ground
+# (0.24), flinging the dirt (0.3) - finishing wide and low, and up it scoops
+# into the stance
+LOW = ((-0.55, -1, -0.30), (0.55, -1, 0.30))  # (feet wide apart: the hips drop)
+
+
+def reap(root, at, b, e, legs=LOW, look=DOWN, yaw=0.0):
+    """the scythe in both hands, its blade (+X) leading towards e"""
+    return key(root, legs, hands(root, at, b, e), look=look, yaw=yaw)
+
+
+S_SWEEP = dict(at=(0.35, -0.45, -1.0), b=(0.10, -0.46, -0.88), e=(1.0, 0.0, 0.12))  # (low in front, going right)
+ABILITIES['SpadeScythe'] = ('Scythe', shown(Poses('SpadeScytheAbility', [
+    (0.00, dict(wt.S_IDLE, grip=0.0), 'linear'),
+    (0.10, reap((24, 0, 30), (-0.25, -0.35, -1.0), (-0.72, -0.42, 0.30), (-0.60, 0.0, -0.80), yaw=25), 'out'),
+    (0.17, reap((28, 0, 34), (-0.30, -0.40, -0.95), (-0.70, -0.44, 0.40), (-0.50, 0.0, -0.86), yaw=35), 'inout'),
+    (0.24, reap((30, 0, 0), yaw=0, **S_SWEEP), 'in'),
+    (0.30, reap((30, 0, -4), yaw=-95, **S_SWEEP), 'linear'),
+    (0.46, reap((27, 0, -6), yaw=-318, **S_SWEEP), 'out2'),
+    (0.62, reap((16, 0, -10), (0.45, -0.30, -1.0), (0.55, -0.30, -0.78), (0.80, 0.0, 0.60), legs='wide', look=AHEAD,
+                yaw=-340), 'out'),
+    (0.90, dict(wt.S_IDLE, yaw=-360, grip=0.0), 'inout'),
+], two=(-0.7, 2.0), hit=0.24, marks=[('Cut', 0.17), ('Hit', 0.24), ('Clods', 0.30), ('Through', 0.46)]),
+    (0.0, 'STANCE'), (0.17, 'LOW, WOUND'), (0.24, 'SPIN HIT'), (0.30, 'CLODS'), (0.46, 'ROUND'), (0.62, 'WIDE')))
+
+# HONOUR BLADE - Pogo Drop: crouch, spring up, and by the top of the leap the
+# blade points straight down under you like a pogo stick; land blade-first on
+# them (0.58), bounce straight up with it still under you (0.62), and plunge
+# again (1.04)
+K_POGO = (-0.75, -0.3)
+
+
+def katana(root, legs, at, b, e=None, look=AHEAD, hop=0.0):
+    """the katana in both hands (the left one on the hilt below the right); its
+    edge turns with the blade round the body's left-right axis unless told"""
+    b = unit(b)
+    if e is None:
+        e = np.cross((1.0, 0.0, 0.0), b)  # (up when it points ahead, as in the stance)
+    return key(root, legs, hands(root, at, b, e), look=look, hop=hop)
+
+
+def pogo(root, legs, at, b=(0.0, -1.0, 0.04), look=DOWN, hop=0.0):
+    """the katana held blade-down under you in both hands (its edge forward)"""
+    return katana(root, legs, at, b, look=look, hop=hop)
+
+
+K_FEET = feet_of(wt.K_IDLE)
+FROG = ((-0.55, -0.72, -0.42), (0.55, -0.72, -0.42))  # (tucked in the air: knees up and wide, the blade between)
+FROG2 = ((-0.60, -0.62, -0.50), (0.60, -0.62, -0.50))
+LAND = ((-0.42, -1, -0.40), (0.42, -1, 0.30))  # (landed wide and low)
+ABILITIES['HonourBlade'] = ('Katana', shown(Poses('HonourBladeAbility', [
+    (0.00, dict(wt.K_IDLE, grip=0.0), 'linear'),
+    (0.06, katana((24, 0, -6), 'crouch', (0.1, 0.0, -1.15), (0.0, 0.55, -0.83)), 'out'),
+    (0.15, katana((-8, 0, 0), 'tuck', (0.1, 1.30, -0.95), (0.0, 1.0, 0.12), look=(0, 0.35, -1), hop=0.5), 'out'),
+    (0.25, katana((0, 0, 0), FROG, (0.1, 0.45, -1.25), (0.0, 0.05, -1.0), look=AHEAD, hop=0.8), 'inout'),
+    (0.35, pogo((6, 0, 0), FROG, (0.1, -0.25, -1.1), hop=0.95), 'out'),
+    (0.49, pogo((3, 0, 0), FROG2, (0.1, -0.15, -1.1), hop=0.85), 'inout'),
+    (0.58, pogo((30, 0, 0), LAND, (0.1, -0.80, -0.90), (0.0, -1.0, -0.15)), 'in2'),
+    (0.62, pogo((24, 0, 0), LAND, (0.1, -0.70, -0.95), (0.0, -1.0, -0.12)), 'out'),
+    (0.70, pogo((-2, 0, 0), 'tuck', (0.1, -0.20, -1.1), look=AHEAD, hop=0.45), 'out'),
+    (0.80, pogo((6, 0, 0), FROG2, (0.1, -0.20, -1.1), hop=0.95), 'out'),
+    (0.96, pogo((3, 0, 0), FROG, (0.1, -0.15, -1.1), hop=0.85), 'inout'),
+    (1.04, pogo((36, 0, 0), LAND, (0.1, -0.85, -0.85), (0.0, -1.0, -0.18)), 'in2'),
+    (1.16, pogo((38, 0, 0), LAND, (0.1, -0.90, -0.82), (0.0, -1.0, -0.18)), 'out'),
+    (1.30, katana((16, 0, -8), K_FEET, (0.1, 0.10, -1.2), (0.0, 0.30, -1.0)), 'inout'),
+    (1.45, dict(wt.K_IDLE, grip=0.0), 'inout'),
+], two=(-0.75, -0.3), hit=0.58, marks=[('Hit', 0.58), ('Bounce', 0.62), ('Hit', 1.04)]), (0.06, 'CROUCH'), (0.15, 'SPRING'), (0.35, 'POGO'), (0.58, 'PLUNGE'), (0.80, 'BOUNCE'),
+    (1.04, 'PLUNGE 2')))
+
+# ANCHOR FISTS - Anchor Pull: wind up and hurl the anchor overhand with the
+# right fist (let go at 0.25), get reeled in along the chain gripping it with
+# both fists, leaning hard into the pull, then a double axe-handle: both
+# fists up and SLAM down into the ground (0.66)
+def gauntlets(root, legs, right, left, look=AHEAD, hop=0.0):
+    """both fists (the gauntlets are the weapons: see fist), the left arm's
+    twist turning with it round the body's left-right axis"""
+    left = unit(left)
+    return key(root, legs, fist(right), left, look=look, hop=hop, lfwd=unit(np.cross((1.0, 0.0, 0.0), left) + (0, 0.05, 0)))
+
+
+BACK = ((-0.30, -1, -0.40), (0.30, -1, 0.22))  # (the weight on the back foot)
+DRAG = ((-0.25, -1, -0.38), (0.30, -1, 0.80))  # (dragged along: the back foot trailing)
+WIDE_LOW = ((-0.50, -1, -0.35), (0.50, -1, 0.30))
+ABILITIES['AnchorFists'] = ('Fists', shown(Poses('AnchorFistsAbility', [
+    (0.00, wt.F_IDLE, 'linear'),
+    (0.12, gauntlets((-12, 0, -36), BACK, (0.35, 0.75, 0.55), (0.10, 0.12, -1.0)), 'out'),
+    (0.19, gauntlets((-15, 0, -40), BACK, (0.28, 0.60, 0.75), (0.12, 0.14, -1.0)), 'inout'),
+    (0.25, gauntlets((20, 0, 18), 'lunge', (0.0, 0.12, -1.0), (-0.30, -0.60, 0.70)), 'in2'),
+    (0.31, gauntlets((26, 0, 20), 'lunge', (-0.10, -0.35, -0.93), (-0.35, -0.65, 0.65)), 'out'),
+    (0.38, gauntlets((34, 0, 0), DRAG, (-0.22, 0.02, -1.0), (0.22, 0.02, -1.0), hop=0.08), 'inout'),
+    (0.50, gauntlets((38, 0, 0), DRAG, (-0.20, -0.02, -1.0), (0.20, -0.02, -1.0), hop=0.12), 'linear'),
+    (0.60, gauntlets((-12, 0, 0), 'tuck', (-0.28, 0.92, -0.25), (0.28, 0.92, -0.25), look=(0, 0.1, -1), hop=0.35), 'out'),
+    (0.66, gauntlets((40, 0, 0), WIDE_LOW, (-0.28, -0.72, -0.62), (0.28, -0.72, -0.62), look=DOWN), 'in2'),
+    (0.82, gauntlets((43, 0, 0), WIDE_LOW, (-0.28, -0.78, -0.56), (0.28, -0.78, -0.56), look=DOWN), 'out'),
+    (1.15, wt.F_IDLE, 'inout'),
+], hit=0.66, marks=[('Throw', 0.25), ('Reel', 0.32), ('Hit', 0.66)]), (0.19, 'WIND UP'), (0.25, 'THROW'), (0.38, 'REELED IN'), (0.60, 'FISTS UP'), (0.66, 'SLAM'), (0.82, 'SLAM')))
+
+# NO QUARTER - a quick gather, then he bursts up: chest out, sword thrust at
+# the sky, the free fist clenched, while his armour cracks gold; the sword
+# snaps down to point straight at the enemy, the fist raised (0.6: the
+# meteor's called down) - and he braces, crouched, sword forward, as it hits
+# (1.15)
+def blade(d, b):
+    """a one-handed blade: its edge turns with it round the body's left-right
+    axis (up when it points ahead, as in the stance) - the wrist never quite
+    straight, so the grip's twist is always settled"""
+    b = unit(b)
+    e = np.cross((1.0, 0.0, 0.0), b)
+    return (unit(d), b, unit(e) if np.linalg.norm(e) > 0.2 else (0.0, 1.0, 0.0))
+
+
+S_FEET = feet_of(S_IDLE)
+BRACE = ((-0.40, -1, -0.45), (0.40, -1, 0.42))
+ABILITIES['NoQuarter'] = ('Sword', shown(Poses('NoQuarterAbility', [
+    (0.00, S_IDLE, 'linear'),
+    (0.08, key((22, 0, -22), 'crouch', blade((0.35, -0.90, -0.20), (0.12, -0.70, -0.70)), (0.35, -0.55, -0.76), look=DOWN,
+               lfwd=(0.3, 0.3, -1)), 'out'),
+    (0.26, key((-18, 0, -4), 'wide', blade((0.12, 0.96, -0.25), (0.0, 1.0, 0.10)), (-0.42, -0.84, 0.34),
+               look=(0, 0.8, -1), hop=0.1), 'out'),
+    (0.34, key((-15, 0, -2), 'wide', blade((0.10, 0.96, -0.26), (0.03, 1.0, 0.08)), (-0.40, -0.85, 0.36),
+               look=(0, 0.75, -1), hop=0.06), 'inout'),
+    (0.42, key((-19, 0, -6), 'wide', blade((0.13, 0.95, -0.24), (-0.02, 1.0, 0.12)), (-0.44, -0.83, 0.33),
+               look=(0, 0.8, -1), hop=0.09), 'inout'),
+    (0.50, key((-16, 0, -8), 'wide', blade((0.14, 0.94, -0.30), (0.0, 1.0, 0.05)), (-0.40, -0.80, 0.40),
+               look=(0, 0.7, -1), hop=0.05), 'inout'),
+    (0.60, key((8, 0, -34), 'lunge', blade((0.05, -0.10, -1.0), (0.0, 0.14, -1.0)), (-0.58, 0.76, 0.28),
+               look=AHEAD), 'out'),
+    (0.95, key((11, 0, -36), 'lunge', blade((0.05, -0.12, -1.0), (0.0, 0.12, -1.0)), (-0.60, 0.72, 0.32),
+               look=AHEAD), 'hold'),
+    (1.01, key((10, 0, -30), 'lunge', blade((0.10, -0.30, -0.95), (0.02, 0.18, -1.0)), (-0.62, 0.15, 0.55),
+               look=AHEAD, hop=0.03), 'inout'),
+    (1.08, key((10, 0, -24), BRACE, blade((0.20, -0.55, -0.80), (0.03, 0.25, -1.0)), (-0.45, -0.60, 0.65),
+               look=AHEAD, hop=0.06), 'inout'),
+    (1.15, key((20, 0, -20), BRACE, blade((0.22, -0.70, -0.68), (0.04, 0.12, -1.0)), (-0.42, -0.80, 0.45),
+               look=AHEAD), 'in2'),
+    (1.20, S_IDLE, 'out'),
+], hit=1.15, marks=[('Meteor', 0.60), ('Hit', 1.15)]), (0.08, 'GATHER'), (0.26, 'POWER UP'), (0.42, 'CRACKING GOLD'), (0.60, 'METEOR CALLED'), (1.08, 'BRACING'),
+    (1.15, 'IMPACT')))
+
+
+# which pack each weapon is from (the preview shows a pack at a time)
+PACK = {
+    'GooGloves': 'slime', 'Jellyblade': 'slime', 'GelatinHammer': 'slime',
+    'OozeDaggers': 'slime', 'AcidScythe': 'slime', 'GelatinousEdge': 'slime',
+    'ShovelHammer': 'knight', 'RelicDaggers': 'knight', 'SpadeScythe': 'knight',
+    'HonourBlade': 'knight', 'AnchorFists': 'knight', 'NoQuarter': 'knight',
+    'TyreScythe': 'speedway', 'NitroKatana': 'speedway', 'PistonPunchers': 'speedway',
+    'PitStopSabre': 'speedway', 'WheelieWrecker': 'speedway', 'VictoryLap': 'speedway',
+}
+
+
 # ----------------------------------------------------------------------
 # out: one .rbxmx per ability (a KeyframeSequence, 30 keyframes a second)
 # ----------------------------------------------------------------------
@@ -151,9 +488,22 @@ def export():
             if getattr(anim, 'trail', None):
                 marks = [('Cut', anim.trail[0]), ('Hit', anim.hit), ('Through', anim.trail[1])]
             ex.MARKERS[anim.name] = marks
+        if hasattr(anim, 'marks'):  # (several big moments: each one a marker, so a keyframe lands right on it)
+            ex.MARKERS[anim.name] = sorted(anim.marks, key=lambda m: m[1])
+        length = anim.length
+        frames = length * ex.FPS
+        if PACK[wid] != 'slime' and abs(frames - round(frames)) > 1e-6:
+            # (a Time that isn't a whole number of frames: a keyframe right on
+            # the end and none after it, so it lasts exactly the move's Time -
+            # the Slime pack's files are kept exactly as they were made)
+            ex.MARKERS[anim.name] = ex.MARKERS.get(anim.name, []) + [('End', length)]
+            anim.length = math.floor(frames) / ex.FPS
         path = os.path.join(out, wid + '.rbxmx')
-        with open(path, 'w') as f:
-            f.write(head + '\n' + ex.sequence_xml(anim, 1) + '\n</roblox>\n')
+        try:
+            with open(path, 'w') as f:
+                f.write(head + '\n' + ex.sequence_xml(anim, 1) + '\n</roblox>\n')
+        finally:
+            anim.length = length
         print('saved', os.path.relpath(path, os.path.join(HERE, '..', '..')), '%.2f s' % anim.length,
               os.path.getsize(path) // 1024, 'KB')
 
@@ -189,6 +539,8 @@ def preview(pack='slime'):
     font = ImageFont.truetype(pv.BOLD, 24)
     sheet_rows = []
     for wid, (kind, anim) in ABILITIES.items():
+        if PACK.get(wid) != pack:
+            continue
         for speed, label in ((1.0, 'FULL SPEED'), (0.4, 'SLOW')):
             n = int((anim.length + 0.25) / speed * 30)
             for i in range(n):
@@ -202,22 +554,28 @@ def preview(pack='slime'):
                 ImageDraw.Draw(frame).text((W // 2, 30), '%s - %s  %.2fs' % (wid.upper(), label, t), font=font,
                                            fill=(254, 231, 97), anchor='mm')
                 writer.send(np.asarray(frame).tobytes())
-        # its key moments
-        moments = [0.0]
+        # its key moments (the ones it names, or its keys)
         hit = getattr(anim, 'hit', None)
-        keys = [k[0] for k in anim.keys]
-        moments += [k for k in keys if 0 < k < anim.length]
-        if hit is not None and all(abs(hit - m) > 0.01 for m in moments):
-            moments.append(hit)
-        moments = sorted(set(round(m, 3) for m in moments))[:6]
+        if hasattr(anim, 'show'):
+            moments = [(m, '%.2fs %s' % (m, what)) for m, what in anim.show]
+        else:
+            moments = [0.0]
+            keys = [k[0] for k in anim.keys]
+            moments += [k for k in keys if 0 < k < anim.length]
+            if hit is not None and all(abs(hit - m) > 0.01 for m in moments):
+                moments.append(hit)
+            moments = [(m, '%.2fs%s' % (m, ' HIT' if hit is not None and abs(m - hit) < 0.01 else ''))
+                       for m in sorted(set(round(m, 3) for m in moments))[:6]]
         cells = []
-        for m in moments:
+        for m, label in moments:
             polys, _ = pv.figure(kind, anim.at(m))
             views = Image.new('RGB', (220, 440), (24, 20, 37))
             views.paste(pv.render(polys, -30, 8, 220), (0, 0))
             views.paste(pv.render(polys, 90, 4, 220), (0, 220))
-            cells.append(('%.2fs%s' % (m, ' HIT' if hit is not None and abs(m - hit) < 0.01 else ''), views))
+            cells.append((label, views))
         sheet_rows.append((wid, cells))
+    if not sheet_rows:
+        raise SystemExit('no abilities in the pack %r (%s)' % (pack, ', '.join(sorted(set(PACK.values())))))
     writer.close()
     print('saved', os.path.relpath(path, os.path.join(HERE, '..', '..')))
     cols = max(len(c) for _, c in sheet_rows)
@@ -239,6 +597,7 @@ def preview(pack='slime'):
 
 if __name__ == '__main__':
     if 'preview' in sys.argv:
-        preview()
+        rest = sys.argv[sys.argv.index('preview') + 1:]
+        preview(rest[0].lower() if rest else 'slime')
     else:
         export()
