@@ -413,7 +413,10 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   yet handed in is handed in for you when the set changes (online, or from
   an old save when you join) - once; a boss's first win pays
   tokens and opens its machine; tokens and the counters are saved, and a
-  nonsense save is cleaned up.
+  nonsense save is cleaned up; the board's "Clear a Colosseum run" quest
+  counts clears; an old save's armour gear and boss chests become Arcade
+  Tokens once (the right number, at most 100, a message, left out of the next
+  save so it never happens twice).
 - `test_arcade_client.luau` - THE ARCADE on your screen (ArcadeClient),
   talking to the real server, in the real building (ArcadeBuilder), with
   pretend imported Slime models: the ROLL button and badge, the machines'
@@ -518,7 +521,8 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   Roblox buttons hidden, other players hidden, the camera held in), the
   words building up letter by letter, Oozlet hopping and bumping you, the
   first punch waking it (through CombatService's own remote), the lesson
-  slam following you until you roll, the crack, the pop, the rewards, that
+  slam following you until you roll, the crack, the pop, the rewards (the
+  chest with "+1 ARCADE TOKEN", the token, the coins), that
   you never drop below 30% health, and the reveal putting everything back.
   `-a full detail` prints every change of words and move; `-a skip` is a
   returning player (no intro); `-a fail` is a screen that breaks mid-intro

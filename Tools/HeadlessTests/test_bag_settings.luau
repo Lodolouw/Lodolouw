@@ -165,7 +165,7 @@ local slime = W.Packs[1].Weapons
 local own = { IronSword = Config.masteryPointsFor(3), [slime[1]] = 0, [slime[2]] = Config.masteryPointsFor(12), [slime[5]] = 0 }
 local function snapshot(over)
 	local d = {
-		Power = Config.powerForLevel(12), Coins = 4000, Tokens = 2, Chests = { [1] = 2 },
+		Power = Config.powerForLevel(12), Coins = 4000, Tokens = 2,
 		Weapons = { own = own }, Quests = { day = 0, list = {} }, Rewards = {},
 		Tickets = { Revive = 0, Rush = 0 }, Boosts = { XP = 0, Coins = 0, Luck = 0 },
 		Shop = { starter = true, receipts = {}, daily = {} },

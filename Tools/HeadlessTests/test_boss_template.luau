@@ -103,7 +103,6 @@ end
 function Profile.AddPower()
 	rewards += 1
 end
-function Profile.AddChest() end
 
 local warned = {}
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))

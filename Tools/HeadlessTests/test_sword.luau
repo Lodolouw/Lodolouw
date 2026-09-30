@@ -33,7 +33,7 @@ local function check(ok, msg)
 end
 
 -- a pretend PlayerService: save data and the dev buttons' actions
-local data = { Power = Config.powerForLevel(30), Stats = {}, Items = {}, Gear = {} }
+local data = { Power = Config.powerForLevel(30) }
 local actions = {}
 local PlayerService = {
 	GetData = function()

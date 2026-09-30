@@ -54,7 +54,6 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
-local Items = require(ReplicatedStorage:WaitForChild("Items"))
 local Moves = require(ReplicatedStorage:WaitForChild("Moves"))
 
 local CombatService = {}
@@ -115,16 +114,12 @@ local function introFight(player)
 	return stage == "Void" or stage == "Fight"
 end
 
--- what your worn gear gives you (see ReplicatedStorage.Items)
-local critRng = Random.new()
--- what your gear AND your level give you together (Defense capped; see
+-- what your level gives you: more damage, less damage taken (capped; see
 -- Config.LevelBonus)
-local function gearOf(player)
+local function levelOf(player)
 	local d = PlayerService and PlayerService.GetData(player)
-	local t = Items.gearStats(d)
-	local pts = Config.statBonus(d)
-	t.Damage = t.Damage + pts.Damage
-	t.Defense = math.min(t.Defense + pts.Defense, Items.StatById.Defense.cap or 60)
+	local t = Config.statBonus(d)
+	t.Defense = math.min(t.Defense, Config.MaxDefense or 60)
 	return t
 end
 
@@ -154,18 +149,14 @@ function CombatService.DamageAgainst(player, target)
 	else
 		base = CombatService.PunchDamage(player, floor)
 	end
-	return CombatService.WithGear(player, base)
+	return CombatService.WithLevel(player, base)
 end
 
--- Your gear on top of a punch: more damage, and a chance of a critical hit
-function CombatService.WithGear(player, base)
-	local gear = gearOf(player)
-	local dmg = base * (1 + gear.Damage / 100)
-	local crit = critRng:NextNumber() * 100 < gear.Crit
-	if crit then
-		dmg = dmg * Items.CritMultiplier
-	end
-	return math.max(1, math.floor(dmg)), crit
+-- Your level on top of a punch: more damage. (Critical hits come from a
+-- weapon's Crit effect: boostHit.) Returns the damage and false (no crit).
+function CombatService.WithLevel(player, base)
+	local dmg = base * (1 + levelOf(player).Damage / 100)
+	return math.max(1, math.floor(dmg)), false
 end
 
 ----------------------------------------------------------------------
@@ -305,8 +296,8 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 			return false
 		end
 	end
-	-- your gear's defence takes a share off every hit
-	amount = amount * (1 - gearOf(player).Defense / 100)
+	-- your level's defence takes a share off every hit
+	amount = amount * (1 - levelOf(player).Defense / 100)
 	-- a hit that would finish you in a boss fight: a REVIVE ticket (the shop's)
 	-- stands you back up at half health, a moment untouchable (ShopService.Revive)
 	if amount >= hum.Health and CombatService.ReviveHook and player:GetAttribute("SpireFloor") ~= nil then
@@ -1031,7 +1022,7 @@ local function boostHit(player, st, target, dmg, crit)
 	local critUp = buff(st, "Crit", now)
 	if critUp and not crit and blockRng:NextNumber() < critUp.amount then
 		crit = true
-		dmg = dmg * Items.CritMultiplier
+		dmg = dmg * (Config.CritMultiplier or 1.75)
 		if target then
 			tell(player, player:GetAttribute("Weapon"), 0, "Crit", aimAt(target, target:GetPivot().Position))
 		end

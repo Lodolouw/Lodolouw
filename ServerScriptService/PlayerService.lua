@@ -2,8 +2,8 @@
 	PlayerService  (ModuleScript, parent: ServerScriptService, name: "PlayerService")
 
 	Server-authoritative game logic for the lobby:
-	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot, Upgrades, Talismans, Gear) + DataStore saving
-	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, gear
+	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot, Upgrades, Talismans) + DataStore saving
+	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping
 	  * quests (the Quest Board: a new set every 6 hours, each paying an Arcade Token)
 	  * remotes for the HUD
 
@@ -23,7 +23,6 @@ local CollectionService = game:GetService("CollectionService")
 local DataStoreService = game:GetService("DataStoreService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
-local Items = require(ReplicatedStorage:WaitForChild("Items"))
 
 local PlayerService = {}
 
@@ -65,13 +64,6 @@ local function defaultData()
 		Owned = {},
 		Equipped = {},
 		Cleared = {}, -- ["1"] = how many times you've killed floor 1's boss
-		-- gear (see ReplicatedStorage.Items). Items: [uid] = { id, r = rolls,
-		-- t = when it dropped, lock = true if protected from salvaging}
-		Items = {},
-		Gear = {}, -- [slot] = uid of the item worn there
-		Chests = {}, -- ["1"] = unopened treasure chests from floor 1's boss ("0" = Oozlet's, from the intro)
-		NextId = 1, -- (each item gets a new, never-reused id)
-		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
 		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
 		-- the board's quests (see Config.Quests): which set they're from (`day`:
 		-- Config.questPeriod, a new set every 6 hours), and for
@@ -145,10 +137,57 @@ local function payFinished(d, quests)
 	return nil
 end
 
+-- THE OLD GEAR, SWAPPED. Armour gear and boss treasure chests were taken out
+-- of the game; a save from before then still lists them. Each becomes Arcade
+-- Tokens, once: every unopened chest (and every old prestige, which had
+-- become a chest) and every Common to Rare piece is 1, the rarer pieces are
+-- worth more (below) - up to Max in all.
+local OLD_GEAR = {
+	Chest = 1,
+	Piece = 1,
+	Max = 100,
+	Rare = {
+		[2] = { "SumpScepter", "GooMantle", "NahrzulFang", "DeepCarapace", "FireStick", "AnchorPlate",
+			"KazeGloves", "FocusMantle", "PistonFists", "NitroVest", "PortalGauntlets", "GravityBoots" }, -- Epic
+		[5] = { "OozarkCrown", "TyrantTreads", "MawHelm", "SunkenTreads", "CheckpointCrown", "PogoGreaves",
+			"DragonBand", "TornadoTreads", "CheckeredVisor", "BurnoutBoots", "DemonCubeHelm", "DropArmor" }, -- Legendary
+		[10] = { "HollowHeart", "Dunebreaker", "LegendShovel", "FourWinds", "GoldenPiston", "FinalBeat" }, -- Mythic
+		[25] = { "FirstPuddle", "BuriedSun", "FirstShovel", "EndlessHeadband", "KaVroomEngine", "SecretCoin" }, -- Secret
+	},
+}
+local oldGearWorth = {}
+for worth, ids in pairs(OLD_GEAR.Rare) do
+	for _, id in ipairs(ids) do
+		oldGearWorth[id] = worth
+	end
+end
+
+-- how many Arcade Tokens an old save's gear and chests are worth
+local function oldGearTokens(saved, oldPrestige)
+	local n = math.min(math.max(0, oldPrestige or 0), 100) * OLD_GEAR.Chest
+	if type(saved.Chests) == "table" then
+		for _, c in pairs(saved.Chests) do
+			if type(c) == "number" and c == c and c > 0 then
+				n = n + math.min(math.floor(c), OLD_GEAR.Max) * OLD_GEAR.Chest
+			end
+		end
+	end
+	if type(saved.Items) == "table" then
+		for _, rec in pairs(saved.Items) do
+			if type(rec) == "table" and type(rec.id) == "string" then
+				n = n + (oldGearWorth[rec.id] or OLD_GEAR.Piece)
+			end
+		end
+	end
+	return math.min(n, OLD_GEAR.Max)
+end
+
+-- A save, checked: only known things and sensible numbers are kept. Returns
+-- the data, and how many Arcade Tokens the old gear became (OLD_GEAR).
 local function mergeSaved(saved)
 	local d = defaultData()
 	if type(saved) ~= "table" then
-		return d
+		return d, 0
 	end
 	if type(saved.Power) == "number" then
 		d.Power = saved.Power
@@ -159,8 +198,9 @@ local function mergeSaved(saved)
 	-- (the intro is for brand-new players: a save from before it existed that
 	-- has any progress counts as having done it)
 	d.IntroDone = saved.IntroDone == true or d.Power > 0
-	-- (prestige is gone: every prestige you had becomes one of Oozark's
-	-- treasure chests, once, and your count goes back to 0)
+	-- (prestige is gone: every prestige you had became one of Oozark's
+	-- treasure chests, once - and now the chests are gone too, an Arcade
+	-- Token each: OLD_GEAR, above)
 	local oldPrestige = type(saved.Prestige) == "number" and math.floor(saved.Prestige) or 0
 	if type(saved.Loot) == "table" then
 		for id in pairs(d.Loot) do
@@ -198,43 +238,6 @@ local function mergeSaved(saved)
 			end
 		end
 	end
-	-- gear: only real items, with rolls kept inside their item's ranges
-	if type(saved.NextId) == "number" then
-		d.NextId = math.max(1, math.floor(saved.NextId))
-	end
-	if type(saved.BestLevel) == "number" then
-		d.BestLevel = math.max(1, math.floor(saved.BestLevel))
-	end
-	if type(saved.Items) == "table" then
-		for uid, rec in pairs(saved.Items) do
-			local def = type(uid) == "string" and type(rec) == "table" and Items.ById[rec.id]
-			if def then
-				local r = {}
-				for stat, range in pairs(def.stats) do
-					local v = type(rec.r) == "table" and rec.r[stat]
-					r[stat] = type(v) == "number" and math.clamp(math.floor(v), range[1], range[2]) or range[1]
-				end
-				d.Items[uid] = { id = def.id, r = r, t = type(rec.t) == "number" and rec.t or 0, lock = rec.lock == true or nil }
-			end
-		end
-	end
-	if type(saved.Gear) == "table" then
-		for _, slot in ipairs(Items.Slots) do
-			local uid = saved.Gear[slot]
-			local rec = type(uid) == "string" and d.Items[uid]
-			if rec and Items.ById[rec.id].slot == slot then
-				d.Gear[slot] = uid
-			end
-		end
-	end
-	if type(saved.Chests) == "table" then
-		for floorId in pairs(Items.ByFloor) do
-			local n = saved.Chests[tostring(floorId)]
-			if type(n) == "number" and n > 0 then
-				d.Chests[tostring(floorId)] = math.floor(n)
-			end
-		end
-	end
 	-- quests: only real ones, and only kept if they're still the board's
 	-- current set (anything older is thrown away and the new set dealt out -
 	-- after its finished quest, if any, is handed in: below)
@@ -253,9 +256,6 @@ local function mergeSaved(saved)
 				table.insert(d.Quests.list, { id = def.id, n = n, claimed = q.claimed == true })
 			end
 		end
-	end
-	if oldPrestige > 0 then
-		d.Chests["1"] = (d.Chests["1"] or 0) + math.min(oldPrestige, 100)
 	end
 	-- the Colosseum's runs: only sensible numbers
 	if type(saved.Colosseum) == "table" then
@@ -316,6 +316,10 @@ local function mergeSaved(saved)
 		return (type(v) == "number" and v == v and v > 0 and v < 1e9) and math.floor(v) or 0
 	end
 	d.Tokens = count(saved.Tokens)
+	-- the old armour gear and boss chests are gone: whatever an old save still
+	-- has of them becomes Arcade Tokens, once (the next save leaves them out)
+	local swapped = oldGearTokens(saved, oldPrestige)
+	d.Tokens = d.Tokens + swapped
 	d.QuestsDone = count(saved.QuestsDone)
 	if type(saved.Arcade) == "table" then
 		d.Arcade.spins = count(saved.Arcade.spins)
@@ -402,7 +406,7 @@ local function mergeSaved(saved)
 	if oldQuests then
 		payFinished(d, oldQuests)
 	end
-	return d
+	return d, swapped
 end
 
 -- the highest Spire floor this player has ever cleared (0 = none yet)
@@ -422,8 +426,8 @@ end
 -- with every autosave, and lets go when the player leaves. Another server
 -- that loads the save while it's locked waits for the lock to be let go -
 -- so hopping servers can never load an old copy of your save before the last
--- server has finished writing the new one (that would let you open a chest,
--- hop, and have it back; with trading, it would copy items). A lock older than
+-- server has finished writing the new one (that would let you spend tokens,
+-- hop, and have them back; with trading, it would copy items). A lock older than
 -- LOCK_EXPIRES is from a server that crashed, and is taken over.
 local LOCK_EXPIRES = 240 -- seconds
 local JOB = game.JobId
@@ -619,7 +623,7 @@ local function ensureQuests(d)
 end
 
 -- Something happened that counts towards quests of this kind
--- ("arena", "boss", "sell", "chest").
+-- ("arena", "boss", "clear": Config.Quests).
 function PlayerService.QuestProgress(player, kind, amount)
 	local profile = profiles[player]
 	if not profile then
@@ -748,18 +752,6 @@ function PlayerService.SetIntroDone(player)
 	end
 end
 
--- A treasure chest from floor `floorId`'s boss, into the bag (unopened)
-function PlayerService.AddChest(player, floorId, count)
-	local profile = profiles[player]
-	if not profile or not Items.ByFloor[floorId] then
-		return
-	end
-	local d = profile.data
-	local key = tostring(floorId)
-	d.Chests[key] = (d.Chests[key] or 0) + (count or 1)
-	markDirty(player)
-end
-
 -- A Colosseum run was cleared in `seconds` (worked out by the server) on the
 -- difficulty `diffId`. Counts it, keeps the fastest time on that difficulty,
 -- and says whether it was the first clear today (ColosseumService pays a
@@ -799,6 +791,7 @@ function PlayerService.RecordColosseumClear(player, seconds, diffId)
 		c.bonusDay = today
 	end
 	markDirty(player)
+	PlayerService.QuestProgress(player, "clear", 1)
 	return { clears = c.clears, wins = c.wins[id], best = c.bests[id], newBest = newBest, firstToday = firstToday, unlocked = unlocked }
 end
 
@@ -881,102 +874,6 @@ end
 ----------------------------------------------------------------------
 -- Actions (called through the Action RemoteFunction; return ok, message)
 ----------------------------------------------------------------------
-----------------------------------------------------------------------
--- Gear: open chests, wear, take off, lock, salvage. Everything is decided
--- here on the server; the client only asks.
-----------------------------------------------------------------------
-local chestRng = Random.new()
-
-handlers.OpenChest = function(player, d, floorId)
-	floorId = tonumber(floorId)
-	local key = floorId and tostring(floorId)
-	if not key or (d.Chests[key] or 0) < 1 then
-		return false, "You don't have that chest."
-	end
-	if Items.count(d) >= Items.BagSize then
-		return false, "Your bag is full! Salvage something first."
-	end
-	local def = Items.rollDrop(floorId, chestRng)
-	if not def then
-		return false, "That chest is empty?!"
-	end
-	d.Chests[key] = d.Chests[key] - 1
-	if d.Chests[key] <= 0 then
-		d.Chests[key] = nil
-	end
-	local uid = tostring(player.UserId) .. "-" .. tostring(d.NextId)
-	d.NextId = d.NextId + 1
-	local rec = { id = def.id, r = Items.rollStats(def, chestRng), t = os.time() }
-	d.Items[uid] = rec
-	markDirty(player)
-	PlayerService.QuestProgress(player, "chest", 1)
-	-- the whole server hears about the big ones
-	local rarity = Items.RarityById[def.rarity]
-	if rarity.rank >= Items.RarityById.Legendary.rank then
-		local msg = string.format("* %s pulled a %s %s!", player.DisplayName, string.upper(def.rarity), def.name)
-		for _, other in ipairs(Players:GetPlayers()) do
-			notify(other, msg, "rare")
-		end
-	end
-	return true, { uid = uid, item = rec }
-end
-
-handlers.EquipItem = function(player, d, uid)
-	local rec = type(uid) == "string" and d.Items[uid]
-	local def = rec and Items.ById[rec.id]
-	if not def then
-		return false, "You don't have that item."
-	end
-	if Items.gearLevel(d) < def.level then
-		return false, "You need to reach Level " .. def.level .. " to wear that."
-	end
-	d.Gear[def.slot] = uid
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true
-end
-
-handlers.UnequipSlot = function(player, d, slot)
-	if type(slot) ~= "string" or not d.Gear[slot] then
-		return false, "Nothing to take off."
-	end
-	d.Gear[slot] = nil
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true
-end
-
-handlers.LockItem = function(player, d, uid)
-	local rec = type(uid) == "string" and d.Items[uid]
-	if not rec then
-		return false, "You don't have that item."
-	end
-	rec.lock = (not rec.lock) or nil
-	markDirty(player)
-	return true
-end
-
-handlers.SalvageItem = function(player, d, uid)
-	local rec = type(uid) == "string" and d.Items[uid]
-	local def = rec and Items.ById[rec.id]
-	if not def then
-		return false, "You don't have that item."
-	end
-	if rec.lock then
-		return false, "It's locked - unlock it first."
-	end
-	for _, worn in pairs(d.Gear) do
-		if worn == uid then
-			return false, "Take it off first."
-		end
-	end
-	local coins = math.floor(Items.RarityById[def.rarity].salvage * def.floor)
-	d.Items[uid] = nil
-	d.Coins = d.Coins + coins
-	markDirty(player)
-	return true, coins
-end
-
 handlers.BuyUpgrade = function(player, d, id)
 	local def = type(id) == "string" and Config.UpgradeById[id]
 	if not def then
@@ -1179,9 +1076,7 @@ end
 
 -- DEV: become exactly this level, as a real player at that level would be:
 -- your Power is set to that level's (so the Colosseum and bosses feel as
--- they're meant to), and the highest level you've reached becomes this one
--- (so gear needs it too).
--- Your gear and coins are left alone.
+-- they're meant to). Your coins are left alone.
 handlers.DevSetLevel = function(player, d, level)
 	if not Config.isDev(player) then
 		return false, "Dev tools are only for the game's owner."
@@ -1191,7 +1086,6 @@ handlers.DevSetLevel = function(player, d, level)
 		return false, "Pick a level from 1 to " .. Config.MaxLevel .. "."
 	end
 	d.Power = Config.powerForLevel(level)
-	d.BestLevel = level
 	applyCharacterStats(player, true)
 	markDirty(player)
 	return true, "You're level " .. level .. " now."
@@ -1243,7 +1137,8 @@ local function onPlayerAdded(player)
 		return
 	end
 
-	local profile = { data = mergeSaved(saved), canSave = ok }
+	local data, swapped = mergeSaved(saved)
+	local profile = { data = data, canSave = ok }
 	profiles[player] = profile
 	ensureQuests(profile.data)
 	player:SetAttribute("SpireCleared", highestCleared(profile.data)) -- the Spire menu shows it
@@ -1273,6 +1168,14 @@ local function onPlayerAdded(player)
 	markDirty(player)
 	if not ok then
 		notify(player, "Couldn't load saved data - progress this session won't be saved.", "bad")
+	end
+	if swapped > 0 then
+		-- (once their screen is up)
+		task.delay(6, function()
+			if player.Parent then
+				notify(player, "* Armour gear is gone from the game: your old gear and chests became " .. swapped .. " Arcade Tokens!", "rare")
+			end
+		end)
 	end
 end
 
@@ -1537,7 +1440,6 @@ function PlayerService.Start()
 				if profile and player.Parent then
 					profile.leaderPower.Value = math.floor(profile.data.Power)
 					profile.leaderLevel.Value = Config.levelFromPower(profile.data.Power)
-					profile.data.BestLevel = math.max(profile.data.BestLevel or 1, profile.leaderLevel.Value)
 					remotes.StateUpdate:FireClient(player, profile.data)
 				end
 			end

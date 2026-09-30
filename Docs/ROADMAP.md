@@ -101,7 +101,8 @@ weapons plan.
   - [x] **2. Rewards** (login calendar, free gift, codes, updates) + **the Index** (weapons, bosses, collector) + **the community chest** (`Docs/new_gui_rewards.png`; put your community's number in `Config.Rewards.GroupId`)
   - [x] **3. The shop**: featured, tickets, tokens, daily items, passes, looks, gifts; revives and Boss Rush in fights; luck in the Arcade's odds; Instant x10 (`Docs/new_gui_shop.png`). **To do (you):** make the Developer Products and Game Passes and paste their ids into `Config.Shop`
   - [x] **4. The Bag** (weapon, its one [F] ability, mastery, next tier, equip, filter; Looks; no Stats or Gear buttons), **the fight screen's weapon card** (a title bar in the weapon's rarity colour), **Settings** (sound, graphics, others' effects, camera shake, tickets) (`Docs/new_gui_bag_settings.png`)
-- [ ] **Cut the old loot**: armour gear, boss chests, talismans, the upgrade shop and the sell shop / backpack counter. Old players' gear turns into Arcade Tokens once, so nobody loses out.
+- [x] **Armour gear and boss chests cut**: bosses pay Power (and tokens the first time); the intro's chest holds your first Arcade Token; the chest quest became "Clear a Colosseum run"; old players' gear and chests turned into Arcade Tokens once (up to 100), so nobody loses out. The G key and the gear window are gone.
+- [ ] **Cut the rest of the old loot**: talismans, the upgrade shop and the sell shop / backpack counter.
 - [x] **Stat points removed** (decided): your level alone makes you stronger - every level adds damage, health, defence and Power gain (`Config.LevelBonus`).
 
 ## 6. The Robux shop

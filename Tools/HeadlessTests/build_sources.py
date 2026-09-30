@@ -5,7 +5,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 files = {
     'Config': 'ReplicatedStorage/Config.lua',
-    'Items': 'ReplicatedStorage/Items.lua',
     'ColosseumService': 'ServerScriptService/ColosseumService.lua',
     'LobbyActivities': 'StarterPlayerScripts/LobbyActivities.client.lua',
     'BossIntro': 'StarterPlayerScripts/BossIntro.client.lua',

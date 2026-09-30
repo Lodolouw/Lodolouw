@@ -406,7 +406,7 @@ local function toast(message, kind)
 	elseif kind == "info" then
 		color = C.blue
 	elseif kind == "rare" then
-		color = RGB(200, 130, 20) -- someone pulled something big from a chest
+		color = RGB(200, 130, 20) -- someone pulled something big at the Arcade
 	end
 	local t = create("TextLabel", {
 		LayoutOrder = toastOrder,
@@ -793,10 +793,9 @@ local function hudButton(name, icon, colors, order, panelName, stationCFrame)
 end
 
 -- (Upgrades, Backpack and Armory have no buttons any more: walk up to the
--- Upgrade Shop, the Sell Shop or the forge to use them. The GEAR button sits
--- beside STATS - Inventory makes it.)
--- (the STATS button is gone with stat points: your level alone makes you
--- stronger now - Config.LevelBonus)
+-- Upgrade Shop, the Sell Shop or the forge to use them.)
+-- (the STATS and GEAR buttons are gone with stat points and armour gear: your
+-- level alone makes you stronger now - Config.LevelBonus)
 
 ----------------------------------------------------------------------
 -- HUD: bottom-left stats

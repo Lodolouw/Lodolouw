@@ -38,9 +38,10 @@
 	        sometimes bounces at you three times, each landing in a small red
 	        circle.
 	      - It can never take you below Floor of your health: you can't lose.
-	      - It pops: Oozlet's Chest and some coins straight away; and once the
-	        lobby has been revealed, enough Power to be at least Reward.Level
-	        (so the LEVEL UP shows on the screen that's just come back).
+	      - It pops: a chest with an Arcade Token in it and some coins straight
+	        away; and once the lobby has been revealed, enough Power to be at
+	        least Reward.Level (so the LEVEL UP shows on the screen that's just
+	        come back).
 	  * Punching, rolling and everything else is CombatService's, as in any
 	    fight - on while "Intro" is "Void" or "Fight" (stamina is free there).
 	All the numbers are in Config.Intro.
@@ -548,10 +549,10 @@ local function finish(S)
 	if hum then
 		hum.Health = hum.MaxHealth
 	end
-	if R.Chest then
+	if (R.Tokens or 0) > 0 then
 		local notify = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Notify")
 		if notify then
-			notify:FireClient(player, "* Oozlet dropped a chest! Open it in your BAG.", "ok")
+			notify:FireClient(player, "* Oozlet dropped an Arcade Token! Spin it at the ARCADE.", "ok")
 		end
 	end
 end
@@ -574,8 +575,8 @@ local function win(S)
 	act(S, "Pop", S.rest, 0, 0)
 	local R = I.Reward or {}
 	PlayerService.SetIntroDone(S.player)
-	if R.Chest then
-		PlayerService.AddChest(S.player, 0, 1)
+	if (R.Tokens or 0) > 0 then
+		PlayerService.AddTokens(S.player, R.Tokens)
 	end
 	if (R.Coins or 0) > 0 then
 		PlayerService.AddCoins(S.player, R.Coins, true)

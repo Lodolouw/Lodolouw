@@ -21,8 +21,8 @@
 --            dizzy a long time), one in the open ends in a skid and a turn
 -- It checks: no errors or warnings, no broken numbers, he never leaves the
 -- track, his segments join up (no jumps), every move is seen (and drawn, in
--- client mode), TURBO comes at half health, he dies, and the reward (Power +
--- a floor-5 chest) is paid.
+-- client mode), TURBO comes at half health, he dies, and the reward (Power) is
+-- paid.
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -165,7 +165,7 @@ function Combat.SetTargetShape(m, fn)
 end
 function Combat.OnWhiff() end
 function Combat.Launch() end
-local rewards = { power = 0, chests = {}, kills = 0 }
+local rewards = { power = 0, kills = 0 }
 local Profile = {}
 function Profile.RecordBossKill(p, floorId)
 	rewards.kills += 1
@@ -173,9 +173,6 @@ function Profile.RecordBossKill(p, floorId)
 end
 function Profile.AddPower(p, n)
 	rewards.power += n
-end
-function Profile.AddChest(p, floorId, count)
-	rewards.chests[floorId] = (rewards.chests[floorId] or 0) + count
 end
 
 for _, h in ipairs(CollectionService:GetTagged("BossHome")) do
@@ -745,8 +742,8 @@ table.sort(hitList)
 print(string.format("time %.1f  state %s  phase %s  punches %d  hits on players: %s  dodged %d  shoves %d",
 	T, tostring(model:GetAttribute("State")), tostring(model:GetAttribute("Phase")), punchesLanded, table.concat(hitList, " "), dodges, shoves))
 print("moves in order: " .. table.concat(order, " "))
-print(string.format("furthest out from the track's middle line %.1f (leash %d, edge %d)  fastest %.0f studs/s  reward power %d chests %s victories %d",
-	maxOut, def.Leash, EDGE, maxSpeed, rewards.power, tostring(rewards.chests[5]), victories))
+print(string.format("furthest out from the track's middle line %.1f (leash %d, edge %d)  fastest %.0f studs/s  reward power %d  victories %d",
+	maxOut, def.Leash, EDGE, maxSpeed, rewards.power, victories))
 if MODE == "client" then
 	local names = {}
 	for k in pairs(drawn) do
@@ -803,8 +800,8 @@ if SCENARIO == "full" or SCENARIO == "duo" or SCENARIO == "reset" then
 	if not stateIs("Dead") and SCENARIO ~= "full" then
 		problem("he should have been beaten")
 	end
-	if rewards.kills == 0 or rewards.power <= 0 or (rewards.chests[5] or 0) < 1 then
-		problem("beating him should pay Power and a floor-5 chest")
+	if rewards.kills == 0 or rewards.power <= 0 then
+		problem("beating him should pay Power")
 	end
 	if not sawPhase2 then
 		problem("TURBO never came")

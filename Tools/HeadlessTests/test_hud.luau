@@ -93,7 +93,7 @@ M.run(1)
 local function send(tokens)
 	remotes.StateUpdate.OnClientEvent:Fire({
 		Power = 100, Coins = 50, Tokens = tokens, Loot = {}, Upgrades = {}, Talismans = {}, Stats = {},
-		Gear = {}, Items = {}, Weapons = { own = {} }, Quests = { day = 0, list = {} },
+		Weapons = { own = {} }, Quests = { day = 0, list = {} },
 	})
 	M.run(M.now() + 0.5)
 end

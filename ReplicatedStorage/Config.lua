@@ -95,7 +95,7 @@ Config.Colosseum = {
 	MusicVolume = 0.45,
 	EnterRange = 20,
 
-	HitsToKill = 4, -- punches a dummy takes from a player at its level (no gear)
+	HitsToKill = 4, -- punches a dummy takes from a player at its level
 	WaveSize = { 3, 7 }, -- dummies in the first wave, and the most in one wave
 	WaveBreak = 2.5, -- seconds between waves
 
@@ -151,7 +151,7 @@ Config.Colosseum = {
 		-- between your level and the next, and coins + coins per level
 		ClearBonus = { Power = 0.5, Coins = { 150, 15 } },
 		name = "Giant Straw King",
-		health = 10, -- about 40 punches at your level (without gear)
+		health = 10, -- about 40 punches at your level
 		reward = 15, -- pays as much as 15 straw dummies
 		scale = 2.3, -- how big he's built (a straw dummy is 1)
 		IntroTime = 2.8, -- seconds he stands and shows off before the fight starts
@@ -319,8 +319,9 @@ end
 -- player's very first choice of dummy quest is always the small one
 -- (`First`), so their first token - and their first spin - comes quickly.
 --   kind: arena = dummies beaten in the Colosseum, boss = Spire bosses beaten,
---         chest = treasure chests opened
--- (the old "sell" quests are gone: loot doesn't drop any more)
+--         clear = Colosseum runs cleared
+-- (the old "sell" and "open treasure chests" quests are gone: loot and boss
+-- chests don't drop any more)
 Config.Quests = {
 	PerDay = 3,
 	Hours = 6,
@@ -332,7 +333,8 @@ Config.Quests = {
 		{ id = "Arena100", kind = "arena", goal = 100, reward = 400, text = "Beat %d dummies in the Colosseum" },
 		{ id = "Boss1", kind = "boss", goal = 1, reward = 300, text = "Defeat a Spire boss" },
 		{ id = "Boss3", kind = "boss", goal = 3, reward = 800, text = "Defeat %d Spire bosses" },
-		{ id = "Chest2", kind = "chest", goal = 2, reward = 200, text = "Open %d treasure chests" },
+		{ id = "Clear1", kind = "clear", goal = 1, reward = 200, text = "Clear a Colosseum run" },
+		{ id = "Clear3", kind = "clear", goal = 3, reward = 500, text = "Clear %d Colosseum runs" },
 	},
 }
 Config.QuestById = {}
@@ -413,20 +415,20 @@ function Config.levelFromPower(power)
 end
 
 ----------------------------------------------------------------------
--- Stat points: every level gives you PerLevel points to spend in the STATS
--- menu (the button on the left, or the Shrine of Growth). `per` is what one
--- point gives. Resetting them is free.
+-- WHAT EVERY LEVEL GIVES YOU (there are no stat points to spend and no
+-- armour to wear any more - your level alone makes you stronger at
+-- everything; your weapon and its ability do the rest): each level above 1
+-- adds these. At level 100 that's +37% damage, +149 health, +7% less damage
+-- taken and +37% Power from training.
 ----------------------------------------------------------------------
--- WHAT EVERY LEVEL GIVES YOU (there are no stat points to spend any more -
--- your level alone makes you stronger at everything): each level above 1
--- adds these, on top of your gear. At level 100 that's +37% damage, +149
--- health, +7% less damage taken and +37% Power from training.
 Config.LevelBonus = {
 	Damage = 0.375, -- % more damage to bosses
 	Health = 1.5, -- more max health
-	Defense = 0.075, -- % less damage taken (60% at most, with gear)
+	Defense = 0.075, -- % less damage taken (MaxDefense at most)
 	Power = 0.375, -- % more Power from training
 }
+Config.MaxDefense = 60 -- % less damage taken, at most
+Config.CritMultiplier = 1.75 -- a critical hit (a weapon's Crit effect) does this much damage
 
 -- what your level gives: { Damage = %, Health = n, Defense = %, Power = % }
 function Config.statBonus(d)
@@ -615,14 +617,7 @@ function Config.stats(d)
 	local walkSpeed = (Config.BaseWalkSpeed + U.WalkSpeed.perLevel * (up.WalkSpeed or 0))
 		* (1 + Config.talismanBonus(d, "WalkSpeed"))
 
-	-- your gear (ReplicatedStorage.Items): extra health, and extra training Power
-	local gear = { Health = 0, Power = 0 }
-	local okItems, Items = pcall(require, game:GetService("ReplicatedStorage"):FindFirstChild("Items"))
-	if okItems and type(Items) == "table" then
-		gear = Items.gearStats(d)
-	end
-	powerMult = powerMult * (1 + gear.Power / 100)
-	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")) + gear.Health + points.Health)
+	local maxHealth = math.floor(Config.BaseHealth * (1 + Config.talismanBonus(d, "MaxHealth")) + points.Health)
 
 	return {
 		powerMult = powerMult,
@@ -1111,7 +1106,7 @@ Config.Audio = {
 -- with a BOOM. Punch it and it gets angry: a short, easy fight that
 -- teaches punching and rolling (its first slam waits up in the air until
 -- you roll out of the red), it cracks at half health, and then it pops.
--- It drops your first chest, the mist rolls back and the lobby builds
+-- It drops a chest with your first Arcade Token in it, the mist rolls back and the lobby builds
 -- itself around you, piece by piece - and the Spire last: OOZARK AWAITS...
 -- You can't lose (Oozlet never takes you below Floor of your health), and
 -- only brand-new players get it (beating it is saved). IntroService runs
@@ -1217,7 +1212,7 @@ Config.Intro = {
 
 	-- The end: the mist rolls back and the lobby builds itself round you
 	Reveal = {
-		Delay = 3.6, -- seconds after Oozlet pops before the mist starts to go (the chest lands and opens)
+		Delay = 3.6, -- seconds after Oozlet pops before the mist starts to go (the token chest lands and opens)
 		Time = 8, -- how long the mist takes to roll back across the whole island
 		Reach = 600, -- how far it rolls (past the island's edge)
 		Spire = 3.4, -- the look at the Spire at the very end (OOZARK AWAITS...)
@@ -1225,7 +1220,7 @@ Config.Intro = {
 
 	-- What beating it gives you
 	Reward = {
-		Chest = true, -- Oozlet's Chest: starter gear anyone can wear (Items, "floor" 0)
+		Tokens = 1, -- the chest Oozlet drops holds your first Arcade Token (a spin at the Arcade)
 		Coins = 100, -- enough for a first upgrade
 		Level = 3, -- you're at least this level after
 	},
@@ -1942,7 +1937,7 @@ Config.Bosses = {
 		DeepColor = Color3.fromRGB(24, 20, 37), -- his body
 		CoreColor = Color3.fromRGB(104, 56, 108), -- the level's purple
 		EyeColor = Color3.fromRGB(254, 231, 97), -- his eyes
-		Accent = Color3.fromRGB(44, 232, 245), -- cyan (the VS splash, his chest's icon)
+		Accent = Color3.fromRGB(44, 232, 245), -- cyan (the VS splash)
 
 		HealthPunches = 42,
 		PartyScale = 0.6,
@@ -3728,7 +3723,7 @@ Config.Shop = {
 	-- TICKETS in fights (used by themselves; Settings can turn each off):
 	-- a REVIVE stands you back up at half health when a hit would finish you
 	-- in a boss fight (this many per fight); a BOSS RUSH makes a win on a boss
-	-- you've beaten before pay RushMultiplier times as much (and chests)
+	-- you've beaten before pay RushMultiplier times as much
 	RevivesPerFight = 1,
 	RushMultiplier = 2,
 	BoostLuck = 1.5, -- a Luck boost (the login streak's) = the +50% luck pass while it lasts

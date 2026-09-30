@@ -552,7 +552,7 @@ local function die(E)
 			gained = gained + math.floor(rec * E.def.Reward.FirstClear)
 		end
 		-- a BOSS RUSH ticket (the shop's) on a boss you'd beaten before: more
-		-- of everything (ShopService.Rush says how much, and uses the ticket)
+		-- Power (ShopService.Rush says how much, and uses the ticket)
 		local rush = 1
 		if not first and BossService.WinHook then
 			local ok, m = pcall(BossService.WinHook, p, E.floor)
@@ -561,10 +561,6 @@ local function die(E)
 		gained = math.floor(gained * rush)
 		if PlayerService and PlayerService.AddPower then
 			PlayerService.AddPower(p, gained)
-		end
-		-- and its treasure chest (opened from your bag)
-		if PlayerService and PlayerService.AddChest then
-			PlayerService.AddChest(p, E.floor, math.max(1, math.floor(rush)))
 		end
 		if BossEvent then
 			BossEvent:FireClient(p, "Victory", E.floor, gained, first)

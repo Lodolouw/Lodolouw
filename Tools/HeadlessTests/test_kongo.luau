@@ -45,7 +45,6 @@ end
 -- the world: the real jungle village
 ----------------------------------------------------------------------
 local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
-local Items = mount.require(mount.module("ReplicatedStorage/Items.lua"))
 local arena = mount.require(mount.module("ServerScriptService/JungleBuilder.lua")).Build()
 M.run(1)
 assert(arena and arena:GetAttribute("Floor") == 7, "the jungle should be built as floor 7")
@@ -57,8 +56,6 @@ local MONKEYS = #CollectionService:GetTagged("JungleMonkey")
 local TORCHES = #CollectionService:GetTagged("JungleTorch")
 assert(MONKEYS > 0, "the village should have monkey villagers")
 assert(TORCHES > 0, "the clearing should have tiki torches")
--- (no loot yet: floor 7's chest is waiting for the loot rework)
-assert(Items.ByFloor[7] == nil, "floor 7 shouldn't have any loot yet")
 
 ----------------------------------------------------------------------
 -- pretend players
@@ -154,7 +151,7 @@ function Combat.Shove()
 	shoves += 1
 end
 function Combat.SetTargetShape() end
-local rewards = { power = 0, chests = {}, kills = 0 }
+local rewards = { power = 0, kills = 0 }
 local Profile = {}
 function Profile.RecordBossKill(p, floorId)
 	rewards.kills += 1
@@ -162,9 +159,6 @@ function Profile.RecordBossKill(p, floorId)
 end
 function Profile.AddPower(p, n)
 	rewards.power += n
-end
-function Profile.AddChest(p, floorId, count)
-	rewards.chests[floorId] = (rewards.chests[floorId] or 0) + count
 end
 
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
@@ -715,8 +709,8 @@ table.sort(hitList)
 print(string.format("time %.1f  state %s  phase %s  punches %d  hits on players: %s  dodged %d  shoves %d",
 	T, tostring(model:GetAttribute("State")), tostring(model:GetAttribute("Phase")), punchesLanded, table.concat(hitList, " "), dodges, shoves))
 print("moves in order: " .. table.concat(order, " "))
-print(string.format("furthest from the middle %.1f (leash %d)  fastest %.0f studs/s  reward power %d chests %s victories %d",
-	maxFromHome, def.Leash, maxSpeed, rewards.power, tostring(rewards.chests[7]), victories))
+print(string.format("furthest from the middle %.1f (leash %d)  fastest %.0f studs/s  reward power %d  victories %d",
+	maxFromHome, def.Leash, maxSpeed, rewards.power, victories))
 if MODE == "client" then
 	local names = {}
 	for k in pairs(drawn) do

@@ -252,9 +252,6 @@ end
 function Profile.AddPower(p, n)
 	log("POWER", p, n)
 end
-function Profile.AddChest(p, floorId, count)
-	log("CHEST", p, floorId, count)
-end
 
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
 -- the victory message each player's screen gets

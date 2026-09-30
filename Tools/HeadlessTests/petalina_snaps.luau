@@ -109,7 +109,7 @@ local Combat = {
 	Shove = function() end,
 	SetTargetShape = function() end,
 }
-local Profile = { RecordBossKill = function() return true end, AddPower = function() end, AddChest = function() end }
+local Profile = { RecordBossKill = function() return true end, AddPower = function() end }
 for _, h in ipairs(CollectionService:GetTagged("BossHome")) do
 	if h:GetAttribute("Floor") ~= 8 then
 		CollectionService:RemoveTag(h, "BossHome")

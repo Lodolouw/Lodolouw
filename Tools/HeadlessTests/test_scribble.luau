@@ -54,7 +54,6 @@ end
 -- the world: the real canvas
 ----------------------------------------------------------------------
 local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
-local Items = mount.require(mount.module("ReplicatedStorage/Items.lua"))
 local CanvasPlan = mount.require(mount.module("ReplicatedStorage/CanvasPlan.lua"))
 local arena = mount.require(mount.module("ServerScriptService/CanvasBuilder.lua")).Build()
 M.run(1)
@@ -66,8 +65,6 @@ assert(#CollectionService:GetTagged("CanvasEdgeWall") >= 4, "the paper needs wal
 assert(typeof(arena:GetAttribute("Bin")) == "Vector3" or M.typeof(arena:GetAttribute("Bin")) == "Vector3", "the arena should say where the recycle bin is")
 local HALF = arena:GetAttribute("FightRadius")
 assert(HALF == CanvasPlan.Half, "the arena's paper should be CanvasPlan's size")
--- (no loot yet: floor 9's chest is waiting for the loot rework)
-assert(Items.ByFloor[9] == nil, "floor 9 shouldn't have any loot yet")
 do
 	local c = arena:GetAttribute("Center")
 	local off = spawnPart.Position - c
@@ -188,7 +185,7 @@ local shapes = {}
 function Combat.SetTargetShape(m, fn)
 	shapes[m] = fn
 end
-local rewards = { power = 0, chests = {}, kills = 0 }
+local rewards = { power = 0, kills = 0 }
 local Profile = {}
 function Profile.RecordBossKill(p, floorId)
 	rewards.kills += 1
@@ -196,9 +193,6 @@ function Profile.RecordBossKill(p, floorId)
 end
 function Profile.AddPower(p, n)
 	rewards.power += n
-end
-function Profile.AddChest(p, floorId, count)
-	rewards.chests[floorId] = (rewards.chests[floorId] or 0) + count
 end
 
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
@@ -1026,7 +1020,7 @@ print(string.format("time %.1f  state %s  round %s  punches %d  props seen/poppe
 	boxesSeen, pressed, yeses, lowestPaper))
 print("hits on players: " .. table.concat(hitList, " ") .. string.format("  dodged %d  shoves %d", dodges, shoves))
 print("moves in order: " .. table.concat(order, " "))
-print(string.format("furthest from the middle %.1f  reward power %d chests %s victories %d", maxOff, rewards.power, tostring(rewards.chests[9]), victories))
+print(string.format("furthest from the middle %.1f  reward power %d  victories %d", maxOff, rewards.power, victories))
 if MODE == "client" then
 	local names = {}
 	for k in pairs(drawn) do

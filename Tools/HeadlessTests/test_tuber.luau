@@ -29,8 +29,8 @@
 --   corner   catch him with his hop recharging: he panics (free hits), shoves
 --            you off and escapes
 -- It checks: no errors or warnings, no broken numbers, he stays in his
--- ground, no jumps, round 2 comes at PhaseAt, he dies, the reward (Power + a
--- floor-2 chest) is paid - and, in client mode, that everything is drawn.
+-- ground, no jumps, round 2 comes at PhaseAt, he dies, the reward (Power) is
+-- paid - and, in client mode, that everything is drawn.
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -178,7 +178,7 @@ end
 function Combat.SetTargetShape(m, fn)
 	shapes[m] = fn
 end
-local rewards = { power = 0, chests = {}, kills = 0 }
+local rewards = { power = 0, kills = 0 }
 local Profile = {}
 function Profile.RecordBossKill(p, floorId)
 	rewards.kills += 1
@@ -186,9 +186,6 @@ function Profile.RecordBossKill(p, floorId)
 end
 function Profile.AddPower(p, n)
 	rewards.power += n
-end
-function Profile.AddChest(p, floorId, count)
-	rewards.chests[floorId] = (rewards.chests[floorId] or 0) + count
 end
 
 for _, h in ipairs(CollectionService:GetTagged("BossHome")) do
@@ -1099,8 +1096,8 @@ table.sort(props)
 print(string.format("time %.1f  state %s  phase %s  punches %d (props %d)  hits on players: %s  dodged %d  shoves %d",
 	T, tostring(model:GetAttribute("State")), tostring(model:GetAttribute("Phase")), punchesLanded, propPunches, table.concat(hitList, " "), dodges, shoves))
 print("moves in order: " .. table.concat(order, " "))
-print(string.format("arena: %d rocks, %d cacti, %d lookouts  props seen: %s (most at once %d)  furthest from home %.1f (leash %d)  fastest %.0f studs/s  reward power %d chests %s victories %d",
-	#ROCKS, CACTI, LOOKOUTS, table.concat(props, " "), maxProps, maxOut, def.Leash, maxSpeed, rewards.power, tostring(rewards.chests[2]), victories))
+print(string.format("arena: %d rocks, %d cacti, %d lookouts  props seen: %s (most at once %d)  furthest from home %.1f (leash %d)  fastest %.0f studs/s  reward power %d  victories %d",
+	#ROCKS, CACTI, LOOKOUTS, table.concat(props, " "), maxProps, maxOut, def.Leash, maxSpeed, rewards.power, victories))
 if MODE == "client" then
 	local names = {}
 	for k in pairs(drawn) do
@@ -1186,8 +1183,8 @@ if SCENARIO == "full" or SCENARIO == "duo" or SCENARIO == "reset" then
 	if not stateIs("Dead") and SCENARIO ~= "full" then
 		problem("he should have been beaten")
 	end
-	if rewards.kills == 0 or rewards.power <= 0 or (rewards.chests[2] or 0) < 1 then
-		problem("beating him should pay Power and a floor-2 chest")
+	if rewards.kills == 0 or rewards.power <= 0 then
+		problem("beating him should pay Power")
 	end
 	if not sawPhase2 then
 		problem("round 2 never came")

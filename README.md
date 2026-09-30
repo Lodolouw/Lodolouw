@@ -121,7 +121,7 @@ is happily hopping round the fountain, and HIT THE SLIME! builds up letter
 by letter until the "!" lands with a BOOM. Punch it and it gets angry: a
 short fight you can't lose that teaches punching and rolling (its first slam
 hangs over you until you roll), it cracks at half health and pops, and drops
-your first chest (Oozlet's Chest: starter gear anyone can wear). Then the mist
+a chest with your first Arcade Token in it (a spin at the Arcade). Then the mist
 rolls back, the lobby builds itself around you piece by piece, and the Spire
 rises out of nothing: OOZARK AWAITS...
 
@@ -181,8 +181,8 @@ sunny cactus desert. Recommended level 30.
   goes into a **RAGE**: more of everything, and his walls creep toward you.
 - **The end:** he freezes, cracks and crumbles into a heap of cactus balls
   that roll away - and out pops tiny Tuber, flower wilted, who stomps off in a
-  huff (HMPH!). The banner says THE BRUTE VANQUISHED. Everyone gets the
-  floor-2 chest (its loot hasn't changed).
+  huff (HMPH!). The banner says THE BRUTE VANQUISHED. Everyone gets Power (and
+  Arcade Tokens the first time).
 - **The arena** (`DunesBuilder`): the Sunken Dunes as a cactus desert - cacti
   everywhere (tagged `DuneCactus`: the ones that fly into the golem, put back
   when the fight resets), boulders (`DesertRock`: rolling balls bounce off
@@ -233,7 +233,7 @@ you learn him by losing to him. Recommended level 45.
   middle - get to the edge - then he's stuck in the ground).
 - **The end:** he drops to one knee ("You dig... with honour..."), pops into
   pixels, and a treasure chest bursts up out of the dirt. Everyone in the dig
-  gets Burrowmore's Chest (Spade Knight's and Relicbound gear).
+  gets Power (and Arcade Tokens the first time).
 - **Where things are:** every number in `Config.Bosses[3]`; the floor in
   `Config.Spire.Floors[3]`; his moves in `ServerScriptService/Bosses/Burrowmore.lua`;
   his body in `ReplicatedStorage/BossBodies/Burrowmore.lua`; the arena in
@@ -283,7 +283,7 @@ stands, bows, drops into his stance: **ROUND 1... FIGHT!** He fights like a
   fills twice as fast, he chains specials together and has more cancels.
 - **The end: K.O.!** He falls, his headband drifts away on the wind, and he
   scatters into cherry blossom petals (**PERFECT!** if you never got hit).
-  Everyone gets Kaze's Chest (Windwalker and Ki Master's gear).
+  Everyone gets Power (and Arcade Tokens the first time).
 - **Where things are:** every number in `Config.Bosses[4]`; the floor in
   `Config.Spire.Floors[4]`; his brain and moves in `ServerScriptService/Bosses/Kaze.lua`;
   his body, meter and screens in `ReplicatedStorage/BossBodies/Kaze.lua`; the
@@ -330,8 +330,8 @@ up, skids round and charges again. Recommended level 75.
 - **The end: FINISH!** He sputters and coughs black smoke, a front wheel pops
   off and rolls away, his bumper drops off, X eyes... and he bursts into
   checkered confetti. The screen shows YOUR TIME (the race clock under his
-  boss bar counts from GO!). Everyone gets Revvington's Chest (Speedster and
-  Turbocharged gear).
+  boss bar counts from GO!). Everyone gets Power (and Arcade Tokens the first
+  time).
 - **Where things are:** every number in `Config.Bosses[5]`; the floor in
   `Config.Spire.Floors[5]`; his brain and moves in `ServerScriptService/Bosses/Revvington.lua`;
   how he drives in `ReplicatedStorage/CarPath.lua`; his body, the race clock and
@@ -384,7 +384,7 @@ of the music. Recommended level 90.
 - **The end: LEVEL COMPLETE!** He glitches, X-eyed, and shatters into little
   neon cubes while the grid lights up green, and your attempts are on the
   screen. The level's **%** bar under his boss bar shows how far through him
-  you are. Everyone gets Gridlock's Chest (Beatbound and Demon Geometry gear).
+  you are. Everyone gets Power (and Arcade Tokens the first time).
 - **The beat:** `Bpm` in `Config.Bosses[6]` is the level's tempo (128). Set it
   to your song's tempo and everything (his hops, the tiles, the drop) lands on
   your music; `BeatOffset` (seconds) lines it up with the song's first beat.
@@ -441,9 +441,8 @@ from his games. Recommended level 105.
   when he wakes, pounds his chest or goes bananas, and cover their eyes when
   he loses.
 - **The end: KONGO VANQUISHED!** He wobbles, falls flat on his back and pops
-  into pixels in a burst of bananas. He pays Power only for now: his chest and
-  gear are coming with the loot rework (`Items.ByFloor[7]` is empty on purpose,
-  so no chest is given).
+  into pixels in a burst of bananas. He pays Power (and Arcade Tokens the
+  first time).
 - **Where things are:** every number in `Config.Bosses[7]`; the floor in
   `Config.Spire.Floors[7]`; his brain and moves in `ServerScriptService/Bosses/Kongo.lua`;
   his body, warnings, the villagers and the torches in `ReplicatedStorage/BossBodies/Kongo.lua`;
@@ -491,8 +490,7 @@ Recommended level 120.
   onto the paths near you, sprouting more flytraps).
 - **The end: she wilts.** Her petals drop off one by one, her head bows to the
   floor, and she pops into pixels; the brambles sink back into the soil. She
-  pays Power only for now: her chest and gear are coming with the loot rework
-  (`Items.ByFloor[8]` is empty on purpose, so no chest is given).
+  pays Power (and Arcade Tokens the first time).
 - **Where things are:** every number in `Config.Bosses[8]`; the floor in
   `Config.Spire.Floors[8]`; her moves in `ServerScriptService/Bosses/Petalina.lua`;
   her body, warnings, flytraps, the brambles and butterflies in
@@ -545,8 +543,7 @@ rounds, 3-4 minutes: the longest fight yet. Recommended level 135.
   paper comes back); miss it and the delete hits everyone hard (it never
   kills - you're left on 1) and the paper stays smaller.
 - **The end:** he's crumpled into a paper ball and thrown into the recycle
-  bin. He pays Power only for now: his chest and gear are coming with the
-  loot rework (`Items.ByFloor[9]` is empty on purpose, so no chest is given).
+  bin. He pays Power (and Arcade Tokens the first time).
 - **Where things are:** every number in `Config.Bosses[9]`; the floor in
   `Config.Spire.Floors[9]`; his moves and his three-round brain in
   `ServerScriptService/Bosses/Scribble.lua`; his body, warnings, clones, the
@@ -619,8 +616,8 @@ game. Recommended level 150.
   everything - jump or roll it at the last moment - then he's worn out and
   wide open.
 - **The end:** he falls flat on his back: "SPIRE CONQUERED!". He pays Power
-  and a floor-10 chest; his gear is coming with the loot rework (no floor-10
-  items yet). The Nightmare, Eclipse and Doom versions of the Spire come next.
+  (and Arcade Tokens the first time). The Nightmare, Eclipse and Doom versions
+  of the Spire come next.
 - **Where things are:** every number in `Config.Bosses[10]`; the floor in
   `Config.Spire.Floors[10]`; his moves and his three-round brain in
   `ServerScriptService/Bosses/Gavelgrunt.lua`; his body, his entrance,
@@ -794,37 +791,30 @@ the other three are Iron Swords in everything but their looks), then fists.
   **Whirlwind**. Until you add them the swings are silent and hits use the
   punch sounds.
 
-## Gear: boss chests, items and your bag
+## Gear (removed)
 
-Every boss drops its **treasure chest** for everyone in the arena when it
-dies. Open it from your bag (the **GEAR** button under the left buttons, or
-**G**) and it rolls a rarity, then an item of that rarity from that boss's loot:
+Armour gear (helmets, chestplates, boots, gauntlets and their sets) and the
+bosses' treasure chests are gone: **weapons from the Arcade are the loot now**,
+and your level makes you stronger (`Config.LevelBonus`). What that changed:
 
-**Common → Uncommon → Rare → Epic → Legendary → Mythic → Secret** (about 1 in 5000).
-
-- **Rolled stats:** every stat rolls inside its range when it drops, so no two
-  are equal. The better the rolls, the more stars (up to 3); all stats at their
-  best = **PERFECT**.
-- **Slots:** Weapon, Helmet, Chest, Boots. Stats: Damage, Crit Chance (x1.75),
-  Health, Defense (both capped at 60%) and Training Power.
-- **Sets:** each boss has two sets (Gelatinous and Tyrant's Regalia for
-  Oozark, Duneworn and Devourer's on floor 2 (the old worm's - floor 2's loot
-  is going to be reworked for Tuber), Spade Knight's and Relicbound
-  for Burrowmore, Windwalker and Ki Master's for Kaze, Speedster and
-  Turbocharged for Revvington, Beatbound and Demon Geometry for Gridlock)
-  with bonuses for 2 and 4 pieces. Kongo (floor 7) and Petalina (floor 8)
-  have no chests yet: their loot comes with the rework.
-- **Level:** each item needs a level: the highest you've ever reached, so
-  prestiging never locks you out. Gear and chests stay through prestige.
-- **The bag:** your loadout and total stats on the left; your items, tabs,
-  sorting and chests on the right. Hover for the item's card (stats and
-  ranges, how they compare to what you wear, set, lore); click to select,
-  double-click to wear; LOCK protects an item; SALVAGE (asks twice) gives coins.
-- **Legendary and up** are announced to the whole server.
-
-Everything is decided on the server (`PlayerService`): the client only asks.
-Items, rarities, odds, sets and stats all live in `ReplicatedStorage.Items`.
-
+- **Bosses** pay Power (and Arcade Tokens the first time you beat each one). A
+  Boss Rush ticket doubles the Power.
+- **The intro:** Oozlet's chest now holds your **first Arcade Token**
+  ("+1 ARCADE TOKEN" rises out of it) - a spin at the Arcade straight away.
+- **The Quest Board:** the "open treasure chests" quest is now **"Clear a
+  Colosseum run"** (or 3 runs), so every set still has three kinds.
+- **Critical hits** only come from a weapon's Crit effect now (x1.75,
+  `Config.CritMultiplier`); defence only from your level (at most
+  `Config.MaxDefense`, 60%).
+- **Old saves:** a player who still has old gear or unopened chests gets
+  **Arcade Tokens for them, once**, when they next join (a message tells them
+  how many): every unopened chest (and every old prestige) and every Common to
+  Rare piece = 1 token, Epic = 2, Legendary = 5, Mythic = 10, Secret = 25 - up
+  to **100** in all. The numbers are `OLD_GEAR` in
+  `ServerScriptService/PlayerService.lua`. The next save leaves the old gear
+  out, so it can't be swapped twice.
+- The G key, the gear window (`Inventory`) and `ReplicatedStorage/Items` are
+  gone.
 
 ## The new GUI (the lobby screen, rewards, the Index, the shop, the Bag and Settings)
 
@@ -850,7 +840,7 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
   or pass is on. **Bottom right:** the corner bonuses (more XP for time in
   this server and for friends in it with you - hover for what they are).
 - It hides in fights, in the intro and while a menu is open. The old left
-  buttons, stats strip, hint line and the GEAR / WEAPONS / ROLL squares are
+  buttons, stats strip, hint line and the WEAPONS / ROLL squares are
   hidden (and stay hidden through fights and the intro); the level bar, the
   heart and the dev tools stay. At level 256 the level bar says MAX LEVEL.
 
@@ -891,7 +881,7 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
   is handed out exactly once (ShopService saves it before telling Roblox).
 - **Tickets in fights:** a **Revive** stands you back up at half health when a
   hit would finish you in a boss fight (one per fight); a **Boss Rush** makes
-  a win against a boss you've beaten before pay double (and two chests). Both
+  a win against a boss you've beaten before pay double Power. Both
   are used by themselves; Settings can switch each off.
 - **Luck** (a luck pass or the Luck boost) makes Epic and rarer more likely at
   the Arcade - and the Arcade's odds show the lucky numbers, the same the
@@ -905,7 +895,7 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
   level, its **one ability on [F]** with what it does now and what the next
   mastery tier adds, IN HAND / FISTS - and every weapon you own, rarest first,
   with a rarity filter; tap one to look at it and EQUIP it. The **Looks** tab
-  wears titles and auras. (The old gear window still opens with G for now.)
+  wears titles and auras.
 - **THE FIGHT SCREEN** stays as it is (heart in the middle, flask left, bolt
   right, the gold level bar); the weapon card gets a title bar in the weapon's
   rarity colour with its name, and the ability reads "[F] WHIRLWIND".
@@ -918,15 +908,15 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
 adds a little damage, max health, defence and Power from training
 (`Config.LevelBonus` - tune the numbers there); your max health goes up the
 moment you level. The STATS button, its panel and the plaza shrine's walk-up
-are gone (the Shrine of Growth stays as decoration). The GEAR button is gone
-from the lobby screen and the Bag too.
+are gone (the Shrine of Growth stays as decoration). Armour gear is gone too
+(see "Gear (removed)" above).
 
 **The menus** (`ReplicatedStorage/Menus`): see-through - the world blurs and
 dims behind, and the menu floats over it: a big title top left, tabs down the
 left side, your money top right and a red X. One at a time; Esc closes it and
 so does going into a fight; the server's messages show on top. Each menu's
-script defines it with `Menus.define`; older windows (the Arcade, Gear,
-Weapons, Stats) open through `Menus.external`.
+script defines it with `Menus.define`; older windows (the Arcade, Weapons)
+open through `Menus.external`.
 
 **The pieces** (`ReplicatedStorage/WindowKit`): picture buttons, cards with
 hard shadows, tabs, badges, chips, bars, the coin and token, and the menus'

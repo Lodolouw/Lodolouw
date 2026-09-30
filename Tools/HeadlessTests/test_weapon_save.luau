@@ -28,7 +28,7 @@ end
 -- a saved player who owns the Iron Sword (mastery 3's worth) and was holding it
 local startPoints = Config.masteryPointsFor(3)
 local data = {
-	Power = Config.powerForLevel(30), Stats = {}, Items = {}, Gear = {},
+	Power = Config.powerForLevel(30),
 	Weapons = { own = { IronSword = startPoints }, hold = "IronSword" },
 }
 local actions, dirty = {}, 0

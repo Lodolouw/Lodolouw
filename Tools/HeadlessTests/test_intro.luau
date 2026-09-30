@@ -402,7 +402,7 @@ if MODE == "fail" then
 	assert(me:GetAttribute("Intro") == nil, "the intro is given up")
 	assert(not model.Parent, "Oozlet is gone")
 	local dd = PS.GetData(me)
-	assert(dd.IntroDone == false and dd.Chests["0"] == nil and dd.Coins == 0, "no reward, and it comes back next time")
+	assert(dd.IntroDone == false and (dd.Tokens or 0) == 0 and dd.Coins == 0, "no reward, and it comes back next time")
 	assert(ltm(island) == 0 and ltm(tree) == 0 and ltm(spireTop) == 0 and sign.Enabled, "the lobby is back")
 	assert(hud.Enabled and core["Enum.CoreGuiType.PlayerList"] == true and me.CameraMaxZoomDistance == 128, "screens and camera are back")
 	assert(ltm(bravoChar.HumanoidRootPart) == 0, "other players are back")
@@ -494,11 +494,16 @@ end, 40, "Oozlet to pop", punchIt)
 assert(table.find(introEvents, "Win"), "a win")
 local d = PS.GetData(me)
 assert(d.IntroDone == true, "beating it is saved")
-assert(d.Chests["0"] == 1, "Oozlet's Chest is in the bag")
+assert(d.Tokens == 1, "your first Arcade Token: " .. tostring(d.Tokens))
 assert(d.Coins == 100, "and 100 coins: " .. d.Coins)
 assert(minHealth >= 29.9, "it can never take you below 30%: " .. minHealth)
 step(1.2)
 assert(workspace.IntroWorld:FindFirstChild("ChestBase"), "a chest drops")
+waitFor(function()
+	return workspace.IntroWorld:FindFirstChild("IntroChestLabel", true) ~= nil
+end, 2, "the chest to open")
+local chestText = workspace.IntroWorld:FindFirstChild("IntroChestLabel", true):FindFirstChildOfClass("TextLabel").Text
+assert(chestText == "+1 ARCADE TOKEN", "the token rises out of it: " .. chestText)
 
 ----------------------------------------------------------------------
 -- THE REVEAL

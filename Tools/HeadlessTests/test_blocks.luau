@@ -51,7 +51,7 @@ W.List.TestGuard = {
 	}, Burst = { Radius = 9, Damage = 1.0, Delay = 0.1 } },
 }
 
-local data = { Power = Config.powerForLevel(30), Stats = {}, Items = {}, Gear = {}, Weapons = { own = {}, hold = nil } }
+local data = { Power = Config.powerForLevel(30), Weapons = { own = {}, hold = nil } }
 local PlayerService = {
 	GetData = function()
 		return data

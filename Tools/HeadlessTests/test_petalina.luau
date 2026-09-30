@@ -50,7 +50,6 @@ end
 -- the world: the real greenhouse
 ----------------------------------------------------------------------
 local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
-local Items = mount.require(mount.module("ReplicatedStorage/Items.lua"))
 local GardenPlan = mount.require(mount.module("ReplicatedStorage/GardenPlan.lua"))
 local arena = mount.require(mount.module("ServerScriptService/GreenhouseBuilder.lua")).Build()
 M.run(1)
@@ -63,8 +62,6 @@ local THORNS = #CollectionService:GetTagged("GardenThorn")
 local FLIES = #CollectionService:GetTagged("GardenButterfly")
 assert(THORNS > 40, "the flower beds should hide lots of bramble clumps for round 2 (got " .. THORNS .. ")")
 assert(FLIES > 0, "the greenhouse should have butterflies")
--- (no loot yet: floor 8's chest is waiting for the loot rework)
-assert(Items.ByFloor[8] == nil, "floor 8 shouldn't have any loot yet")
 -- the arrival spot must be on a path, and the beds must really be where
 -- GardenPlan says (a bed in the middle of a quarter, a path on the axes)
 do
@@ -175,7 +172,7 @@ local shapes = {}
 function Combat.SetTargetShape(m, fn)
 	shapes[m] = fn
 end
-local rewards = { power = 0, chests = {}, kills = 0 }
+local rewards = { power = 0, kills = 0 }
 local Profile = {}
 function Profile.RecordBossKill(p, floorId)
 	rewards.kills += 1
@@ -183,9 +180,6 @@ function Profile.RecordBossKill(p, floorId)
 end
 function Profile.AddPower(p, n)
 	rewards.power += n
-end
-function Profile.AddChest(p, floorId, count)
-	rewards.chests[floorId] = (rewards.chests[floorId] or 0) + count
 end
 
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
@@ -871,7 +865,7 @@ print(string.format("time %.1f  state %s  phase %s  punches %d (on her head %d) 
 	T, tostring(model:GetAttribute("State")), tostring(model:GetAttribute("Phase")), punchesLanded, headPunches, trapsSeen, trapsPopped,
 	table.concat(hitList, " "), dodges, shoves))
 print("moves in order: " .. table.concat(order, " "))
-print(string.format("furthest from the middle %.1f  reward power %d chests %s victories %d", maxFromHome, rewards.power, tostring(rewards.chests[8]), victories))
+print(string.format("furthest from the middle %.1f  reward power %d  victories %d", maxFromHome, rewards.power, victories))
 if MODE == "client" then
 	local names = {}
 	for k in pairs(drawn) do

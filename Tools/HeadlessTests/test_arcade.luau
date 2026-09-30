@@ -16,6 +16,8 @@
 --     quest pays a token, a new set of quests comes every 6 hours, a boss's
 --     first win pays a bundle (and opens its machine), DEV: +10 Tokens, and
 --     tokens and the Arcade's counters are saved - a nonsense save is cleaned up
+--   * the board's Colosseum clear quest counts clears
+--   * an old save's armour gear and boss chests become Arcade Tokens, once
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -43,7 +45,7 @@ end
 -- has changed since (Echo's was handed in; Foxtrot's wasn't finished)
 local oldSet = math.floor((1700000000 - 6 * 3600) / (6 * 3600)) -- (the pretend clock's last set)
 local function oldQuests(n, claimed)
-	return { day = oldSet, pick = 1, list = { { id = "Arena30", n = n, claimed = claimed }, { id = "Boss1", n = 0 }, { id = "Chest2", n = 0 } } }
+	return { day = oldSet, pick = 1, list = { { id = "Arena30", n = n, claimed = claimed }, { id = "Boss1", n = 0 }, { id = "Clear1", n = 0 } } }
 end
 local saves = {
 	u_1002 = {
@@ -53,6 +55,14 @@ local saves = {
 	u_1004 = { Power = 100, Coins = 100, Tokens = 2, QuestsDone = 4, Quests = oldQuests(30, false) },
 	u_1005 = { Power = 100, Coins = 100, Tokens = 2, QuestsDone = 4, Quests = oldQuests(30, true) },
 	u_1006 = { Power = 100, Coins = 100, Tokens = 2, QuestsDone = 4, Quests = oldQuests(12, false) },
+	-- Golf and Hotel played before armour gear and boss chests were taken out
+	u_1007 = {
+		Power = 100, Coins = 100, Tokens = 3, Prestige = 2, NextId = 9, BestLevel = 40,
+		Chests = { ["0"] = 1, ["1"] = 3, ["2"] = "x" },
+		Items = { a = { id = "SquishyGloves" }, b = { id = "OozarkCrown" }, c = { id = "SecretCoin" }, d = { id = "GoneLongAgo" }, e = "x" },
+		Gear = { Weapon = "a", Helmet = "c" },
+	},
+	u_1008 = { Power = 100, Coins = 100, Tokens = 0, Chests = { ["1"] = 5000 } },
 }
 M.services.DataStoreService = {
 	GetDataStore = function()
@@ -485,6 +495,26 @@ check(ok and Config.arcadePack("Knight") and msg.results[1].id == Config.arcadeW
 check(d.Tokens == 5 - A.Machines.Knight.Price, "at the Knight machine's price")
 
 ----------------------------------------------------------------------
+-- The board's "clear a Colosseum run" quest (it took the place of the old
+-- "open treasure chests" one)
+----------------------------------------------------------------------
+local clearQ = nil
+for _, q in ipairs(d.Quests.list) do
+	if Config.QuestById[q.id].kind == "clear" then
+		clearQ = q
+	end
+end
+check(clearQ ~= nil, "every set of quests has a Colosseum clear quest")
+for _, q in ipairs(d.Quests.list) do
+	check(Config.QuestById[q.id].kind ~= "chest", "and no treasure chest quests")
+end
+if clearQ then
+	local n0 = clearQ.n
+	check(PS.RecordColosseumClear(me, 60, "Normal") ~= nil, "a Colosseum clear is recorded")
+	check(clearQ.n == math.min(n0 + 1, Config.QuestById[clearQ.id].goal), "and counts towards it (" .. n0 .. " -> " .. clearQ.n .. ")")
+end
+
+----------------------------------------------------------------------
 -- Saved
 ----------------------------------------------------------------------
 d.Tokens = 42
@@ -494,6 +524,38 @@ local s = saves.u_1001
 check(s and s.Tokens == 42, "tokens are saved (" .. tostring(s and s.Tokens) .. ")")
 check(s and s.Arcade and s.Arcade.spins == d.Arcade.spins and s.Arcade.pity.Slime == d.Arcade.pity.Slime, "and the Arcade's counters")
 check(s and s.QuestsDone == d.QuestsDone, "and the quests handed in")
+
+----------------------------------------------------------------------
+-- The old gear, swapped for Arcade Tokens (once)
+----------------------------------------------------------------------
+notices = {}
+local golf = newPlayer("Golf", 1007, Vector3.new(-18, 3.55, 30))
+local hotel = newPlayer("Hotel", 1008, Vector3.new(-20, 3.55, 30))
+Players.PlayerAdded:Fire(golf)
+Players.PlayerAdded:Fire(hotel)
+step(0.5)
+local gd, hd = PS.GetData(golf), PS.GetData(hotel)
+-- 2 old prestiges + 4 chests, and the pieces: a Common 1, a Legendary 5, a
+-- Secret 25 and one that isn't in the game any more 1 (the "x"s are nonsense)
+local want = 3 + 2 + 4 + 1 + 5 + 25 + 1
+check(gd and gd.Tokens == want, "old gear and chests become tokens (" .. tostring(gd and gd.Tokens) .. ", want " .. want .. ")")
+check(gd and gd.Items == nil and gd.Gear == nil and gd.Chests == nil and gd.NextId == nil and gd.BestLevel == nil, "and they're gone from the data")
+check(hd and hd.Tokens == 100, "at most 100 tokens (" .. tostring(hd and hd.Tokens) .. ")")
+step(6.5)
+local swapNotice = 0
+for _, n in ipairs(notices) do
+	if string.find(n, "became " .. (want - 3) .. " Arcade Tokens", 1, true) or string.find(n, "became 100 Arcade Tokens", 1, true) then
+		swapNotice += 1
+	end
+end
+check(swapNotice == 2, "each is told how many (" .. swapNotice .. "): " .. table.concat(notices, " | "))
+Players.PlayerRemoving:Fire(golf)
+step(1)
+check(saves.u_1007 and saves.u_1007.Tokens == want and saves.u_1007.Items == nil and saves.u_1007.Chests == nil, "the save leaves the old gear out")
+Players.PlayerAdded:Fire(golf)
+step(0.5)
+gd = PS.GetData(golf)
+check(gd and gd.Tokens == want, "so it's only ever swapped once (" .. tostring(gd and gd.Tokens) .. ")")
 
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))

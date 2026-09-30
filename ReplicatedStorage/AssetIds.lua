@@ -15,6 +15,8 @@
 	  * Icons: each weapon's icon (Tools/Weapons/make_icons.py, from its real
 	    picture), uploaded as a decal, by the weapon's key. The Arcade and the
 	    Weapons panel show them (as "rbxthumb://type=Asset&id=...").
+	    UI_<name>: the menus' pixel icons (Tools/Icons/make_ui_icons.py) -
+	    WindowKit shows them on the lobby buttons, tabs and cards.
 	Missing ones are fine: a weapon without its model is the blocky one made in
 	code, an ability without its animation still does everything else, and one
 	without its icon shows a gem in its rarity's colour.
@@ -73,7 +75,6 @@ return {
 		Win_Common = 123815044140897,
 		Win_Epic = 75062273886149,
 		Win_Rare = 138038443135513,
-		-- floors 7-10 boss sounds (Tools/Sounds/boss_sfx.py)
 		Bar_Whip = 92080059310623,
 		Barrel_Break = 117104458119917,
 		Barrel_Throw = 130539834839492,
@@ -210,5 +211,36 @@ return {
 		Token_6 = 140666288732581,
 		Token_7 = 135656266066047,
 		Token_8 = 117135288583865,
+		UI_Arcade = 122247162477677,
+		UI_Bag = 89079472802371,
+		UI_Bolt = 118956115460209,
+		UI_Bosses = 119689213459240,
+		UI_BossRush = 127877094295667,
+		UI_Codes = 76633385938598,
+		UI_Daily = 121587036595631,
+		UI_Featured = 123172281480627,
+		UI_Flask = 120021039762061,
+		UI_Friends = 118957606659031,
+		UI_Gear = 100839534926652,
+		UI_Gift = 124898097323205,
+		UI_Goals = 75231111827769,
+		UI_Index = 138215133629632,
+		UI_Lock = 99944353088788,
+		UI_Looks = 108309298374013,
+		UI_Luck = 72965902419968,
+		UI_Passes = 85513945082067,
+		UI_Playtime = 89027977728392,
+		UI_Revive = 71836686252062,
+		UI_Rewards = 122907192323249,
+		UI_Settings = 124205598037693,
+		UI_Shop = 105088248204047,
+		UI_Spin = 134925634694032,
+		UI_Spire = 80136753641903,
+		UI_Stats = 95480922893673,
+		UI_Tickets = 135077833772665,
+		UI_Titles = 73608375754057,
+		UI_Tokens = 91490477022928,
+		UI_Updates = 134888596853360,
+		UI_Weapons = 90116761480393,
 	},
 }

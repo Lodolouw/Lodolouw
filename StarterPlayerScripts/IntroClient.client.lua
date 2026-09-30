@@ -26,7 +26,8 @@
 	    bar drops in at the top of the screen, red circles show where it's
 	    going to land, the lesson slam hangs over you until you roll (on a
 	    phone the ROLL button throbs), it cracks at half health, and it POPS
-	    into pixels. A chest drops out of the sky, bounces, and bursts open.
+	    into pixels. A chest drops out of the sky, bounces, and bursts open
+	    (+1 ARCADE TOKEN).
 	  * THE REVEAL: the mist rolls back and the lobby builds itself round you -
 	    the ground unrolls under the mist and every piece pops in as it
 	    passes - then the sky comes back, and last of all the camera turns to
@@ -49,7 +50,6 @@ local Debris = game:GetService("Debris")
 local ContentProvider = game:GetService("ContentProvider")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
-local Items = require(ReplicatedStorage:WaitForChild("Items"))
 local I = Config.Intro or {}
 if I.On == false then
 	return
@@ -2163,6 +2163,7 @@ end
 
 ----------------------------------------------------------------------
 -- The chest Oozlet drops: out of the sky, bounce, bounce... and it bursts open
+-- (your first Arcade Token is in it)
 ----------------------------------------------------------------------
 local function dropChest(at)
 	local parts = {}
@@ -2263,7 +2264,8 @@ local function dropChest(at)
 				text.BackgroundTransparency = 1
 				text.Size = UDim2.fromScale(1, 1)
 				text.TextScaled = true
-				text.Text = "+1 " .. string.upper(Items.chestName(0))
+				local tokens = (I.Reward and I.Reward.Tokens) or 1
+				text.Text = "+" .. tokens .. (tokens == 1 and " ARCADE TOKEN" or " ARCADE TOKENS")
 				text.TextColor3 = C.yellow
 				text.TextStrokeColor3 = C.ink
 				text.TextStrokeTransparency = 0

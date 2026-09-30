@@ -119,7 +119,7 @@ local Combat = {
 	Shove = function() end,
 	SetTargetShape = function() end,
 }
-local Profile = { RecordBossKill = function() return true end, AddPower = function() end, AddChest = function() end }
+local Profile = { RecordBossKill = function() return true end, AddPower = function() end }
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
 BS.Start(Combat, Profile)
 local E = assert(BS.Encounter(FLOOR), "no boss on floor " .. FLOOR)

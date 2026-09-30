@@ -20,7 +20,7 @@
 -- It checks: no errors or warnings, no broken numbers, he never leaves the
 -- dirt, every move is seen (and draws its warnings, in client mode), the
 -- armour breaks at half health, the meteor comes below 30%, he dies, the
--- reward (Power + a floor-3 chest) is paid, and he's never hit while high up.
+-- reward (Power) is paid, and he's never hit while high up.
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -144,7 +144,7 @@ end
 function Combat.SetTargetShape(m, fn)
 	shapes[m] = fn
 end
-local rewards = { power = 0, chests = {}, kills = 0 }
+local rewards = { power = 0, kills = 0 }
 local Profile = {}
 function Profile.RecordBossKill(p, floorId)
 	rewards.kills += 1
@@ -152,9 +152,6 @@ function Profile.RecordBossKill(p, floorId)
 end
 function Profile.AddPower(p, n)
 	rewards.power += n
-end
-function Profile.AddChest(p, floorId, count)
-	rewards.chests[floorId] = (rewards.chests[floorId] or 0) + count
 end
 
 local BS = mount.require(mount.module("ServerScriptService/BossService.lua"))
@@ -621,8 +618,8 @@ table.sort(hitList)
 print(string.format("time %.1f  state %s  phase %s  punches %d  hits on players: %s  dodged %d  shoves %d",
 	T, tostring(model:GetAttribute("State")), tostring(model:GetAttribute("Phase")), punchesLanded, table.concat(hitList, " "), dodges, shoves))
 print("moves in order: " .. table.concat(order, " "))
-print(string.format("furthest from the middle %.1f (leash %d)  gems %d  reward power %d chests %s victories %d",
-	maxFromHome, def.Leash, rainSeen, rewards.power, tostring(rewards.chests[3]), victories))
+print(string.format("furthest from the middle %.1f (leash %d)  gems %d  reward power %d  victories %d",
+	maxFromHome, def.Leash, rainSeen, rewards.power, victories))
 if MODE == "client" then
 	local names = {}
 	for k in pairs(drawn) do
@@ -642,8 +639,8 @@ if SCENARIO ~= "attacks" and SCENARIO ~= "timing" then
 	if not stateIs("Dead") and SCENARIO ~= "full" then
 		problem("he should have been beaten")
 	end
-	if rewards.kills == 0 or rewards.power <= 0 or (rewards.chests[3] or 0) < 1 then
-		problem("beating him should pay Power and a floor-3 chest")
+	if rewards.kills == 0 or rewards.power <= 0 then
+		problem("beating him should pay Power")
 	end
 	if not sawPhase2 then
 		problem("his armour never broke")

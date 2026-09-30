@@ -163,9 +163,9 @@ end
 local today = Config.questDay(1700000000 + math.floor(M.now()))
 local function snapshot(over)
 	local d = {
-		Power = 100, Coins = 1234, Tokens = 0, Loot = {}, Upgrades = {}, Talismans = {}, Stats = {}, Gear = {}, Items = {},
-		Weapons = { own = { StarterSword = 0 } }, Quests = { day = 0, list = { { id = "Arena10", n = 0 }, { id = "Boss1", n = 0 }, { id = "Chest2", n = 0 } } },
-		Cleared = {}, Chests = {},
+		Power = 100, Coins = 1234, Tokens = 0, Loot = {}, Upgrades = {}, Talismans = {},
+		Weapons = { own = { StarterSword = 0 } }, Quests = { day = 0, list = { { id = "Arena10", n = 0 }, { id = "Boss1", n = 0 }, { id = "Clear1", n = 0 } } },
+		Cleared = {},
 		Rewards = { streak = 1, streakDay = today, giftPlay = 0, gifts = 0, giftsToday = 0, codes = {}, updates = { [R.Updates[1].Id] = true }, index = {}, milestones = {} },
 		Boosts = { XP = 0, Coins = 0, Luck = 0 }, Tickets = { Revive = 0, Rush = 0 }, Shop = { starter = false, receipts = {}, daily = {} },
 		Looks = { titles = {}, auras = {} }, Settings = {},
@@ -262,7 +262,7 @@ check(trailPointsTo(zones.Arcade), "the trail turns to the Arcade")
 check(badge("Arcade") == "3", "ARCADE's badge counts the tokens")
 check(find(find(root, "Tokens"), "Amount").Text == "3", "the tokens show")
 
-local quests = { day = 0, pick = 1, list = { { id = "Arena10", n = 10 }, { id = "Boss1", n = 0 }, { id = "Chest2", n = 0 } } }
+local quests = { day = 0, pick = 1, list = { { id = "Arena10", n = 10 }, { id = "Boss1", n = 0 }, { id = "Clear1", n = 0 } } }
 send({ Tokens = 3, Quests = quests })
 check(goalText() == "Hand in your quest", "a finished quest comes first (" .. tostring(goalText()) .. ")")
 check(find(find(root, "Quest"), "Meter"):FindFirstChild("Text").Text == "HAND IT IN!", "the quest card says to hand it in")
@@ -336,7 +336,7 @@ wait(0.3)
 check(root.Visible == true, "back in the lobby it's back")
 
 if SNAPS then
-	send({ Tokens = 3, Quests = { day = 0, pick = 1, list = { { id = "Arena10", n = 6 }, { id = "Boss1", n = 0 }, { id = "Chest2", n = 0 } } }, Power = Config.powerForLevel(12), Boosts = { XP = 754, Coins = 0, Luck = 0 },
+	send({ Tokens = 3, Quests = { day = 0, pick = 1, list = { { id = "Arena10", n = 6 }, { id = "Boss1", n = 0 }, { id = "Clear1", n = 0 } } }, Power = Config.powerForLevel(12), Boosts = { XP = 754, Coins = 0, Luck = 0 },
 		Rewards = { streak = 1, streakDay = today - 1, giftPlay = need - 221, giftsToday = 0, codes = {}, updates = {}, index = {}, milestones = {} }, Weapons = { own = { StarterSword = 0, GooGloves = 0 } } })
 	snapGui(playerGui:FindFirstChild("BossGrowHud"), "THE NEW LOBBY SCREEN|picture buttons, money, next goal, gift clock, quest, boosts, bonuses", 1280, 720)
 	snapGui(lobby, nil, 1280, 720)

@@ -22,7 +22,7 @@
 	  Menus.current()            the open menu's name and tab (or nil)
 	  Menus.go(name, tab)        open a menu, or one of the older windows
 	                             other scripts open themselves:
-	  Menus.external[name] = fn(tab)   (Gear, Weapons, Stats, Arcade)
+	  Menus.external[name] = fn(tab)   (Weapons, Arcade)
 	  Menus.state                the latest save snapshot (StateUpdate)
 	  Menus.onState(fn)          fn(state) with every snapshot
 	  Menus.act(name, arg, done) ask the server (the Action remote); shows its

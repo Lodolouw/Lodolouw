@@ -37,7 +37,7 @@ local function check(ok, msg)
 	end
 end
 
-local data = { Power = Config.powerForLevel(30), Stats = {}, Items = {}, Gear = {}, Weapons = { own = {}, hold = nil } }
+local data = { Power = Config.powerForLevel(30), Weapons = { own = {}, hold = nil } }
 local PlayerService = {
 	GetData = function()
 		return data
