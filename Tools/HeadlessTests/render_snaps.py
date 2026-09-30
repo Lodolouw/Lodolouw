@@ -19,46 +19,43 @@ import json, math, argparse
 import numpy as np
 from PIL import Image, ImageDraw
 
-ap = argparse.ArgumentParser()
-ap.add_argument('snaps')
-ap.add_argument('out')
-ap.add_argument('--size', default='800,450')
-ap.add_argument('--fov', type=float, default=70)
-ap.add_argument('--title', default='KNIGHT BURROWMORE|FLOOR 3  -  THE GLIMMER DIG|RECOMMENDED LV 45')
-ap.add_argument('--cols', type=int, default=2)
-args = ap.parse_args()
-W, H = [int(v) for v in args.size.split(',')]
+W, H = 800, 450  # (the picture's size: set by the command line, or by render_banner.py)
 SS = 2
+
 
 # ----------------------------------------------------------------------
 # the snapshots
 # ----------------------------------------------------------------------
-snaps = []
-cur = None
-file_captions = {}  # CAPTION <name> <words>: a snapshot script's own captions
-sky = None  # SKY r,g,b|r,g,b: the sky's top and bottom colours (a sunset, say)
-for line in open(args.snaps):
-    if line.startswith('CAPTION '):
-        bits = line.rstrip('\n').split(' ', 2)
-        file_captions[bits[1]] = bits[2] if len(bits) > 2 else ''
-        continue
-    if line.startswith('SKY '):
-        top, bottom = line[4:].strip().split('|')
-        sky = (np.array([float(v) for v in top.split(',')]), np.array([float(v) for v in bottom.split(',')]))
-        continue
-    if line.startswith('SNAP '):
-        bits = line.split()
-        cur = {'name': bits[1], 'eye': np.array([float(v) for v in bits[2:5]]),
-               'look': np.array([float(v) for v in bits[5:8]]), 'parts': [], 'bar': None,
-               'fov': float(bits[8]) if len(bits) > 8 else args.fov}
-        snaps.append(cur)
-    elif line.startswith('{') and cur is not None:
-        cur['parts'].append(json.loads(line))
-    elif line.startswith('BAR ') and cur is not None:
-        name, hp, phase = line[4:].rstrip('\n').split('|')
-        cur['bar'] = {'name': name, 'hp': float(hp), 'phase': int(phase)}
-    elif line.startswith('ERROR'):
-        print(line.rstrip())
+def load_snaps(path, default_fov=70):
+    """The snapshots in a snapshot file, its own captions and its sky (or None)."""
+    snaps = []
+    cur = None
+    file_captions = {}  # CAPTION <name> <words>: a snapshot script's own captions
+    sky = None  # SKY r,g,b|r,g,b: the sky's top and bottom colours (a sunset, say)
+    for line in open(path):
+        if line.startswith('CAPTION '):
+            bits = line.rstrip('\n').split(' ', 2)
+            file_captions[bits[1]] = bits[2] if len(bits) > 2 else ''
+            continue
+        if line.startswith('SKY '):
+            top, bottom = line[4:].strip().split('|')
+            sky = (np.array([float(v) for v in top.split(',')]), np.array([float(v) for v in bottom.split(',')]))
+            continue
+        if line.startswith('SNAP '):
+            bits = line.split()
+            cur = {'name': bits[1], 'eye': np.array([float(v) for v in bits[2:5]]),
+                   'look': np.array([float(v) for v in bits[5:8]]), 'parts': [], 'bar': None,
+                   'fov': float(bits[8]) if len(bits) > 8 else default_fov}
+            snaps.append(cur)
+        elif line.startswith('{') and cur is not None:
+            cur['parts'].append(json.loads(line))
+        elif line.startswith('BAR ') and cur is not None:
+            name, hp, phase = line[4:].rstrip('\n').split('|')
+            cur['bar'] = {'name': name, 'hp': float(hp), 'phase': int(phase)}
+        elif line.startswith('ERROR'):
+            print(line.rstrip())
+    return snaps, file_captions, sky
+
 
 # ----------------------------------------------------------------------
 # pixel letters (5 x 7)
@@ -144,7 +141,7 @@ def pixel_text(d, s, x, y, px, color, shadow=None, outline=(24, 20, 37)):
 # ----------------------------------------------------------------------
 # drawing the world (the same as render_lobby.py)
 # ----------------------------------------------------------------------
-SKY = sky
+SKY = None  # (the sky's colours: load_snaps' third answer)
 LIGHT = np.array([-0.45, 0.8, 0.35])
 LIGHT /= np.linalg.norm(LIGHT)
 NEAR = 0.5
@@ -328,6 +325,7 @@ def render(snap, sky, rng_limit):
     edge[:-1, :] |= ids[:-1, :] != ids[1:, :]
     edge &= ids >= 0
     color[edge] *= 0.62
+    snap['_depth'] = depth  # (how near each drawn pixel is, 1/distance: render_banner.py's light goes behind the boss)
     img = Image.fromarray(np.clip(color, 0, 255).astype(np.uint8)).resize((W, H), Image.LANCZOS)
 
     def to_screen(pt):
@@ -393,20 +391,31 @@ CAPTIONS = {
     'noquarter': 'NO QUARTER!',
     'chest': 'HIS TREASURE CHEST',
 }
-panels = []
-for snap in snaps:
-    name = snap['name']
-    img, _ = render(snap, True, 700)
-    panels.append(overlay(img, snap, file_captions.get(name, CAPTIONS.get(name, name.upper()))))
-    print('drew', name, len(snap['parts']), 'parts')
-cols = args.cols
-if len(panels) % cols == cols - 1 and args.title:
-    panels.insert(0, title_card(args.title))
-rows = (len(panels) + cols - 1) // cols
-gap = 6
-sheet = Image.new('RGB', (cols * W + (cols + 1) * gap, rows * H + (rows + 1) * gap), (0, 0, 0))
-for i, pimg in enumerate(panels):
-    r, c = divmod(i, cols)
-    sheet.paste(pimg, (gap + c * (W + gap), gap + r * (H + gap)))
-sheet.save(args.out)
-print('saved', args.out)
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser()
+    ap.add_argument('snaps')
+    ap.add_argument('out')
+    ap.add_argument('--size', default='800,450')
+    ap.add_argument('--fov', type=float, default=70)
+    ap.add_argument('--title', default='KNIGHT BURROWMORE|FLOOR 3  -  THE GLIMMER DIG|RECOMMENDED LV 45')
+    ap.add_argument('--cols', type=int, default=2)
+    args = ap.parse_args()
+    W, H = [int(v) for v in args.size.split(',')]
+    snaps, file_captions, SKY = load_snaps(args.snaps, args.fov)
+    panels = []
+    for snap in snaps:
+        name = snap['name']
+        img, _ = render(snap, True, 700)
+        panels.append(overlay(img, snap, file_captions.get(name, CAPTIONS.get(name, name.upper()))))
+        print('drew', name, len(snap['parts']), 'parts')
+    cols = args.cols
+    if len(panels) % cols == cols - 1 and args.title:
+        panels.insert(0, title_card(args.title))
+    rows = (len(panels) + cols - 1) // cols
+    gap = 6
+    sheet = Image.new('RGB', (cols * W + (cols + 1) * gap, rows * H + (rows + 1) * gap), (0, 0, 0))
+    for i, pimg in enumerate(panels):
+        r, c = divmod(i, cols)
+        sheet.paste(pimg, (gap + c * (W + gap), gap + r * (H + gap)))
+    sheet.save(args.out)
+    print('saved', args.out)
