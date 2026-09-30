@@ -122,6 +122,22 @@ if PlayerService then
 	start("ArcadeService", ArcadeService and ArcadeService.Start, PlayerService, CombatService)
 end
 
+-- The new GUI's rewards (login streak, free gift, codes, the Index, looks,
+-- the corner bonuses) and the shop (Robux purchases, passes, Daily Items):
+-- both need player data
+local RewardService = load("RewardService", 3)
+if PlayerService then
+	start("RewardService", RewardService and RewardService.Start, PlayerService)
+end
+local ShopService = load("ShopService", 3)
+if PlayerService then
+	start("ShopService", ShopService and ShopService.Start, PlayerService, RewardService)
+end
+-- (the Arcade's luck: the luck passes and the Luck boost)
+if ArcadeService and ShopService then
+	ArcadeService.LuckFor = ShopService.Luck
+end
+
 -- The Spire's second floor. Built after player data and combat are running, so
 -- the HUD and everything else never waits on it - if it's missing or broken,
 -- only the dunes are.

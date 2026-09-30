@@ -3580,4 +3580,240 @@ for _, name in ipairs({
 	Config.BossSoundLoudness[name] = 0.25 -- (long rumbles, hums and rain)
 end
 
+----------------------------------------------------------------------
+-- THE NEW GUI's REWARDS (ServerScriptService/RewardService; the Rewards
+-- window, the Index and the lobby's corner icons draw them). Everything a
+-- player can claim is decided and paid by the server. A reward is a table
+-- of any of: Coins, Tokens, Revives, Rushes (Boss Rush tickets), Boost
+-- (+ Minutes: "XP" / "Coins" / "Luck", ticking only while you play), Title
+-- (a Config.Looks.Titles id), Aura (a Config.Looks.Auras id).
+----------------------------------------------------------------------
+Config.Rewards = {
+	-- LOGIN STREAK: one claim a day (days change at midnight UTC). Miss a day
+	-- and it starts again at day 1; after day 7 it goes round again.
+	Login = {
+		{ Coins = 500 },
+		{ Tokens = 1 },
+		{ Coins = 1500 },
+		{ Tokens = 2 },
+		{ Boost = "Luck", Minutes = 30 },
+		{ Tokens = 3 },
+		{ Tokens = 5, Title = "Loyal" }, -- DAY 7 (the title only the first time)
+	},
+	-- THE FREE GIFT: ready after every GiftMinutes of play (a clock that only
+	-- runs while you're in the game), paying the next of Gifts in turn
+	GiftMinutes = 15,
+	Gifts = {
+		{ Coins = 300 },
+		{ Coins = 600 },
+		{ Coins = 1000 },
+		{ Boost = "Coins", Minutes = 20 },
+	},
+	GiftsPerDay = 12, -- (then the clock stops until tomorrow: no farming it overnight)
+	-- CODES: typed in the Rewards window, one use each per player. Codes are
+	-- matched ignoring capitals. Until = the os.time() it stops working (nil: never).
+	Codes = {
+		LAUNCH = { Tokens = 3, Coins = 1000 },
+		WALRUS = { Tokens = 2, Title = "Walrus Food" },
+	},
+	-- UPDATES: newest first. The Rewards window shows each with its notes and
+	-- a gift to claim; the newest opens by itself the first time you join
+	-- after it comes out.
+	Updates = {
+		{
+			Id = "1.1",
+			Title = "The Walrus King",
+			Notes = {
+				"Floor 10: King Gavelgrunt, the final boss",
+				"A new look for every menu",
+				"Rewards: a login streak, a free gift, codes",
+				"The Index: collect every weapon",
+			},
+			Gift = { Tokens = 3, Coins = 1000 },
+		},
+	},
+	-- THE INDEX: every weapon pays once, the first time you own it (by its
+	-- rarity), and every find and first boss win fills the COLLECTOR bar
+	IndexFind = {
+		Common = { Coins = 200 },
+		Rare = { Coins = 400 },
+		Epic = { Tokens = 1 },
+		Legendary = { Tokens = 2 },
+		Mythic = { Tokens = 3 },
+		Secret = { Tokens = 5 },
+	},
+	CollectorPoints = { Weapon = 10, Boss = 20 }, -- per weapon found, per boss beaten
+	CollectorLevel = 50, -- points for each collector level
+	Collector = { -- claimable once you reach the level
+		{ Level = 2, Tokens = 2 },
+		{ Level = 3, Coins = 3000 },
+		{ Level = 5, Title = "Collector" },
+		{ Level = 7, Tokens = 4 },
+		{ Level = 10, Aura = "Rainbow", Title = "Hoarder" },
+	},
+	-- THE COMMUNITY CHEST in the lobby: join the group, walk up, claim (once).
+	-- GroupId: the number in your community's web address (0: the chest just
+	-- says the community isn't linked yet).
+	GroupId = 0,
+	Group = { Tokens = 3, Title = "Member" },
+	-- THE CORNER BONUSES (on XP): +PerStep% for every StepMinutes you've been
+	-- in this server, up to Max%; and +PerFriend% for each Roblox friend in
+	-- the server with you, up to Max%
+	Playtime = { StepMinutes = 5, PerStep = 1, Max = 10 },
+	Friends = { PerFriend = 5, Max = 20 },
+}
+
+----------------------------------------------------------------------
+-- LOOKS (cosmetics - nothing here changes a fight): titles over your head
+-- and auras round you. From rewards, the shop's Daily Items and VIP.
+----------------------------------------------------------------------
+do
+	local RGB = Color3.fromRGB
+	Config.Looks = {
+		Titles = {
+			Rookie = { Text = "Rookie", Color = RGB(180, 230, 255) },
+			Loyal = { Text = "Loyal", Color = RGB(120, 230, 140) },
+			Collector = { Text = "Collector", Color = RGB(196, 150, 255) },
+			Hoarder = { Text = "Hoarder", Color = RGB(255, 182, 46) },
+			Member = { Text = "Member", Color = RGB(255, 160, 210) },
+			VIP = { Text = "VIP", Color = RGB(255, 214, 40) },
+			["Walrus Food"] = { Text = "Walrus Food", Color = RGB(200, 160, 120) },
+			["Slime Slayer"] = { Text = "Slime Slayer", Color = RGB(110, 230, 90) },
+			["Spire Climber"] = { Text = "Spire Climber", Color = RGB(141, 75, 255) },
+			["Boss Hunter"] = { Text = "Boss Hunter", Color = RGB(229, 59, 68) },
+		},
+		Auras = {
+			Gold = { Color = RGB(255, 200, 60) },
+			Pink = { Color = RGB(255, 95, 210) },
+			Ink = { Color = RGB(60, 40, 110) },
+			Frost = { Color = RGB(150, 220, 255) },
+			Rainbow = { Color = RGB(255, 255, 255), Rainbow = true },
+		},
+	}
+end
+
+----------------------------------------------------------------------
+-- THE SHOP (ServerScriptService/ShopService; the Shop window draws it).
+-- ROBUX: make each product in the Creator Dashboard (your experience >
+-- Monetization > Developer Products / Passes), then paste its id here. An
+-- id of 0 means it isn't made yet: its button says SOON and can't be bought.
+-- Price is only what the button shows - Roblox charges what you set there,
+-- so keep them the same. Every purchase is handed out exactly once, even if
+-- the game crashes halfway (see ShopService). Nothing here makes you
+-- stronger in a fight: tokens, time, luck, tickets and looks only.
+----------------------------------------------------------------------
+Config.Shop = {
+	-- DEVELOPER PRODUCTS (bought again and again). Gift = can be bought for
+	-- another player in the server (the gift button).
+	Products = {
+		Tokens10 = { ProductId = 0, Price = 99, Tokens = 10, Name = "Handful", Gift = true, Random = true },
+		Tokens25 = { ProductId = 0, Price = 229, Tokens = 25, Name = "Pouch", Gift = true, Random = true },
+		Tokens60 = { ProductId = 0, Price = 499, Tokens = 60, Name = "Sack", Bonus = 20, Gift = true, Random = true },
+		Tokens150 = { ProductId = 0, Price = 1199, Tokens = 150, Name = "Treasure Chest", Bonus = 30, Gift = true, Random = true },
+		Revive3 = { ProductId = 0, Price = 29, Revives = 3, Name = "Revive x3", Gift = true },
+		Spin3 = { ProductId = 0, Price = 45, Tokens = 3, Name = "Spin x3", Gift = true, Random = true },
+		Rush3 = { ProductId = 0, Price = 35, Rushes = 3, Name = "Boss Rush x3", Gift = true },
+		Boost30 = { ProductId = 0, Price = 25, Boost = "XP", Minutes = 30, Name = "30 min 2x XP", Gift = true },
+		-- once per player, offered after the first boss
+		Starter = { ProductId = 0, Price = 49, Once = true, Tokens = 10, Coins = 5000, Revives = 1, Title = "Rookie", Name = "Starter Pack", Gift = false },
+	},
+	-- GAME PASSES (bought once, kept forever)
+	Passes = {
+		VIP = { PassId = 0, Price = 299, Name = "VIP" }, -- +50% XP, +25% coins, VIP title, +10% XP for friends in your server
+		DoubleXP = { PassId = 0, Price = 199, Name = "2x XP" },
+		DoubleCoins = { PassId = 0, Price = 199, Name = "2x Coins" },
+		Luck1 = { PassId = 0, Price = 99, Luck = 1.5, Name = "+50% Luck", Random = true },
+		Luck2 = { PassId = 0, Price = 299, Luck = 2, Name = "+100% Luck", Random = true },
+		Luck3 = { PassId = 0, Price = 799, Luck = 3, Name = "+200% Luck", Random = true },
+		InstantTen = { PassId = 0, Price = 29, Name = "Instant x10" }, -- the x10 spin skips straight to the results
+	},
+	VIP = { XP = 0.5, Coins = 0.25, FriendXP = 10, Title = "VIP" },
+	BoostLuck = 1.5, -- a Luck boost (the login streak's) = the +50% luck pass while it lasts
+	-- DAILY ITEMS: Count looks from the pool, for coins, the same for everyone
+	-- each day (a new set at midnight UTC)
+	Daily = {
+		Count = 5,
+		Pool = {
+			{ Kind = "Aura", Id = "Gold", Price = 5000, Rarity = "Legendary" },
+			{ Kind = "Aura", Id = "Pink", Price = 2500, Rarity = "Epic" },
+			{ Kind = "Aura", Id = "Ink", Price = 2500, Rarity = "Epic" },
+			{ Kind = "Aura", Id = "Frost", Price = 3000, Rarity = "Epic" },
+			{ Kind = "Title", Id = "Slime Slayer", Price = 1200, Rarity = "Rare" },
+			{ Kind = "Title", Id = "Spire Climber", Price = 1500, Rarity = "Rare" },
+			{ Kind = "Title", Id = "Boss Hunter", Price = 2000, Rarity = "Rare" },
+		},
+	},
+}
+-- a product's id -> its key (Tokens10...)
+Config.ShopByProductId = {}
+for key, p in pairs(Config.Shop.Products) do
+	if (p.ProductId or 0) > 0 then
+		Config.ShopByProductId[p.ProductId] = key
+	end
+end
+
+-- the Arcade's odds with `luck` (1 = none): Epic and rarer are `luck` times
+-- more likely, the rest share what's left - still adding up to 100
+function Config.arcadeOdds(luck)
+	local A = Config.Arcade
+	luck = math.max(1, tonumber(luck) or 1)
+	if luck == 1 then
+		return A.Odds
+	end
+	local boosted, total = {}, 0
+	for r, pct in pairs(A.Odds) do
+		local w = (r == "Epic" or r == "Legendary" or r == "Mythic" or r == "Secret") and pct * luck or pct
+		boosted[r] = w
+		total = total + w
+	end
+	local out = {}
+	for r, w in pairs(boosted) do
+		out[r] = w / total * 100
+	end
+	return out
+end
+
+-- the Daily Items on sale on day `day` (Config.questDay)
+function Config.dailyItems(day)
+	local pool = table.clone(Config.Shop.Daily.Pool)
+	local rng = Random.new((day or 0) * 104729 + 31)
+	local picked = {}
+	while #picked < Config.Shop.Daily.Count and #pool > 0 do
+		table.insert(picked, table.remove(pool, rng:NextInteger(1, #pool)))
+	end
+	return picked
+end
+
+-- your collector level for `points` (Config.Rewards.CollectorLevel each)
+function Config.collectorLevel(points)
+	return 1 + math.floor(math.max(0, points or 0) / Config.Rewards.CollectorLevel)
+end
+
+-- what a reward table pays, in words ("+3 TOKENS, +1,000 coins")
+function Config.rewardText(r)
+	local bits = {}
+	if (r.Tokens or 0) > 0 then
+		table.insert(bits, "+" .. r.Tokens .. (r.Tokens == 1 and " TOKEN" or " TOKENS"))
+	end
+	if (r.Coins or 0) > 0 then
+		table.insert(bits, "+" .. Config.format(r.Coins) .. " coins")
+	end
+	if (r.Revives or 0) > 0 then
+		table.insert(bits, "+" .. r.Revives .. (r.Revives == 1 and " revive" or " revives"))
+	end
+	if (r.Rushes or 0) > 0 then
+		table.insert(bits, "+" .. r.Rushes .. " Boss Rush")
+	end
+	if r.Boost then
+		table.insert(bits, (r.Minutes or 30) .. " min " .. (r.Boost == "Luck" and "+50% luck" or ("2x " .. r.Boost)))
+	end
+	if r.Title then
+		table.insert(bits, "\"" .. r.Title .. "\" title")
+	end
+	if r.Aura then
+		table.insert(bits, r.Aura .. " aura")
+	end
+	return table.concat(bits, ", ")
+end
+
 return Config

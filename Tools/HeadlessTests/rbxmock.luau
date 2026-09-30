@@ -103,6 +103,9 @@ M.task = task
 function M.now()
 	return now
 end
+-- seconds added to os.time() only (a test can move to another day without
+-- playing through it)
+M.dayShift = 0
 -- runs everything scheduled up to time `untilT`
 function M.run(untilT, onStep)
 	while #heap > 0 and heap[1].t <= untilT do
@@ -1142,6 +1145,14 @@ function methods.RequestStreamAroundAsync() end
 function methods.GetPlayers(self)
 	return table.clone(M.players)
 end
+function methods.GetPlayerByUserId(self, id)
+	for _, p in ipairs(M.players) do
+		if p.UserId == id and p.Parent ~= nil then
+			return p
+		end
+	end
+	return nil
+end
 function methods.GetPlayerFromCharacter(self, char)
 	for _, p in ipairs(M.players) do
 		if char ~= nil and p.Character == char then
@@ -1310,7 +1321,7 @@ function M.env(extra)
 		os = { clock = function()
 			return now
 		end, time = function()
-			return 1700000000 + math.floor(now)
+			return 1700000000 + math.floor(now) + M.dayShift
 		end },
 		tick = function()
 			return now

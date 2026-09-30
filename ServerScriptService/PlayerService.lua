@@ -94,6 +94,24 @@ local function defaultData()
 		-- machine the spins since your last Legendary or better (the pity)
 		Arcade = { spins = 0, pity = {} },
 		QuestsDone = 0, -- quests ever handed in (a new player's first is a small dummy one)
+		-- THE NEW GUI's REWARDS (RewardService, Config.Rewards): the login
+		-- streak (its day number and the day it was last claimed), the free
+		-- gift (seconds played towards the next one, gifts ever, today's count),
+		-- codes used, update gifts claimed, Index finds paid, collector
+		-- milestones claimed, the community chest, the update last seen
+		Rewards = { streak = 0, streakDay = 0, loyal = false, giftPlay = 0, gifts = 0, giftDay = 0, giftsToday = 0,
+			codes = {}, updates = {}, index = {}, milestones = {}, group = false, seen = "" },
+		-- LOOKS (Config.Looks): titles and auras owned, and the ones worn
+		Looks = { titles = {}, auras = {}, title = nil, aura = nil },
+		-- timed boosts: seconds left on each (they only tick while you play)
+		Boosts = { XP = 0, Coins = 0, Luck = 0 },
+		-- tickets: revives (a boss fight) and Boss Rush (2x rewards on a boss win)
+		Tickets = { Revive = 0, Rush = 0 },
+		-- THE SHOP (ShopService): the starter pack bought, the last purchases
+		-- handed out (so none is ever handed out twice), today's Daily Items bought
+		Shop = { starter = false, receipts = {}, daily = { day = 0, bought = {} } },
+		-- SETTINGS (the Settings window), kept with your save
+		Settings = { music = true, sfx = true, shadows = true, hideOthers = false, shake = true, low = false },
 	}
 end
 
@@ -317,6 +335,73 @@ local function mergeSaved(saved)
 			end
 		end
 	end
+	-- THE NEW GUI's saves: only known things, only sensible numbers
+	local function flags(v, known)
+		local out = {}
+		if type(v) == "table" then
+			for k, on in pairs(v) do
+				if type(k) == "string" and #k <= 40 and on == true and (known == nil or known[k]) then
+					out[k] = true
+				end
+			end
+		end
+		return out
+	end
+	local R = saved.Rewards
+	if type(R) == "table" then
+		local r = d.Rewards
+		r.streak = math.clamp(count(R.streak), 0, #Config.Rewards.Login)
+		r.streakDay = count(R.streakDay)
+		r.loyal = R.loyal == true
+		r.giftPlay = math.clamp(count(R.giftPlay), 0, Config.Rewards.GiftMinutes * 60)
+		r.gifts = count(R.gifts)
+		r.giftDay = count(R.giftDay)
+		r.giftsToday = count(R.giftsToday)
+		r.codes = flags(R.codes)
+		r.updates = flags(R.updates)
+		r.index = flags(R.index, W and W.List)
+		r.milestones = flags(R.milestones)
+		r.group = R.group == true
+		r.seen = type(R.seen) == "string" and #R.seen <= 20 and R.seen or ""
+	end
+	if type(saved.Looks) == "table" then
+		local L = saved.Looks
+		d.Looks.titles = flags(L.titles, Config.Looks.Titles)
+		d.Looks.auras = flags(L.auras, Config.Looks.Auras)
+		d.Looks.title = type(L.title) == "string" and d.Looks.titles[L.title] and L.title or nil
+		d.Looks.aura = type(L.aura) == "string" and d.Looks.auras[L.aura] and L.aura or nil
+	end
+	if type(saved.Boosts) == "table" then
+		for k in pairs(d.Boosts) do
+			d.Boosts[k] = math.min(count(saved.Boosts[k]), 30 * 24 * 3600)
+		end
+	end
+	if type(saved.Tickets) == "table" then
+		d.Tickets.Revive = count(saved.Tickets.Revive)
+		d.Tickets.Rush = count(saved.Tickets.Rush)
+	end
+	if type(saved.Shop) == "table" then
+		local sh = saved.Shop
+		d.Shop.starter = sh.starter == true
+		if type(sh.receipts) == "table" then
+			for _, id in ipairs(sh.receipts) do
+				if type(id) == "string" and #id <= 80 and #d.Shop.receipts < 60 then
+					table.insert(d.Shop.receipts, id)
+				end
+			end
+		end
+		if type(sh.daily) == "table" and sh.daily.day == Config.questDay() then
+			d.Shop.daily.day = sh.daily.day
+			d.Shop.daily.bought = flags(sh.daily.bought)
+		end
+	end
+	if type(saved.Settings) == "table" then
+		for k, v in pairs(d.Settings) do
+			if type(saved.Settings[k]) == type(v) then
+				d.Settings[k] = saved.Settings[k]
+			end
+		end
+	end
 	-- (everyone has the starter weapons)
 	for _, id in ipairs(W and W.Starters or {}) do
 		if W.List[id] and not d.Weapons.own[id] then
@@ -441,11 +526,12 @@ local function saveProfile(player, release)
 				profile.canSave = false
 				warn("[PlayerService] " .. player.Name .. "'s save is owned by another server now - not saving here")
 			end
-			return
+			return not stolen
 		end
 		warn("[PlayerService] save failed (" .. attempt .. "/3): " .. tostring(err))
 		task.wait(1)
 	end
+	return false
 end
 
 ----------------------------------------------------------------------
@@ -594,9 +680,33 @@ function PlayerService.AddLoot(player, materialId, amount)
 	return added
 end
 
-function PlayerService.AddCoins(player, amount)
+-- What earned XP and coins are multiplied by (the shop's passes and boosts,
+-- VIP, the corner bonuses): RewardService and ShopService each add a hook,
+-- fn(player, data, kind ("Power" / "Coins"), amount) -> the new amount
+local gainHooks = {}
+function PlayerService.AddGainHook(fn)
+	table.insert(gainHooks, fn)
+end
+local function boosted(player, d, kind, amount)
+	if amount <= 0 then
+		return amount
+	end
+	for _, fn in ipairs(gainHooks) do
+		local ok, v = pcall(fn, player, d, kind, amount)
+		if ok and type(v) == "number" and v == v then
+			amount = v
+		end
+	end
+	return math.floor(amount + 0.5)
+end
+
+-- Coins earned (multiplied by the gain hooks), or exactly `amount` if `raw`
+function PlayerService.AddCoins(player, amount, raw)
 	local profile = profiles[player]
 	if profile then
+		if not raw then
+			amount = boosted(player, profile.data, "Coins", amount)
+		end
 		profile.data.Coins = profile.data.Coins + amount
 		markDirty(player)
 	end
@@ -749,15 +859,25 @@ function PlayerService.GiveWeapon(player, id)
 	return true
 end
 
+-- Saves this player right now (a Robux purchase: ShopService). True if it
+-- was written to the DataStore.
+function PlayerService.SaveNow(player)
+	return saveProfile(player, false) == true
+end
+
 function PlayerService.AddAction(name, handler)
 	if type(name) == "string" and type(handler) == "function" then
 		handlers[name] = handler
 	end
 end
 
-function PlayerService.AddPower(player, amount)
+-- Power (XP) earned (multiplied by the gain hooks), or exactly `amount` if `raw`
+function PlayerService.AddPower(player, amount, raw)
 	local profile = profiles[player]
 	if profile then
+		if not raw then
+			amount = boosted(player, profile.data, "Power", amount)
+		end
 		profile.data.Power = profile.data.Power + amount
 		markDirty(player)
 	end

@@ -47,6 +47,9 @@ run test_arcade_client.luau
 run test_hud.luau
 run test_weaponbag.luau
 run test_moneyicons.luau
+# the new GUI's server side: rewards, the shop's Robux receipts (each paid
+# exactly once), gifts, passes, Daily Items, luck
+run test_rewards_shop.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

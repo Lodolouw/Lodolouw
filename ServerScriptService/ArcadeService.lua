@@ -45,15 +45,17 @@ local function isIn(list, rarity)
 	return false
 end
 
--- one rarity from `list`, weighted by its odds (Config.Arcade.Odds)
-local function pickFrom(rng, list)
+-- one rarity from `list`, weighted by `odds` (Config.Arcade.Odds, or the
+-- player's lucky odds: Config.arcadeOdds)
+local function pickFrom(rng, list, odds)
+	odds = odds or A.Odds
 	local total = 0
 	for _, r in ipairs(list) do
-		total = total + (A.Odds[r] or 0)
+		total = total + (odds[r] or 0)
 	end
 	local x = rng:NextNumber() * total
 	for _, r in ipairs(list) do
-		x = x - (A.Odds[r] or 0)
+		x = x - (odds[r] or 0)
 		if x < 0 then
 			return r
 		end
@@ -64,17 +66,18 @@ end
 -- One spin's rarity on `machineId`, for a player whose Arcade counters are
 -- `arcade` ({ spins, pity = { [machine] = spins since a Legendary+ } }) -
 -- which it moves on. The first spin ever is Rare or better; the spin that
--- reaches the pity is a Legendary or better.
-function ArcadeService.rollRarity(rng, arcade, machineId)
+-- reaches the pity is a Legendary or better. `odds` (optional) are the
+-- player's odds with their luck in (Config.arcadeOdds).
+function ArcadeService.rollRarity(rng, arcade, machineId, odds)
 	arcade.pity = arcade.pity or {}
 	local pity = arcade.pity[machineId] or 0
 	local rarity
 	if (arcade.spins or 0) == 0 then
-		rarity = pickFrom(rng, A.FirstSpin)
+		rarity = pickFrom(rng, A.FirstSpin, odds)
 	elseif pity + 1 >= A.Pity then
-		rarity = pickFrom(rng, A.PityRarities)
+		rarity = pickFrom(rng, A.PityRarities, odds)
 	else
-		rarity = pickFrom(rng, A.Order)
+		rarity = pickFrom(rng, A.Order, odds)
 	end
 	arcade.spins = (arcade.spins or 0) + 1
 	arcade.pity[machineId] = isIn(A.PityRarities, rarity) and 0 or pity + 1
@@ -155,9 +158,12 @@ local function roll(player, d, arg)
 	last[player] = now
 	d.Tokens = d.Tokens - price
 	d.Arcade = type(d.Arcade) == "table" and d.Arcade or { spins = 0, pity = {} }
+	-- (luck: a luck pass or the Luck boost - the machine's screen shows these odds)
+	local luck = ArcadeService.LuckFor and ArcadeService.LuckFor(player, d) or 1
+	local odds = Config.arcadeOdds(luck)
 	local results, shown = {}, {}
 	for i = 1, count do
-		local rarity = ArcadeService.rollRarity(ArcadeService.rng, d.Arcade, machineId)
+		local rarity = ArcadeService.rollRarity(ArcadeService.rng, d.Arcade, machineId, odds)
 		local id = Config.arcadeWeapon(machineId, rarity)
 		if id then
 			results[#results + 1] = give(player, d, id, rarity)

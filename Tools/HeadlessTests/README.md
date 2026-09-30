@@ -435,6 +435,25 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `test_moneyicons.luau` - the living coin and token (MoneyIcons): made
   once all 8 pictures are uploaded (flipping through them, the token
   bobbing), nothing while any is missing.
+- `test_rewards_shop.luau` - THE NEW GUI's SERVER SIDE (RewardService and
+  ShopService) with a pretend DataStore, Marketplace and PolicyService and
+  three players: the new save fields start empty and a nonsense save is
+  cleaned up; the login streak (once a day, a missed day starts again, day 7's
+  title once); the free gift (only after its minutes of play, its daily limit,
+  a new day); codes (capitals and spaces ignored, once each, dates), update
+  gifts; the Index (only weapons you own, once each, by rarity), the
+  collector bar and its levels, the community chest; wearing titles and auras
+  (shown over your head / round you); settings; the corner bonuses (time in
+  the server, friends, a VIP friend) and the 2x passes, VIP and boosts on XP
+  and coins (and the intro's exact amounts untouched); ROBUX: SOON while a
+  product has no id, the prompt, a receipt pays once however often Roblox
+  sends it, "granted" only after the save is written (a failed save says
+  "not yet" and the retry pays nothing more), the starter pack once, gifts to
+  someone in the server (and to the buyer if they've left), no paid random
+  items where PolicyService says no (or can't say); game passes at join and
+  when bought; Daily Items; luck (the passes, the boost, the odds, a real spin).
+  It moves the calendar with `M.dayShift` (os.time only) instead of playing
+  through whole days.
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /

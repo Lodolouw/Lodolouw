@@ -542,7 +542,7 @@ local function finish(S)
 	local d = PlayerService.GetData(player)
 	local want = Config.powerForLevel(R.Level or 1)
 	if d and d.Power < want then
-		PlayerService.AddPower(player, want - d.Power)
+		PlayerService.AddPower(player, want - d.Power, true) -- (exactly: no bonuses)
 	end
 	local _, hum = rootOf(player)
 	if hum then
@@ -578,7 +578,7 @@ local function win(S)
 		PlayerService.AddChest(S.player, 0, 1)
 	end
 	if (R.Coins or 0) > 0 then
-		PlayerService.AddCoins(S.player, R.Coins)
+		PlayerService.AddCoins(S.player, R.Coins, true)
 	end
 	send(S, "Win")
 	local V = I.Reveal or {}
