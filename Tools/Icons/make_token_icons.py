@@ -222,6 +222,68 @@ def main():
     sheet.save(path)
     print('saved', path)
 
+def coin(t=0.0):
+    """THE COIN, alive: thick shining gold with our slime stamped on it. A
+    soft shine sweeps across, the slime blinks, a glint twinkles (quieter
+    than the token: the token's the special one)."""
+    img = blank()
+    cx, cy, r = 24, 22, 18
+    edge(img, cx, cy, r, 3, (150, 70, 10))
+    for x, y, dx, dy, d in each(cx, cy, r):
+        k = (-(dx * 0.6 + dy * 0.8) / r + 1) / 2
+        if d > 14.2:
+            put(img, x, y, band(k, [(196, 106, 24), (240, 160, 34), (255, 212, 70), (255, 240, 160)]))
+        elif d > 13:
+            put(img, x, y, (160, 80, 16))
+        else:
+            put(img, x, y, band(k, [(214, 124, 26), (246, 170, 44), (255, 204, 74)]))
+    # the slime stamp: a gooey blob with eyes (they blink in one frame of the loop)
+    blink = 0.55 <= (t % 1) < 0.68
+    slime = [
+        "......####......",
+        "....########....",
+        "...##########...",
+        "..############..",
+        ".##############.",
+        ".##WW######WW##.",
+        "###WK######WK###",
+        "###WK######WK###",
+        "################",
+        "################",
+        ".##############.",
+        "..############..",
+    ]
+    for j, row in enumerate(slime):
+        for i, ch in enumerate(row):
+            x, y = 16 + i, 15 + j
+            if ch == '.':
+                continue
+            if ch == '#' or (blink and ch in 'WK'):
+                c = (99, 199, 77) if j < 7 else (62, 150, 60)
+                if blink and ch in 'WK':
+                    c = (40, 110, 40) if ch == 'K' and j == 7 else (99, 199, 77)
+                put(img, x + 1, y + 1, (150, 80, 16))
+                put(img, x, y, c)
+            elif ch == 'W':
+                put(img, x, y, (255, 255, 255))
+            elif ch == 'K':
+                put(img, x, y, INK)
+    for i in range(3):
+        put(img, 19 + i, 16, (170, 240, 150))
+    # the soft shine
+    sweep = -24 + t * 2 * 60
+    for x, y, dx, dy, d in each(cx, cy, r):
+        k = (dx + dy) - sweep
+        if -1.8 < k < 1.8:
+            c = img[y, x, :3].astype(float)
+            put(img, x, y, c + (255 - c) * (0.55 if abs(k) < 0.9 else 0.25))
+    outline(img)
+    w = math.sin((t + 0.2) * 2 * math.pi)
+    if w > 0:
+        sparkle(img, 40, 8, max(1, round(2 * w)))
+    return img
+
+
 def holo_loop(frames=8, scale=4):
     """the Holo token's loop: a sprite sheet for the game (4 across, 2 down,
     frames in reading order) and an animated picture to look at"""
@@ -244,6 +306,38 @@ def holo_loop(frames=8, scale=4):
     print('saved the Holo loop')
 
 
+def money_frames(frames=8, scale=4):
+    """each living icon's frames on their own (the uploader uploads them; the
+    game flips through them): out/money/Coin_1.png .. Token_8.png, and a
+    preview of both side by side"""
+    folder = os.path.join(OUT, 'money')
+    os.makedirs(folder, exist_ok=True)
+    sets = {'Coin': coin, 'Token': holo}
+    pics = {}
+    for name, fn in sets.items():
+        pics[name] = []
+        for i in range(frames):
+            p = Image.fromarray(fn(i / frames), 'RGBA').resize((N * scale, N * scale), Image.NEAREST)
+            p.save(os.path.join(folder, '%s_%d.png' % (name, i + 1)))
+            pics[name].append(p)
+    gif = []
+    for j in range(frames * 3):
+        i = j % frames
+        bg = Image.new('RGBA', (600, 320), (116, 40, 232, 255))
+        d = ImageDraw.Draw(bg)
+        for x in range(0, 600, 64):
+            d.line([(x, 0), (x, 320)], fill=(152, 94, 255), width=2)
+        for y in range(0, 320, 64):
+            d.line([(0, y), (600, y)], fill=(152, 94, 255), width=2)
+        bob = round(math.sin(j / (frames * 3) * 2 * math.pi * 2) * 5)
+        bg.alpha_composite(pics['Coin'][i].resize((240, 240), Image.NEAREST), (30, 40 - bob))
+        bg.alpha_composite(pics['Token'][i].resize((240, 240), Image.NEAREST), (330, 40 + bob))
+        gif.append(bg.convert('P', palette=Image.ADAPTIVE))
+    gif[0].save(os.path.join(ROOT, 'Docs', 'money_icons.gif'), save_all=True, append_images=gif[1:], duration=90, loop=0, disposal=2)
+    print('saved the money frames')
+
+
 if __name__ == '__main__':
     main()
     holo_loop()
+    money_frames()

@@ -175,6 +175,11 @@ local function corner(parent, r)
 end
 -- a round purple token with a gold rim and a star
 local function tokenIcon(parent, size, props)
+	-- (the living Holo token, once its pictures are uploaded: ReplicatedStorage/MoneyIcons)
+	local living = require(ReplicatedStorage:WaitForChild("MoneyIcons")).make(parent, "Token", size, props)
+	if living then
+		return living
+	end
 	local f = new("Frame", { Size = UDim2.fromOffset(size, size), BackgroundColor3 = GOLD, BorderSizePixel = 0 }, parent)
 	corner(f, math.floor(size / 2))
 	stroke(f, INK, math.max(2, size / 16))

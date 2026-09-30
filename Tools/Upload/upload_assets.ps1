@@ -4,6 +4,7 @@
 #   * the weapons' sound effects  (Tools\Sounds\out\weapons\<name>.ogg)
 #   * the Arcade's music and sounds  (Tools\Sounds\out\arcade\<name>.ogg)
 #   * the weapons' icons  (Tools\Weapons\out\icons\<key>.png, as decals)
+#   * the living coin and token's pictures  (Tools\Icons\out\money\<name>.png, as decals)
 # then copies ALL their ids (as ReplicatedStorage\AssetIds.lua) to your clipboard,
 # to paste to Claude. Run it by double-clicking upload_assets.bat.
 #
@@ -43,10 +44,12 @@ foreach ($folder in @('Sounds\out\weapons', 'Sounds\out\arcade')) {
         }
     }
 }
-$icons = Join-Path $tools 'Weapons\out\icons'
-if (Test-Path $icons) {
-    Get-ChildItem $icons -Filter *.png | Sort-Object Name | ForEach-Object {
-        $items += [pscustomobject]@{ Kind = 'Decal'; Key = $_.BaseName; Path = $_.FullName; Type = 'image/png' }
+foreach ($folder in @('Weapons\out\icons', 'Icons\out\money')) {
+    $icons = Join-Path $tools $folder
+    if (Test-Path $icons) {
+        Get-ChildItem $icons -Filter *.png | Sort-Object Name | ForEach-Object {
+            $items += [pscustomobject]@{ Kind = 'Decal'; Key = $_.BaseName; Path = $_.FullName; Type = 'image/png' }
+        }
     }
 }
 if ($items.Count -eq 0) { Write-Host 'Nothing to upload (pull first?)' -ForegroundColor Red; exit }
@@ -93,7 +96,7 @@ if ($todo.Count -gt 0) {
         $request = @{
             assetType = $it.Kind
             displayName = $it.Key
-            description = $(if ($it.Kind -eq 'Decal') { 'Weapon icon' } elseif ($it.Path -like '*\arcade\*') { 'Arcade sound' } else { 'Weapon ' + $it.Kind.ToLower() })
+            description = $(if ($it.Path -like '*\money\*') { 'Money icon' } elseif ($it.Kind -eq 'Decal') { 'Weapon icon' } elseif ($it.Path -like '*\arcade\*') { 'Arcade sound' } else { 'Weapon ' + $it.Kind.ToLower() })
             creationContext = @{ creator = $creator }
         } | ConvertTo-Json -Depth 5 -Compress
         $op = $null

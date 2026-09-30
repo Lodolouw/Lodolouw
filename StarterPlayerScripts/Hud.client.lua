@@ -606,6 +606,12 @@ local COIN_ICON_IMAGE = ""
 -- Makes a coin icon `size` pixels big inside `parent`; `props` can set
 -- Position/AnchorPoint etc.
 local function coinIcon(parent, size, props)
+	-- (the living coin, once its pictures are uploaded: ReplicatedStorage/MoneyIcons)
+	local living = require(game:GetService("ReplicatedStorage"):WaitForChild("MoneyIcons")).make(parent, "Coin", size, props)
+	if living then
+		living.ZIndex = 3
+		return living
+	end
 	local icon
 	if COIN_ICON_IMAGE ~= "" then
 		icon = create("ImageLabel", {
@@ -849,9 +855,14 @@ local function statRow(icon, order, color)
 			}),
 		}),
 	})
-	-- `icon` is "COIN", "TOKEN", an uploaded image id ("rbxassetid://..."), or an emoji
-	if icon == "COIN" then
+	-- `icon` is "COIN", "TOKEN", an uploaded image id ("rbxassetid://..."), an
+	-- emoji, or nil (no picture: the words say it, like "LV 256")
+	if icon == nil then
+		-- (nothing)
+	elseif icon == "COIN" then
 		coinIcon(row, 48, { Position = UDim2.fromOffset(4, 4) })
+	elseif icon == "TOKEN" and require(game:GetService("ReplicatedStorage"):WaitForChild("MoneyIcons")).make(row, "Token", 48, { Position = UDim2.fromOffset(4, 4), ZIndex = 2 }) then
+		-- (the living Holo token, once uploaded: ReplicatedStorage/MoneyIcons)
 	elseif icon == "TOKEN" then
 		-- an Arcade Token: a purple coin with a gold rim and a star (as on the Arcade)
 		local rim = create("Frame", {
@@ -885,8 +896,8 @@ local function statRow(icon, order, color)
 		text({ Size = UDim2.fromOffset(56, 56), Text = icon, TextSize = 44, ZIndex = 2, Parent = row })
 	end
 	return text({
-		Position = UDim2.fromOffset(66, 0),
-		Size = UDim2.new(1, -70, 1, 0),
+		Position = UDim2.fromOffset(icon and 66 or 40, 0),
+		Size = UDim2.new(1, icon and -70 or -44, 1, 0),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextSize = 36,
 		TextColor3 = color or C.white,
@@ -915,7 +926,7 @@ do
 	end)
 end
 local coinText = statRow("COIN", 2, C.gold)
-local prestigeText = statRow("⭐", 3, RGB(254, 231, 97)) -- your level
+local prestigeText = statRow(nil, 3, RGB(254, 231, 97)) -- your level ("LV 256": no picture needed)
 
 ----------------------------------------------------------------------
 -- HUD: hint banner, goal bar, right-side controls

@@ -46,6 +46,7 @@ run test_arcade.luau
 run test_arcade_client.luau
 run test_hud.luau
 run test_weaponbag.luau
+run test_moneyicons.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

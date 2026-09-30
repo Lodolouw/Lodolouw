@@ -432,6 +432,9 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `test_hud.luau` - the HUD's ARCADE TOKENS (Hud.client.lua): the counter
   bottom-left and its token picture, clicking it opens the Arcade
   (`ArcadeOpen`), the hint line nudging you to spin, and DEV: +10 Tokens.
+- `test_moneyicons.luau` - the living coin and token (MoneyIcons): made
+  once all 8 pictures are uploaded (flipping through them, the token
+  bobbing), nothing while any is missing.
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /
