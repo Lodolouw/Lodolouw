@@ -477,6 +477,17 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   the Index (found / "???" with rarity, CLAIM a find, bosses beaten or not,
   the collector level and its rewards). `-a snaps` for `render_gui.py`
   (`Docs/new_gui_rewards.png`).
+- `test_shop_menu.luau` - THE SHOP (ShopMenu) with a pretend server and a
+  friend in the server: SOON while a product has no id (and nothing asked),
+  BUY once it has (ShopBuy / ShopPass), the Starter Pack gone once bought,
+  GIFT and its picker, CANCEL; the token packs with how much more each
+  really gives (worked out from the prices); no packs, Spin x3 or luck passes
+  where paid random items aren't allowed (the free ways instead); passes
+  SOON / BUY / OWNED; Daily Items (BUY, OWNED, the clock); Looks (WEAR,
+  WEARING takes it off, where to get the rest). `-a snaps` for
+  `render_gui.py` (`Docs/new_gui_shop.png`). (`test_rewards_shop` covers the
+  server side, now with revives, Boss Rush and luck; `test_arcade_client`
+  the lucky odds and Instant x10.)
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /

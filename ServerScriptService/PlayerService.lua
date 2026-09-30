@@ -111,7 +111,8 @@ local function defaultData()
 		-- handed out (so none is ever handed out twice), today's Daily Items bought
 		Shop = { starter = false, receipts = {}, daily = { day = 0, bought = {} } },
 		-- SETTINGS (the Settings window), kept with your save
-		Settings = { music = true, sfx = true, shadows = true, hideOthers = false, shake = true, low = false },
+		-- (revives / rush: use those tickets by themselves in boss fights)
+		Settings = { music = true, sfx = true, shadows = true, hideOthers = false, shake = true, low = false, revives = true, rush = true },
 	}
 end
 

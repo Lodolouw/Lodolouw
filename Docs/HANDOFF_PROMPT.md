@@ -346,6 +346,7 @@ At mastery 100 a weapon can be **awakened** (a new look + a stronger special). S
 - `IntroClient.client.lua`: everything the intro shows (see "The intro: Oozlet").
 - `LobbyHud.client.lua`: THE NEW LOBBY SCREEN (picture buttons, money, the next goal with its ground trail and beam, gift clock, quest, boosts, corner bonuses). `Config.NewHud` switches it (and hides the old HUD's buttons).
 - `RewardsMenu.client.lua`: the Rewards menu (login calendar, free gift, codes, updates; the newest update opens once) and the community chest's walk-up window. `IndexMenu.client.lua`: the Index (weapons pack by pack with "???" for unfound ones, bosses, the collector bar and its rewards).
+- `ShopMenu.client.lua`: the Shop (featured, tickets, tokens, daily items, passes, looks, the gift picker; hides paid random items where not allowed; SOON while a product has no id). Its Looks page is shared (`Menus.pages.Looks`).
 - `Hud`, `RetroUI`, `RetroWorld`, `Inventory`, `BossIntro`, `ArenaAmbience`, `LobbyFX`, `SpireClient`. (`RollDebug`, a temporary roll-debugging tool, was removed.)
 
 **Docs/**: preview images.

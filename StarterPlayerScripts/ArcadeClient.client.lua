@@ -191,6 +191,14 @@ local function tokenIcon(parent, size, props)
 	end
 	return f
 end
+-- a rarity's odds in words ("0.5%"), with your luck in (the luck passes and
+-- the Luck boost: the server keeps it on you as "Luck")
+local function oddsText(rarity)
+	local v = Config.arcadeOdds(player:GetAttribute("Luck") or 1)[rarity] or 0
+	local rounded = math.floor(v * 100 + 0.5) / 100
+	return (rounded == math.floor(rounded) and tostring(math.floor(rounded)) or tostring(rounded)) .. "%"
+end
+
 local function rarityColor(rarity)
 	return A.Colors[rarity] or WHITE
 end
@@ -679,7 +687,7 @@ refresh = function()
 			r.gem.Visible = icon == nil
 			r.gem.BackgroundColor3 = col
 			r.kind.Text = d.def and d.def.Type or ""
-			r.odds.Text = tostring(A.Odds[d.rarity] or 0) .. "%"
+			r.odds.Text = oddsText(d.rarity)
 			local lv = ownedLevel(d.id)
 			r.owned.Text = lv and ("OWNED Lv " .. lv) or ""
 		end
@@ -750,10 +758,17 @@ rollBtn.MouseLeave:Connect(function()
 	tween(rollScale, 0.12, { Scale = 1 })
 end)
 
--- where tokens come from (the Robux shop goes here later)
+-- where tokens come from: the shop's Tokens page (token packs, and every
+-- free way to earn them) - or, without the new menus, a line here
 local function showTokens()
+	local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 2))
+	if ok and type(Menus) == "table" and Menus.defs and Menus.defs.Shop then
+		closeMenu()
+		Menus.go("Shop", "Tokens")
+		return
+	end
 	openMenu()
-	say("Quests give a token every " .. (Config.Quests.Hours or 6) .. " hours, and every boss gives tokens the first time you beat it. Token packs are coming soon!", GOLD)
+	say("Quests give a token every " .. (Config.Quests.Hours or 6) .. " hours, and every boss gives tokens the first time you beat it.", GOLD)
 end
 getBtn.Activated:Connect(showTokens)
 
@@ -1207,12 +1222,14 @@ local function tileFor(parent, wid, rarity, x)
 	return f
 end
 
--- a random weapon from the machine by its real odds (the strip's filler)
+-- a random weapon from the machine by its real odds - with your luck in, as
+-- the server rolls it (the strip's filler)
 local fillRng = Random.new()
 local function randomDrop(machineId)
+	local odds = Config.arcadeOdds(player:GetAttribute("Luck") or 1)
 	local x = fillRng:NextNumber() * 100
 	for _, r in ipairs(A.Order) do
-		x = x - (A.Odds[r] or 0)
+		x = x - (odds[r] or 0)
 		if x < 0 then
 			return Config.arcadeWeapon(machineId, r), r
 		end
@@ -1840,6 +1857,10 @@ local function roll(machineId, count)
 	closeMenu()
 	busy = true
 	skipping = false -- (a tap from here on skips the strip)
+	-- the INSTANT x10 pass: ten at once skip straight to the results
+	if count == 10 and player:GetAttribute("Pass_InstantTen") == true then
+		skipping = true
+	end
 	local e = machineEntry(machineId)
 	local light = e and e.machine and e.machine.Light or GREEN
 	local c = cabinets[machineId]

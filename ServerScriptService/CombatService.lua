@@ -306,6 +306,17 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 	end
 	-- your gear's defence takes a share off every hit
 	amount = amount * (1 - gearOf(player).Defense / 100)
+	-- a hit that would finish you in a boss fight: a REVIVE ticket (the shop's)
+	-- stands you back up at half health, a moment untouchable (ShopService.Revive)
+	if amount >= hum.Health and CombatService.ReviveHook and player:GetAttribute("SpireFloor") ~= nil then
+		local ok, revived = pcall(CombatService.ReviveHook, player)
+		if ok and revived then
+			hum.Health = hum.MaxHealth * 0.5
+			st.iframeUntil = os.clock() + 2
+			send(player, "Iframes", 2)
+			return true
+		end
+	end
 	hum:TakeDamage(amount)
 	send(player, "Hurt", amount, fromPosition, knockback, quiet == true)
 	return true

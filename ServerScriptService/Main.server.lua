@@ -181,6 +181,14 @@ local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)
 end
+-- the shop's tickets in fights: REVIVE (a lethal hit in a boss fight) and
+-- BOSS RUSH (a repeat win pays double) - ShopService decides and uses them
+if ShopService and CombatService then
+	CombatService.ReviveHook = ShopService.Revive
+end
+if ShopService and BossService then
+	BossService.WinHook = ShopService.Rush
+end
 
 -- The Colosseum: the wave arena for farming (needs combat and player data)
 local ColosseumService = load("ColosseumService", 3)

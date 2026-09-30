@@ -55,6 +55,8 @@ run test_rewards_shop.luau
 run test_lobbyhud.luau
 # the Rewards menu, the Index and the community chest's window
 run test_rewards_menus.luau
+# the Shop (buying, gifts, SOON, no paid random items where not allowed)
+run test_shop_menu.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

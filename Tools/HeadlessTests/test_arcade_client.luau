@@ -405,6 +405,22 @@ for _, r in ipairs(A.Order) do
 	check(textOn(detail, "^" .. string.upper(r) .. "$") and textOn(detail, "^" .. string.gsub(W.List[id].Name, "%-", "%%-") .. "$"), "it lists the " .. r .. " weapon")
 end
 check(textOn(detail, "^45%%$") and textOn(detail, "^0.5%%$"), "with the real odds")
+-- with luck (a luck pass or the Luck boost: the server keeps it on you), the
+-- odds shown are the lucky ones - the same the server rolls with
+do
+	me:SetAttribute("Luck", 2)
+	press(list:FindFirstChild("Slime"))
+	local v = Config.arcadeOdds(2).Secret
+	local want = tostring(math.floor(v * 100 + 0.5) / 100) .. "%"
+	local shown = false
+	for _, l in ipairs(detail:GetDescendants()) do
+		shown = shown or (l.ClassName == "TextLabel" and l.Text == want)
+	end
+	check(shown and not textOn(detail, "^0.5%%$"), "with luck, the lucky odds show (Secret " .. want .. ")")
+	me:SetAttribute("Luck", nil)
+	press(list:FindFirstChild("Slime"))
+	check(textOn(detail, "^0.5%%$") ~= nil, "and without it, the real odds again")
+end
 -- each row's icon, or its rarity's gem while the icon isn't uploaded
 local function rowOf(name)
 	local l = textOn(detail, "^" .. name .. "$")
@@ -625,6 +641,20 @@ check(textOn(grid, "^GET TOKENS$") ~= nil, "8 tokens left: GET TOKENS instead of
 press(button(grid, "^DONE$"))
 step(0.1)
 check(not show.Visible and win.Visible and cam.CameraType == Enum.CameraType.Custom, "DONE: back to the menu")
+
+-- the INSTANT x10 pass (the shop's): ten at once skip straight to the results
+me:SetAttribute("Pass_InstantTen", true)
+Action:InvokeServer("DevGive", "Tokens")
+step(0.3)
+AS.rng = { NextNumber = function()
+	return 0.01 -- (all Commons: no Legendary reveal first)
+end }
+press(spin10)
+step(1.5) -- (and nobody taps)
+check(grid.Visible and not card.Visible, "with Instant x10: straight to the grid, no tap needed")
+press(button(grid, "^DONE$"))
+step(0.1)
+me:SetAttribute("Pass_InstantTen", nil)
 AS.rng = realRng
 
 ----------------------------------------------------------------------

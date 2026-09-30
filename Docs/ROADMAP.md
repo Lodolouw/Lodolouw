@@ -99,18 +99,19 @@ weapons plan.
   - [x] the server side: rewards, the shop's safe receipts, passes, boosts, luck (`RewardService`, `ShopService`)
   - [x] **1. The lobby screen**: picture buttons with badges, coins and tokens, the next goal with a trail on the ground and a beam, the gift clock, today's quest, boost tags, corner bonuses; the see-through menus (`Docs/new_gui_lobby.png`)
   - [x] **2. Rewards** (login calendar, free gift, codes, updates) + **the Index** (weapons, bosses, collector) + **the community chest** (`Docs/new_gui_rewards.png`; put your community's number in `Config.Rewards.GroupId`)
-  - [ ] 3. The shop (featured, tickets, tokens, daily items, passes, looks)
+  - [x] **3. The shop**: featured, tickets, tokens, daily items, passes, looks, gifts; revives and Boss Rush in fights; luck in the Arcade's odds; Instant x10 (`Docs/new_gui_shop.png`). **To do (you):** make the Developer Products and Game Passes and paste their ids into `Config.Shop`
   - [ ] 4. The bag, the fight screen's window look, settings
 - [ ] **Cut the old loot**: armour gear, boss chests, talismans, the upgrade shop and the sell shop / backpack counter. Old players' gear turns into Arcade Tokens once, so nobody loses out.
 - [ ] Decide: keep stat points, or let your level alone make you stronger?
 
 ## 6. The Robux shop
 
-- [ ] **Token packs.** Switched off automatically where Roblox doesn't allow paid random items (the PolicyService check).
-- [ ] **A cheap starter pack**, offered once after your first boss.
-- [ ] **Game passes**: 2x XP, 2x Coins, VIP (a tag plus a small bonus).
-- [ ] **Cosmetics**: weapon skins, auras, victory dances.
-- [ ] **Safe purchase handling**: the server gives each purchase exactly once, even if you leave mid-purchase.
+- [x] **Token packs.** Switched off automatically where Roblox doesn't allow paid random items (the PolicyService check).
+- [x] **A cheap starter pack**, once per player (the SHOP button's badge shows it after your first boss).
+- [x] **Game passes**: 2x XP, 2x Coins, VIP (a title plus a small bonus), luck, Instant x10.
+- [ ] **Cosmetics**: titles and auras are in (Daily Items, rewards); weapon skins and victory dances still to come.
+- [x] **Safe purchase handling**: the server gives each purchase exactly once, even if you leave mid-purchase.
+- [ ] **You:** create the products and passes in the Creator Dashboard and paste their ids into `Config.Shop`.
 
 ## 7. Reasons to come back
 

@@ -158,6 +158,7 @@ local Shop, R = Config.Shop, Config.Rewards
 Shop.Passes.VIP.PassId = 901
 local PS = mount.require(mount.module("ServerScriptService/PlayerService.lua"))
 local AS = mount.require(mount.module("ServerScriptService/ArcadeService.lua"))
+local CS = mount.require(mount.module("ServerScriptService/CombatService.lua"))
 local RS = mount.require(mount.module("ServerScriptService/RewardService.lua"))
 local SS = mount.require(mount.module("ServerScriptService/ShopService.lua"))
 
@@ -179,10 +180,12 @@ local function jump(seconds)
 end
 
 PS.Start()
-AS.Start(PS, nil)
+CS.Start(PS)
+AS.Start(PS, CS)
 RS.Start(PS)
 SS.Start(PS, RS)
 AS.LuckFor = SS.Luck
+CS.ReviveHook = SS.Revive
 play(0.5)
 local d, bd, cd = PS.GetData(me), PS.GetData(bravo), PS.GetData(charlie)
 assert(d and bd and cd, "the saves should be loaded")
@@ -613,8 +616,53 @@ do
 	me:SetAttribute("Pass_Luck2", nil)
 end
 
+----------------------------------------------------------------------
+-- Tickets in fights: revives and Boss Rush; the luck on the player
+----------------------------------------------------------------------
+do
+	d.Boosts.Luck = 0
+	play(1.2, 0.2)
+	check(me:GetAttribute("Luck") == 1, "the player's luck is kept on them (1 = none)")
+	me:SetAttribute("Pass_Luck3", true)
+	play(1.2, 0.2)
+	check(me:GetAttribute("Luck") == 3, "a luck pass shows on them (" .. tostring(me:GetAttribute("Luck")) .. ")")
+	me:SetAttribute("Pass_Luck3", nil)
+
+	d.Tickets.Revive = 2
+	check(SS.Revive(me) == false and d.Tickets.Revive == 2, "no revives outside a boss fight")
+	me:SetAttribute("SpireFloor", 1)
+	play(0.3)
+	local hum = me.Character:FindFirstChildOfClass("Humanoid")
+	hum.Health = hum.MaxHealth * 0.3
+	CS.DamagePlayer(me, 1e6, nil, nil, false)
+	check(hum.Health == hum.MaxHealth * 0.5, "a hit that would finish you: revived at half health (" .. tostring(hum.Health) .. ")")
+	check(d.Tickets.Revive == 1, "a revive is used")
+	check(noticeFor(me, "REVIVED"), "and you're told")
+	play(2.2, 0.1) -- (past the moment you can't be hit)
+	check(SS.Revive(me) == false and d.Tickets.Revive == 1, "only one revive per fight")
+	me:SetAttribute("SpireFloor", nil)
+	play(0.2)
+	me:SetAttribute("SpireFloor", 2)
+	play(0.2)
+	d.Settings.revives = false
+	check(SS.Revive(me) == false, "revives switched off in Settings: none used")
+	d.Settings.revives = true
+	check(SS.Revive(me) == true and d.Tickets.Revive == 0, "a new fight: its revive can be used")
+	me:SetAttribute("SpireFloor", nil)
+	play(0.2)
+	check(SS.Revive(me) == false, "and none left")
+
+	d.Tickets.Rush = 0
+	check(SS.Rush(me, 1) == 1, "no Boss Rush ticket: normal rewards")
+	d.Tickets.Rush = 1
+	check(SS.Rush(me, 1) == Shop.RushMultiplier and d.Tickets.Rush == 0, "a Boss Rush ticket: x" .. Shop.RushMultiplier .. ", and it's used")
+	d.Tickets.Rush, d.Settings.rush = 1, false
+	check(SS.Rush(me, 1) == 1 and d.Tickets.Rush == 1, "Boss Rush switched off: kept")
+	d.Settings.rush = true
+end
+
 if fails == 0 then
-	print("PASS  test_rewards_shop: rewards, receipts, gifts, passes, Daily Items, luck")
+	print("PASS  test_rewards_shop: rewards, receipts, gifts, passes, Daily Items, luck, revives, Boss Rush")
 else
 	print("FAILED: " .. fails)
 end

@@ -826,7 +826,7 @@ Everything is decided on the server (`PlayerService`): the client only asks.
 Items, rarities, odds, sets and stats all live in `ReplicatedStorage.Items`.
 
 
-## The new GUI (being built: the lobby screen, rewards and the Index are in)
+## The new GUI (being built: the lobby screen, rewards, the Index and the shop are in)
 
 The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
 `Config.NewHud = true` turns it on (false brings the old HUD's buttons back).
@@ -870,6 +870,32 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
   walk up and its window opens - join the community, claim once. **Put your
   community's number in `Config.Rewards.GroupId`** (until then it says the
   community isn't linked yet).
+
+**Step 3 - the shop** (`StarterPlayerScripts/ShopMenu`, gold; preview
+`Docs/new_gui_shop.png`):
+- **Featured** (the Arcade, the Starter Pack once per player, VIP, quick
+  tickets), **Tickets** (Revive x3, Spin x3, Boss Rush x3, 30 min 2x XP),
+  **Tokens** (the packs - with how much more each bigger one *really* gives,
+  worked out from the prices - and every free way to earn tokens), **Daily**
+  (five looks for coins, new every day), **Passes** (VIP, 2x XP, 2x Coins,
+  +50/100/200% luck, Instant x10), **Looks** (wear your titles and auras;
+  where to get the rest).
+- **GIFT** buys a product for someone else in the server.
+- **Where Roblox doesn't allow paid random items** (PolicyService), the token
+  packs, Spin x3 and the luck passes don't show - the free ways do.
+- **To switch the Robux things on:** make each Developer Product and Game
+  Pass in the Creator Dashboard (your experience > Monetization) at the
+  prices in `Config.Shop`, and paste their ids into `Config.Shop` (ProductId /
+  PassId). Until then each says **SOON** and can't be bought. Every purchase
+  is handed out exactly once (ShopService saves it before telling Roblox).
+- **Tickets in fights:** a **Revive** stands you back up at half health when a
+  hit would finish you in a boss fight (one per fight); a **Boss Rush** makes
+  a win against a boss you've beaten before pay double (and two chests). Both
+  are used by themselves; Settings can switch each off.
+- **Luck** (a luck pass or the Luck boost) makes Epic and rarer more likely at
+  the Arcade - and the Arcade's odds show the lucky numbers, the same the
+  server rolls with. **Instant x10** skips the ten-spin show straight to the
+  results.
 
 **The menus** (`ReplicatedStorage/Menus`): see-through - the world blurs and
 dims behind, and the menu floats over it: a big title top left, tabs down the

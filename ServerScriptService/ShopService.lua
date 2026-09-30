@@ -20,7 +20,12 @@
 	    attribute "NoPaidRandom" tells the screen to hide them
 	  * what XP / coins are multiplied by (VIP, the passes, the timed boosts)
 
-	  ShopService.Luck(player, data)  -> the Arcade's luck for this player (1 = none)
+	  * TICKETS in fights: ShopService.Revive (CombatService asks when a hit
+	    would finish you in a boss fight) and ShopService.Rush (BossService asks
+	    when you win against a boss you'd beaten before)
+
+	  ShopService.Luck(player, data)  -> the Arcade's luck for this player (1 = none),
+	                                     also kept as the player attribute "Luck"
 	  ShopService.HasPass(player, key)
 ]]
 
@@ -34,6 +39,7 @@ local ShopService = {}
 local PlayerService, RewardService = nil, nil
 local S = Config.Shop
 local giftFor = {} -- [buyer] = { key, target (UserId), at (os.clock) }
+local revived = {} -- [player] = revives used in this fight
 local GIFT_WINDOW = 120 -- seconds a gift choice waits for its purchase
 
 local function notify(player, text, kind)
@@ -59,6 +65,45 @@ function ShopService.Luck(player, d)
 		luck = math.max(luck, S.BoostLuck or 1.5)
 	end
 	return luck
+end
+
+----------------------------------------------------------------------
+-- tickets in fights
+----------------------------------------------------------------------
+-- A hit is about to finish `player` in a boss fight: use a REVIVE ticket?
+-- (only if they have one, haven't switched them off, and haven't used this
+-- fight's). True if one was used - CombatService stands them back up.
+function ShopService.Revive(player)
+	local d = PlayerService and PlayerService.GetData(player)
+	if not d or player:GetAttribute("SpireFloor") == nil then
+		return false
+	end
+	if d.Settings.revives == false or (d.Tickets.Revive or 0) <= 0 then
+		return false
+	end
+	if (revived[player] or 0) >= (S.RevivesPerFight or 1) then
+		return false
+	end
+	revived[player] = (revived[player] or 0) + 1
+	d.Tickets.Revive = d.Tickets.Revive - 1
+	PlayerService.MarkDirty(player)
+	local left = d.Tickets.Revive
+	notify(player, "REVIVED! (" .. left .. (left == 1 and " revive" or " revives") .. " left)", "rare")
+	return true
+end
+
+-- `player` beat the boss on `floor` again: use a BOSS RUSH ticket? Returns
+-- what the win's rewards are multiplied by (1 = no ticket used).
+function ShopService.Rush(player, floor)
+	local d = PlayerService and PlayerService.GetData(player)
+	if not d or d.Settings.rush == false or (d.Tickets.Rush or 0) <= 0 then
+		return 1
+	end
+	d.Tickets.Rush = d.Tickets.Rush - 1
+	PlayerService.MarkDirty(player)
+	local m = S.RushMultiplier or 2
+	notify(player, "BOSS RUSH! Rewards x" .. m .. " (" .. d.Tickets.Rush .. " left)", "rare")
+	return m
 end
 
 -- a pass owned: its attribute (and VIP's title)
@@ -202,7 +247,10 @@ local function buy(player, d, arg)
 	local ok = pcall(function()
 		MarketplaceService:PromptProductPurchase(player, p.ProductId)
 	end)
-	return ok, ok and nil or "The shop couldn't open - try again."
+	if ok then
+		return true
+	end
+	return false, "The shop couldn't open - try again."
 end
 
 local function buyPass(player, d, key)
@@ -222,7 +270,10 @@ local function buyPass(player, d, key)
 	local ok = pcall(function()
 		MarketplaceService:PromptGamePassPurchase(player, p.PassId)
 	end)
-	return ok, ok and nil or "The shop couldn't open - try again."
+	if ok then
+		return true
+	end
+	return false, "The shop couldn't open - try again."
 end
 
 local function buyDaily(player, d, arg)
@@ -309,6 +360,29 @@ function ShopService.Start(playerService, rewardService)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		giftFor[player] = nil
+		revived[player] = nil
+	end)
+	-- a new fight: its revive can be used again
+	local function watchFights(player)
+		player:GetAttributeChangedSignal("SpireFloor"):Connect(function()
+			revived[player] = nil
+		end)
+	end
+	Players.PlayerAdded:Connect(watchFights)
+	for _, p in ipairs(Players:GetPlayers()) do
+		watchFights(p)
+	end
+	-- the Arcade's luck, on each player (the Arcade's screen shows its odds)
+	task.spawn(function()
+		while true do
+			for _, p in ipairs(Players:GetPlayers()) do
+				local luck = ShopService.Luck(p, PlayerService.GetData(p))
+				if p:GetAttribute("Luck") ~= luck then
+					p:SetAttribute("Luck", luck)
+				end
+			end
+			task.wait(1)
+		end
 	end)
 end
 
