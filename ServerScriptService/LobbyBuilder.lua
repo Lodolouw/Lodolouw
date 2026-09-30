@@ -1247,33 +1247,56 @@ local function buildCastleGate(parent)
 		part(m, "GatePlinth", V3(w + 1, 4, depth + 1), CFrame.new(sx * (ARCH_HALF + w / 2), 2, zc), GATE_DARK, Mat.Cobblestone)
 	end
 	-- stone above the pointed arch, in thin vertical slices that follow the curve
-	local SLICE = 1
+	local SLICE = 0.5
 	for x0 = -ARCH_HALF, ARCH_HALF - SLICE, SLICE do
 		local xm = x0 + SLICE / 2
 		local bottom = math.min(gateArchY(x0 + 0.001) or ARCH_SPRING, gateArchY(x0 + SLICE - 0.001) or ARCH_SPRING)
 		part(m, "GateArchFill", V3(SLICE + 0.02, GATE_H - bottom, depth), CFrame.new(xm, (GATE_H + bottom) / 2, zc), GATE_STONE, Mat.Cobblestone)
 	end
+	-- a point on a pointed arch of radius r around the opening, on side sx
+	-- (t: 0 at the spring, 1 at the point)
+	local function archPt(sx, t, r, z)
+		local cx = ARCH_R - ARCH_HALF
+		local a0 = math.atan2(0, -ARCH_R) -- start angle (pointing outwards)
+		local a1 = math.atan2(math.sqrt(ARCH_R * ARCH_R - cx * cx), -cx)
+		local a = a0 + (a1 - a0) * t
+		return V3(sx * (cx + math.cos(a) * r), ARCH_SPRING + math.sin(a) * r, z)
+	end
+	-- a ring of stone blocks following the arch, radius r, blocks sized w x t
+	local function archRing(name, r, z, w, th, color)
+		for _, sx in ipairs({ -1, 1 }) do
+			local N = 9
+			for k = 0, N - 1 do
+				local p0, p1 = archPt(sx, k / N, r, z), archPt(sx, (k + 1) / N, r, z)
+				local mid = (p0 + p1) / 2
+				local dir = (p1 - p0).Unit
+				part(m, name, V3(w, th, (p1 - p0).Magnitude + 0.3), CFrame.lookAt(mid, mid + dir, V3(0, 0, 1)), color, Mat.Cobblestone)
+			end
+		end
+	end
 	-- the arch ring (voussoirs) on both faces, in darker stone
 	for _, face in ipairs({ GATE_Z1 + 0.4, GATE_Z0 - 0.4 }) do
 		for _, sx in ipairs({ -1, 1 }) do
 			part(m, "Jamb", V3(2, ARCH_SPRING, 1.2), CFrame.new(sx * (ARCH_HALF + 0.97), ARCH_SPRING / 2, face), GATE_DARK, Mat.Cobblestone) -- (a hair proud of the side, so they don't flicker)
-			local N = 9
-			for k = 0, N - 1 do
-				local function pt(t) -- t: 0 at the spring, 1 at the point
-					local cx = ARCH_R - ARCH_HALF
-					local a0 = math.atan2(0, -ARCH_R) -- start angle (pointing outwards)
-					local a1 = math.atan2(math.sqrt(ARCH_R * ARCH_R - cx * cx), -cx)
-					local a = a0 + (a1 - a0) * t
-					local r = ARCH_R + 1
-					return V3(sx * (-cx - math.cos(a) * r) * -1, ARCH_SPRING + math.sin(a) * r, face)
-				end
-				local p0, p1 = pt(k / N), pt((k + 1) / N)
-				local mid = (p0 + p1) / 2
-				local dir = (p1 - p0).Unit
-				local len = (p1 - p0).Magnitude + 0.3
-				part(m, "Voussoir", V3(2.2, 1.4, len), CFrame.lookAt(mid, mid + dir, V3(0, 0, 1)), GATE_DARK, Mat.Cobblestone)
-			end
 		end
+		archRing("Voussoir", ARCH_R + 1, face, 2.2, 1.4, GATE_DARK)
+	end
+
+	-- Inside the passage: dark stone lining the walls, stone ribs arching
+	-- over the ceiling on thick pilasters (so the curved roof reads as a
+	-- vault, not flat panels), and a torch on each wall to light the way.
+	local LINE = RGB(84, 84, 94)
+	for _, sx in ipairs({ -1, 1 }) do
+		part(m, "PassageDado", V3(0.4, 3, depth - 0.4), CFrame.new(sx * (ARCH_HALF - 0.2), 1.5, zc), GATE_DARK, Mat.Cobblestone)
+		part(m, "PassageBand", V3(0.5, 0.8, depth - 0.4), CFrame.new(sx * (ARCH_HALF - 0.25), ARCH_SPRING - 0.4, zc), GATE_DARK, Mat.Cobblestone)
+		for _, rz in ipairs({ GATE_Z1 - 2.2, GATE_Z0 + 2.2 }) do
+			part(m, "Pilaster", V3(1.4, ARCH_SPRING, 2.4), CFrame.new(sx * (ARCH_HALF - 0.7), ARCH_SPRING / 2, rz), LINE, Mat.Cobblestone)
+			part(m, "PilasterCap", V3(1.9, 0.9, 3), CFrame.new(sx * (ARCH_HALF - 0.95), ARCH_SPRING - 0.2, rz), GATE_DARK, Mat.Cobblestone)
+		end
+		wallTorch(m, V3(sx * ARCH_HALF, 9, zc - 3.2), V3(-sx, 0, 0))
+	end
+	for _, rz in ipairs({ GATE_Z1 - 2.2, GATE_Z0 + 2.2 }) do
+		archRing("VaultRib", ARCH_R - 0.6, rz, 2.4, 1.4, LINE)
 	end
 
 	-- the portcullis, pulled up so only its spiked bottom shows in the arch
@@ -1387,8 +1410,8 @@ local function buildSpire(parent)
 	local m = folder(parent, "Spire")
 	local B = SPIRE_BASE_Y
 
-	-- Sign over the foot of the stairs
-	titleSign(m, CFrame.new(0, 18, -113), "THE SPIRE", "Climb the stairs", RGB(150, 190, 255), 340, 140)
+	-- Sign over the castle gate (out in front, not hanging in the passage)
+	titleSign(m, CFrame.new(0, 47, -109), "THE SPIRE", "Climb the stairs", RGB(150, 190, 255), 340, 140)
 
 	-- The bridge: one long, gentle flight of wide shallow steps that starts
 	-- in the castle gateway and climbs all the way across the chasm on
