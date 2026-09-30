@@ -474,7 +474,7 @@ waitFor(function()
 	local tok = workspace:FindFirstChild("ThrownToken")
 	if tok then
 		sawToken = true
-		tokenNearSlot = tokenNearSlot or (slot and (tok.Position - slot.Position).Magnitude < 1.5)
+		tokenNearSlot = tokenNearSlot or (slot and (tok.Position - slot.Position).Magnitude < 3)
 	end
 	leverMoved = leverMoved or (leverArm and (leverArm.Position - leverHome.Position).Magnitude > 0.3)
 	tiles = find("Tiles", spinScreen)

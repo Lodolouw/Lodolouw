@@ -1433,7 +1433,7 @@ function rig.insertShot(c, target)
 	if root and (root.Position - target).Magnitude < 30 then
 		focus = focus:Lerp(root.Position, 0.35)
 	end
-	rig.shot(CFrame.lookAt(focus + s.CFrame.LookVector * 14 - s.CFrame.RightVector * 7 + Vector3.new(0, 3, 0), focus), 0.6)
+	rig.shot(CFrame.lookAt(focus + s.CFrame.LookVector * 14 - s.CFrame.RightVector * 7 + Vector3.new(0, 3, 0), focus), 0.35)
 end
 function rig.screenShot(c, near, seconds)
 	local s = c.screen
@@ -1491,17 +1491,17 @@ local function armFlick(char)
 	local conn
 	conn = RunService.Stepped:Connect(function()
 		local t = os.clock() - t0
-		if t > 0.55 or not shoulder.Parent then
+		if t > 0.32 or not shoulder.Parent then
 			conn:Disconnect()
 			return
 		end
 		local pose, w
-		if t < 0.18 then
-			pose, w = WIND, t / 0.18
-		elseif t < 0.3 then
-			pose, w = WIND:Lerp(RELEASE, (t - 0.18) / 0.12), 1
+		if t < 0.1 then
+			pose, w = WIND, t / 0.1
+		elseif t < 0.16 then
+			pose, w = WIND:Lerp(RELEASE, (t - 0.1) / 0.06), 1
 		else
-			pose, w = RELEASE, 1 - (t - 0.3) / 0.25
+			pose, w = RELEASE, 1 - (t - 0.16) / 0.16
 		end
 		shoulder.Transform = shoulder.Transform:Lerp(pose, math.clamp(w, 0, 1))
 	end)
@@ -1517,7 +1517,7 @@ local function throwToken(c, target)
 	local from
 	if root and (root.Position - target).Magnitude < 30 then
 		armFlick(char)
-		task.wait(0.28) -- (the arm winds up and lets go)
+		task.wait(0.15) -- (the arm winds up and lets go)
 		local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
 		from = arm and (arm.CFrame * CFrame.new(0, -1, 0)).Position or root.Position + Vector3.new(0, 1.5, 0)
 	else
@@ -1528,7 +1528,7 @@ local function throwToken(c, target)
 	local height = math.max(2, (target - from).Magnitude * 0.25)
 	local t0 = os.clock()
 	while not skipping do
-		local u = math.clamp((os.clock() - t0) / 0.5, 0, 1)
+		local u = math.clamp((os.clock() - t0) / 0.28, 0, 1)
 		local p = from:Lerp(target, u) + Vector3.new(0, height * 4 * u * (1 - u), 0)
 		coin.CFrame = CFrame.new(p) * CFrame.Angles(0, os.clock() * 9, os.clock() * 14)
 		if u >= 1 then
@@ -1850,13 +1850,13 @@ local function roll(machineId, count)
 		local target = slot and slot.Position or (c.screen.Position - Vector3.new(0, 5, 0))
 		rig.insertShot(c, target)
 		local t0 = os.clock()
-		while not skipping and os.clock() - t0 < 0.55 do
+		while not skipping and os.clock() - t0 < 0.3 do
 			task.wait()
 		end
 		throwToken(c, target)
 		pullLever(c)
 		t0 = os.clock()
-		while not skipping and os.clock() - t0 < 0.2 do
+		while not skipping and os.clock() - t0 < 0.12 do
 			task.wait()
 		end
 		rig.screenShot(c, 1, skipping and 0.01 or 0.45)
