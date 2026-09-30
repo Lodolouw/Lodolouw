@@ -523,10 +523,10 @@ def gold_chop():
     s = 0.6
     n = n_of(s)
     t = np.arange(n) / RATE
-    whump = band(noise(n_of(0.2)), 90, 1400) * env(n_of(0.2), 0.002, 0.2, 2.5) * 0.5
+    whump = band(noise(n_of(0.2)), 90, 1400) * env(n_of(0.2), 0.002, 0.2, 2.5) * 0.4
     rise = band(pulse(650 * 4 ** (t / s), n, 0.25), hi=5000) * (1 + 0.3 * np.sin(2 * np.pi * 12 * t)) * env(n, 0.2, s, 1.4) * 0.12
-    sparkle_ = glints(0.06, 10, 0.05, 0.2, (84, 86, 88, 91, 93, 96, 98, 100, 103, 105), climb=True)
-    return master(mix(thump(115, 45, 0.32, 0.55, 1.4), whump * 0.8, rise, sparkle_), lo=50)
+    climbing = glints(0.06, 10, 0.05, 0.2, (84, 86, 88, 91, 93, 96, 98, 100, 103, 105), climb=True)
+    return master(mix(thump(115, 45, 0.32, 0.55, 1.4), whump, rise, climbing), lo=50)
 
 
 def coin_spill():
@@ -544,7 +544,7 @@ def coin_spill():
     return master(out)
 
 
-def shovel_dig():
+def spade_dig():
     # the spade stabbing into the earth (a crunch and a thunk), then
     # scooping it up (a scrape) and tossing it
     stab = mix(grit(0.08, 1100, 500, 4500, 1.1, shape=env(n_of(0.08), 0.001, 0.08, 2.0)), strike(0.012, 400, 5000, 0.6))
@@ -599,7 +599,7 @@ def pogo_clang():
     return master(mix(hit * 0.7, metal(1150, 0.32, BAR, 0.55, 6), metal(1730, 0.22, PLATE, 0.2, 7)), lo=55, drive=1.3)
 
 
-def anchor_throw():
+def anchor_hurl():
     # the anchor flung out: a heavy iron whoosh, the chain rattling out after it
     s = 0.42
     hum = tri(sweep(70, 100, s)) * env(n_of(s), 0.1, s, 1.5) * 0.3
@@ -636,7 +636,7 @@ def anchor_slam():
     return master(mix(hit * 0.7, clank * 0.55, settle * 0.6), lo=55, drive=1.4)
 
 
-def armour_crack():
+def plate_crack():
     # the armour cracking open into gold: a sharp crack, then a chord
     # rising up and shimmering
     crack = mix(strike(0.05, 1500, 11000, 0.9), metal(1400, 0.2, PLATE, 0.3, 8))
@@ -740,17 +740,17 @@ def checker_pop():
                   drive=1.6)
 
 
-def engine_rev():
+def nitro_rev():
     # the engine revving: vroom-VROOM, the second rev higher
     s = 0.8
     n = n_of(s)
     t = np.arange(n) / RATE
-    f = smooth(np.interp(t, [0, 0.1, 0.3, 0.4, 0.56, 0.8], [65, 140, 85, 92, 230, 150]), 0.04)
-    rpm = (f - 65) / (230 - 65)
+    f = smooth(np.interp(t, [0, 0.12, 0.32, 0.4, 0.58, 0.8], [60, 160, 80, 86, 260, 170]), 0.03)
+    rpm = (f - 60) / (260 - 60)
     ph = np.cumsum(f) / RATE
-    buzz = (0.5 * pulse(f, n, 0.3) + 0.3 * pulse(f * 1.007, n, 0.5) + 0.35 * tri(ph / 2)) * (1 + 0.3 * sine(ph / 2))
-    x = A.sweep_lp(crushed(buzz, 16), 1200 + 2500 * rpm) + band(noise(n), 150, 1500) * 0.12
-    return master(x * (0.45 + 0.55 * rpm) * A.adsr(n, 0.02, 0.1, 1.0, 0.08))
+    buzz = (0.5 * pulse(f, n, 0.3) + 0.2 * pulse(2 * f, n, 0.5) + 0.3 * tri(ph)) * (1 + 0.3 * sine(ph / 2))
+    x = A.sweep_lp(crushed(buzz, 16), 900 + 3500 * rpm) + band(noise(n), 150, 1500) * 0.12
+    return master(x * (0.2 + 0.8 * rpm) * A.adsr(n, 0.02, 0.1, 1.0, 0.08), lo=60)
 
 
 def tyre_screech():
@@ -846,7 +846,7 @@ def finish_line():
     for t0, m, d in ((0.40, 84, 0.075), (0.48, 88, 0.7)):  # (a harmony under the last two)
         A.place(out, chip(midi(m), d, 0.5, 0.14, d=0.1, s=0.6, r=0.12 if d > 0.3 else 0.03), t0)
     for t0, m, d in ((0.0, 48, 0.2), (0.24, 55, 0.2), (0.48, 48, 0.7)):
-        A.place(out, A.nes_tri(midi(m), d) * 0.4, t0)
+        A.place(out, A.nes_tri(midi(m), d) * 0.3, t0)
     for t0 in (0.24, 0.40):
         A.place(out, A.snare(0.22, 0.1), t0)
     A.place(out, A.crash(0.12, 0.6), 0.48)
@@ -876,16 +876,16 @@ PACKS = {
         'Gold Chop': gold_chop,
         'Coin Spill': coin_spill,
         # the abilities: Dig Slam, Treasure Eye, Dirt Spin, Pogo Drop, Anchor Pull, No Quarter
-        'Shovel Dig': shovel_dig,
+        'Spade Dig': spade_dig,
         'Treasure Glint': treasure_glint,
         'Coin Ding': coin_ding,
         'Dirt Spin': dirt_spin,
         'Pogo Boing': pogo_boing,
         'Pogo Clang': pogo_clang,
-        'Anchor Throw': anchor_throw,
+        'Anchor Hurl': anchor_hurl,
         'Chain Reel': chain_reel,
         'Anchor Slam': anchor_slam,
-        'Armour Crack': armour_crack,
+        'Plate Crack': plate_crack,
         'Meteor Fall': meteor_fall,
         'Meteor Impact': meteor_impact,
     },
@@ -899,7 +899,7 @@ PACKS = {
         'Victory Swing': victory_swing,
         'Checker Pop': checker_pop,
         # the abilities: Burnout, Nitro, Piston Dash, Skid Spin, Wheelie, Victory Lap
-        'Engine Rev': engine_rev,
+        'Nitro Rev': nitro_rev,
         'Tyre Screech': tyre_screech,
         'Nitro Boost': nitro_boost,
         'Piston Pump': piston_pump,
