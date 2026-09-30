@@ -55,7 +55,7 @@ end
 local live = setmetatable({}, { __mode = "k" }) -- [picture] = { kind, list }
 local started = false
 local function start()
-	if started or not RunService:IsClient() then
+	if started or (RunService.IsClient and not RunService:IsClient()) then
 		return
 	end
 	started = true
