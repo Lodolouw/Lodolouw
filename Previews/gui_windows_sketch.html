@@ -1,251 +1,521 @@
 <title>Defeat a Boss GUI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Lilita+One&family=Rubik:wght@500;700;800&display=swap">
 <style>
-/* Layout: a column of phone-shaped screens (16:9), each a real game moment, with the window pieces labelled underneath. */
+/* Layout: one column of 16:9 game screens, each a real moment in the game, with lettered tags explained underneath. Single dark look (a game screen). */
 :root {
   color-scheme: dark;
-  --ground: #16122b;      /* page */
-  --scene: #2b2150;       /* the game world behind the windows */
-  --scene2: #3c2d73;
-  --ink: #181425;         /* outlines, dark text */
-  --paper: #efe9ff;       /* window body */
-  --paper2: #ffffff;
-  --text: #f4f0ff;        /* text on the page */
-  --muted: #b7acd9;
-  --pink: #ff3fa4;        /* window title bars, by role */
-  --teal: #19b3a6;
-  --blue: #4f6bff;
-  --gold: #ffb62e;
-  --green: #52c95a;
-  --red: #e5394a;
-  --yellow: #fee761;
-  /* rarities */
-  --common: #9aa3b8; --rare: #2d8cf0; --epic: #b04ee8; --legendary: #ffa21f; --mythic: #e5394a; --secret: #ff5fd2;
+  --ground: #15112a;
+  --ink: #181425;
+  --paper: #efe9ff; --paper2: #ffffff; --paperdim: #d9d2ec;
+  --text: #f4f0ff; --muted: #b7acd9;
+  --pink: #ff3fa4; --teal: #19b3a6; --blue: #4f6bff; --gold: #ffb62e; --green: #43c24f; --red: #e5394a; --yellow: #fee761; --purple: #8d4bff;
+  --common: #8f98ad; --rare: #2d8cf0; --epic: #a64be6; --legendary: #ff9a1a; --mythic: #e5394a; --secret: #ff5fd2;
   --pixel: "Press Start 2P", ui-monospace, monospace;
+  --chunk: "Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif;
   --body: "Rubik", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
-body { background: var(--ground); color: var(--text); font-family: var(--body); padding-block: 28px 60px; padding-inline: 16px; }
-.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 44px; }
-header h1 { font-family: var(--pixel); font-size: clamp(16px, 3.4vw, 26px); color: var(--yellow); line-height: 1.5; margin: 0 0 12px; text-shadow: 3px 3px 0 #a0283a; text-wrap: balance; }
-header p { margin: 0; color: var(--muted); max-width: 64ch; line-height: 1.55; font-size: 15px; }
-h2 { font-family: var(--pixel); font-size: 13px; letter-spacing: .04em; color: var(--text); margin: 0 0 12px; line-height: 1.6; }
+body { background: var(--ground); color: var(--text); font-family: var(--body); padding-block: 28px 64px; padding-inline: 16px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 52px; }
+header h1 { font-family: var(--pixel); font-size: clamp(15px, 3.2vw, 24px); color: var(--yellow); line-height: 1.5; margin: 0 0 12px; text-shadow: 3px 3px 0 #a0283a; text-wrap: balance; }
+header p { margin: 0 0 8px; color: var(--muted); max-width: 66ch; line-height: 1.55; font-size: 15px; }
+.steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.steps span { font-family: var(--chunk); font-size: 15px; background: #241d45; border: 3px solid var(--ink); padding: 4px 10px; color: var(--text); }
+.steps span b { color: var(--gold); font-weight: 400; }
+h2 { font-family: var(--pixel); font-size: 12px; letter-spacing: .04em; margin: 0 0 12px; line-height: 1.7; }
 h2 span { color: var(--gold); }
-.note { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 12px 0 0; max-width: 70ch; }
-.note b { color: var(--text); }
 
-/* a screen */
+/* ---------- a screen ---------- */
 .screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border: 4px solid var(--ink); border-radius: 14px; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 120%, var(--scene2), var(--scene) 60%, #1d1638);
-  box-shadow: 0 0 0 3px #3a2f63, 0 18px 40px rgba(0,0,0,.45); font-size: clamp(6px, 1.05vw, 11px); }
-.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 2px, transparent 2px 4px); }
-.floor { position: absolute; left: -10%; right: -10%; bottom: -30%; height: 60%; transform: perspective(300px) rotateX(55deg);
-  background: repeating-linear-gradient(90deg, #5a3f9a 0 8%, #4a3383 8% 16%), #4a3383; opacity: .55; }
+  box-shadow: 0 0 0 3px #3a2f63, 0 18px 40px rgba(0,0,0,.45); font-size: clamp(5.2px, 1.02vw, 10.5px); color: var(--ink); }
+.world { position: absolute; inset: 0; background: linear-gradient(#7fb7ff 0 38%, #a9d0ff 38% 46%, #58b85a 46%); }
+.world.throne { background: linear-gradient(#303a5c 0 42%, #5a6484 42% 48%, #8c93ab 48%); }
+.world .isle { position: absolute; left: 8%; right: 8%; bottom: 8%; height: 34%; background: #64c05e; border-radius: 50%; box-shadow: inset 0 -1.2em 0 #3f8f3f; }
+.world .road { position: absolute; left: 44%; width: 12%; bottom: 0; height: 48%; background: #d8c48a; clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%); }
+.world .bld { position: absolute; bottom: 46%; border: .3em solid rgba(24,20,37,.6); }
+.world .spire { position: absolute; left: 47%; bottom: 46%; width: 6%; height: 44%; background: linear-gradient(#b48cff, #6c47c9); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.me { position: absolute; width: 2.6%; aspect-ratio: 1 / 2.3; left: 48.7%; bottom: 14%; border: .15em solid var(--ink); background: linear-gradient(#fee761 0 24%, #0099db 24% 58%, #3e8948 58%); }
+.boss { position: absolute; left: 37%; bottom: 20%; width: 26%; aspect-ratio: 1 / 1.1; border: .3em solid var(--ink); border-radius: 30% 30% 12% 12%; background: linear-gradient(#8b5a3c 0 30%, #6d4128 30% 70%, #4a2a1a 70%); }
+.boss::before { content: ""; position: absolute; left: 20%; right: 20%; top: -18%; height: 22%; background: repeating-linear-gradient(90deg, var(--gold) 0 14%, transparent 14% 20%); }
+.boss::after { content: ""; position: absolute; left: 32%; right: 32%; top: 24%; height: 12%; background: var(--ink); border-radius: 0 0 40% 40%; }
+/* the see-through menu: the world blurred and dimmed behind */
+.veil { position: absolute; inset: 0; backdrop-filter: blur(.5em) saturate(1.1); -webkit-backdrop-filter: blur(.5em); background: rgba(14,10,30,.55); }
 
-/* the window look (WindowKit) */
-.win { position: absolute; background: var(--paper); border: .25em solid var(--ink); box-shadow: .45em .45em 0 rgba(10,6,24,.75); color: var(--ink); }
-.bar { display: flex; align-items: center; gap: .5em; padding: .35em .5em; font-family: var(--pixel); font-size: .8em; color: #fff; border-bottom: .25em solid var(--ink); }
+/* ---------- the window look ---------- */
+.win { position: absolute; background: var(--paper); border: .25em solid var(--ink); box-shadow: .45em .45em 0 rgba(10,6,24,.7); }
+.card { position: relative; background: var(--paper); border: .25em solid var(--ink); box-shadow: .35em .35em 0 rgba(10,6,24,.7); overflow: hidden; }
+.bar { display: flex; align-items: center; gap: .5em; padding: .3em .5em; font-family: var(--pixel); font-size: .72em; color: #fff; border-bottom: .25em solid var(--ink); }
 .bar .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: .15em .15em 0 rgba(0,0,0,.35); }
-.bar i { width: 1.35em; height: 1.35em; background: var(--paper); border: .18em solid var(--ink); display: grid; place-items: center; font-style: normal; color: var(--ink); font-size: .8em; }
-.pink { background: var(--pink); } .teal { background: var(--teal); } .blue { background: var(--blue); } .gold { background: var(--gold); } .green { background: var(--green); } .red { background: var(--red); }
-.in { padding: .7em; display: grid; gap: .55em; }
-.btn { font-family: var(--pixel); font-size: .78em; color: #fff; border: .22em solid var(--ink); padding: .6em .7em; text-align: center; box-shadow: .25em .25em 0 var(--ink); }
-.chip { display: inline-block; font-family: var(--pixel); font-size: .62em; color: #fff; border: .18em solid var(--ink); padding: .25em .4em; }
+.bar i { width: 1.4em; height: 1.4em; background: var(--paper); border: .18em solid var(--ink); display: grid; place-items: center; font-style: normal; color: var(--ink); font-size: .8em; }
+.in { padding: .6em; display: grid; gap: .5em; }
+.pink { background: var(--pink); } .teal { background: var(--teal); } .blue { background: var(--blue); } .gold { background: var(--gold); }
+.green { background: var(--green); } .red { background: var(--red); } .purple { background: var(--purple); }
+.btn { font-family: var(--chunk); font-size: 1.15em; color: #fff; border: .22em solid var(--ink); padding: .35em .7em; text-align: center; box-shadow: .22em .22em 0 var(--ink); text-shadow: .1em .12em 0 rgba(0,0,0,.35); white-space: nowrap; }
+.chip { display: inline-block; font-family: var(--pixel); font-size: .56em; color: #fff; border: .18em solid var(--ink); padding: .25em .4em; white-space: nowrap; }
 .row { display: flex; align-items: center; gap: .5em; }
 .meter { height: 1em; border: .2em solid var(--ink); background: #2a1f3f; position: relative; }
 .meter b { position: absolute; inset: 0 auto 0 0; }
+.meter em { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-family: var(--pixel); font-size: .5em; color: #fff; text-shadow: .15em .15em 0 #000; }
 .px { font-family: var(--pixel); }
-.dot { position: absolute; top: -.45em; right: -.45em; width: 1.2em; height: 1.2em; border-radius: 50%; background: var(--red); border: .18em solid var(--ink); }
-.coin { width: 1.4em; height: 1.4em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6a8, var(--gold) 55%, #b86b12); border: .18em solid var(--ink); flex: none; }
-.token { width: 1.4em; height: 1.4em; border-radius: 50%; background: conic-gradient(#ff5fd2, #4f6bff, #19b3a6, #fee761, #ff5fd2); border: .18em solid var(--ink); flex: none; }
-.player { position: absolute; width: 3.2%; aspect-ratio: 1/2.3; background: linear-gradient(#fee761 0 24%, #0099db 24% 58%, #3e8948 58%); left: 48%; bottom: 20%; border: .15em solid var(--ink); }
-.boss { position: absolute; left: 36%; bottom: 22%; width: 28%; aspect-ratio: 1/1.1; background: linear-gradient(#8b5a3c 0 30%, #6d4128 30% 70%, #4a2a1a 70%);
-  border: .3em solid var(--ink); border-radius: 30% 30% 12% 12%; }
-.boss::before { content: ""; position: absolute; left: 20%; right: 20%; top: -18%; height: 22%; background: repeating-linear-gradient(90deg, var(--gold) 0 14%, transparent 14% 20%); }
-.boss::after { content: ""; position: absolute; left: 30%; right: 30%; top: 24%; height: 12%; background: var(--ink); border-radius: 0 0 40% 40%; }
-.cap { position: absolute; font-family: var(--body); font-weight: 700; font-size: .9em; background: var(--gold); color: var(--ink); border: .2em solid var(--ink); padding: .15em .45em; }
-
-.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 22px; margin: 14px 0 0; padding: 0; list-style: none; }
+.ck { font-family: var(--chunk); }
+.dot { position: absolute; top: -.5em; right: -.5em; min-width: 1.5em; height: 1.5em; border-radius: 1em; background: var(--red); border: .18em solid var(--ink); color: #fff; font-family: var(--chunk); font-size: .9em; display: grid; place-items: center; padding: 0 .25em; }
+.coin { width: 1.5em; height: 1.5em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6a8, var(--gold) 55%, #b86b12); border: .18em solid var(--ink); flex: none; }
+.token { width: 1.5em; height: 1.5em; border-radius: 50%; background: conic-gradient(#ff5fd2, #4f6bff, #19b3a6, #fee761, #ff5fd2); border: .18em solid var(--ink); flex: none; }
+.rbx { display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; border: .16em solid currentColor; border-radius: .25em; margin-right: .25em; font-size: .85em; }
+.rbx::before { content: ""; width: .35em; height: .35em; background: currentColor; transform: rotate(45deg); }
+/* picture buttons (the art is a stand-in: real ones get drawn icons) */
+.pic { position: relative; width: 6.8em; aspect-ratio: 1; border: .25em solid var(--ink); box-shadow: .25em .25em 0 var(--ink); display: grid; place-items: center; overflow: visible; }
+.pic .ico { font-size: 2.6em; line-height: 1; filter: drop-shadow(.06em .08em 0 rgba(0,0,0,.4)); }
+.pic .lb { position: absolute; bottom: -.1em; left: 0; right: 0; text-align: center; font-family: var(--chunk); color: #fff; font-size: 1.15em; text-shadow: .1em .12em 0 var(--ink), -.06em -.06em 0 var(--ink), .06em -.06em 0 var(--ink), -.06em .06em 0 var(--ink); }
+.rays { background: repeating-conic-gradient(from 0deg at 30% 50%, rgba(255,255,255,.22) 0 8deg, transparent 8deg 22deg); }
+.title { position: absolute; font-family: var(--chunk); color: #fff; font-size: 2.6em; text-shadow: .08em .1em 0 var(--ink), -.04em -.04em 0 var(--ink), .04em -.04em 0 var(--ink), -.04em .04em 0 var(--ink); }
+.x { position: absolute; width: 3.2em; height: 3.2em; background: var(--red); border: .25em solid var(--ink); box-shadow: .22em .22em 0 var(--ink); display: grid; place-items: center; color: #fff; font-family: var(--chunk); font-size: 1em; }
+.x::before { content: "✕"; font-size: 1.8em; }
+.tabs { position: absolute; display: grid; gap: .55em; }
+.tab { width: 6em; aspect-ratio: 1; border: .22em solid var(--ink); background: #3a2f63; display: grid; place-items: center; position: relative; box-shadow: .2em .2em 0 var(--ink); }
+.tab.on { background: var(--gold); outline: .25em solid #fff; outline-offset: -.5em; }
+.tab .ico { font-size: 2em; }
+.tab .lb { position: absolute; bottom: .15em; font-family: var(--chunk); color: #fff; font-size: .95em; text-shadow: .08em .1em 0 var(--ink); }
+.sec { font-family: var(--chunk); color: #fff; font-size: 1.5em; border-bottom: .12em solid rgba(255,255,255,.35); padding-bottom: .15em; text-shadow: .06em .08em 0 var(--ink); }
+.cap { position: absolute; font-family: var(--body); font-weight: 800; font-size: .95em; background: var(--yellow); color: var(--ink); border: .2em solid var(--ink); padding: .1em .45em; z-index: 5; }
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px 22px; margin: 14px 0 0; padding: 0; list-style: none; }
 .legend li { font-size: 14px; line-height: 1.5; color: var(--muted); min-width: 0; }
-.legend li b { color: var(--text); font-weight: 700; }
-.legend .k { display: inline-block; font-family: var(--pixel); font-size: 10px; color: var(--ink); background: var(--gold); border: 2px solid var(--ink); padding: 2px 5px; margin-right: 6px; }
+.legend li b { color: var(--text); }
+.legend .k { display: inline-block; font-family: var(--pixel); font-size: 10px; color: var(--ink); background: var(--yellow); border: 2px solid var(--ink); padding: 2px 5px; margin-right: 6px; }
 .rules { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .rules li { background: #221b40; border: 3px solid var(--ink); padding: 12px 14px; line-height: 1.5; font-size: 15px; color: var(--muted); }
 .rules li b { color: var(--text); }
-@media (max-width: 520px) { .screen { font-size: 5.2px; border-width: 3px; } }
+.grid { display: grid; gap: .7em; }
+.wcard { position: relative; border: .25em solid var(--ink); aspect-ratio: 1 / 1.05; box-shadow: .2em .2em 0 var(--ink); overflow: hidden; }
+.wcard .ty { position: absolute; top: .3em; left: .4em; font-family: var(--chunk); color: #fff; font-size: 1em; text-shadow: .08em .1em 0 var(--ink); }
+.wcard .nm { position: absolute; bottom: .25em; right: .4em; left: .4em; text-align: right; font-family: var(--chunk); color: #fff; font-size: 1.15em; line-height: 1; text-shadow: .08em .1em 0 var(--ink); font-style: italic; }
+.wcard .blade { position: absolute; left: 22%; top: 18%; width: 14%; height: 72%; transform: rotate(38deg); background: linear-gradient(#fff 0 62%, var(--ink) 62% 66%, #6b4a2b 66%); border: .18em solid var(--ink); border-radius: .3em .3em .1em .1em; }
+.wcard.lock .blade { background: #120d22; border-color: #120d22; }
+.wcard .eq { position: absolute; top: 0; right: 0; width: 2.3em; height: 2.3em; background: var(--green); clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.wcard .eq::after { content: "E"; position: absolute; top: .05em; right: .25em; font-family: var(--chunk); color: #fff; font-size: 1em; }
+.r-common { background: linear-gradient(135deg, #b3bccf, var(--common)); } .r-rare { background: linear-gradient(135deg, #5fb0ff, var(--rare)); }
+.r-epic { background: linear-gradient(135deg, #c77bff, var(--epic)); } .r-legendary { background: linear-gradient(135deg, #ffc35a, var(--legendary)); }
+.r-mythic { background: linear-gradient(135deg, #ff7a86, var(--mythic)); } .r-secret { background: linear-gradient(135deg, #ff9be8, var(--secret), #7a6bff); }
+@media (max-width: 560px) { .screen { font-size: 4.9px; border-width: 3px; } }
 </style>
 
 <div class="wrap">
 <header>
-  <h1>THE WINDOW LOOK, EVERYWHERE</h1>
-  <p>A sketch of every screen in the game with the Arcade's style: bold old-computer windows, loud title bars and chunky pixel buttons. Each window's title bar colour says what kind of window it is, the same on every screen. The numbered tags are explained under each picture.</p>
+  <h1>DEFEAT A BOSS · THE NEW GUI</h1>
+  <p>The whole interface after studying the nine best-earning games you sent: our loud window look on every card, menus that blur and dim the world behind them, chunky picture buttons, and rewards that bring players back. The icons are stand-ins; the real ones get drawn.</p>
+  <p>Build order, the same as the plan:</p>
+  <div class="steps"><span><b>1</b> Lobby</span><span><b>2</b> Rewards + Index</span><span><b>3</b> Shop</span><span><b>4</b> Bag + fight</span><span><b>5</b> Cosmetics</span></div>
 </header>
 
-<!-- 1 LOBBY -->
+<!-- ============ 1 LOBBY ============ -->
 <section>
-  <h2><span>1</span> · IN THE LOBBY</h2>
-  <div class="screen" role="img" aria-label="Lobby screen with top bar, side buttons, quest tracker and weapon card">
-    <div class="floor"></div>
-    <div class="player"></div>
-    <!-- top bar -->
-    <div class="win" style="left:2%;top:3%;width:30%">
-      <div class="bar blue"><span class="t">LV 12</span></div>
-      <div class="in" style="padding:.5em"><div class="meter"><b style="width:64%;background:var(--green)"></b></div><div class="px" style="font-size:.6em">640 / 1000 XP</div></div>
+  <h2><span>1</span> · THE LOBBY</h2>
+  <div class="screen" role="img" aria-label="Lobby screen">
+    <div class="world"><div class="isle"></div><div class="road"></div><div class="spire"></div>
+      <div class="bld" style="left:12%;width:13%;height:14%;background:#ff7eb6"></div><div class="bld" style="right:12%;width:14%;height:12%;background:#8d6bff"></div></div>
+    <div class="me"></div>
+    <!-- left: picture buttons -->
+    <div style="position:absolute;left:1.8%;top:6%;display:grid;grid-template-columns:repeat(2,auto);gap:1em">
+      <div class="pic red rays" style="width:8em"><span class="ico">🛒</span><span class="lb">SHOP</span><span class="dot">!</span></div>
+      <div class="pic teal rays" style="width:8em"><span class="ico">🎒</span><span class="lb">BAG</span></div>
+      <div class="pic pink rays" style="width:8em"><span class="ico">🎰</span><span class="lb">ARCADE</span><span class="dot">2</span></div>
+      <div class="pic purple rays" style="width:8em"><span class="ico">📖</span><span class="lb">INDEX</span><span class="dot">!</span></div>
     </div>
-    <div class="win" style="left:34%;top:3%;width:32%">
-      <div class="in row" style="padding:.55em;justify-content:space-between">
-        <span class="row"><span class="coin"></span><b class="px" style="font-size:.8em">12,450</b></span>
-        <span class="row"><span class="token"></span><b class="px" style="font-size:.8em">8</b><span class="btn pink" style="padding:.15em .4em">+</span></span>
-      </div>
+    <!-- bottom left: currencies -->
+    <div style="position:absolute;left:1.8%;bottom:4%;display:grid;gap:.5em">
+      <div class="row" style="background:rgba(24,20,37,.55);border:.2em solid var(--ink);padding:.3em .6em .3em .3em"><span class="coin" style="width:2.2em;height:2.2em"></span><b class="ck" style="color:#fff;font-size:1.7em">12,450</b><span class="btn green" style="padding:.05em .35em">+</span></div>
+      <div class="row" style="background:rgba(24,20,37,.55);border:.2em solid var(--ink);padding:.3em .6em .3em .3em"><span class="token" style="width:2.2em;height:2.2em"></span><b class="ck" style="color:#fff;font-size:1.7em">8</b><span class="btn pink" style="padding:.05em .35em">+</span></div>
     </div>
-    <!-- left buttons -->
-    <div style="position:absolute;left:2%;top:26%;display:grid;gap:.9em;width:11%">
-      <div class="btn pink" style="position:relative">ROLL<span class="dot"></span></div>
-      <div class="btn teal">BAG</div>
-      <div class="btn gold" style="color:var(--ink)">SHOP</div>
-      <div class="btn blue" style="position:relative">QUESTS<span class="dot"></span></div>
+    <!-- top right: gift timer + rewards + settings -->
+    <div style="position:absolute;right:1.8%;top:4%;display:flex;gap:.8em">
+      <div class="pic gold rays" style="width:6.4em"><span class="ico">🎁</span><span class="lb px" style="font-family:var(--pixel);font-size:.7em">03:41</span></div>
+      <div class="pic green rays" style="width:6.4em"><span class="ico">📅</span><span class="lb">REWARDS</span><span class="dot">3</span></div>
+      <div class="pic" style="width:6.4em;background:#5d5680"><span class="ico">⚙️</span><span class="lb">SETTINGS</span></div>
     </div>
     <!-- quest tracker -->
-    <div class="win" style="right:2%;top:24%;width:27%">
-      <div class="bar blue"><span class="t">QUESTS</span><i>_</i></div>
+    <div class="win" style="right:1.8%;top:26%;width:24%">
+      <div class="bar blue"><span class="t">TODAY'S QUEST</span><i>_</i></div>
+      <div class="in"><b class="ck" style="font-size:1.2em">Beat 5 Waves</b><div class="meter"><b style="width:60%;background:var(--blue)"></b><em>3 / 5</em></div>
+        <div class="row" style="justify-content:space-between"><span class="px" style="font-size:.5em;color:#6b5f8a">NEW IN 4:12:08</span><span class="row" style="gap:.3em"><span class="token" style="width:1.1em;height:1.1em"></span><b class="px" style="font-size:.6em">+1</b></span></div></div>
+    </div>
+    <!-- FIGHT -->
+    <div style="position:absolute;left:50%;bottom:11%;transform:translateX(-50%);display:grid;gap:.5em;justify-items:center">
+      <div class="btn green" style="font-size:2.6em;padding:.15em 1.6em;box-shadow:.12em .14em 0 var(--ink)">FIGHT</div>
+      <div class="ck" style="color:#fff;font-size:1.1em;text-shadow:.08em .1em 0 var(--ink)">Next: Floor 3 · Knight Burrowmore</div>
+    </div>
+    <!-- xp bar -->
+    <div style="position:absolute;left:24%;right:24%;bottom:3%;display:flex;gap:.6em;align-items:center">
+      <b class="ck" style="color:#fff;font-size:1.5em;text-shadow:.08em .1em 0 var(--ink)">LV 12</b>
+      <div class="meter" style="flex:1;height:1.7em"><b style="width:64%;background:linear-gradient(var(--yellow),var(--gold))"></b><em>640 / 1000 XP</em></div>
+      <span class="chip pink">2X</span>
+    </div>
+    <!-- corner bonuses -->
+    <div style="position:absolute;right:1.8%;bottom:4%;display:flex;gap:.6em">
+      <div style="text-align:center"><div style="font-size:2em">⏱️</div><b class="ck" style="color:#fff;font-size:1.1em;text-shadow:.08em .1em 0 var(--ink)">+3%</b></div>
+      <div style="text-align:center"><div style="font-size:2em">👥</div><b class="ck" style="color:#fff;font-size:1.1em;text-shadow:.08em .1em 0 var(--ink)">+10%</b></div>
+    </div>
+    <!-- group chest in the world -->
+    <div style="position:absolute;left:62%;bottom:40%;text-align:center">
+      <div class="ck" style="color:var(--yellow);font-size:1.2em;text-shadow:.08em .1em 0 var(--ink);white-space:nowrap">Join the community!</div>
+      <div style="width:4.5em;height:3.2em;margin:.3em auto 0;background:linear-gradient(#e5394a 0 45%,var(--ink) 45% 52%,#b92735 52%);border:.25em solid var(--ink);box-shadow:0 0 1.2em #ffe26a"></div>
+    </div>
+    <span class="cap" style="left:1%;top:1%">A</span><span class="cap" style="left:1%;bottom:17%">B</span><span class="cap" style="right:1%;top:1%">C</span>
+    <span class="cap" style="right:26.5%;top:27%">D</span><span class="cap" style="left:39%;bottom:22%">E</span><span class="cap" style="left:22%;bottom:3%">F</span>
+    <span class="cap" style="right:1%;bottom:16%">G</span><span class="cap" style="left:60%;bottom:52%">H</span>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Four picture buttons</b>: Shop (loudest), Bag, Arcade, Index. Badges show what's waiting. On a phone they fold into one Menu button.</li>
+    <li><span class="k">B</span><b>Coins and Tokens</b>, big, each with a + that opens its shop tab.</li>
+    <li><span class="k">C</span><b>Free gift timer</b>, then <b>Rewards</b> (login calendar, codes, updates) and <b>Settings</b>.</li>
+    <li><span class="k">D</span><b>Today's quest</b>, folds down with _.</li>
+    <li><span class="k">E</span><b>One big FIGHT button</b> that takes you to your next floor. A new player always knows what to do.</li>
+    <li><span class="k">F</span><b>Level and XP</b>, with a 2X tag while a boost is on.</li>
+    <li><span class="k">G</span><b>Playtime bonus and friend bonus</b>: free, and they grow the longer you stay and the more friends you bring.</li>
+    <li><span class="k">H</span><b>Community chest</b> in the lobby: join your group and claim tokens.</li>
+  </ul>
+</section>
+
+<!-- ============ 2 SHOP FEATURED ============ -->
+<section>
+  <h2><span>2</span> · SHOP: FEATURED</h2>
+  <div class="screen" role="img" aria-label="Shop featured tab over a blurred lobby">
+    <div class="world"><div class="isle"></div><div class="road"></div><div class="spire"></div></div><div class="me"></div>
+    <div class="veil"></div>
+    <div class="title" style="left:21%;top:2.5%">Shop</div>
+    <div class="x" style="right:15%;top:3%"></div>
+    <div style="position:absolute;right:1.8%;top:4%;display:grid;gap:.4em">
+      <div class="row"><span class="btn green" style="padding:.05em .35em">+</span><span class="coin" style="width:2em;height:2em"></span><b class="ck" style="color:#fff;font-size:1.5em;text-shadow:.08em .1em 0 var(--ink)">12,450</b></div>
+      <div class="row"><span class="btn pink" style="padding:.05em .35em">+</span><span class="token" style="width:2em;height:2em"></span><b class="ck" style="color:#fff;font-size:1.5em;text-shadow:.08em .1em 0 var(--ink)">8</b></div>
+    </div>
+    <div class="tabs" style="left:9%;top:13%">
+      <div class="tab on"><span class="ico">⭐</span><span class="lb">Featured</span></div>
+      <div class="tab"><span class="ico">🎟️</span><span class="lb">Tickets</span></div>
+      <div class="tab"><span class="ico">🪙</span><span class="lb">Tokens</span></div>
+      <div class="tab"><span class="ico">🔁</span><span class="lb">Daily</span></div>
+      <div class="tab"><span class="ico">🎫</span><span class="lb">Passes</span></div>
+      <div class="tab"><span class="ico">✨</span><span class="lb">Looks</span></div>
+    </div>
+    <div style="position:absolute;left:21%;right:15%;top:14%;bottom:4%;display:grid;gap:.9em;align-content:start">
+      <!-- arcade banner -->
+      <div class="card" style="height:7.5em;background:linear-gradient(90deg,#8d4bff,#ff3fa4,#ffb62e)">
+        <div class="rays" style="position:absolute;inset:0"></div>
+        <div style="position:absolute;left:1em;top:.7em" class="ck"><div style="color:#fff;font-size:2.1em;text-shadow:.07em .09em 0 var(--ink)">THE ARCADE</div><div style="color:#fff;font-size:1.1em;text-shadow:.07em .09em 0 var(--ink)">60 weapons · 10 bosses · real odds shown</div></div>
+        <div style="position:absolute;right:1em;bottom:.8em" class="btn green">OPEN ARCADE</div>
+        <div class="grid" style="position:absolute;right:13em;top:.9em;grid-template-columns:repeat(4,4.2em);gap:.4em">
+          <div class="wcard r-legendary"><div class="blade"></div></div><div class="wcard r-mythic"><div class="blade"></div></div><div class="wcard r-secret"><div class="blade"></div></div><div class="wcard r-epic"><div class="blade"></div></div>
+        </div>
+      </div>
+      <!-- starter pack bundle row -->
+      <div class="card" style="height:10.5em;background:linear-gradient(90deg,#0f7a5a,#19b3a6 45%,#1c4e7a);border-color:var(--ink);outline:.25em solid var(--yellow);outline-offset:-.55em">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:26%;background:radial-gradient(circle at 50% 55%,#8dffd8,transparent 65%)"></div>
+        <div class="wcard r-legendary" style="position:absolute;left:3%;top:12%;width:9em;transform:rotate(-8deg)"><div class="blade"></div></div>
+        <div class="ck" style="position:absolute;left:30%;top:.6em;color:#fff;font-size:1.1em;text-shadow:.07em .09em 0 var(--ink)">One per player · after your first boss</div>
+        <div style="position:absolute;left:30%;top:2.6em;display:flex;gap:.5em">
+          <div class="card" style="width:5.4em;height:5.4em;background:#fff3c4;display:grid;place-items:center;text-align:center"><div><div style="font-size:1.8em">🎰</div><b class="ck" style="font-size:.85em">Rare+ spin</b></div></div>
+          <div class="card" style="width:5.4em;height:5.4em;background:#fff3c4;display:grid;place-items:center;text-align:center"><div><span class="token" style="display:inline-block;width:2em;height:2em"></span><b class="ck" style="display:block;font-size:.9em">×10</b></div></div>
+          <div class="card" style="width:5.4em;height:5.4em;background:#fff3c4;display:grid;place-items:center;text-align:center"><div><span class="coin" style="display:inline-block;width:2em;height:2em"></span><b class="ck" style="display:block;font-size:.9em">×5,000</b></div></div>
+          <div class="card" style="width:5.4em;height:5.4em;background:#fff3c4;display:grid;place-items:center;text-align:center"><div><div style="font-size:1.6em">🏷️</div><b class="ck" style="font-size:.8em">"Rookie" title</b></div></div>
+        </div>
+        <div class="ck" style="position:absolute;right:1em;top:.5em;color:#fff;font-size:2em;text-shadow:.07em .09em 0 var(--ink)">Starter Pack</div>
+        <div class="btn gold" style="position:absolute;right:1em;bottom:1em;color:var(--ink);text-shadow:none;font-size:1.5em"><span class="rbx"></span>49</div>
+        <div class="btn green" style="position:absolute;right:7.8em;bottom:1em;padding:.35em .45em">🎁</div>
+      </div>
+      <!-- tickets strip -->
+      <div class="sec">Tickets · quick buys</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7em">
+        <div class="card rays" style="height:6.4em;background-color:var(--green)"><b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.3em;text-shadow:.07em .09em 0 var(--ink)">Revive ×3</b><span class="ck" style="position:absolute;left:.6em;top:2.1em;color:#fff;font-size:.85em">keep fighting after you fall</span><span class="btn green" style="position:absolute;left:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>29</span><span style="position:absolute;right:.4em;bottom:.2em;font-size:2.6em">💖</span></div>
+        <div class="card rays" style="height:6.4em;background-color:#e6b400"><b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.3em;text-shadow:.07em .09em 0 var(--ink)">Spin ×3</b><span class="ck" style="position:absolute;left:.6em;top:2.1em;color:#fff;font-size:.85em">three Arcade spins</span><span class="btn green" style="position:absolute;left:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>45</span><span style="position:absolute;right:.4em;bottom:.2em;font-size:2.6em">🎡</span></div>
+        <div class="card rays" style="height:6.4em;background-color:var(--teal)"><b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.3em;text-shadow:.07em .09em 0 var(--ink)">Boss Rush ×3</b><span class="ck" style="position:absolute;left:.6em;top:2.1em;color:#fff;font-size:.85em">replay a beaten boss, 2× loot</span><span class="btn green" style="position:absolute;left:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>35</span><span style="position:absolute;right:.4em;bottom:.2em;font-size:2.6em">⚔️</span></div>
+      </div>
+    </div>
+    <span class="cap" style="left:7.5%;top:11%">A</span><span class="cap" style="left:20%;top:13%">B</span><span class="cap" style="left:20%;top:37%">C</span><span class="cap" style="left:20%;top:62%">D</span><span class="cap" style="right:1%;top:1%">E</span>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Tabs down the side</b>: Featured, Tickets, Tokens, Daily, Passes, Looks. No big window behind: the lobby is blurred and dimmed.</li>
+    <li><span class="k">B</span><b>Arcade banner</b>: the best weapons as art, one tap to the machines.</li>
+    <li><span class="k">C</span><b>Starter Pack</b>: once per player, offered after the first boss. Hero art on the left, every item as a tile with its count, the price and a gift button.</li>
+    <li><span class="k">D</span><b>Tickets</b>: cheap first buys. Revives never count for leaderboards.</li>
+    <li><span class="k">E</span><b>Only your money stays on screen</b> while shopping, each with its +.</li>
+  </ul>
+</section>
+
+<!-- ============ 3 SHOP TOKENS + DAILY ============ -->
+<section>
+  <h2><span>3</span> · SHOP: TOKENS AND DAILY ITEMS</h2>
+  <div class="screen" role="img" aria-label="Shop tokens ladder and daily items">
+    <div class="world"><div class="isle"></div><div class="road"></div><div class="spire"></div></div>
+    <div class="veil"></div>
+    <div class="title" style="left:21%;top:2.5%">Shop</div>
+    <div class="x" style="right:15%;top:3%"></div>
+    <div class="tabs" style="left:9%;top:13%">
+      <div class="tab"><span class="ico">⭐</span><span class="lb">Featured</span></div>
+      <div class="tab"><span class="ico">🎟️</span><span class="lb">Tickets</span></div>
+      <div class="tab on"><span class="ico">🪙</span><span class="lb">Tokens</span></div>
+      <div class="tab"><span class="ico">🔁</span><span class="lb">Daily</span></div>
+      <div class="tab"><span class="ico">🎫</span><span class="lb">Passes</span></div>
+      <div class="tab"><span class="ico">✨</span><span class="lb">Looks</span></div>
+    </div>
+    <div style="position:absolute;left:21%;right:15%;top:14%;bottom:4%;display:grid;gap:.8em;align-content:start">
+      <div class="sec">Arcade Tokens</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1.25fr;grid-template-rows:auto auto;gap:.7em">
+        <div class="card rays" style="height:7em;background-color:#c64fd6"><b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.4em;text-shadow:.07em .09em 0 var(--ink)">Handful</b><b class="ck" style="position:absolute;left:.6em;top:2.2em;color:#fff;font-size:1.2em;text-shadow:.07em .09em 0 var(--ink)">10 tokens</b><span class="btn green" style="position:absolute;left:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>99</span><span class="btn green" style="position:absolute;left:5.4em;bottom:.5em;font-size:1em;padding:.35em .35em">🎁</span><span class="token" style="position:absolute;right:.8em;bottom:.8em;width:3em;height:3em"></span></div>
+        <div class="card rays" style="height:7em;background-color:#b441c7"><b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.4em;text-shadow:.07em .09em 0 var(--ink)">Pouch</b><b class="ck" style="position:absolute;left:.6em;top:2.2em;color:#fff;font-size:1.2em;text-shadow:.07em .09em 0 var(--ink)">25 tokens</b><span class="btn green" style="position:absolute;left:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>229</span><span class="btn green" style="position:absolute;left:6.1em;bottom:.5em;font-size:1em;padding:.35em .35em">🎁</span><span class="token" style="position:absolute;right:1.6em;bottom:1.4em;width:2.6em;height:2.6em"></span><span class="token" style="position:absolute;right:.6em;bottom:.6em;width:2.6em;height:2.6em"></span></div>
+        <div class="card rays" style="grid-row:span 2;background-color:#8d2fb0">
+          <span class="chip red" style="position:absolute;right:.5em;top:.5em;font-size:.75em">+30% EXTRA</span>
+          <b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.6em;text-shadow:.07em .09em 0 var(--ink)">Treasure Chest</b><b class="ck" style="position:absolute;left:.6em;top:2.3em;color:#fff;font-size:1.4em;text-shadow:.07em .09em 0 var(--ink)">150 tokens</b>
+          <div style="position:absolute;left:18%;right:18%;top:38%;height:34%;background:linear-gradient(#ffb62e 0 40%,var(--ink) 40% 47%,#c77a12 47%);border:.3em solid var(--ink);box-shadow:0 -.6em 1.4em #ff9be8"></div>
+          <span class="btn green" style="position:absolute;left:.6em;bottom:.6em;font-size:1.3em"><span class="rbx"></span>1,199</span><span class="btn green" style="position:absolute;right:.6em;bottom:.6em;font-size:1.3em;padding:.35em .35em">🎁</span>
+        </div>
+        <div class="card rays" style="grid-column:span 2;height:7em;background-color:#a236c0"><span class="chip red" style="position:absolute;right:.5em;top:.5em;font-size:.7em">+20% EXTRA</span><b class="ck" style="position:absolute;left:.6em;top:.4em;color:#fff;font-size:1.4em;text-shadow:.07em .09em 0 var(--ink)">Sack</b><b class="ck" style="position:absolute;left:.6em;top:2.2em;color:#fff;font-size:1.2em;text-shadow:.07em .09em 0 var(--ink)">60 tokens</b><span class="btn green" style="position:absolute;left:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>499</span><span class="btn green" style="position:absolute;left:6.1em;bottom:.5em;font-size:1em;padding:.35em .35em">🎁</span><div style="position:absolute;right:2em;bottom:.6em;width:5em;height:4em;background:#8a5a33;border:.25em solid var(--ink);border-radius:40% 40% 20% 20%"></div></div>
+      </div>
+      <div class="row" style="justify-content:space-between"><div class="sec" style="flex:1">Daily Items · for coins</div><span class="chip" style="background:#2a1f3f;font-size:.7em;margin-left:1em">⏱ NEW IN 09:16:56</span></div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.6em">
+        <div class="card r-legendary" style="height:7.2em"><b class="ck" style="position:absolute;left:.4em;top:.3em;color:#fff;font-size:1em;text-shadow:.07em .09em 0 var(--ink)">Gold Aura</b><span class="ck" style="position:absolute;left:.4em;top:1.6em;color:#fff;font-size:.75em">Legendary</span><span style="position:absolute;left:0;right:0;top:2.6em;text-align:center;font-size:2em">🌟</span><span class="row" style="position:absolute;left:.4em;bottom:.3em;gap:.25em"><span class="coin" style="width:1.2em;height:1.2em"></span><b class="ck" style="color:#fff;font-size:1.05em;text-shadow:.07em .09em 0 var(--ink)">5,000</b></span></div>
+        <div class="card r-epic" style="height:7.2em"><b class="ck" style="position:absolute;left:.4em;top:.3em;color:#fff;font-size:1em;text-shadow:.07em .09em 0 var(--ink)">Ink Trail</b><span class="ck" style="position:absolute;left:.4em;top:1.6em;color:#fff;font-size:.75em">Epic</span><span style="position:absolute;left:0;right:0;top:2.6em;text-align:center;font-size:2em">🖋️</span><span class="row" style="position:absolute;left:.4em;bottom:.3em;gap:.25em"><span class="coin" style="width:1.2em;height:1.2em"></span><b class="ck" style="color:#fff;font-size:1.05em;text-shadow:.07em .09em 0 var(--ink)">2,500</b></span></div>
+        <div class="card r-common" style="height:7.2em"><b class="ck" style="position:absolute;left:.4em;top:.3em;color:#fff;font-size:1em;text-shadow:.07em .09em 0 var(--ink)">Wave Dance</b><span class="ck" style="position:absolute;left:.4em;top:1.6em;color:#fff;font-size:.75em">Common</span><span style="position:absolute;left:0;right:0;top:2.6em;text-align:center;font-size:2em">🕺</span><span class="row" style="position:absolute;left:.4em;bottom:.3em;gap:.25em"><span class="coin" style="width:1.2em;height:1.2em"></span><b class="ck" style="color:#fff;font-size:1.05em;text-shadow:.07em .09em 0 var(--ink)">800</b></span></div>
+        <div class="card r-rare" style="height:7.2em;outline:.25em solid #fff;outline-offset:-.55em"><b class="ck" style="position:absolute;left:.4em;top:.3em;color:#fff;font-size:1em;text-shadow:.07em .09em 0 var(--ink)">"Slime Slayer"</b><span class="ck" style="position:absolute;left:.4em;top:1.6em;color:#fff;font-size:.75em">Title</span><span style="position:absolute;left:0;right:0;top:2.6em;text-align:center;font-size:2em">🏷️</span><span class="row" style="position:absolute;left:.4em;bottom:.3em;gap:.25em"><span class="coin" style="width:1.2em;height:1.2em"></span><b class="ck" style="color:#fff;font-size:1.05em;text-shadow:.07em .09em 0 var(--ink)">1,200</b></span></div>
+        <div class="card" style="height:7.2em;background:linear-gradient(135deg,#6be07a,var(--green))"><b class="ck" style="position:absolute;left:.4em;top:.3em;color:#fff;font-size:1em;text-shadow:.07em .09em 0 var(--ink)">Gavel Skin</b><span class="ck" style="position:absolute;left:.4em;top:1.6em;color:#fff;font-size:.75em">Epic</span><span style="position:absolute;left:0;right:0;top:2.6em;text-align:center;font-size:2em">🔨</span><span class="chip green" style="position:absolute;left:0;bottom:.5em;font-size:.7em">OWNED</span></div>
+      </div>
+    </div>
+    <span class="cap" style="left:20%;top:13%">A</span><span class="cap" style="right:14%;top:20%">B</span><span class="cap" style="left:20%;top:63%">C</span>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Four token packs</b>, and the picture grows with the pack: a handful, a pouch, a sack, a chest. Every one can be gifted.</li>
+    <li><span class="k">B</span><b>Best value is the biggest card</b>, with its real bonus on a badge. No crossed-out "was" prices.</li>
+    <li><span class="k">C</span><b>Daily Items for coins</b>: five looks that change every day. It gives coins a use and brings people back. Owned ones are marked.</li>
+  </ul>
+</section>
+
+<!-- ============ 4 SHOP PASSES ============ -->
+<section>
+  <h2><span>4</span> · SHOP: PASSES</h2>
+  <div class="screen" role="img" aria-label="Shop passes">
+    <div class="world"><div class="isle"></div><div class="road"></div></div>
+    <div class="veil"></div>
+    <div class="title" style="left:21%;top:2.5%">Shop</div>
+    <div class="x" style="right:15%;top:3%"></div>
+    <div class="tabs" style="left:9%;top:13%">
+      <div class="tab"><span class="ico">⭐</span><span class="lb">Featured</span></div><div class="tab"><span class="ico">🎟️</span><span class="lb">Tickets</span></div>
+      <div class="tab"><span class="ico">🪙</span><span class="lb">Tokens</span></div><div class="tab"><span class="ico">🔁</span><span class="lb">Daily</span></div>
+      <div class="tab on"><span class="ico">🎫</span><span class="lb">Passes</span></div><div class="tab"><span class="ico">✨</span><span class="lb">Looks</span></div>
+    </div>
+    <div style="position:absolute;left:21%;right:15%;top:14%;bottom:4%;display:grid;gap:.8em;align-content:start">
+      <div class="card" style="height:10em;background:linear-gradient(90deg,#ffb62e,#ff7a3a)">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:24%;background:linear-gradient(135deg,#fee761,#ffb62e);border-right:.25em solid var(--ink);display:grid;place-items:center"><div class="ck" style="color:#fff;font-size:2.2em;text-shadow:.07em .09em 0 var(--ink);text-align:center;line-height:1">VIP<br><span style="font-size:.5em">monthly</span></div></div>
+        <div style="position:absolute;left:27%;top:.5em;right:12em;color:var(--ink)"><b class="ck" style="font-size:1.4em">Every month you get:</b>
+          <div style="font-weight:700;line-height:1.45;font-size:1.05em;margin-top:.2em">+50% XP · +25% Coins · +1 free spin a day<br>Gold name and VIP chat tag · the VIP Lounge<br>+10% XP for friends in your server</div></div>
+        <span class="btn green" style="position:absolute;right:1em;bottom:1em;font-size:1.4em"><span class="rbx"></span>299 / month</span>
+      </div>
+      <div class="sec">Luck in the Arcade</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7em">
+        <div class="card rays" style="height:7em;background-color:#3fb34a"><b class="ck" style="position:absolute;right:.6em;top:.4em;color:#fff;font-size:1.6em;text-shadow:.07em .09em 0 var(--ink)">+50% Luck</b><span style="position:absolute;left:.4em;top:.2em;font-size:3em">🍀</span><span class="btn green" style="position:absolute;right:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>99</span></div>
+        <div class="card rays" style="height:7em;background-color:#8d4bff"><b class="ck" style="position:absolute;right:.6em;top:.4em;color:#fff;font-size:1.6em;text-shadow:.07em .09em 0 var(--ink)">+100% Luck</b><span style="position:absolute;left:.4em;top:.2em;font-size:3em;filter:hue-rotate(160deg)">🍀</span><span class="btn green" style="position:absolute;right:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>299</span></div>
+        <div class="card rays" style="height:7em;background:linear-gradient(120deg,#ff5fd2,#4f6bff,#19b3a6,#fee761)"><b class="ck" style="position:absolute;right:.6em;top:.4em;color:#fff;font-size:1.6em;text-shadow:.07em .09em 0 var(--ink)">+200% Luck</b><span style="position:absolute;left:.4em;top:.2em;font-size:3em;filter:saturate(2) hue-rotate(260deg)">🍀</span><span class="btn green" style="position:absolute;right:.6em;bottom:.5em;font-size:1em"><span class="rbx"></span>799</span></div>
+      </div>
+      <div class="sec">Handy</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6em">
+        <div class="card" style="height:5.6em;background:#fff3c4;padding:.4em"><b class="ck" style="font-size:1.05em">2× XP</b><div style="font-size:.8em;font-weight:700">forever</div><span class="btn green" style="position:absolute;right:.4em;bottom:.4em;font-size:.9em"><span class="rbx"></span>199</span></div>
+        <div class="card" style="height:5.6em;background:#fff3c4;padding:.4em"><b class="ck" style="font-size:1.05em">2× Coins</b><div style="font-size:.8em;font-weight:700">forever</div><span class="btn green" style="position:absolute;right:.4em;bottom:.4em;font-size:.9em"><span class="rbx"></span>199</span></div>
+        <div class="card" style="height:5.6em;background:#fff3c4;padding:.4em"><b class="ck" style="font-size:1.05em">Instant ×10</b><div style="font-size:.8em;font-weight:700">skip to the results</div><span class="btn green" style="position:absolute;right:.4em;bottom:.4em;font-size:.9em"><span class="rbx"></span>29</span></div>
+        <div class="card" style="height:5.6em;background:#fff3c4;padding:.4em"><b class="ck" style="font-size:1.05em">30 min 2× XP</b><div style="font-size:.8em;font-weight:700">pauses when you leave</div><span class="btn green" style="position:absolute;right:.4em;bottom:.4em;font-size:.9em"><span class="rbx"></span>25</span></div>
+      </div>
+    </div>
+    <span class="cap" style="left:20%;top:13%">A</span><span class="cap" style="left:20%;top:44%">B</span><span class="cap" style="left:20%;top:70%">C</span>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>VIP</b>: a monthly Roblox subscription with a plain list of what you get, including a bonus for your friends.</li>
+    <li><span class="k">B</span><b>Arcade luck in three sizes</b>. The odds screen still shows the real chances with your luck included.</li>
+    <li><span class="k">C</span><b>Handy passes</b>: 2× XP, 2× Coins, instant ×10 spins, and short boosts whose timer pauses while you're offline.</li>
+    <li><b>Nothing here makes you stronger in a fight.</b> Prices are placeholders.</li>
+  </ul>
+</section>
+
+<!-- ============ 5 REWARDS ============ -->
+<section>
+  <h2><span>5</span> · REWARDS: LOGIN, GIFT, CODES, UPDATES</h2>
+  <div class="screen" role="img" aria-label="Rewards window with login calendar and update log">
+    <div class="world"><div class="isle"></div><div class="road"></div><div class="spire"></div></div>
+    <div class="veil"></div>
+    <div class="title" style="left:13%;top:2.5%">Rewards</div>
+    <div class="x" style="right:9%;top:3%"></div>
+    <div class="tabs" style="left:3%;top:13%">
+      <div class="tab on"><span class="ico">📅</span><span class="lb">Login</span></div><div class="tab"><span class="ico">🎁</span><span class="lb">Gift</span></div>
+      <div class="tab"><span class="ico">🔑</span><span class="lb">Codes</span></div><div class="tab"><span class="ico">📰</span><span class="lb">Updates</span><span class="dot">!</span></div>
+    </div>
+    <div style="position:absolute;left:13%;right:9%;top:14%;bottom:5%;display:grid;grid-template-columns:1.25fr 1fr;gap:1em">
+      <div style="display:grid;gap:.7em;align-content:start">
+        <div class="sec">Login streak · day 5</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.55em">
+          <div class="card" style="height:6em;background:#bfe9b8;text-align:center;padding-top:.3em"><b class="ck">Day 1</b><div><span class="coin" style="display:inline-block;width:1.6em;height:1.6em"></span></div><b class="ck" style="font-size:.85em">500</b><span class="chip green" style="position:absolute;left:0;right:0;bottom:0;font-size:.55em">✓</span></div>
+          <div class="card" style="height:6em;background:#bfe9b8;text-align:center;padding-top:.3em"><b class="ck">Day 2</b><div><span class="token" style="display:inline-block;width:1.6em;height:1.6em"></span></div><b class="ck" style="font-size:.85em">1</b><span class="chip green" style="position:absolute;left:0;right:0;bottom:0;font-size:.55em">✓</span></div>
+          <div class="card" style="height:6em;background:#bfe9b8;text-align:center;padding-top:.3em"><b class="ck">Day 3</b><div><span class="coin" style="display:inline-block;width:1.6em;height:1.6em"></span></div><b class="ck" style="font-size:.85em">1,500</b><span class="chip green" style="position:absolute;left:0;right:0;bottom:0;font-size:.55em">✓</span></div>
+          <div class="card" style="height:6em;background:#bfe9b8;text-align:center;padding-top:.3em"><b class="ck">Day 4</b><div><span class="token" style="display:inline-block;width:1.6em;height:1.6em"></span></div><b class="ck" style="font-size:.85em">2</b><span class="chip green" style="position:absolute;left:0;right:0;bottom:0;font-size:.55em">✓</span></div>
+          <div class="card rays" style="height:6em;background-color:var(--gold);text-align:center;padding-top:.3em;outline:.25em solid #fff;outline-offset:-.5em"><b class="ck">Day 5</b><div style="font-size:1.4em">🍀</div><b class="ck" style="font-size:.8em">30m luck</b><span class="btn green" style="position:absolute;left:.2em;right:.2em;bottom:.2em;font-size:.8em;padding:.1em">CLAIM</span></div>
+          <div class="card" style="height:6em;background:var(--paperdim);text-align:center;padding-top:.3em;color:#6b5f8a"><b class="ck">Day 6</b><div><span class="token" style="display:inline-block;width:1.6em;height:1.6em;opacity:.6"></span></div><b class="ck" style="font-size:.85em">3</b></div>
+          <div class="card rays" style="grid-column:span 2;height:6em;background-color:var(--pink);text-align:center;padding-top:.3em"><b class="ck" style="color:#fff;font-size:1.3em;text-shadow:.07em .09em 0 var(--ink)">Day 7 · Epic+ spin</b><div style="font-size:2em">🎰</div></div>
+        </div>
+        <div class="card" style="background:#fff3c4;padding:.5em"><div class="row" style="justify-content:space-between"><b class="ck" style="font-size:1.2em">Free gift</b><span class="px" style="font-size:.7em">READY IN 03:41</span></div><div style="font-weight:700;font-size:.95em">Stay online for a free reward every 15 minutes.</div></div>
+      </div>
+      <div class="card" style="background:var(--paper);align-self:start">
+        <div class="bar teal"><span class="t">NEW UPDATE!</span></div>
+        <div class="in">
+          <div style="height:6em;border:.22em solid var(--ink);background:linear-gradient(135deg,#303a5c,#8c5a3c);position:relative"><b class="ck" style="position:absolute;left:.4em;bottom:.3em;color:#fff;font-size:1.3em;text-shadow:.07em .09em 0 var(--ink)">Update 1.1 · The Walrus King</b></div>
+          <div style="font-weight:700;font-size:.95em;line-height:1.45">• Floor 10: King Gavelgrunt<br>• 6 new Throne weapons in the Arcade<br>• Rewards window and login streak</div>
+          <div class="row" style="justify-content:space-between"><span class="row"><span class="token"></span><b class="ck">×3</b><span class="coin"></span><b class="ck">×1,000</b></span><span class="btn green">CLAIM</span></div>
+        </div>
+      </div>
+    </div>
+    <span class="cap" style="left:1.5%;top:11%">A</span><span class="cap" style="left:12%;top:13%">B</span><span class="cap" style="left:12%;top:72%">C</span><span class="cap" style="right:8%;top:13%">D</span>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>One Rewards window</b> instead of five little buttons: Login, Gift, Codes, Updates.</li>
+    <li><span class="k">B</span><b>Seven-day streak</b>, with a big day 7.</li>
+    <li><span class="k">C</span><b>Free gift</b> for staying online, the same timer shown in the lobby.</li>
+    <li><span class="k">D</span><b>Every update comes with a gift to claim</b>. It opens by itself the first time you join after an update.</li>
+  </ul>
+</section>
+
+<!-- ============ 6 BAG ============ -->
+<section>
+  <h2><span>6</span> · THE BAG</h2>
+  <div class="screen" role="img" aria-label="Bag with weapon cards and detail panel">
+    <div class="world"><div class="isle"></div><div class="road"></div></div>
+    <div class="veil"></div>
+    <div class="title" style="left:13%;top:2.5%">Bag</div>
+    <div class="x" style="right:4%;top:3%"></div>
+    <div class="tabs" style="left:3%;top:13%">
+      <div class="tab on"><span class="ico">🗡️</span><span class="lb">Weapons</span></div><div class="tab"><span class="ico">✨</span><span class="lb">Looks</span></div><div class="tab"><span class="ico">🏷️</span><span class="lb">Titles</span></div>
+    </div>
+    <div style="position:absolute;left:13%;width:52%;top:14%;bottom:5%;display:grid;gap:.6em;align-content:start">
+      <div class="row"><span class="btn" style="background:#2a1f3f;font-size:1em">All (14) ▾</span><span class="btn" style="background:#2a1f3f;font-size:1em">Rarity ▾</span><span class="btn" style="background:#fff;color:#8b82a8;text-shadow:none;flex:1;text-align:left;font-size:1em">🔍 Search</span></div>
+      <div class="grid" style="grid-template-columns:repeat(5,1fr)">
+        <div class="wcard r-secret"><div class="blade"></div><span class="ty">Katana</span><span class="nm">Gelatinous Edge</span></div>
+        <div class="wcard r-legendary" style="outline:.3em solid #fff;outline-offset:-.6em"><div class="blade"></div><div class="eq"></div><span class="ty">Daggers</span><span class="nm">Ooze Daggers</span></div>
+        <div class="wcard r-mythic"><div class="blade"></div><span class="ty">Scythe</span><span class="nm">Acid Scythe</span></div>
+        <div class="wcard r-epic"><div class="blade"></div><span class="ty">Hammer</span><span class="nm">Gelatin Hammer</span></div>
+        <div class="wcard r-rare"><div class="blade"></div><span class="ty">Sword</span><span class="nm">Jellyblade</span></div>
+        <div class="wcard r-epic"><div class="blade"></div><span class="ty">Scythe</span><span class="nm">Spade Scythe</span></div>
+        <div class="wcard r-rare"><div class="blade"></div><span class="ty">Daggers</span><span class="nm">Relic Daggers</span></div>
+        <div class="wcard r-common"><div class="blade"></div><span class="ty">Fists</span><span class="nm">Goo Gloves</span></div>
+        <div class="wcard r-common"><div class="blade"></div><span class="ty">Hammer</span><span class="nm">Shovel Hammer</span></div>
+        <div class="wcard r-common"><div class="blade"></div><span class="ty">Sword</span><span class="nm">Iron Sword</span></div>
+      </div>
+    </div>
+    <div class="card" style="position:absolute;right:4%;width:29%;top:14%;bottom:5%;background:var(--paper)">
+      <div class="bar" style="background:var(--legendary)"><span class="t">LEGENDARY · DAGGERS</span></div>
       <div class="in">
-        <div style="font-weight:700">Beat 5 Waves</div>
-        <div class="meter"><b style="width:60%;background:var(--blue)"></b></div>
-        <div class="row" style="justify-content:space-between"><span class="px" style="font-size:.6em">3 / 5</span><span class="row" style="gap:.3em"><span class="token" style="width:1em;height:1em"></span><b class="px" style="font-size:.6em">+1</b></span></div>
-        <div class="px" style="font-size:.55em;color:#6b5f8a">NEW QUESTS IN 4:12:08</div>
+        <div class="wcard r-legendary" style="width:55%;margin:0 auto;aspect-ratio:1"><div class="blade"></div></div>
+        <b class="ck" style="font-size:1.6em;text-align:center">Ooze Daggers</b>
+        <div class="meter" style="height:1.4em"><b style="width:55%;background:var(--green)"></b><em>MASTERY 4 · 55%</em></div>
+        <div style="display:grid;gap:.25em;font-size:.95em">
+          <div class="row" style="justify-content:space-between;background:#fff;border:.18em solid var(--ink);padding:.2em .4em"><b>[Q] Slime Trail</b><span class="px" style="font-size:.55em">MAS 1</span></div>
+          <div class="row" style="justify-content:space-between;background:#fff;border:.18em solid var(--ink);padding:.2em .4em"><b>[E] Goo Pounce</b><span class="px" style="font-size:.55em">MAS 3</span></div>
+          <div class="row" style="justify-content:space-between;background:var(--paperdim);border:.18em solid var(--ink);padding:.2em .4em;color:#6b5f8a"><b>🔒 [R] Ooze Storm</b><span class="px" style="font-size:.55em">MAS 6</span></div>
+        </div>
+        <div class="btn green" style="font-size:1.3em">EQUIPPED</div>
       </div>
     </div>
-    <!-- weapon card -->
-    <div class="win" style="right:2%;bottom:5%;width:24%">
-      <div class="bar" style="background:var(--rare)"><span class="t">RARE</span></div>
-      <div class="in row"><div style="width:2.6em;height:2.6em;background:#63c74d;border:.2em solid var(--ink)"></div><div><div style="font-weight:800">Goo Gloves</div><div class="px" style="font-size:.55em">MASTERY 4</div></div></div>
-    </div>
-    <!-- toast -->
-    <div class="win" style="left:36%;bottom:8%;width:28%">
-      <div class="bar gold"><span class="t" style="color:var(--ink);text-shadow:none">+1 ARCADE TOKEN!</span></div>
-    </div>
-    <div class="cap" style="left:3%;top:18%">A</div><div class="cap" style="left:62%;top:15%">B</div><div class="cap" style="left:13%;top:30%">C</div>
-    <div class="cap" style="right:30%;top:26%">D</div><div class="cap" style="right:27%;bottom:9%">E</div><div class="cap" style="left:33%;bottom:10%">F</div>
+    <span class="cap" style="left:12%;top:13%">A</span><span class="cap" style="left:12%;top:24%">B</span><span class="cap" style="right:3%;top:13%">C</span>
   </div>
   <ul class="legend">
-    <li><span class="k">A</span><b>Level</b>, with the XP bar right under it.</li>
-    <li><span class="k">B</span><b>Coins and Arcade Tokens</b>, both animated. The pink + opens the token shop.</li>
-    <li><span class="k">C</span><b>Four big buttons</b>: Roll, Bag, Shop, Quests. A red dot means something's waiting.</li>
-    <li><span class="k">D</span><b>Quest tracker</b>: today's quest, its bar, the token it pays and when new ones arrive. Folds down with _.</li>
-    <li><span class="k">E</span><b>Your weapon</b>: the title bar is its rarity colour.</li>
-    <li><span class="k">F</span><b>Toasts</b> slide up here and go away by themselves.</li>
+    <li><span class="k">A</span><b>Filter and search</b>, for when players own dozens of weapons.</li>
+    <li><span class="k">B</span><b>Whole card in the rarity colour</b>, big diagonal weapon art (the real icons from the models), the type top left, the name in chunky italics, a green E corner on the one you're holding.</li>
+    <li><span class="k">C</span><b>Details</b>: mastery bar, each ability with its key and the mastery it unlocks at, and EQUIP.</li>
   </ul>
 </section>
 
-<!-- 2 FIGHT -->
+<!-- ============ 7 INDEX ============ -->
 <section>
-  <h2><span>2</span> · IN A BOSS FIGHT</h2>
-  <div class="screen" role="img" aria-label="Boss fight screen with boss bar, health, stamina, flasks and ability buttons">
-    <div class="floor"></div>
-    <div class="boss"></div>
-    <div class="player" style="left:52%;bottom:10%"></div>
-    <div class="win" style="left:18%;top:3%;width:64%">
-      <div class="bar red"><span class="t">KING GAVELGRUNT · FLOOR 10</span><span class="chip gold" style="color:var(--ink)">ROUND 2</span></div>
-      <div class="in" style="padding:.5em"><div class="meter" style="height:1.4em"><b style="width:58%;background:linear-gradient(var(--red),#a3202e)"></b></div></div>
+  <h2><span>7</span> · THE INDEX</h2>
+  <div class="screen" role="img" aria-label="Index of weapons with silhouettes and collector level">
+    <div class="world"><div class="isle"></div><div class="road"></div><div class="spire"></div></div>
+    <div class="veil"></div>
+    <div class="title" style="left:13%;top:2.5%">Index</div>
+    <div class="x" style="right:4%;top:3%"></div>
+    <div class="tabs" style="left:3%;top:13%">
+      <div class="tab on"><span class="ico">🗡️</span><span class="lb">Weapons</span><span class="dot">!</span></div><div class="tab"><span class="ico">👑</span><span class="lb">Bosses</span></div><div class="tab"><span class="ico">🏆</span><span class="lb">Goals</span><span class="dot">!</span></div>
     </div>
-    <div class="win" style="left:2%;bottom:5%;width:30%">
-      <div class="in row" style="padding:.55em">
-        <span class="chip teal" style="font-size:.7em">🧪 3</span>
-        <span style="width:2.4em;height:2.2em;background:var(--red);clip-path:polygon(50% 100%,0 35%,15% 5%,50% 22%,85% 5%,100% 35%);flex:none"></span>
-        <div style="flex:1;display:grid;gap:.3em"><div class="meter"><b style="width:80%;background:var(--red)"></b></div><div class="meter" style="height:.7em"><b style="width:55%;background:var(--yellow)"></b></div></div>
+    <div style="position:absolute;left:13%;width:52%;top:14%;bottom:5%;display:grid;gap:.6em;align-content:start">
+      <div class="row" style="justify-content:space-between"><div class="sec" style="flex:1">Slime pack · Oozark</div><b class="ck" style="color:#fff;font-size:1.4em;margin-left:1em;text-shadow:.07em .09em 0 var(--ink)">14 / 60 found</b></div>
+      <div class="grid" style="grid-template-columns:repeat(6,1fr)">
+        <div class="wcard r-common"><div class="blade"></div><span class="nm">Goo Gloves</span></div>
+        <div class="wcard r-rare"><div class="blade"></div><span class="nm">Jellyblade</span></div>
+        <div class="wcard r-epic"><div class="blade"></div><span class="nm">Gelatin Hammer</span><span class="dot" style="top:.2em;right:.2em">!</span></div>
+        <div class="wcard r-legendary"><div class="blade"></div><span class="nm">Ooze Daggers</span></div>
+        <div class="wcard r-mythic lock"><div class="blade"></div><span class="nm">???</span></div>
+        <div class="wcard r-secret lock"><div class="blade"></div><span class="nm">???</span></div>
+      </div>
+      <div class="sec">Knight pack · Burrowmore</div>
+      <div class="grid" style="grid-template-columns:repeat(6,1fr)">
+        <div class="wcard r-common"><div class="blade"></div><span class="nm">Shovel Hammer</span></div>
+        <div class="wcard r-rare"><div class="blade"></div><span class="nm">Relic Daggers</span></div>
+        <div class="wcard r-epic"><div class="blade"></div><span class="nm">Spade Scythe</span></div>
+        <div class="wcard r-legendary lock"><div class="blade"></div><span class="nm">???</span></div>
+        <div class="wcard r-mythic lock"><div class="blade"></div><span class="nm">???</span></div>
+        <div class="wcard r-secret lock"><div class="blade"></div><span class="nm">???</span></div>
       </div>
     </div>
-    <div style="position:absolute;right:2%;bottom:5%;display:flex;gap:.6em">
-      <div class="btn teal">Q</div><div class="btn pink">E</div><div class="btn gold" style="color:var(--ink)">R</div>
+    <div class="card" style="position:absolute;right:4%;width:29%;top:14%;bottom:5%;background:var(--paper)">
+      <div class="bar purple"><span class="t">COLLECTOR</span></div>
+      <div class="in" style="text-align:center">
+        <div class="px" style="font-size:1.4em;color:var(--purple)">LEVEL 3</div>
+        <div class="meter" style="height:1.4em"><b style="width:70%;background:var(--purple)"></b><em>35 / 50</em></div>
+        <div class="card" style="background:#fff3c4;padding:.4em;text-align:left"><b class="ck">New find: Gelatin Hammer</b><div class="row" style="justify-content:space-between;margin-top:.3em"><span class="row"><span class="token"></span><b class="ck">+1</b></span><span class="btn green" style="font-size:1em">CLAIM</span></div></div>
+        <div class="card" style="background:var(--paperdim);padding:.4em;text-align:left;color:#6b5f8a"><b class="ck">Level 5 reward</b><div style="font-weight:700">"Collector" title · 🔒</div></div>
+        <div class="card" style="background:var(--paperdim);padding:.4em;text-align:left;color:#6b5f8a"><b class="ck">Level 10 reward</b><div style="font-weight:700">Rainbow aura · 🔒</div></div>
+      </div>
     </div>
-    <div class="cap" style="left:15%;top:6%">A</div><div class="cap" style="left:1%;bottom:17%">B</div><div class="cap" style="right:2%;bottom:17%">C</div>
+    <span class="cap" style="left:12%;top:13%">A</span><span class="cap" style="left:12%;top:37%">B</span><span class="cap" style="right:3%;top:13%">C</span>
   </div>
   <ul class="legend">
-    <li><span class="k">A</span><b>Boss bar</b> in a red window: name, floor, round. It's the only big thing on screen.</li>
-    <li><span class="k">B</span><b>You</b>: flasks, the heart, health and the stamina bolt, together in one small window.</li>
-    <li><span class="k">C</span><b>Your weapon's abilities</b>, with a cooldown sweep on each.</li>
-    <li>The lobby buttons <b>hide during a fight</b>, so nothing covers the boss.</li>
+    <li><span class="k">A</span><b>Every weapon in the game</b>, grouped by boss pack, with a found counter.</li>
+    <li><span class="k">B</span><b>Silhouettes on their rarity colour</b> until you own one: you can see how rare it is, not what it is.</li>
+    <li><span class="k">C</span><b>Collector level</b>: every find pays a little and fills the bar, and levels unlock titles and auras. The Bosses tab holds each boss's card, best time and difficulty medals.</li>
   </ul>
 </section>
 
-<!-- 3 BAG + SPIRE -->
+<!-- ============ 8 FIGHT ============ -->
 <section>
-  <h2><span>3</span> · BAG AND SPIRE</h2>
-  <div class="screen" role="img" aria-label="Bag window with weapon grid next to the Spire floor list">
-    <div class="floor"></div>
-    <div class="win" style="left:3%;top:6%;width:52%;bottom:7%">
-      <div class="bar teal"><span class="t">BAG · 14 WEAPONS</span><i>_</i><i>✕</i></div>
-      <div class="in" style="grid-template-columns:repeat(4,1fr);gap:.5em">
-        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--legendary);font-size:.55em"><span class="t">LEGENDARY</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#2e7d32;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Ooze Daggers</b><span class="px" style="font-size:.5em">EQUIPPED</span></div></div>
-        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--epic);font-size:.55em"><span class="t">EPIC</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#7ec850;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Gelatin Hammer</b><span class="px" style="font-size:.5em">MASTERY 2</span></div></div>
-        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--rare);font-size:.55em"><span class="t">RARE</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#63c74d;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Jellyblade</b><span class="px" style="font-size:.5em">MASTERY 5</span></div></div>
-        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--common);font-size:.55em"><span class="t">COMMON</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#9bd46a;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Goo Gloves</b><span class="px" style="font-size:.5em">MASTERY 4</span></div></div>
-        <div class="win" style="position:relative;box-shadow:none;grid-column:span 4"><div class="in row" style="padding:.45em;justify-content:space-between"><span><b>Ooze Daggers</b> · Daggers · <i>Slime Trail</i></span><span class="btn green" style="padding:.35em .6em">EQUIP</span></div></div>
+  <h2><span>8</span> · IN A BOSS FIGHT</h2>
+  <div class="screen" role="img" aria-label="Boss fight HUD">
+    <div class="world throne"></div>
+    <div class="boss"></div><div class="me" style="left:52%;bottom:8%"></div>
+    <div class="ck" style="position:absolute;left:0;right:0;top:26%;text-align:center;color:#fff;font-size:2.4em;text-shadow:.07em .09em 0 var(--ink);opacity:.9">FLOOR 10 · THE THRONE SUMMIT</div>
+    <div class="win" style="left:20%;right:20%;top:3%">
+      <div class="bar red"><span class="t">KING GAVELGRUNT</span><span class="chip gold" style="color:var(--ink)">ROUND 2</span></div>
+      <div class="in" style="padding:.45em"><div class="meter" style="height:1.5em"><b style="width:58%;background:linear-gradient(var(--red),#a3202e)"></b><em>58%</em></div></div>
+    </div>
+    <div class="win" style="left:1.8%;bottom:4%;width:30%">
+      <div class="in" style="padding:.55em">
+        <div class="row"><span style="width:2.4em;height:2.2em;background:var(--red);clip-path:polygon(50% 100%,0 35%,15% 5%,50% 22%,85% 5%,100% 35%);flex:none"></span><div class="meter" style="flex:1;height:1.4em"><b style="width:80%;background:var(--red)"></b><em>240 / 300</em></div></div>
+        <div class="row"><span style="font-size:1.6em;width:1.5em;text-align:center">⚡</span><div class="meter" style="flex:1;height:1em"><b style="width:55%;background:var(--yellow)"></b></div><span class="chip teal">🧪 3</span></div>
       </div>
     </div>
-    <div class="win" style="right:3%;top:6%;width:38%;bottom:7%">
-      <div class="bar pink"><span class="t">THE SPIRE</span><i>✕</i></div>
-      <div class="in" style="gap:.4em">
-        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.35em .5em"><b>1 · Oozark</b><span class="chip green">BEATEN</span></div>
-        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.35em .5em"><b>2 · Tuber</b><span class="chip green">BEATEN</span></div>
-        <div class="row" style="justify-content:space-between;background:#fff3c4;border:.22em solid var(--ink);padding:.35em .5em"><b>3 · Knight Burrowmore</b><span class="chip gold" style="color:var(--ink)">FIGHT</span></div>
-        <div class="row" style="justify-content:space-between;background:#d9d2ec;border:.18em solid var(--ink);padding:.35em .5em;color:#6b5f8a"><b>4 · Kaze</b><span class="px" style="font-size:.55em">LV 45</span></div>
-        <div class="row" style="justify-content:space-between;background:#d9d2ec;border:.18em solid var(--ink);padding:.35em .5em;color:#6b5f8a"><b>10 · King Gavelgrunt</b><span class="px" style="font-size:.55em">🔒</span></div>
-      </div>
+    <div style="position:absolute;right:1.8%;bottom:4%;display:flex;gap:.6em;align-items:end">
+      <div class="pic teal" style="width:5.4em"><span class="ico" style="font-size:2em">🌀</span><span class="lb">Q</span></div>
+      <div class="pic pink" style="width:5.4em"><span class="ico" style="font-size:2em">💥</span><span class="lb">E</span><div style="position:absolute;inset:0;background:conic-gradient(rgba(0,0,0,.55) 0 40%,transparent 40%)"></div></div>
+      <div class="pic" style="width:5.4em;background:#5d5680"><span class="ico" style="font-size:2em;opacity:.5">🔒</span><span class="lb">R</span></div>
     </div>
-    <div class="cap" style="left:2%;top:2%">A</div><div class="cap" style="right:36%;top:2%">B</div>
+    <span class="cap" style="left:18.5%;top:2%">A</span><span class="cap" style="left:30%;top:24%">B</span><span class="cap" style="left:1%;bottom:17%">C</span><span class="cap" style="right:1%;bottom:17%">D</span>
   </div>
   <ul class="legend">
-    <li><span class="k">A</span><b>Bag</b> (teal): one card per weapon, rarity on the title bar, mastery underneath. Tap a card and its details and EQUIP show at the bottom.</li>
-    <li><span class="k">B</span><b>Spire</b> (pink): every floor with a clear state. Beaten is green, your next fight is gold, and locked floors show the level they need.</li>
-  </ul>
-</section>
-
-<!-- 4 QUESTS + SHOP + POPUP -->
-<section>
-  <h2><span>4</span> · QUEST BOARD, SHOP AND POP-UPS</h2>
-  <div class="screen" role="img" aria-label="Quest board, Robux shop and a level-up pop-up">
-    <div class="floor"></div>
-    <div class="win" style="left:3%;top:6%;width:32%;bottom:7%">
-      <div class="bar blue"><span class="t">QUEST BOARD</span><i>✕</i></div>
-      <div class="in" style="gap:.45em">
-        <div style="background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><b>Beat 5 Waves</b><div class="meter" style="margin:.3em 0"><b style="width:60%;background:var(--blue)"></b></div><span class="px" style="font-size:.55em">3/5 · +1 TOKEN</span></div>
-        <div style="background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><b>Beat any boss</b><div class="meter" style="margin:.3em 0"><b style="width:0%"></b></div><span class="px" style="font-size:.55em">0/1 · +1 TOKEN</span></div>
-        <div style="background:#e6ffe0;border:.18em solid var(--ink);padding:.4em"><b>Login day 5 of 7</b><div class="row" style="gap:.2em;margin-top:.3em"><span class="chip green">1</span><span class="chip green">2</span><span class="chip green">3</span><span class="chip green">4</span><span class="chip gold" style="color:var(--ink)">5</span><span class="chip" style="background:#9a90b8">6</span><span class="chip pink">7!</span></div></div>
-      </div>
-    </div>
-    <div class="win" style="left:37%;top:6%;width:30%;bottom:7%">
-      <div class="bar gold"><span class="t" style="color:var(--ink);text-shadow:none">SHOP</span><i>✕</i></div>
-      <div class="in" style="gap:.45em">
-        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><span class="row"><span class="token"></span><b>10 Tokens</b></span><span class="btn green" style="padding:.3em .5em">R$ 99</span></div>
-        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><span class="row"><span class="token"></span><b>50 Tokens</b></span><span class="btn green" style="padding:.3em .5em">R$ 449</span></div>
-        <div class="row" style="justify-content:space-between;background:#fff3c4;border:.22em solid var(--ink);padding:.4em"><b>Starter Pack</b><span class="btn pink" style="padding:.3em .5em">R$ 49</span></div>
-        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><b>2x XP pass</b><span class="btn green" style="padding:.3em .5em">R$ 199</span></div>
-      </div>
-    </div>
-    <div class="win" style="right:3%;top:24%;width:27%">
-      <div class="bar green"><span class="t">LEVEL UP!</span><i>✕</i></div>
-      <div class="in" style="text-align:center"><div class="px" style="font-size:1.6em;color:var(--blue)">LV 13</div><div style="font-weight:700">+1 Arcade Token</div><div class="btn blue">NICE!</div></div>
-    </div>
-    <div class="cap" style="left:2%;top:2%">A</div><div class="cap" style="left:36%;top:2%">B</div><div class="cap" style="right:26%;top:20%">C</div>
-  </div>
-  <ul class="legend">
-    <li><span class="k">A</span><b>Quest Board</b> (blue, like the tracker): the day's quests and the login streak, with a big day 7.</li>
-    <li><span class="k">B</span><b>Shop</b> (gold): token packs, the one-time starter pack and passes. Prices here are placeholders.</li>
-    <li><span class="k">C</span><b>Pop-ups</b> (green for good news, red for warnings): one button, never more than one at a time.</li>
+    <li><span class="k">A</span><b>Boss bar</b> in a red window, the only big thing on screen.</li>
+    <li><span class="k">B</span><b>Floor banner</b> fades in when you arrive, then goes.</li>
+    <li><span class="k">C</span><b>Your bars with real numbers</b>, stamina and flasks together.</li>
+    <li><span class="k">D</span><b>Abilities</b> with a cooldown sweep. Locked ones show the mastery they need. All lobby buttons hide; "hide others' effects" is in Settings.</li>
   </ul>
 </section>
 
 <section>
-  <h2><span>★</span> · THE RULES THAT KEEP IT CONSISTENT</h2>
+  <h2><span>★</span> · OUR RULES</h2>
   <ul class="rules">
-    <li><b>Title bar colour = what the window is.</b> Blue quests, teal bag, pink Spire and Arcade, gold shop, red boss or warning, green good news. On weapons it's always the rarity colour.</li>
-    <li><b>Same parts everywhere.</b> Thick dark outline, hard drop shadow, pixel font for titles and numbers, a rounder font for names and sentences.</li>
-    <li><b>_ folds, ✕ closes.</b> Walking away from a station also closes its window, like today.</li>
-    <li><b>Fights stay clean.</b> Only the boss bar, your stats and your abilities show. Everything else waits until the fight ends.</li>
-    <li><b>Big enough for a phone.</b> Buttons at least as big as a thumb, and nothing important in the bottom corners where Roblox's own buttons sit.</li>
+    <li><b>Never sell power.</b> Robux buys luck, time, skips and looks. Floors, weapons' strength and leaderboards stay earned.</li>
+    <li><b>Always show the odds</b> on anything random, with your luck included.</li>
+    <li><b>No fake "was" prices.</b> A sale is only shown when it's real, and says how long it lasts.</li>
+    <li><b>No offers stuck on the play screen.</b> An offer shows once, at a good moment (after your first boss, when you run out of tokens), then lives in the shop.</li>
+    <li><b>Title bar colour = what the window is</b>: blue quests, teal bag, pink Arcade, gold shop, red boss, green rewards, purple Index. Weapons always wear their rarity colour.</li>
+    <li><b>Menus blur and dim the world</b> and hide the HUD; low graphics turns the blur off for weak phones.</li>
   </ul>
 </section>
 </div>
