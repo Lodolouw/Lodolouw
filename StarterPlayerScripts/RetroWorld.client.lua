@@ -231,7 +231,7 @@ local function buildStar(at)
 end
 
 ----------------------------------------------------------------------
--- Flavour text: a black box that types a line when you walk up to things
+-- Flavour text: a card that types a line when you walk up to things
 ----------------------------------------------------------------------
 local LINES = {
 	LobbySpawn = "* The castle bustles with heroes-to-be. You feel ready to GROW.",
@@ -271,33 +271,49 @@ if Workspace.CurrentCamera then
 	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitScreen)
 end
 
+-- (in the new menus' look: a light card with an ink edge and a hard shadow -
+-- the old black box felt out of place)
 local box = Instance.new("Frame")
 box.AnchorPoint = Vector2.new(0.5, 1)
 box.Position = UDim2.new(0.5, 0, 1, -150)
 box.Size = UDim2.fromOffset(660, 92)
-box.BackgroundColor3 = RGB(0, 0, 0)
-box.BorderSizePixel = 0
+box.BackgroundTransparency = 1
 box.Visible = false
 box.Parent = scaler
+local shadow = Instance.new("Frame")
+shadow.Name = "Shadow"
+shadow.Position = UDim2.fromOffset(6, 6)
+shadow.Size = UDim2.fromScale(1, 1)
+shadow.BackgroundColor3 = RGB(24, 20, 37)
+shadow.BorderSizePixel = 0
+shadow.Parent = box
+local face = Instance.new("Frame")
+face.Name = "Face"
+face.Size = UDim2.fromScale(1, 1)
+face.BackgroundColor3 = RGB(252, 250, 255)
+face.BorderSizePixel = 0
+face.ZIndex = 2
+face.Parent = box
 local border = Instance.new("UIStroke")
-border.Color = RGB(255, 255, 255)
-border.Thickness = 4
+border.Color = RGB(24, 20, 37)
+border.Thickness = 3
 border.LineJoinMode = Enum.LineJoinMode.Miter
-border.Parent = box
+border.Parent = face
 local pop = Instance.new("UIScale")
 pop.Parent = box
 local line = Instance.new("TextLabel")
 line.BackgroundTransparency = 1
 line.Position = UDim2.fromOffset(20, 14)
 line.Size = UDim2.new(1, -40, 1, -28)
-line.Font = Enum.Font.Arcade
-line.TextSize = 26
-line.TextColor3 = RGB(255, 255, 255)
+line.Font = Enum.Font.FredokaOne
+line.TextSize = 24
+line.TextColor3 = RGB(24, 20, 37)
 line.TextXAlignment = Enum.TextXAlignment.Left
 line.TextYAlignment = Enum.TextYAlignment.Top
 line.TextWrapped = true
 line.Text = ""
-line.Parent = box
+line.ZIndex = 3
+line.Parent = face
 
 local voice = nil
 local function blip()
