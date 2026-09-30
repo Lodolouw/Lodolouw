@@ -19,6 +19,8 @@
 	    PictureLoader has looked it up.
 	    UI_<name>: the menus' pixel icons (Tools/Icons/make_ui_icons.py) -
 	    WindowKit shows them on the lobby buttons, tabs and cards.
+	    Banner_<pack>: each Arcade pack's boss banner (Tools/HeadlessTests/
+	    make_banners.sh) - the Arcade menu's pack buttons.
 	Missing ones are fine: a weapon without its model is the blocky one made in
 	code, an ability without its animation still does everything else, and one
 	without its icon shows a gem in its rarity's colour.
@@ -213,6 +215,16 @@ return {
 		Token_6 = 140666288732581,
 		Token_7 = 135656266066047,
 		Token_8 = 117135288583865,
+		Banner_Cactus = 108955848219234,
+		Banner_Canvas = 109748085285750,
+		Banner_Dojo = 107229955522667,
+		Banner_Garden = 73232381477195,
+		Banner_Jungle = 140442862922873,
+		Banner_Knight = 82117426954649,
+		Banner_Neon = 121246234210534,
+		Banner_Slime = 128175895260003,
+		Banner_Speedway = 119127821707509,
+		Banner_Throne = 130055629079447,
 		UI_Arcade = 122247162477677,
 		UI_Bag = 89079472802371,
 		UI_Bolt = 118956115460209,
