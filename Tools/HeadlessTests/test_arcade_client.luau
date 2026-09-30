@@ -206,6 +206,15 @@ if SNAPS then
 			AssetIds.Icons[id] = n
 		end
 	end
+	-- (and every machine's banner)
+	for _, m in ipairs(W.Packs or {}) do
+		n += 1
+		AssetIds.Icons["Banner_" .. m.Id] = n
+	end
+	for _, m in ipairs(A.Soon or {}) do
+		n += 1
+		AssetIds.Icons["Banner_" .. m.Id] = n
+	end
 	for id, aid in pairs(AssetIds.Icons) do
 		print("ICONMAP " .. aid .. " " .. id)
 	end

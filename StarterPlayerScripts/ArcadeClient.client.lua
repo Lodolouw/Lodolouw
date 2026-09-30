@@ -480,7 +480,7 @@ UI.CAB_TOP, UI.CAB_BOTTOM = RGB(84, 40, 140), RGB(30, 16, 56) -- the cabinet
 UI.SCREEN = RGB(22, 14, 42) -- the machine's screen
 UI.BULB_OFF = RGB(120, 40, 110)
 UI.SOFT = RGB(200, 190, 240) -- quiet words on the dark screen
-UI.W_W, UI.W_H = 1060, 780
+UI.W_W, UI.W_H = 1060, 888
 
 -- (the window holds the cabinet and its hard shadow, so both pop together)
 local win = new("Frame", { Name = "Window", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(UI.W_W, UI.W_H), Visible = false, ZIndex = 2 }, scaler)
@@ -540,10 +540,30 @@ new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) 
 -- the picked machine's screen
 UI.detail = new("Frame", { Name = "Detail", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Position = UDim2.fromOffset(24, 252), Size = UDim2.new(1, -48, 0, UI.W_H - 252 - 58), ZIndex = 3 }, UI.cab)
 UI.detailEdge = WK.outline(UI.detail, INK, 4)
-UI.dTitle = WK.label(UI.detail, { Name = "MachineName", Text = "", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 26, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 14), Size = UDim2.fromOffset(620, 32), ZIndex = 5 })
-UI.dSub = WK.label(UI.detail, { Name = "Pack", Text = "", TextScaled = false, TextSize = 20, TextColor3 = UI.SOFT, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 48), Size = UDim2.fromOffset(620, 24), ZIndex = 5 })
+-- THE BANNER across the top of the screen: the machine's boss mid an epic
+-- move (a picture filmed from the game: Tools/HeadlessTests/make_banners.sh,
+-- uploaded as "Banner_<pack>"); until it's uploaded, one drawn in its colours
+UI.banner = new("Frame", { Name = "Banner", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 176), ClipsDescendants = true, ZIndex = 4 }, UI.detail)
+UI.bannerGrad = new("UIGradient", { Rotation = 0, Color = ColorSequence.new(GREY, INK) }, UI.banner)
+UI.bannerStripes = {}
+for k = 0, 7 do
+	local st = new("Frame", { Name = "Stripe", BackgroundColor3 = WHITE, BackgroundTransparency = 0.88, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(420 + k * 90, 88), Size = UDim2.fromOffset(34, 420), Rotation = 24, ZIndex = 4 }, UI.banner)
+	table.insert(UI.bannerStripes, st)
+end
+UI.bannerBoss = WK.label(UI.banner, { Name = "BossWord", Text = "", Font = WK.TITLE_FONT, TextColor3 = WHITE, TextTransparency = 0.78, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0.5, 0), Size = UDim2.fromOffset(560, 110), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 4 })
+UI.bannerPic = new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Crop, ZIndex = 5, Visible = false }, UI.banner)
+UI.bannerZoom = new("UIScale", {}, UI.bannerPic) -- (a slow push in, like a film)
+-- (a dark fade on the left, so the words read over any picture)
+do
+	local fade = new("Frame", { Name = "Fade", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Size = UDim2.new(0.6, 0, 1, 0), ZIndex = 6 }, UI.banner)
+	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) }) }, fade)
+	new("Frame", { Name = "Edge", BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -4), Size = UDim2.new(1, 0, 0, 4), ZIndex = 7 }, UI.banner)
+end
+UI.dTitle = WK.label(UI.banner, { Name = "MachineName", Text = "", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 30, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 104), Size = UDim2.fromOffset(620, 32), ZIndex = 8 })
+UI.dSub = WK.label(UI.banner, { Name = "Pack", Text = "", TextScaled = false, TextSize = 21, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22, 138), Size = UDim2.fromOffset(620, 24), ZIndex = 8 })
 UI.firstLabel = WK.label(UI.detail, { Name = "FirstSpin", Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Font = WK.TITLE_FONT, TextWrapped = true, BackgroundTransparency = 0, BackgroundColor3 = YELLOW,
-	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, 14), Size = UDim2.fromOffset(330, 50), Rotation = 3, ZIndex = 7, Visible = false })
+	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, 14), Size = UDim2.fromOffset(330, 50), Rotation = 3, ZIndex = 9, Visible = false })
 WK.outline(UI.firstLabel, INK, 3)
 new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, UI.firstLabel)
 
@@ -554,7 +574,7 @@ do
 	local left = math.floor(((UI.W_W - 48) - (6 * UI.TILE_W + 5 * UI.TILE_GAP)) / 2)
 	for i = 1, 6 do
 		-- (each tile's middle: they pop in from there)
-		local home = UDim2.fromOffset(left + (i - 1) * (UI.TILE_W + UI.TILE_GAP) + UI.TILE_W / 2, 84 + UI.TILE_H / 2)
+		local home = UDim2.fromOffset(left + (i - 1) * (UI.TILE_W + UI.TILE_GAP) + UI.TILE_W / 2, 84 + 108 + UI.TILE_H / 2)
 		local glow = new("Frame", { Name = "Glow", BackgroundColor3 = GOLD, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = home, Size = UDim2.fromOffset(UI.TILE_W + 18, UI.TILE_H + 18), ZIndex = 4, Visible = false }, UI.detail)
 		corner(glow, 14)
 		local glowScale = new("UIScale", {}, glow)
@@ -587,15 +607,15 @@ do
 end
 
 -- the jackpot meter (the pity)
-WK.label(UI.detail, { Name = "MeterTitle", Text = "JACKPOT METER", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 302), Size = UDim2.fromOffset(200, 20), ZIndex = 5 })
-UI.pityLabel = WK.label(UI.detail, { Name = "Pity", Text = "", TextScaled = false, TextSize = 19, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(212, 299), Size = UDim2.new(1, -232, 0, 24), ZIndex = 5 })
-UI.pityBar = WK.progress(UI.detail, { Name = "PityBar", Color = GOLD, Position = UDim2.fromOffset(20, 326), Size = UDim2.new(1, -76, 0, 24), ZIndex = 5 })
+WK.label(UI.detail, { Name = "MeterTitle", Text = "JACKPOT METER", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 410), Size = UDim2.fromOffset(200, 20), ZIndex = 5 })
+UI.pityLabel = WK.label(UI.detail, { Name = "Pity", Text = "", TextScaled = false, TextSize = 19, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(212, 407), Size = UDim2.new(1, -232, 0, 24), ZIndex = 5 })
+UI.pityBar = WK.progress(UI.detail, { Name = "PityBar", Color = GOLD, Position = UDim2.fromOffset(20, 434), Size = UDim2.new(1, -76, 0, 24), ZIndex = 5 })
 UI.pityBack = UI.pityBar.frame
-UI.pityStar = WK.label(UI.detail, { Name = "Star", Text = "★", TextColor3 = YELLOW, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -36, 0, 338), Size = UDim2.fromOffset(44, 44), ZIndex = 6 })
+UI.pityStar = WK.label(UI.detail, { Name = "Star", Text = "★", TextColor3 = YELLOW, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -36, 0, 446), Size = UDim2.fromOffset(44, 44), ZIndex = 6 })
 
 -- the two big buttons (or why you can't spin)
-local spin1 = WK.button(UI.detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(20, 372), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
-local spin10 = WK.button(UI.detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.new(0.5, 6, 0, 372), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
+local spin1 = WK.button(UI.detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(20, 480), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
+local spin10 = WK.button(UI.detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.new(0.5, 6, 0, 480), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
 UI.pulse1, UI.pulse10 = new("UIScale", {}, spin1), new("UIScale", {}, spin10)
 -- (ten cost less than ten ones: the sticker says how many are free)
 UI.freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 24, 0, -18), Size = UDim2.fromOffset(122, 28), Rotation = 8,
@@ -605,7 +625,7 @@ stroke(UI.freeTag, INK, 2.5)
 UI.pressMe = text(spin1, { Name = "PressMe", Text = "PRESS ME!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, -14, 0, 4), Size = UDim2.fromOffset(150, 30), Rotation = -8,
 	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 8, Visible = false })
 stroke(UI.pressMe, INK, 2.5)
-UI.lockLabel = WK.label(UI.detail, { Name = "Locked", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, BackgroundTransparency = 0, BackgroundColor3 = RGB(60, 44, 96), Position = UDim2.fromOffset(20, 372), Size = UDim2.new(1, -40, 0, 84), ZIndex = 6, Visible = false })
+UI.lockLabel = WK.label(UI.detail, { Name = "Locked", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, BackgroundTransparency = 0, BackgroundColor3 = RGB(60, 44, 96), Position = UDim2.fromOffset(20, 480), Size = UDim2.new(1, -40, 0, 84), ZIndex = 6, Visible = false })
 WK.outline(UI.lockLabel, INK, 3)
 new("UIPadding", { PaddingTop = UDim.new(0.24, 0), PaddingBottom = UDim.new(0.24, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, UI.lockLabel)
 
@@ -739,6 +759,18 @@ refresh = function()
 	UI.dTitle.Text = string.upper(e.id) .. " MACHINE"
 	UI.dTitle.TextColor3 = light:Lerp(WHITE, 0.35)
 	UI.detailEdge.Color = light
+	-- the banner: the boss's picture, or one drawn in the machine's colours
+	UI.bannerGrad.Color = ColorSequence.new(light, light:Lerp(INK, 0.75))
+	UI.bannerBoss.Text = string.upper(e.soon and e.soon.Boss or e.pack.Boss)
+	local bannerId = type(AssetIds) == "table" and AssetIds.Icons and AssetIds.Icons["Banner_" .. e.id]
+	UI.bannerPic.Visible = bannerId ~= nil
+	if bannerId and UI.bannerFor ~= e.id then
+		Pictures.show(UI.bannerPic, bannerId)
+		-- (it slides in when you pick another machine)
+		UI.bannerPic.Position = UDim2.fromScale(0.56, 0.5)
+		tween(UI.bannerPic, 0.35, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Quint)
+	end
+	UI.bannerFor = e.id
 	if e.soon then
 		UI.dSub.Text = e.soon.Boss .. "'s pack - coming in an update!"
 	else
@@ -876,6 +908,7 @@ do
 		UI.pulse1.Scale = UI.canSpin1 and (1 + 0.025 * math.sin(clock * 5)) or 1
 		UI.pulse10.Scale = UI.canSpin10 and (1 + 0.025 * math.sin(clock * 5 + 1.5)) or 1
 		UI.pityStar.Rotation = math.sin(clock * 3) * 12
+		UI.bannerZoom.Scale = 1.05 + 0.03 * math.sin(clock * 0.45)
 		if UI.pressMe.Visible then
 			UI.pressMe.Position = UDim2.new(0, -14, 0, 4 - math.abs(math.sin(clock * 6)) * 8)
 		end

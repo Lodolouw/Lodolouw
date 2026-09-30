@@ -212,6 +212,7 @@ ICON_IDS = {}  # asset id -> a weapon's key (the test's "ICONMAP id key" lines)
 ICON_DIR = os.path.join(REPO, "Tools", "Weapons", "out", "icons")
 UI_ICON_DIR = os.path.join(REPO, "Tools", "Icons", "out", "ui")
 MONEY_ICON_DIR = os.path.join(REPO, "Tools", "Icons", "out", "money")
+BANNER_DIR = os.path.join(REPO, "Tools", "Icons", "out", "banners")
 PACK_PICTURE = {}  # weapon id -> (picture, box) from Docs/weapons
 
 
@@ -320,12 +321,15 @@ def paint(items, bg):
             # (a menu icon "UI_Shop" is Tools/Icons/out/ui/Shop.png: pixel art, kept sharp)
             ui = key and key.startswith("UI_")
             path = key and (os.path.join(UI_ICON_DIR, key[3:] + ".png") if ui else os.path.join(ICON_DIR, key + ".png"))
+            banner = key and key.startswith("Banner_")  # (an Arcade machine's banner: fills its frame, cropped)
+            if banner:
+                path = os.path.join(BANNER_DIR, key + ".png")
             if key and not ui and not os.path.exists(path):
                 path = os.path.join(MONEY_ICON_DIR, key + ".png")  # (the living coin / token: Coin_1.png ...)
             if path and os.path.exists(path):
                 pic = Image.open(path).convert("RGBA")
                 x0, y0, x1, y1 = [v * SS for v in bounds(it["pts"])]
-                k = min((x1 - x0) / pic.width, (y1 - y0) / pic.height)
+                k = (max if banner else min)((x1 - x0) / pic.width, (y1 - y0) / pic.height)
                 p = pic.resize((max(1, int(pic.width * k)), max(1, int(pic.height * k))), Image.NEAREST if ui else Image.LANCZOS)
                 layer = Image.new("RGBA", size, (0, 0, 0, 0))
                 layer.paste(p, (int((x0 + x1) / 2 - p.width / 2), int((y0 + y1) / 2 - p.height / 2)), p)
