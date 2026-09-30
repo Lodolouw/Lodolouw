@@ -464,7 +464,7 @@ function RewardService.BuildChest()
 		old:Destroy()
 	end
 	local at = R.ChestAt or Vector3.new(-50, 0, 18)
-	local origin = CFrame.new(at) * CFrame.Angles(0, math.pi, 0) -- (its front, -Z, faces the path)
+	local origin = CFrame.new(at) -- (its front, -Z, faces the east-west path beside it)
 	local model = Instance.new("Model")
 	model.Name = "CommunityChest"
 	local function part(name, size, offset, color, material, props)
@@ -585,7 +585,7 @@ function RewardService.BuildChest()
 	line("Join the community: " .. Config.rewardText(R.Group), 0.55, 0.4, Color3.new(1, 1, 1))
 	sign.Parent = lidMain
 	-- the walk-up box, between the chest and the path
-	local zone = part("AutoOpenZone", Vector3.new(14, 8, 7), CFrame.new(0, 4, 6), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, {
+	local zone = part("AutoOpenZone", Vector3.new(14, 8, 7), CFrame.new(0, 4, -7), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, {
 		Transparency = 1,
 		CanCollide = false,
 		CanQuery = false,

@@ -51,6 +51,41 @@ local LIST = {
 ----------------------------------------------------------------------
 -- putting them into effect
 ----------------------------------------------------------------------
+-- is this sound group switched on? (a music group by MUSIC, the rest by SOUND EFFECTS)
+local function groupOn(g)
+	local isMusic = string.find(g.Name, "Music") ~= nil
+	return (isMusic and current.music) or (not isMusic and current.sfx)
+end
+
+-- A switched-off group STAYS off: other scripts turn groups up again (the
+-- Arcade's and the Colosseum's songs fade the lobby's back in when they
+-- stop, a fight sets its groups' levels), so any group turned up while it's
+-- off goes straight back to silent - the level it was given is kept for when
+-- it's switched on again. Groups made later are watched too.
+local watched = {}
+local function watch(g)
+	if not g:IsA("SoundGroup") or watched[g] then
+		return
+	end
+	watched[g] = true
+	if not groupOn(g) then
+		if g:GetAttribute("FullVolume") == nil then
+			g:SetAttribute("FullVolume", g.Volume)
+		end
+		g.Volume = 0
+	end
+	g:GetPropertyChangedSignal("Volume"):Connect(function()
+		if not groupOn(g) and g.Volume ~= 0 then
+			g:SetAttribute("FullVolume", g.Volume)
+			g.Volume = 0
+		end
+	end)
+end
+for _, g in ipairs(SoundService:GetChildren()) do
+	watch(g)
+end
+SoundService.ChildAdded:Connect(watch)
+
 local function apply(s)
 	for k, v in pairs(DEFAULTS) do
 		if type(s) == "table" and type(s[k]) == "boolean" then
@@ -62,8 +97,7 @@ local function apply(s)
 	-- the mix: every music group, and the effects / UI groups
 	for _, g in ipairs(SoundService:GetChildren()) do
 		if g:IsA("SoundGroup") then
-			local isMusic = string.find(g.Name, "Music") ~= nil
-			local on = (isMusic and current.music) or (not isMusic and current.sfx)
+			local on = groupOn(g)
 			if g:GetAttribute("FullVolume") == nil then
 				g:SetAttribute("FullVolume", g.Volume)
 			end
