@@ -35,7 +35,7 @@ for m in (
     Mat('leather', LEATHER, role='grip'),
     Mat('dirt', DIRT), Mat('dirt_d', DIRT_DARK), Mat('dirt_dd', E32['dkbrown']),
     Mat('steel', E32['steel'], role='metal'), Mat('steel_l', E32['silver'], role='metal'),
-    Mat('steel_d', E32['slate'], role='metal'),
+    Mat('steel_d', E32['slate'], role='metal'), Mat('silver', (236, 241, 250), 'Foil', role='metal'),
     Mat('iron', E32['dkslate'], role='metal'), Mat('iron_d', E32['night'], role='metal'),
     Mat('bronze', E32['clay'], role='metal'), Mat('bronze_l', E32['tan'], role='metal'),
     Mat('bronze_d', E32['rust'], role='metal'), Mat('patina', (76, 160, 140), role='metal'),
@@ -85,17 +85,31 @@ def dirt_clod(v, c, r, seed):
 
 
 # ----------------------------------------------------------------------
-# COMMON - Shovel Hammer (Hammer): half hammer, half shovel. A block of his
-# blue armour steel with a flared, blunt face on one end and his gold spade on
-# the other (still dirty from the dig), a riveted gold band where the handle
-# goes in; the wooden handle of his shovel, a red leather grip and a spade's
-# D-grip at the bottom
+# COMMON - Shovel Hammer (Hammer): half hammer, half shovel. The hammer end
+# is Burrowmore's own helm - his T visor on both sides with his eyes glowing
+# in the slit, a gold crest along the top and his curly gold horns - and the
+# other end his gold spade (still dirty from the dig), a riveted gold band
+# between them where the handle goes in; the wooden handle of his shovel, a
+# red leather grip and a spade's D-grip at the bottom
 # ----------------------------------------------------------------------
+def horn(v, x0, z0, out, pts, seed=0):
+    """one of his curly horns in the XZ plane: pts [(outward, up, radius)] from
+    (x0, z0), `out` = +1 or -1 (which way is outward); a shade deeper every
+    other block so the curl reads"""
+    for i in range(len(pts) - 1):
+        (a0, b0, r0), (a1, b1, r1) = pts[i], pts[i + 1]
+        for k in range(5):
+            f = k / 5.0
+            a, b, r = a0 + (a1 - a0) * f, b0 + (b1 - b0) * f, r0 + (r1 - r0) * f
+            m = 'gold' if i % 2 == 0 else 'gold_d'
+            v.ellipsoid((x0 + out * a, 0, z0 + b), (r, min(r * 1.1, 2.0), r), m)
+
+
 def shovel_hammer(v, pal):
     grip(v, -8, 31, 'wood')
     edges(v, 'wood', 'wood_l', min_open=2)
     grip(v, -5, 5, 'cape_d', wrap='cape', style='spiral', step=2)
-    for z in (-6, 6, 29, 30):
+    for z in (-6, 6):
         v.box(-2, 2, -2, 2, z, z, 'gold')
     # the D-grip, like a spade's
     v.sprite(['.GGGGG.',
@@ -104,27 +118,47 @@ def shovel_hammer(v, pal):
               'WW...WW',
               '.WWWWW.'], {'G': 'gold', 'W': 'wood_l'}, (-3, 0, -9), plane='xz',
              depth={'G': (-2, 2), 'W': (-1, 1)})
-    # the head's block, long along X
-    rounded_box(v, -10, 1, -5, 5, 31, 45, 'blue', cut=1)
-    edges(v, 'blue', 'blue_l', min_open=2)
-    v.box(-10, 1, -5, 5, 31, 31, 'blue_d', only={'blue', 'blue_l'})
-    # a gold spade on each side of it (he's the knight of spades)
-    for (x, z) in sprite_cells(SPADE7, -5, 42):
-        v.put(x, -5, z, 'gold')
-        v.put(x, 5, z, 'gold')
-    # the blunt end: a flared face with a rim
-    rounded_box(v, -12, -9, -6, 6, 30, 46, 'blue_d', cut=2)
-    edges(v, 'blue_d', 'blue', min_open=3)
-    v.box(-12, -12, -4, 4, 32, 44, 'steel_d')
-    # the band round its middle, riveted
-    for x in range(-1, 2):
-        for y in range(-6, 7):
-            for z in range(30, 47):
-                if (abs(y) == 6 or z in (30, 46)) and not (abs(y) == 6 and z in (30, 46)):
-                    v.set(x, y, z, 'gold')
+    # the helm: his armour blue, lit edges, a deeper rim round its foot and a
+    # raised brow band round its top
+    X0, X1 = -13, -2
+    rounded_box(v, X0, X1, -6, 6, 30, 46, 'blue', cut=2)
+    edges(v, 'blue', 'blue_l', min_open=3)
+    v.box(X0, X1, -6, 6, 30, 31, 'blue_d', only={'blue', 'blue_l'})
+    rounded_box(v, X0 - 1, X1, -7, 7, 42, 43, 'blue_d', cut=2, keep=True)
+    v.box(X0, X1, -6, 6, 30, 30, 'gold_d', only={'blue_d'})
+    # his visor on both sides: the T-shaped slit, his eyes glowing in it
+    cx = (X0 + X1) / 2.0   # (-7.5: between two voxels)
+    slit = [(x, z) for x in range(X0 + 1, X1) for z in (38, 39)]
+    nose = [(x, z) for x in (-8, -7) for z in range(33, 38)]
+    eyes = [(x, z) for x in (-11, -10, -5, -4) for z in (38, 39)]
+    for face in ('-y', '+y'):
+        paint_on(v, face, slit + nose, 'ink')
+        paint_on(v, face, eyes, 'eye')
+    # the striking face (-X): a steel plate, riveted
+    v.box(X0, X0, -3, 3, 33, 43, 'steel_d')
+    for (y, z) in ((-3, 33), (3, 33), (-3, 43), (3, 43)):
+        v.set(X0, y, z, 'steel_l')
+    # the crest: a gold ridge over the top from visor to visor, down each
+    # face to the slit
+    for y in range(-6, 7):
+        for x in (-8, -7):
+            v.set(x, y, 47, 'gold')
+            if abs(y) <= 5:
+                v.set(x, y, 48, 'gold_l' if abs(y) <= 4 else 'gold')
+    for face in ('-y', '+y'):
+        paint_on(v, face, [(x, z) for x in (-8, -7) for z in range(40, 47)], 'gold')
+    # his curly horns, out of the sides at the brow, up, curling back in
+    curl = [(0.0, 40.0, 2.2), (2.2, 41.4, 2.0), (3.9, 43.8, 1.8), (4.5, 46.8, 1.55),
+            (4.0, 49.4, 1.35), (2.8, 50.9, 1.15), (1.5, 51.1, 0.95), (0.7, 50.1, 0.75)]
+    horn(v, X0, 0, -1, curl)
+    horn(v, X1, 0, 1, curl)
+    # the band between helm and spade, where the handle goes in, riveted
+    rounded_box(v, -1, 1, -6, 6, 30, 46, 'gold', cut=1)
+    v.box(-1, 1, -6, 6, 46, 46, 'gold_l', only={'gold'})
     for y in (-6, 6):
         for z in (34, 38, 42):
             v.set(0, y, z, 'gold_l')
+    v.box(-2, 2, -2, 2, 29, 29, 'gold_d')
 
     # the spade: his shovel's gold blade out along +X, a rounded point
     def half(x):
@@ -161,44 +195,53 @@ def shovel_hammer(v, pal):
     dirt_clod(v, (14, -1, 35), 1.3, 3)
     dirt_clod(v, (12, 1, 33), 1.1, 4)
     dirt_clod(v, (15, 1, 37), 0.9, 5)
-    return {'smear': ((-1.2, 0, 3.8), (1.6, 0, 3.8)), 'smear_wide': ((-1.3, 0, 3.8), (1.7, 0, 3.8)),
+    return {'smear': ((-1.3, 0, 3.8), (1.6, 0, 3.8)), 'smear_wide': ((-1.4, 0, 3.8), (1.7, 0, 3.8)),
             'glow': TRIM}
 
 
 # ----------------------------------------------------------------------
 # RARE - Relic Daggers (Daggers): treasure dug out of his hoard. A leaf-shaped
-# bronze blade, old and tarnished, a gold rib down it with a gem at its foot
-# and a glint of gold near its point; a gold guard whose ends curl up like his
-# horns, a gem set in it; a grip of his belt leather wound with gold wire; a
-# ruby for a pommel
+# blade of old polished silver, a gold rib down it set with three gems and a
+# gold spade at its foot, a glint of gold near its point; a gold guard whose
+# ends curl up like his horns, a gem glowing in it; a grip of his belt leather
+# wound with gold wire; a ruby pommel in gold claws, and a lucky gold coin
+# hanging off it on a little chain
 # ----------------------------------------------------------------------
 def relic_daggers(v, pal):
-    import os
-    variant = os.environ.get('RELIC', 'A')
-    BL = {'A': ('bronze', 'bronze_l', 'bronze_d', 'patina'),
-          'B': ('steel', 'steel_l', 'steel_d', None),
-          'C': ('gold', 'gold_l', 'gold_d', None)}[variant]
-    body, edge, dark, spot = BL
-    grip(v, -3, 3, 'leather', wrap='gold', style='band', step=2)
+    grip(v, -3, 3, 'leather', wrap='gold', style='band', step=3)
     # the pommel: a ruby in gold claws
     v.box(-1, 1, -2, 2, -4, -4, 'gold')
     v.box(-1, 1, -1, 1, -6, -5, 'ruby')
+    v.set(0, 0, -7, 'ruby_d')
     for x in (-1, 1):
-        v.set(x, 1, -5, 'ruby_l')
+        v.set(x, -1, -5, 'ruby_l')
     for y in (-2, 2):
         v.set(0, y, -5, 'gold')
+        v.set(0, y, -6, 'gold_d')
+    # the lucky coin: a little chain off the pommel, a gold coin on the end
+    for (y, z) in ((2, -6), (3, -7)):
+        v.set(0, y, z, 'steel_l')
+    coin = ['.###.',
+            '#LLL#',
+            '#L#L#',
+            '#LLL#',
+            '.###.']
+    v.sprite(coin, {'#': 'gold', 'L': 'gold_l'}, (0, 2, -8), plane='yz')
+    v.set(0, 4, -10, 'gold_d')
     # the guard: its ends curl up and in, like his horns
     v.sprite(['L.........L',
-              'G.........G',
               'GG.......GG',
+              '.G.......G.',
               'GDDDGGGDDDG',
               '.GGGGGGGGG.'], {'G': 'gold', 'D': 'gold_d', 'L': 'gold_l'}, (0, -5, 8), plane='yz',
              depth={'G': (-1, 1), 'D': (-1, 1), 'L': (0, 0)})
     v.box(-2, 2, -1, 1, 4, 5, 'gold')
+    v.box(-2, 2, -1, 1, 5, 5, 'gold_l', only={'gold'})
     for s in (-2, 2):
         v.box(s, s, 0, 0, 4, 5, 'gemglow')
-    # the blade: a leaf, widest a third of the way up
-    halfw = {6: 1, 7: 2, 8: 2, 9: 3, 10: 3, 11: 3, 12: 3, 13: 3, 14: 3, 15: 3, 16: 2, 17: 2,
+
+    # the blade: a leaf, a waist at its foot, widest a third of the way up
+    halfw = {6: 1, 7: 1, 8: 2, 9: 3, 10: 4, 11: 4, 12: 4, 13: 4, 14: 3, 15: 3, 16: 3, 17: 2,
              18: 2, 19: 2, 20: 1, 21: 1, 22: 1, 23: 0, 24: 0}
 
     def width(z):
@@ -211,25 +254,25 @@ def relic_daggers(v, pal):
     def mat(z, w, t, lo, hi):
         h = halfw[z]
         if w == 0 and z <= 21:
-            return ('gold_d' if variant == 'C' else 'gold') if t != 0 else body
+            return 'gold' if t != 0 else 'steel'   # the rib
         if abs(w) == h:
-            return edge
-        return body
+            return 'silver'    # the polished edges
+        if abs(w) == 1 and h >= 3:
+            return 'steel'     # the hollows either side of the rib
+        return 'steel_l'
     blade(v, 6, 24, width, mat, thick=thick)
-    if spot:
-        speckle(v, body, spot, chance=0.16, seed=8)
-    else:
-        speckle(v, body, dark, chance=0.1, seed=8)
-    # a gem at the foot of the rib
+    # the gold spade at its foot, and three gems set up the rib
     for x in (-1, 1):
-        v.set(x, 0, 7, 'ruby')
-    # nicks in its old edges
-    v.set(0, -3, 12, None)
-    v.set(0, 2, 18, None)
-    # a glint of gold on each flat
-    for x in (-1, 1):
-        for (y, z) in ((0, 17), (1, 17), (-1, 17), (0, 16), (0, 18)):
-            v.put(x, y, z, 'eye', only={body, edge, dark, 'gold', 'gold_d', spot})
+        for (y, z) in ((0, 6), (-1, 7), (0, 7), (1, 7), (-2, 8), (-1, 8), (0, 8), (1, 8), (2, 8),
+                       (-1, 9), (1, 9)):
+            v.put(x, y, z, 'gold', only={'steel', 'steel_l', 'silver', 'gold'})
+        v.set(x, 0, 8, 'ruby')
+        v.set(x, 0, 12, 'gem')
+        v.set(x, 0, 16, 'ruby')
+        # a glint of gold on each flat, near the point
+        for (y, z) in ((0, 19), (0, 21), (-1, 20), (1, 20)):
+            v.put(x, y, z, 'eye', only={'steel', 'steel_l', 'silver', 'gold'})
+        v.put(x, 0, 20, 'gold_l', only={'steel', 'steel_l', 'silver', 'gold'})
     return {'smear': ((0, 0, 0.6), (0, 0, 2.4)), 'smear_wide': ((0, 0, 0.4), (0, 0, 2.5)), 'glow': TRIM}
 
 
@@ -295,29 +338,42 @@ def spade_scythe(v, pal):
 
 # ----------------------------------------------------------------------
 # LEGENDARY - Honour Blade (Katana): a knight's katana. Blue steel with a
-# bright edge and a line of gold glowing up its back; a gold knight's cross
-# for a guard, flared at its ends, his visor's glow in its middle; a red and
-# blue wrap
+# bright edge, a waving temper line in his armour's shine and a line of gold
+# glowing up its back; a round gold guard, four petals to it, his visor's glow
+# set in its sides; a red and blue wrap, a gold pommel with a ring, and a red
+# tassel on a gold cap swinging off it
 # ----------------------------------------------------------------------
 def honour_blade(v, pal):
     grip(v, -7, 5, 'cape', wrap='blue_d', style='diamond', step=2)
+    # the pommel: a gold cap, a ring through it
     v.box(-1, 1, -1, 1, -9, -8, 'gold')
-    v.set(0, 0, -9, 'gold_l')
-    # the guard: a knight's cross, flared at its ends
-    v.sprite(['GG.......GG',
-              'GGGGGGGGGGG',
-              'GGGGGGGGGGG',
-              'GG.......GG'], {'G': 'gold'}, (0, -5, 8), plane='yz', depth={'G': (-1, 1)})
-    v.box(-2, 2, -1, 1, 5, 8, 'gold')
-    edges(v, 'gold', 'gold_l', min_open=3)
-    for s in (-2, 2):
-        v.box(s, s, 0, 0, 6, 7, 'eye')
-    # the collar
-    v.box(-1, 1, -2, 2, 9, 10, 'gold')
-    v.box(-1, 1, -2, 2, 10, 10, 'gold_l')
+    v.box(-1, 1, -1, 1, -8, -8, 'gold_l')
+    v.set(0, 0, -10, 'gold_d')
+    v.set(0, 1, -11, 'gold_d')
+    v.set(0, -1, -11, 'gold_d')
+    v.set(0, 0, -12, 'gold_d')
+    v.set(0, 0, -11, 'cape')
+    # the guard: round and gold, four petals round it, its rim lit
+    for x in range(-5, 6):
+        for y in range(-5, 6):
+            d = math.hypot(x, y)
+            a = math.atan2(y, x)
+            r = 4.2 + 0.9 * abs(math.cos(2 * a))   # (the petals: out at the four corners of X and Y)
+            if d > r:
+                continue
+            v.set(x, y, 7, 'gold_d')
+            v.set(x, y, 8, 'gold_l' if d > r - 1.0 else 'gold')
+    for s in (-1, 1):
+        v.box(s * 5, s * 5, 0, 0, 7, 8, 'eye')    # his visor's glow, in its sides
+        v.box(0, 0, s * 5, s * 5, 7, 8, 'eye')
+    # the collar: gold, a spade stamped on each side
+    v.box(-1, 1, -2, 2, 9, 11, 'gold')
+    v.box(-1, 1, -2, 2, 11, 11, 'gold_l')
+    for x in (-1, 1):
+        v.set(x, 0, 10, 'blue_d')
 
     def width(z):
-        if z < 11 or z > 55:
+        if z < 12 or z > 55:
             return None
         lo, hi = -2.2, 2.2
         if z >= 50:
@@ -325,7 +381,7 @@ def honour_blade(v, pal):
         return (lo, hi)
 
     def curve(z):
-        return 2.4 * ((z - 11) / 44.0) ** 2
+        return 2.4 * ((z - 12) / 43.0) ** 2
 
     def mat(z, w, t, lo, hi):
         if w <= lo + 0.9:
@@ -337,8 +393,27 @@ def honour_blade(v, pal):
         if w - lo < 1.9 and math.sin(z * 0.75) > 0.2:
             return 'blue_l'    # the temper line, waving
         return 'blue'
-    blade(v, 11, 55, width, mat, curve=curve)
-    return {'smear': ((0, 0, 1.3), (0, 0, 5.5)), 'smear_wide': ((0, 0, 1.0), (0, 0, 5.6)), 'glow': EYE}
+    blade(v, 12, 55, width, mat, curve=curve)
+    # a knight's favour: a red ribbon tied round the foot of the blade, a gold
+    # spade on its knot, two tails fluttering up off its back
+    for x in range(-2, 3):
+        for y in range(-3, 4):
+            if max(abs(x), abs(y) - 1) == 2 or abs(x) == 2 or abs(y) == 3:
+                v.set(x, y, 13, 'cape')
+                v.set(x, y, 14, 'cape_d' if abs(x) == 2 else 'cape')
+    v.box(-1, 1, 4, 4, 13, 14, 'cape')
+    v.set(1, 4, 14, 'gold')
+    v.set(-1, 4, 14, 'gold')
+    for (n, lean, phase, z0, wide) in ((10, 0.3, 0.0, 15, 3), (6, 0.75, 1.9, 12, 3)):
+        for t in range(n + 1):
+            y = int(round(4 + t * lean + 0.9 * math.sin(t * 0.7 + phase)))
+            z = z0 + t
+            for dy in range(wide):
+                if t == n and dy == 1:
+                    continue   # (the swallowtail notch at its end)
+                m = 'cape_d' if dy == wide - 1 or (t + 1) % 4 == 0 else 'cape'
+                v.put(0, y + dy, z, m, keep=True)
+    return {'smear': ((0, 0, 1.4), (0, 0, 5.5)), 'smear_wide': ((0, 0, 1.1), (0, 0, 5.6)), 'glow': EYE}
 
 
 # ----------------------------------------------------------------------

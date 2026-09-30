@@ -31,6 +31,7 @@ for m in (
     glow('nitroglow', NITRO),
     glow('flame', FLAME), glow('flame_y', E32['yellow']), glow('flame_r', (255, 56, 40)),
     glow('edgeglow', (250, 100, 20)), glow('checkglow', E32['white']),
+    Mat('hazard', E32['yellow']),
     Mat('gold', E32['gold'], role='trim'), Mat('gold_l', E32['yellow'], role='trim'),
     Mat('gold_d', (208, 124, 42), role='trim'),
     Mat('iris', EYES, role='gem'), glow('gem', EYES, role='gem'),
@@ -223,9 +224,11 @@ def tyre_scythe(v, pal):
 
 # ----------------------------------------------------------------------
 # RARE - Nitro Katana (Katana): a blue nitro bottle for a handle (a white
-# label, a rounded shoulder, a chrome valve), the valve's wheel in
-# Revvington's orange for its guard; a chrome blade with blue nitro flames
-# licking up it from the guard and a glowing nitro edge
+# label with an orange band, a pressure gauge on its side with the needle in
+# the red, a rounded shoulder), a booster nozzle for a pommel with blue flame
+# roaring out of it, the bottle's valve wheel in Revvington's orange for a
+# guard; a chrome blade with a glowing nitro edge and blue flames bursting
+# off its back
 # ----------------------------------------------------------------------
 def nitro_katana(v, pal):
     # the bottle: a rounded foot, its body, a rounded shoulder
@@ -234,18 +237,39 @@ def nitro_katana(v, pal):
     v.cyl('z', (0, 0), 2.0, 4, 4, 'nitro')
     v.cyl('z', (0, 0), 1.5, 5, 5, 'nitro')
     # its label: white, an orange band round it
-    v.cyl('z', (0, 0), 2.3, -4, -1, 'stripe')
-    v.cyl('z', (0, 0), 2.3, -3, -2, 'paint')
+    v.cyl('z', (0, 0), 2.3, -7, -4, 'stripe')
+    v.cyl('z', (0, 0), 2.3, -6, -5, 'paint')
     round_shade(v, 0, 0, -9, 5, 'nitro', 'nitro_l', 'nitro_d')
     round_shade(v, 0, 0, -9, 5, 'paint', 'paint_l', 'paint_d')
-    # the valve, and its wheel for a guard
+    # the pressure gauge on its side: a chrome bezel, a white face, the
+    # needle over in the red
+    for y in range(-2, 3):
+        for z in range(-1, 4):
+            d = math.hypot(y, z - 1)
+            if d <= 2.3:
+                v.set(3, y, z, 'chrome' if d > 1.3 else 'stripe')
+    v.set(3, 0, 1, 'tyre')
+    v.set(3, 1, 2, 'flame_r')
+    v.set(3, -1, 2, 'iris')
+    # the booster: a chrome nozzle under the foot, blue flame roaring out
+    v.box(-1, 1, -1, 1, -10, -10, 'chrome_d')
+    v.cyl('z', (0, 0), 1.5, -11, -11, 'chrome')
+    v.box(-1, 1, -1, 1, -11, -11, 'tyre')
+    v.cyl('z', (0, 0), 1.5, -12, -12, 'nitroglow')
+    v.cyl('z', (0, 0), 1.0, -13, -13, 'nitro_l')
+    v.set(0, 0, -13, 'nitroglow')
+    v.set(0, 0, -14, 'nitro')
+    # the valve, and its wheel for a guard: an orange ring, four spokes
     v.box(-1, 1, -1, 1, 6, 6, 'chrome')
-    v.cyl('z', (0, 0), 3.6, 7, 8, 'paint')
-    for x, y in disc(0, 0, 3.6):
-        if x * x + y * y > 7.5 and (x + y) % 2 == 0:
-            v.set(x, y, 7, 'paint_d')
-            v.set(x, y, 8, 'paint_d')
-    v.box(-1, 1, -1, 1, 8, 8, 'chrome_l')
+    v.tube('z', (0, 0), 4.2, 3.0, 7, 8, 'paint')
+    for x, y in disc(0, 0, 4.2):
+        d = math.hypot(x, y)
+        if d >= 3.0 and (x + y) % 2 == 0:
+            v.set(x, y, 8, 'paint_l')
+    for k in range(-3, 4):
+        v.set(k, 0, 7, 'paint_d')
+        v.set(0, k, 7, 'paint_d')
+    v.box(-1, 1, -1, 1, 7, 8, 'chrome_l')
     # the collar
     v.box(-1, 1, -2, 2, 9, 10, 'chrome')
     v.box(-1, 1, -2, 2, 10, 10, 'chrome_l')
@@ -254,30 +278,53 @@ def nitro_katana(v, pal):
     def width(z):
         if z < 11 or z > 56:
             return None
-        lo, hi = -2.2, 3.2
+        lo, hi = -2.2, 2.2
         if z >= 51:
-            lo = -2.2 + (z - 51) / 5.0 * 5.2
+            lo = -2.2 + (z - 51) / 5.0 * 4.2
         return (lo, hi)
 
     def curve(z):
         return 2.2 * ((z - 11) / 45.0) ** 2
 
-    # the flames: how high each column burns (from the edge back), and its core
-    fire = [0, 9, 15, 10, 13, 7]
-    core = [0, 4, 9, 5, 7, 3]
-
     def mat(z, w, t, lo, hi):
-        col = int(math.floor(w - curve(z) + 0.5)) + 2
         if w <= lo + 0.9:
             return 'nitroglow'
-        if 1 <= col < len(fire) and z <= 11 + fire[col]:
-            return 'nitro_l' if z <= 11 + core[col] else 'nitro'
         if w >= hi - 0.9:
             return 'chrome_d'
         if w <= lo + 1.9:
             return 'chrome_l'
         return 'chrome'
     blade(v, 11, 56, width, mat, curve=curve)
+    # the flames bursting off its back: a sheet of fire all along it and
+    # tongues out of it, behind and up - white-hot at the root, blue at the tip
+    heat = {}
+
+    def burn(y, z, f):
+        if (y, z) not in heat or f < heat[(y, z)]:
+            heat[(y, z)] = f
+    for z in range(12, 40):
+        back = 2.2 + curve(z)
+        depth = 2.6 * (1 - (z - 12) / 28.0)
+        for k in range(1, int(math.ceil(depth)) + 1):
+            burn(int(math.floor(back + 0.5)) + k, z, 0.15 + 0.4 * k / max(depth, 1))
+    for z0, L, curl in ((13, 14, 3.5), (22, 13, 3.5), (30, 10, 2.5), (36, 6, 1.5)):
+        y0 = 2.2 + curve(z0) + 1
+        for i in range(41):
+            f = i / 40.0
+            cy = y0 + f * L * 0.55
+            cz = z0 + f * L * 0.8 + curl * f * f
+            half = 2.1 * (1 - f) ** 0.8 + 0.5
+            R = int(math.ceil(half))
+            for yy in range(int(cy) - R - 1, int(cy) + R + 2):
+                for zz in range(int(cz) - R - 1, int(cz) + R + 2):
+                    if (yy - cy) ** 2 + (zz - cz) ** 2 <= half * half:
+                        burn(yy, zz, f)
+    for (y, z), f in heat.items():
+        m = 'nitroglow' if f < 0.24 else ('nitro_l' if f < 0.7 else 'nitro')
+        v.put(0, y, z, m, keep=True)
+        if f < 0.55:
+            for x in (-1, 1):
+                v.put(x, y, z, m, keep=True)
     return {'smear': ((0, 0, 1.4), (0, 0, 5.5)), 'smear_wide': ((0, 0, 1.0), (0, 0, 5.7)), 'glow': NITRO}
 
 
@@ -347,10 +394,11 @@ def piston_punchers(v, pal):
 
 
 # ----------------------------------------------------------------------
-# LEGENDARY - Pit Stop Sabre (Sword): a curved chrome sabre with a
-# checkered strip down it and a glowing orange edge; its knuckle guard is a
-# spanner (its open jaw up by the blade, its ring down by the pommel, a
-# glowing groove down it) and its pommel a lug nut
+# LEGENDARY - Pit Stop Sabre (Sword): a curved chrome sabre, red hot along its
+# edge (sparks flying off it) with a band of pit-lane hazard stripes down its
+# back; its knuckle guard is a big spanner - its open jaw clamped on the bolt
+# at the end of the crossguard, an orange rubber grip on its handle, its ring
+# end round the pommel, which is a chrome lug nut
 # ----------------------------------------------------------------------
 def pit_stop_sabre(v, pal):
     grip(v, -6, 6, 'grip', wrap='paint_d', style='spiral', step=2)
@@ -362,34 +410,42 @@ def pit_stop_sabre(v, pal):
     v.box(-2, -2, -1, 1, -10, -8, 'chrome_l')
     v.box(-1, 1, -2, -2, -10, -8, 'chrome_l')
     v.cyl('z', (0, 0), 2.3, -7, -7, 'chrome_d')
-    # the crossguard, a bolt head on its end
-    v.box(-1, 1, -8, 5, 7, 8, 'chrome')
-    v.box(-1, 1, -8, 5, 8, 8, 'chrome_l')
-    v.box(-2, 2, 5, 7, 6, 9, 'chrome_d')
-    v.box(-2, 2, 6, 7, 7, 8, 'steel_d')
+    # the crossguard, a bolt head on each end
+    v.box(-1, 1, -6, 5, 7, 8, 'chrome')
+    v.box(-1, 1, -6, 5, 8, 8, 'chrome_l')
+    v.box(-2, 2, 6, 7, 6, 9, 'chrome_d')
+    v.box(-2, 2, 7, 7, 7, 8, 'steel_d')
+    v.box(-2, 2, -9, -7, 6, 9, 'chrome_d')
+    v.box(-2, 2, -9, -9, 7, 8, 'steel_d')
     # the collar at the blade's foot, in Revvington's orange
     v.box(-1, 1, -3, 3, 9, 10, 'paint')
     v.box(-1, 1, -3, 3, 10, 10, 'paint_l')
-    # the knuckle guard: a spanner - its open jaw up by the blade...
-    jaw = ['##...##',
-           '##...##',
-           '###.###',
-           '#######',
-           '.#####.',
-           '..###..']
-    v.sprite(jaw, {'#': 'chrome'}, (0, -12, 13), plane='yz', depth={'#': (-1, 1)})
-    # ...its shaft down beside the grip, a glowing groove along it...
-    v.box(-1, 1, -10, -8, -4, 7, 'chrome')
-    v.box(-1, 1, -9, -9, -3, 6, 'edgeglow')
-    v.box(0, 0, -9, -9, -3, 6, 'chrome_d')
-    # ...and its ring end down by the pommel, joined on
-    ring = ['.###.',
-            '##.##',
-            '#...#',
-            '##.##',
-            '.###.']
-    v.sprite(ring, {'#': 'chrome'}, (0, -11, -5), plane='yz', depth={'#': (-1, 1)})
-    v.box(-1, 1, -6, -3, -8, -7, 'chrome')
+    # the spanner: its open jaw clamped round that bolt...
+    jaw = ['.#####',
+           '######',
+           '##....',
+           '##....',
+           '##....',
+           '##....',
+           '######',
+           '.#####']
+    v.sprite(jaw, {'#': 'chrome'}, (0, -12, 11), plane='yz', depth={'#': (-1, 1)})
+    # ...its handle down beside the grip: chrome, an orange rubber grip...
+    v.box(-1, 1, -12, -10, -3, 3, 'chrome')
+    v.box(-1, 1, -12, -10, -2, 2, 'paint')
+    for z in (-2, 0, 2):
+        v.box(-1, 1, -12, -12, z, z, 'paint_d')
+    v.box(-1, 1, -11, -11, -2, 2, 'paint_l', only={'paint'})
+    # ...bending in under the pommel into its ring end, round the lug nut
+    for i in range(13):
+        f = i / 12.0
+        cy, cz = -11 + 6.5 * f, -4 - 4.5 * f
+        for y in range(int(cy) - 2, int(cy) + 3):
+            for z in range(int(cz) - 2, int(cz) + 3):
+                if (y - cy) ** 2 + (z - cz) ** 2 <= 1.3 ** 2:
+                    v.box(-1, 1, y, y, z, z, 'chrome', keep=True)
+    v.tube('z', (0, 0), 4.3, 3.0, -9, -8, 'chrome')
+    v.tube('z', (0, 0), 4.3, 3.6, -8, -8, 'chrome_l')
     edges(v, 'chrome', 'chrome_l', min_open=3)
 
     # the blade: a sabre, curving back (+Y), its edge -Y
@@ -410,14 +466,20 @@ def pit_stop_sabre(v, pal):
         col = int(math.floor(w - curve(z) + 0.5)) + 3
         if w <= lo + 0.9:
             return 'edgeglow'
-        if 3 <= col <= 4 and z <= 38:
-            return 'check_w' if (col + z) % 2 == 0 else 'check_k'
+        if w <= lo + 1.9:
+            return 'flame' if z >= 16 and (z * 7) % 5 == 0 else 'chrome_l'
+        if 4 <= col <= 5 and z <= 38:
+            return 'hazard' if ((z + col) // 2) % 2 == 0 else 'tyre'
         if w >= hi - 0.9:
             return 'chrome_d'
-        if w <= lo + 1.9:
-            return 'chrome_l'
         return 'chrome'
     blade(v, 11, 46, width, mat, curve=curve)
+    # sparks flying off the hot edge
+    for z0, n in ((22, 3), (30, 2), (37, 3)):
+        e = width(z0)
+        y0 = int(math.floor(e[0] + curve(z0) + 0.5)) - 1
+        for k in range(n):
+            v.set(0, y0 - k, z0 + k, 'flame_y' if k < n - 1 else 'flame')
     return {'smear': ((0, 0, 1.2), (0, 0, 4.6)), 'smear_wide': ((0, 0, 0.9), (0, 0, 4.8)), 'glow': (250, 110, 30)}
 
 
@@ -486,11 +548,12 @@ def wheelie_wrecker(v, pal):
 
 
 # ----------------------------------------------------------------------
-# SECRET - Victory Lap (Daggers): the whole hilt's a gold trophy - its
-# plinth for a pommel, its stem the grip (checkered wrap), its cup (handles
-# and all, Revvington's green eye set in it) the guard - and out of the cup
-# rises a waving checkered flag of a blade, glowing, gold edged, speed
-# streaks flying off its back
+# SECRET - Victory Lap (Daggers): the winner's trophy. The whole hilt's a gold
+# cup - its black plinth for a pommel, its stem the grip (a checkered wrap),
+# its bowl the guard, big loop handles, a green laurel round it and
+# Revvington's green eye set in it - and planted in the cup, a gold flagpole
+# with a spear point for a tip, a glowing checkered flag waving off it, speed
+# streaks flying off the flag
 # ----------------------------------------------------------------------
 def victory_lap(v, pal):
     # the plinth, a gold plate on its front
@@ -501,50 +564,62 @@ def victory_lap(v, pal):
     v.box(-1, 1, -1, 1, -4, -4, 'gold_d')
     # the stem: the grip, a checkered wrap
     grip(v, -3, 3, 'check_k', wrap='check_w', style='diamond', step=1)
-    # the cup
+    # the cup: its knot, the bowl swelling up to a lip
     v.box(-1, 1, -1, 1, 4, 4, 'gold_d')
-    v.cyl('z', (0, 0), 2.3, 5, 5, 'gold')
-    v.cyl('z', (0, 0), 3.2, 6, 8, 'gold')
-    v.tube('z', (0, 0), 3.7, 2.4, 9, 9, 'gold_l')
-    v.cyl('z', (0, 0), 2.4, 9, 9, 'gold_d')
-    round_shade(v, 0, 0, 4, 9, 'gold', 'gold_l', 'gold_d')
-    handle = ['#.',
-              '.#',
-              '.#',
-              '#.']
-    v.sprite(handle, {'#': 'gold'}, (0, 4, 8), plane='yz')
-    v.sprite(handle, {'#': 'gold'}, (0, -4, 8), plane='yz', flip=True)
-    # a green gem in the cup: Revvington's eye
-    v.box(3, 3, 0, 0, 6, 7, 'gem')
-    v.box(-3, -3, 0, 0, 6, 7, 'gem')
-
-    # the blade: a checkered flag, waving (its checks ripple)
-    def width(z):
-        if z < 10 or z > 26:
-            return None
-        h = 3.2
-        if z >= 18:
-            h = 3.2 * (26 - z) / 8.0
-        return (-h, h)
-
-    def curve(z):
-        return 0.7 * math.sin((z - 10) / 16.0 * math.pi * 1.5)
-
-    def mat(z, w, t, lo, hi):
-        if w <= lo + 0.9 or w >= hi - 0.9:
-            return 'gold_l'
-        col = int(math.floor(w - curve(z) + 0.5)) + 4
-        row = z - 10 + int(round(0.9 * math.sin(col * 1.3)))
-        return 'checkglow' if ((col // 2) + (row // 2)) % 2 == 0 else 'check_k'
-    blade(v, 10, 26, width, mat, curve=curve)
-    # speed streaks flying off its back, fading out
-    for z, n in ((13, 3), (17, 2)):
-        e = width(z)
-        y0 = int(round(e[1] + curve(z))) + 1
+    v.cyl('z', (0, 0), 1.6, 5, 5, 'gold')
+    v.cyl('z', (0, 0), 2.4, 6, 6, 'gold')
+    v.cyl('z', (0, 0), 3.2, 7, 8, 'gold')
+    v.cyl('z', (0, 0), 3.7, 9, 10, 'gold')
+    v.tube('z', (0, 0), 4.2, 3.0, 11, 11, 'gold_l')
+    v.cyl('z', (0, 0), 2.9, 11, 11, 'gold_d')
+    round_shade(v, 0, 0, 4, 11, 'gold', 'gold_l', 'gold_d')
+    # a green laurel round the bowl
+    for x, y in disc(0, 0, 3.8):
+        d = math.hypot(x, y)
+        if d > 2.9 and (x + 2 * y) % 3 == 0:
+            v.put(x, y, 8, 'iris', only={'gold', 'gold_l', 'gold_d'})
+            v.put(x, y, 9, 'iris', only={'gold', 'gold_l', 'gold_d'})
+    # Revvington's eye set in the front and back of it
+    for s in (-1, 1):
+        v.box(s * 4, s * 4, 0, 0, 9, 10, 'gem')
+    # big loop handles
+    loop = ['.###.',
+            '....#',
+            '....#',
+            '...#.',
+            '.##..']
+    for d in (-1, 0, 1):
+        v.sprite(loop, {'#': 'gold'}, (d, 3, 11), plane='yz')
+        v.sprite(loop, {'#': 'gold'}, (d, -3, 11), plane='yz', flip=True)
+    v.sprite(loop, {'#': 'gold_l'}, (-1, 3, 11), plane='yz')
+    v.sprite(loop, {'#': 'gold_l'}, (-1, -3, 11), plane='yz', flip=True)
+    # the flagpole, planted in the cup, a spear point on top
+    PY = -2
+    v.box(0, 0, PY, PY, 10, 27, 'gold')
+    v.box(-1, -1, PY, PY, 12, 27, 'gold_l')
+    v.box(-1, 1, PY - 1, PY + 1, 28, 28, 'gold_d')
+    v.box(-1, 1, PY, PY, 29, 30, 'gold')
+    v.box(0, 0, PY - 1, PY + 1, 29, 30, 'gold')
+    v.box(0, 0, PY, PY, 31, 32, 'gold_l')
+    # the flag: glowing checks, waving - it ripples out behind the pole and
+    # droops a little toward its free end
+    prev = None
+    for c in range(10):
+        y = PY + 1 + c
+        dz = int(round(1.1 * math.sin(c * 0.8)))
+        dx = int(round(0.9 * math.sin(c * 0.8 + 1.4)))
+        top, bot = 27 - c // 4, 15 + c // 3
+        for z in range(bot, top + 1):
+            m = 'checkglow' if ((c // 2) + ((z - 15) // 2)) % 2 == 0 else 'check_k'
+            v.set(dx, y, z + dz, m)
+            if prev is not None and prev != dx:
+                v.put(prev, y, z + dz, m, keep=True)   # (no gaps where it ripples)
+        prev = dx
+    # speed streaks flying off its free end, fading out
+    for z, n in ((18, 4), (25, 3), (21, 2)):
         for k in range(n):
-            v.set(0, y0 + k, z, ('flame_y', 'flame', 'flame_r')[min(k, 2)])
-        v.set(0, y0, z - 1, 'flame_y')
-    return {'smear': ((0, 0, 1.0), (0, 0, 2.5)), 'smear_wide': ((0, 0, 0.8), (0, 0, 2.6)), 'glow': (255, 255, 255)}
+            v.set(0, PY + 12 + k, z, ('flame_y', 'flame', 'flame_r', 'flame_r')[k])
+    return {'smear': ((0, 0, 1.0), (0, 0, 3.0)), 'smear_wide': ((0, 0, 0.8), (0, 0, 3.2)), 'glow': (255, 255, 255)}
 
 
 PACK = {
