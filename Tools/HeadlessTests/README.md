@@ -497,6 +497,23 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   frozen as he plunges. The film's clock runs faster or slower than the
   game's in places (the scene's header says where); `--sheet` draws a 3 x 3
   contact sheet (`Docs/youtube/burrowmore_cutscene_frames.png`).
+- `gavelgrunt_cutscene.luau` + `render_gavelgrunt_cutscene.py` - a 5.6-second
+  LOOP of KING GAVELGRUNT's Big Gulp (`Docs/youtube/gavelgrunt_gulp.mp4`):
+  the player runs at us, the wind drags them back and lifts them into his
+  mouth (GULP!), he chews, spits them out (PTOO!) and burps them face first
+  along the floor in slow motion (BUUURP!); they get up dizzy - and he's
+  opening his mouth again (NOT AGAIN!). His Big Gulp is forced twice, 5 s
+  apart, and the film runs from 1 s into the first to 1 s into the second,
+  so the last frame runs straight into the first (every pose of the player
+  is worked out from the seconds since the move began, never stepped along).
+  The hook THE FINAL BOSS ATE ME stays on top. It has quiet sound effects
+  mixed in (the game's own Big Inhale, Gulp, Munching, Spit Out and Royal
+  Burp, plus a few soft ones made in the renderer), peaking at -8 dB so they
+  sit under music, and they wrap round the loop too. `--seam` draws the last
+  frames and the first in a row (to check the loop), `--sound` writes just
+  the sound (a WAV), `--poster` the thumbnail
+  (`Docs/youtube/gavelgrunt_gulp_thumbnail.png`/`.jpg`), `--sheet` the frames
+  (`Docs/youtube/gavelgrunt_gulp_frames.png`).
 - `abilities_film.luau` + `render_abilities.py` - the weapon abilities'
   EFFECTS filmed from the real MoveFX (`Docs/animations/slime_abilities_fx.mp4`):
   each Slime ability used in turn among dummies, with tweens really playing
