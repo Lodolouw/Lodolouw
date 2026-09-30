@@ -315,7 +315,7 @@ local function message()
 	end
 	return ""
 end
-local closeBtn = button(win, "^X$")
+local closeBtn = find("Close", win)
 local spin1, spin10 = button(detail, "^SPIN x1"), button(detail, "^SPIN x10")
 assert(closeBtn and spin1 and spin10, "the menu's buttons should be there")
 

@@ -7,13 +7,18 @@
 	(ReplicatedStorage/WindowKit).
 
 	  * THE MENU: walk into the Arcade and it opens (once - close it and it
-	    stays closed until you walk out and back in), or press the ROLL
-	    button on the left, or your token counter. One card per machine on
-	    the left; the one you pick shows its six weapons with their real odds,
-	    which ones you own, the pity bar ("a Legendary or better in 12
-	    spins"), your first spin's promise, and SPIN x1 / SPIN x10. A machine
-	    you haven't opened says whose boss opens it; outside the lobby you
-	    can look but not spin.
+	    stays closed until you walk out and back in), or press the ARCADE
+	    button, or your token counter. A bright arcade cabinet: the marquee
+	    (ARCADE in lights, bulbs chasing round it, your tokens, + GET TOKENS,
+	    the X); every machine as a big button in a row (its Secret prize on
+	    it, a padlock while it's shut); and the picked machine's screen - its
+	    six prizes on a shelf (big pictures, the real chance of each in big
+	    numbers, OWNED stamps, the rare ones glowing, all bobbing), the
+	    JACKPOT METER ("a Legendary or better in 12 spins"), your first
+	    spin's promise, and two huge buttons, SPIN x1 and SPIN x10 (a
+	    "PRESS ME!" sticker bounces on it before your first spin; short of
+	    tokens, GET TOKENS gives a shake). A machine you haven't opened says
+	    whose boss opens it; outside the lobby you can look but not spin.
 	  * THE SPIN: the camera flies beside that machine, your token flicks
 	    from your hand into its coin slot and its lever comes down; then the
 	    camera flies right up to the machine's own screen, where a strip of
@@ -460,131 +465,194 @@ if Config.NewHud ~= false then
 	rollBtn.Visible = false
 end
 
--- THE WINDOW, in the old-computer window look (ReplicatedStorage/WindowKit):
--- a lavender window with a magenta title bar and a hard shadow, over a
--- purple grid
+-- THE MENU: a bright arcade cabinet (ReplicatedStorage/WindowKit's pieces).
+-- Up top the UI.marquee: ARCADE in lights with UI.bulbs chasing round it, your
+-- tokens, + GET TOKENS and the X. Under it every machine as a big button
+-- (its Secret prize on it, a padlock while it's shut). Then the picked
+-- machine's screen: its six prizes on a shelf - big pictures, the real
+-- chance of each in big numbers, OWNED stamps, the rare ones glowing - the
+-- jackpot meter, and two huge buttons: SPIN x1 and SPIN x10.
 local WK = require(ReplicatedStorage:WaitForChild("WindowKit"))
 local WC = WK.COLORS
 local dim = WK.backdrop(scaler, { Name = "Dim", Visible = false, ZIndex = 1 })
-local win, closeBtn
-do
-	local parts = WK.window(scaler, {
-		Name = "Window",
-		Title = "THE ARCADE",
-		Icon = tokenIcon(nil, 32),
-		Color = WC.Magenta,
-		BarHeight = 44,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(980, 680),
-		ZIndex = 1,
-		Visible = false,
-	})
-	win, closeBtn = parts.frame, parts.close
-end
-local winScale = new("UIScale", {}, win)
--- the toolbar: your tokens (like an address bar) and GET TOKENS
-local tokenPill = WK.panel(win, { Name = "Tokens", Position = UDim2.fromOffset(20, 60), Size = UDim2.fromOffset(280, 46), ZIndex = 3 })
-tokenIcon(tokenPill, 36, { Position = UDim2.fromOffset(6, 5), ZIndex = 4 })
-WK.label(tokenPill, { Text = "ARCADE TOKENS", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 11, TextColor3 = WC.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(52, 5), Size = UDim2.new(1, -60, 0, 14), ZIndex = 4 })
-local tokenText = WK.label(tokenPill, { Text = "0", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(52, 20), Size = UDim2.new(1, -60, 0, 22), ZIndex = 4 })
-local getBtn = WK.button(win, "+ GET TOKENS", WC.Teal, { Name = "GetTokens", Position = UDim2.fromOffset(316, 60), Size = UDim2.fromOffset(230, 46), ZIndex = 4 })
-WK.label(win, { -- (a note beside them)
-	Text = "Every drop's real chance is shown. No tricks!",
-	TextColor3 = WC.Muted,
-	TextXAlignment = Enum.TextXAlignment.Right,
-	Position = UDim2.new(1, -420, 0, 70),
-	Size = UDim2.fromOffset(400, 26),
-	ZIndex = 3,
-})
--- the status bar along the bottom: the rules, or what just happened
-local footer = new("Frame", { Name = "StatusBar", BackgroundColor3 = WC.Sunken, BorderSizePixel = 0, Position = UDim2.new(0, 12, 1, -44), Size = UDim2.new(1, -24, 0, 32), ZIndex = 3 }, win)
-WK.outline(footer, WC.Ink, 2)
-footer = WK.label(footer, {
-	Text = "The odds shown are the real chances. Your first spin is Rare or better, and a Legendary or better is guaranteed within "
-		.. A.Pity .. " spins on a machine.",
-	TextColor3 = WC.Muted,
-	Position = UDim2.fromOffset(12, 5),
-	Size = UDim2.new(1, -24, 1, -10),
-	ZIndex = 4,
-})
+local UI = {} -- (the menu's pieces)
+UI.CAB_TOP, UI.CAB_BOTTOM = RGB(84, 40, 140), RGB(30, 16, 56) -- the cabinet
+UI.SCREEN = RGB(22, 14, 42) -- the machine's screen
+UI.BULB_OFF = RGB(120, 40, 110)
+UI.SOFT = RGB(200, 190, 240) -- quiet words on the dark screen
+UI.W_W, UI.W_H = 1060, 780
 
--- the machines, down the left
+-- (the window holds the cabinet and its hard shadow, so both pop together)
+local win = new("Frame", { Name = "Window", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(UI.W_W, UI.W_H), Visible = false, ZIndex = 2 }, scaler)
+local winScale = new("UIScale", {}, win)
+new("Frame", { Name = "Shadow", BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromScale(1, 1), ZIndex = 2 }, win)
+UI.cab = new("Frame", { Name = "Cabinet", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, win)
+new("UIGradient", { Rotation = 90, Color = ColorSequence.new(UI.CAB_TOP, UI.CAB_BOTTOM) }, UI.cab)
+WK.outline(UI.cab, INK, 5)
+
+-- the UI.marquee
+UI.marquee = new("Frame", { Name = "Marquee", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 100), ZIndex = 3 }, UI.cab)
+new("UIGradient", { Rotation = 90, Color = ColorSequence.new(RGB(255, 80, 200), RGB(170, 40, 190)) }, UI.marquee)
+new("Frame", { BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -4), Size = UDim2.new(1, 0, 0, 4), ZIndex = 4 }, UI.marquee)
+UI.bulbs = {}
+do
+	local n = math.floor((UI.W_W - 40) / 32)
+	for row = 0, 1 do
+		for i = 1, n do
+			local b = new("Frame", { Name = "Bulb", BackgroundColor3 = UI.BULB_OFF, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(20 + (i - 0.5) * ((UI.W_W - 40) / n), row == 0 and 10 or 86), Size = UDim2.fromOffset(11, 11), ZIndex = 4 }, UI.marquee)
+			corner(b, 6)
+			stroke(b, INK, 1.5)
+			table.insert(UI.bulbs, b)
+		end
+	end
+end
+UI.title = WK.label(UI.marquee, { Name = "Title", Text = "ARCADE", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 46, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left,
+	Position = UDim2.fromOffset(30, 20), Size = UDim2.fromOffset(330, 52), Rotation = -2, ZIndex = 5 })
+new("UIStroke", { Color = INK, Thickness = 4 }, UI.title)
+WK.label(UI.marquee, { Text = "spin a machine, win a weapon!", TextScaled = false, TextSize = 20, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left,
+	Position = UDim2.fromOffset(36, 62), Size = UDim2.fromOffset(340, 20), Rotation = -2, ZIndex = 5 })
+local closeBtn = WK.x(UI.marquee, { Position = UDim2.new(1, -24 - 58, 0, 22), Size = UDim2.fromOffset(58, 58), ZIndex = 6 })
+local getBtn = WK.button(UI.marquee, "+ GET TOKENS", WC.Green, { Name = "GetTokens", Position = UDim2.new(1, -24 - 58 - 16 - 210, 0, 22), Size = UDim2.fromOffset(210, 58), ZIndex = 6 })
+UI.getScale = new("UIScale", {}, getBtn)
+UI.tokenPill = new("Frame", { Name = "Tokens", BackgroundColor3 = WHITE, BorderSizePixel = 0, Position = UDim2.new(1, -24 - 58 - 16 - 210 - 14 - 190, 0, 22), Size = UDim2.fromOffset(190, 58), ZIndex = 5 }, UI.marquee)
+WK.outline(UI.tokenPill, INK, 3)
+tokenIcon(UI.tokenPill, 46, { Position = UDim2.fromOffset(6, 6), ZIndex = 6 })
+UI.tokenText = WK.label(UI.tokenPill, { Name = "Count", Text = "0", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 26, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(60, 10), Size = UDim2.new(1, -68, 0, 38), ZIndex = 6 })
+
+-- the machines, in a row
 local list = new("ScrollingFrame", {
 	Name = "Machines",
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
-	Position = UDim2.fromOffset(20, 120),
-	Size = UDim2.fromOffset(282, 506),
+	Position = UDim2.fromOffset(24, 110),
+	Size = UDim2.new(1, -48, 0, 132),
 	CanvasSize = UDim2.new(),
-	AutomaticCanvasSize = Enum.AutomaticSize.Y,
-	ScrollBarThickness = 10,
-	ScrollBarImageColor3 = WC.Magenta,
+	AutomaticCanvasSize = Enum.AutomaticSize.X,
+	ScrollingDirection = Enum.ScrollingDirection.X,
+	ScrollBarThickness = 6,
+	ScrollBarImageColor3 = YELLOW,
 	ZIndex = 3,
-}, win)
-new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+}, UI.cab)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) }, list)
 
--- the chosen machine, on the right: a box with a strip in the machine's colour
-local detail = WK.panel(win, { Name = "Detail", Position = UDim2.fromOffset(318, 120), Size = UDim2.fromOffset(642, 506), ZIndex = 3 }, GREEN, 42)
-local detailStrip = detail:FindFirstChild("Strip")
-local dTitle = WK.label(detail, { Text = "", Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(16, 0), Size = UDim2.new(1, -32, 0, 42), ZIndex = 5 })
-local dSub = WK.label(detail, { Text = "", TextColor3 = WC.Muted, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(16, 50), Size = UDim2.new(1, -32, 0, 22), ZIndex = 4 })
-local rows = {}
-for i = 1, 6 do
-	local r = new("Frame", { BackgroundColor3 = WHITE, BorderSizePixel = 0, Position = UDim2.fromOffset(14, 80 + (i - 1) * 44), Size = UDim2.fromOffset(614, 38), ZIndex = 4 }, detail)
-	WK.outline(r, WC.Ink, 2)
-	local bar = new("Frame", { BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.fromOffset(10, 38), ZIndex = 5 }, r)
-	rows[i] = {
-		frame = r,
-		bar = bar,
-		rarity = WK.label(r, { Font = WK.TITLE_FONT, BackgroundTransparency = 0, Position = UDim2.fromOffset(18, 6), Size = UDim2.fromOffset(112, 26), ZIndex = 5 }),
-		icon = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, Position = UDim2.fromOffset(138, 1), Size = UDim2.fromOffset(36, 36), ScaleType = Enum.ScaleType.Fit, ZIndex = 5, Visible = false }, r),
-		gem = new("Frame", { Name = "Gem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(156, 19), Size = UDim2.fromOffset(16, 16), Rotation = 45, BorderSizePixel = 0, ZIndex = 5 }, r),
-		name = WK.label(r, { Position = UDim2.fromOffset(182, 6), Size = UDim2.fromOffset(170, 26), TextScaled = false, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
-		kind = WK.label(r, { Position = UDim2.fromOffset(354, 8), Size = UDim2.fromOffset(80, 22), TextScaled = false, TextSize = 16, TextColor3 = WC.Muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 }),
-		odds = WK.label(r, { Position = UDim2.fromOffset(432, 6), Size = UDim2.fromOffset(62, 26), TextScaled = false, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
-		owned = WK.label(r, { Position = UDim2.fromOffset(500, 8), Size = UDim2.fromOffset(106, 22), TextScaled = false, TextSize = 15, TextColor3 = RGB(46, 140, 46), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 5 }),
-	}
-	rows[i].pillEdge = WK.outline(rows[i].rarity, WC.Ink, 2)
-	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, rows[i].rarity)
-	stroke(rows[i].gem, INK, 2)
+-- the picked machine's screen
+UI.detail = new("Frame", { Name = "Detail", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Position = UDim2.fromOffset(24, 252), Size = UDim2.new(1, -48, 0, UI.W_H - 252 - 58), ZIndex = 3 }, UI.cab)
+UI.detailEdge = WK.outline(UI.detail, INK, 4)
+UI.dTitle = WK.label(UI.detail, { Name = "MachineName", Text = "", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 26, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 14), Size = UDim2.fromOffset(620, 32), ZIndex = 5 })
+UI.dSub = WK.label(UI.detail, { Name = "Pack", Text = "", TextScaled = false, TextSize = 20, TextColor3 = UI.SOFT, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 48), Size = UDim2.fromOffset(620, 24), ZIndex = 5 })
+UI.firstLabel = WK.label(UI.detail, { Name = "FirstSpin", Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Font = WK.TITLE_FONT, TextWrapped = true, BackgroundTransparency = 0, BackgroundColor3 = YELLOW,
+	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, 14), Size = UDim2.fromOffset(330, 50), Rotation = 3, ZIndex = 7, Visible = false })
+WK.outline(UI.firstLabel, INK, 3)
+new("UIPadding", { PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, UI.firstLabel)
+
+-- the prize shelf: six UI.tiles
+UI.TILE_W, UI.TILE_H, UI.TILE_GAP = 152, 204, 12
+UI.tiles = {}
+do
+	local left = math.floor(((UI.W_W - 48) - (6 * UI.TILE_W + 5 * UI.TILE_GAP)) / 2)
+	for i = 1, 6 do
+		-- (each tile's middle: they pop in from there)
+		local home = UDim2.fromOffset(left + (i - 1) * (UI.TILE_W + UI.TILE_GAP) + UI.TILE_W / 2, 84 + UI.TILE_H / 2)
+		local glow = new("Frame", { Name = "Glow", BackgroundColor3 = GOLD, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = home, Size = UDim2.fromOffset(UI.TILE_W + 18, UI.TILE_H + 18), ZIndex = 4, Visible = false }, UI.detail)
+		corner(glow, 14)
+		local glowScale = new("UIScale", {}, glow)
+		local t = new("Frame", { Name = "Prize" .. i, BackgroundColor3 = WHITE, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = home, Size = UDim2.fromOffset(UI.TILE_W, UI.TILE_H), ZIndex = 5 }, UI.detail)
+		local scale = new("UIScale", {}, t)
+		local edge = WK.outline(t, INK, 3)
+		local band = new("Frame", { Name = "Band", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 6 }, t)
+		new("Frame", { BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 3), ZIndex = 6 }, band)
+		local rarity = WK.label(band, { Name = "Rarity", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 13, Size = UDim2.fromScale(1, 1), ZIndex = 7 })
+		local spot = new("Frame", { Name = "Spot", BackgroundColor3 = WHITE, BackgroundTransparency = 0.3, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(UI.TILE_W / 2, 94), Size = UDim2.fromOffset(104, 104), ZIndex = 6 }, t)
+		corner(spot, 52)
+		local icon = new("ImageLabel", { Name = "Icon", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(UI.TILE_W / 2, 94), Size = UDim2.fromOffset(100, 100), ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = 7, Visible = false }, t)
+		local g = new("Frame", { Name = "Gem", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(UI.TILE_W / 2, 94), Size = UDim2.fromOffset(40, 40), Rotation = 45, BorderSizePixel = 0, ZIndex = 7 }, t)
+		stroke(g, INK, 3)
+		local name = WK.label(t, { Name = "WeaponName", Position = UDim2.fromOffset(6, 146), Size = UDim2.new(1, -12, 0, 24), ZIndex = 7 })
+		new("UITextSizeConstraint", { MaxTextSize = 20 }, name)
+		local odds = WK.label(t, { Name = "Odds", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 17, BackgroundTransparency = 0, BackgroundColor3 = WHITE, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -8), Size = UDim2.fromOffset(104, 26), ZIndex = 7 })
+		WK.outline(odds, INK, 2.5)
+		local owned = WK.label(t, { Name = "Owned", Text = "", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 10, TextColor3 = WHITE, TextStrokeTransparency = 0, BackgroundTransparency = 0, BackgroundColor3 = WC.Green,
+			AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 8, 0, 34), Size = UDim2.fromOffset(78, 34), Rotation = 12, ZIndex = 8, Visible = false })
+		WK.outline(owned, INK, 2.5)
+		UI.tiles[i] = { frame = t, home = home, scale = scale, edge = edge, band = band, rarity = rarity, spot = spot, icon = icon, gem = g, name = name, odds = odds, owned = owned, glow = glow, glowScale = glowScale }
+		t.MouseEnter:Connect(function()
+			tween(scale, 0.12, { Scale = 1.07 })
+		end)
+		t.MouseLeave:Connect(function()
+			tween(scale, 0.12, { Scale = 1 })
+		end)
+	end
 end
-local pityLabel = WK.label(detail, { Text = "", Position = UDim2.fromOffset(16, 344), Size = UDim2.new(1, -32, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
-local pityBar = WK.progress(detail, { Name = "Pity", Color = WC.Magenta, Position = UDim2.fromOffset(16, 366), Size = UDim2.new(1, -32, 0, 20), ZIndex = 4 })
-local pityBack = pityBar.frame
-local firstLabel = WK.label(detail, { Text = "★ YOUR FIRST SPIN IS RARE OR BETTER! ★", Font = WK.TITLE_FONT, BackgroundTransparency = 0, BackgroundColor3 = WC.Orange, TextColor3 = WHITE, TextStrokeTransparency = 0, Position = UDim2.fromOffset(16, 392), Size = UDim2.new(1, -32, 0, 26), ZIndex = 4, Visible = false })
-WK.outline(firstLabel, WC.Ink, 2)
-new("UIPadding", { PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, firstLabel)
-local spin1 = WK.button(detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(16, 436), Size = UDim2.fromOffset(294, 56), ZIndex = 5 })
-local spin10 = WK.button(detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.fromOffset(326, 436), Size = UDim2.fromOffset(294, 56), ZIndex = 5 })
--- (ten cost less than ten ones: the ribbon says how many are free)
-local freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 24, 0, -16), Size = UDim2.fromOffset(122, 28), Rotation = 8,
-	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 7 })
-stroke(freeTag, INK, 2.5)
-local lockLabel = WK.label(detail, { Text = "", BackgroundTransparency = 0, BackgroundColor3 = WC.Sunken, Position = UDim2.fromOffset(16, 436), Size = UDim2.fromOffset(604, 56), ZIndex = 5, Visible = false })
-WK.outline(lockLabel, WC.Ink, 2)
-new("UIPadding", { PaddingTop = UDim.new(0.22, 0), PaddingBottom = UDim.new(0.22, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, lockLabel)
--- what just happened, in the status bar (over the rules while it's showing)
-local message = WK.label(win, { Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -39), Size = UDim2.new(1, -48, 0, 22), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 6 })
+
+-- the jackpot meter (the pity)
+WK.label(UI.detail, { Name = "MeterTitle", Text = "JACKPOT METER", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = YELLOW, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(20, 302), Size = UDim2.fromOffset(200, 20), ZIndex = 5 })
+UI.pityLabel = WK.label(UI.detail, { Name = "Pity", Text = "", TextScaled = false, TextSize = 19, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(212, 299), Size = UDim2.new(1, -232, 0, 24), ZIndex = 5 })
+UI.pityBar = WK.progress(UI.detail, { Name = "PityBar", Color = GOLD, Position = UDim2.fromOffset(20, 326), Size = UDim2.new(1, -76, 0, 24), ZIndex = 5 })
+UI.pityBack = UI.pityBar.frame
+UI.pityStar = WK.label(UI.detail, { Name = "Star", Text = "★", TextColor3 = YELLOW, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -36, 0, 338), Size = UDim2.fromOffset(44, 44), ZIndex = 6 })
+
+-- the two big buttons (or why you can't spin)
+local spin1 = WK.button(UI.detail, "SPIN x1", WC.Magenta, { Name = "Spin1", Position = UDim2.fromOffset(20, 372), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
+local spin10 = WK.button(UI.detail, "SPIN x10", WC.Violet, { Name = "Spin10", Position = UDim2.new(0.5, 6, 0, 372), Size = UDim2.new(0.5, -26, 0, 84), ZIndex = 6 })
+UI.pulse1, UI.pulse10 = new("UIScale", {}, spin1), new("UIScale", {}, spin10)
+-- (ten cost less than ten ones: the sticker says how many are free)
+UI.freeTag = text(spin10, { Name = "Free", Text = "1 FREE!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 24, 0, -18), Size = UDim2.fromOffset(122, 28), Rotation = 8,
+	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 8 })
+stroke(UI.freeTag, INK, 2.5)
+-- (your very first spin: a sticker bouncing on SPIN x1 - press it!)
+UI.pressMe = text(spin1, { Name = "PressMe", Text = "PRESS ME!", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 14, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, -14, 0, 4), Size = UDim2.fromOffset(150, 30), Rotation = -8,
+	BackgroundTransparency = 0, BackgroundColor3 = YELLOW, TextColor3 = INK, TextStrokeTransparency = 1, ZIndex = 8, Visible = false })
+stroke(UI.pressMe, INK, 2.5)
+UI.lockLabel = WK.label(UI.detail, { Name = "Locked", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, BackgroundTransparency = 0, BackgroundColor3 = RGB(60, 44, 96), Position = UDim2.fromOffset(20, 372), Size = UDim2.new(1, -40, 0, 84), ZIndex = 6, Visible = false })
+WK.outline(UI.lockLabel, INK, 3)
+new("UIPadding", { PaddingTop = UDim.new(0.24, 0), PaddingBottom = UDim.new(0.24, 0), PaddingLeft = UDim.new(0.03, 0), PaddingRight = UDim.new(0.03, 0) }, UI.lockLabel)
+
+-- the rules along the bottom - or what just happened, over them
+UI.footer = WK.label(UI.cab, {
+	Name = "Rules",
+	Text = "Real odds, always shown. Your first spin is Rare or better. A Legendary or better within " .. A.Pity .. " spins on every machine.",
+	TextColor3 = UI.SOFT,
+	Position = UDim2.new(0, 24, 1, -46),
+	Size = UDim2.new(1, -48, 0, 30),
+	ZIndex = 4,
+})
+new("UITextSizeConstraint", { MaxTextSize = 18 }, UI.footer)
+UI.message = WK.label(win, { Name = "Message", Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, -47), Size = UDim2.new(1, -48, 0, 30), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 6 })
 
 local selected = MACHINES[1] and MACHINES[1].id or nil
-local cards = {} -- [id] = the card on the left
+UI.cards = {} -- [id] = the machine's button in the row
 
 local function say(textValue, color)
-	message.Text = textValue or ""
-	message.TextColor3 = color or WHITE
-	message.TextTransparency, message.TextStrokeTransparency = 0, 0
-	footer.Visible = (textValue or "") == ""
+	UI.message.Text = textValue or ""
+	UI.message.TextColor3 = color or WHITE
+	UI.message.TextTransparency, UI.message.TextStrokeTransparency = 0, 0
+	UI.footer.Visible = (textValue or "") == ""
 	local mine = textValue
 	task.delay(3.5, function()
-		if message.Text == mine then
-			tween(message, 0.4, { TextTransparency = 1, TextStrokeTransparency = 1 })
+		if UI.message.Text == mine then
+			tween(UI.message, 0.4, { TextTransparency = 1, TextStrokeTransparency = 1 })
 			task.delay(0.4, function()
-				if message.Text == mine then
-					footer.Visible = true
+				if UI.message.Text == mine then
+					UI.footer.Visible = true
 				end
 			end)
 		end
+	end)
+end
+
+-- a shake, to say "over here!" (GET TOKENS when you're short)
+local function nudge(b, s)
+	s.Scale = 1.15
+	tween(s, 0.35, { Scale = 1 }, Enum.EasingStyle.Elastic)
+	local r0 = b.Rotation or 0
+	task.spawn(function()
+		for _, r in ipairs({ -6, 6, -4, 4, 0 }) do
+			b.Rotation = r0 + r
+			task.wait(0.05)
+		end
+		b.Rotation = r0
 	end)
 end
 
@@ -593,100 +661,166 @@ end
 ----------------------------------------------------------------------
 local refresh -- (below)
 
+-- the prize a machine shows off on its button: its Secret
+function UI.showOff(e)
+	if e.soon then
+		return nil
+	end
+	local drops = dropsOf(e.id)
+	return drops[#drops]
+end
+
 for i, e in ipairs(MACHINES) do
 	local color = e.machine and e.machine.Light or GREY
-	-- (a little window: a strip in the machine's colour with its name; the
-	-- button itself is see-through, holding the face and its hard shadow)
-	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.new(1, -14, 0, 84), LayoutOrder = i, ZIndex = 4 }, list)
-	new("Frame", { Name = "Shadow", BackgroundColor3 = WC.Ink, BorderSizePixel = 0, Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -5, 1, -5), ZIndex = 4 }, card)
-	local face = new("Frame", { Name = "Face", BackgroundColor3 = WC.Panel, BorderSizePixel = 0, Size = UDim2.new(1, -5, 1, -5), ZIndex = 5 }, card)
-	local edge = WK.outline(face, WC.Ink, 3)
-	local strip = new("Frame", { Name = "Strip", BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 6 }, face)
-	new("Frame", { BackgroundColor3 = WC.Ink, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 2), ZIndex = 6 }, strip)
-	local name = WK.label(face, { Text = string.upper(e.id), Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, TextScaled = false, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 0, 30), ZIndex = 7 })
-	local sub = WK.label(face, { Text = "", TextColor3 = WC.Muted, TextScaled = false, TextSize = 18, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 36), Size = UDim2.new(1, -20, 0, 36), ZIndex = 6 })
-	cards[e.id] = { card = card, face = face, edge = edge, name = name, sub = sub }
+	local card = new("TextButton", { Name = e.id, Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 112), LayoutOrder = i, ZIndex = 4 }, list)
+	local scale = new("UIScale", {}, card)
+	new("Frame", { Name = "Shadow", BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -6, 1, -6), ZIndex = 4 }, card)
+	local face = new("Frame", { Name = "Face", BackgroundColor3 = color, BorderSizePixel = 0, Size = UDim2.new(1, -6, 1, -6), ZIndex = 5 }, card)
+	local edge = WK.outline(face, INK, 3)
+	WK.shine(face, 0.18)
+	local name = WK.label(face, { Name = "Name", Text = string.upper(e.id), Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, TextScaled = false, TextSize = 12, Position = UDim2.fromOffset(4, 5), Size = UDim2.new(1, -8, 0, 16), ZIndex = 7 })
+	local prize = UI.showOff(e)
+	local image = prize and iconFor(prize.def, prize.id, 150)
+	local pic = new("ImageLabel", { Name = "Pic", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 52), Size = UDim2.fromOffset(56, 56), Image = image or "",
+		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = 7, Visible = image ~= nil }, face)
+	local mark = WK.label(face, { Name = "Mark", Text = e.soon and "?" or "★", Font = WK.TITLE_FONT, TextColor3 = WHITE, TextStrokeTransparency = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 52), Size = UDim2.fromOffset(44, 44), ZIndex = 7, Visible = image == nil })
+	local lock = WK.label(face, { Name = "Lock", Text = "🔒", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, 18), Size = UDim2.fromOffset(34, 34), Rotation = 10, ZIndex = 8, Visible = false })
+	local sub = WK.label(face, { Name = "Sub", Text = "", TextColor3 = WHITE, TextStrokeTransparency = 0, TextWrapped = true, Position = UDim2.new(0, 4, 1, -28), Size = UDim2.new(1, -8, 0, 24), ZIndex = 7 })
+	new("UITextSizeConstraint", { MaxTextSize = 16 }, sub)
+	UI.cards[e.id] = { card = card, scale = scale, face = face, edge = edge, name = name, pic = pic, mark = mark, lock = lock, sub = sub }
 	card.Activated:Connect(function()
-		selected = e.id
-		play({ "UI Blip" }, 1.1, 0.6)
+		if selected ~= e.id then
+			selected = e.id
+			play({ "UI Blip" }, 1.1, 0.6)
+		end
 		refresh()
+	end)
+	card.MouseEnter:Connect(function()
+		if selected ~= e.id then
+			tween(scale, 0.12, { Scale = 1.05 })
+		end
+	end)
+	card.MouseLeave:Connect(function()
+		if selected ~= e.id then
+			tween(scale, 0.12, { Scale = 1 })
+		end
 	end)
 end
 
+UI.shownMachine = nil -- (the prizes pop in when you pick another machine)
+UI.canSpin1, UI.canSpin10 = false, false
 refresh = function()
 	local t = tokens()
-	tokenText.Text = tostring(t)
+	UI.tokenText.Text = tostring(t)
 	rollBadge.Text = tostring(t)
 	rollBadge.Visible = t > 0
 	local spins = state and state.Arcade and tonumber(state.Arcade.spins) or 0
 	for _, e in ipairs(MACHINES) do
-		local c = cards[e.id]
+		local c = UI.cards[e.id]
+		local open = not e.soon and Config.arcadeOpen(state or {}, e.id)
 		if e.soon then
 			c.sub.Text = "Coming soon"
 		else
-			local open = Config.arcadeOpen(state or {}, e.id)
 			c.sub.Text = open and (e.machine.Price .. (e.machine.Price == 1 and " token a spin" or " tokens a spin")) or ("Beat " .. e.pack.Boss .. " to open")
 		end
+		c.lock.Visible = not e.soon and not open
+		c.pic.ImageColor3 = open and WHITE or RGB(120, 110, 150)
 		local picked = e.id == selected
-		c.edge.Color = picked and WC.Magenta or WC.Ink
-		c.edge.Thickness = picked and 4 or 3
-		c.face.BackgroundColor3 = picked and RGB(255, 232, 250) or WC.Panel
+		c.edge.Color = picked and YELLOW or INK
+		c.edge.Thickness = picked and 5 or 3
+		c.scale.Scale = picked and 1.08 or 1
+		c.face.BackgroundColor3 = (e.machine and e.machine.Light or GREY):Lerp(RGB(40, 30, 60), (open or picked) and 0 or 0.45)
 	end
 	local e = machineEntry(selected)
 	if not e then
 		return
 	end
 	local light = e.machine and e.machine.Light or GREY
-	dTitle.Text = string.upper(e.id) .. " MACHINE"
-	if detailStrip then
-		detailStrip.BackgroundColor3 = light
-	end
+	UI.dTitle.Text = string.upper(e.id) .. " MACHINE"
+	UI.dTitle.TextColor3 = light:Lerp(WHITE, 0.35)
+	UI.detailEdge.Color = light
 	if e.soon then
-		dSub.Text = e.soon.Boss .. "'s pack - coming in an update!"
+		UI.dSub.Text = e.soon.Boss .. "'s pack - coming in an update!"
 	else
-		dSub.Text = e.pack.Boss .. "'s pack  -  Spire floor " .. e.pack.Floor
+		UI.dSub.Text = e.pack.Boss .. "'s pack  -  Spire floor " .. e.pack.Floor
 	end
 	local drops = e.soon and {} or dropsOf(e.id)
-	for i, r in ipairs(rows) do
+	local popIn = UI.shownMachine ~= e.id
+	UI.shownMachine = e.id
+	for i, r in ipairs(UI.tiles) do
 		local d = drops[i]
-		r.frame.Visible = d ~= nil
+		r.frame.Visible = true
+		r.glow.Visible = false
 		if d then
 			local col = rarityColor(d.rarity)
-			r.bar.BackgroundColor3 = col
+			local secret = d.rarity == "Secret"
+			r.frame.BackgroundColor3 = secret and RGB(40, 28, 70) or col:Lerp(WHITE, 0.6)
+			r.band.BackgroundColor3 = secret and RGB(24, 16, 44) or col
 			r.rarity.Text = string.upper(d.rarity)
-			-- (a pill in its colour: white words on the strong colours)
-			r.rarity.BackgroundColor3 = col
-			local strong = d.rarity == "Rare" or d.rarity == "Epic" or d.rarity == "Mythic"
+			local strong = d.rarity == "Rare" or d.rarity == "Epic" or d.rarity == "Mythic" or secret
 			r.rarity.TextColor3 = strong and WHITE or INK
 			r.rarity.TextStrokeTransparency = strong and 0 or 1
-			if d.rarity == "Secret" and not r.rainbow then
-				r.rainbow = rainbow(r.pillEdge) -- (its outline runs through the rainbow)
-				r.pillEdge.Thickness = 3
-			elseif d.rarity ~= "Secret" and r.rainbow then
-				r.pillEdge.Thickness = 2
+			if secret and not r.rainbow then
+				r.rainbow = rainbow(r.edge) -- (its outline runs through the rainbow)
+				r.edge.Thickness = 4
+			elseif not secret and r.rainbow then
+				r.edge.Thickness = 3
 				rainbows[r.rainbow] = nil
 				r.rainbow:Destroy()
 				r.rainbow = nil
 			end
 			r.name.Text = d.def and d.def.Name or d.id
+			r.name.TextColor3 = secret and WHITE or INK
 			local icon = iconFor(d.def, d.id)
 			r.icon.Image = icon or ""
 			r.icon.Visible = icon ~= nil
 			r.gem.Visible = icon == nil
 			r.gem.BackgroundColor3 = col
-			r.kind.Text = d.def and d.def.Type or ""
+			r.spot.Visible = true
 			r.odds.Text = oddsText(d.rarity)
 			local lv = ownedLevel(d.id)
-			r.owned.Text = lv and ("OWNED Lv " .. lv) or ""
+			r.owned.Visible = lv ~= nil
+			r.owned.Text = lv and ("OWNED\nLv " .. lv) or ""
+			-- (the rare ones glow)
+			if d.rarity == "Legendary" or d.rarity == "Mythic" or secret then
+				r.glow.Visible = true
+				r.glow.BackgroundColor3 = secret and RGB(255, 255, 255) or col
+			end
+		else
+			-- (a machine that's coming: six mystery boxes)
+			r.frame.BackgroundColor3 = RGB(70, 58, 104)
+			r.band.BackgroundColor3 = RGB(50, 40, 80)
+			r.rarity.Text = "???"
+			r.rarity.TextColor3 = WHITE
+			r.name.Text = ""
+			r.icon.Visible = false
+			r.gem.Visible = false
+			r.spot.Visible = false
+			r.odds.Text = "?"
+			r.owned.Visible = false
+			if r.rainbow then
+				r.edge.Thickness = 3
+				rainbows[r.rainbow] = nil
+				r.rainbow:Destroy()
+				r.rainbow = nil
+			end
+		end
+		if popIn then
+			r.scale.Scale, r.glowScale.Scale = 0.4, 0.4
+			task.delay((i - 1) * 0.04, function()
+				tween(r.scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+				tween(r.glowScale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+			end)
 		end
 	end
 	local pity = state and state.Arcade and state.Arcade.pity and tonumber(state.Arcade.pity[e.id]) or 0
 	local left = math.max(1, A.Pity - pity)
-	pityLabel.Visible = not e.soon
-	pityBack.Visible = not e.soon
-	pityLabel.Text = "A LEGENDARY OR BETTER IN " .. left .. (left == 1 and " SPIN" or " SPINS") .. " (at most)"
-	pityBar:set(pity / A.Pity)
-	firstLabel.Visible = not e.soon and spins == 0
+	UI.pityLabel.Visible = not e.soon
+	UI.pityBack.Visible = not e.soon
+	UI.pityStar.Visible = not e.soon
+	UI.pityLabel.Text = "A LEGENDARY OR BETTER IN " .. left .. (left == 1 and " SPIN" or " SPINS") .. " (at most)"
+	UI.pityBar:set(pity / A.Pity)
+	UI.firstLabel.Visible = not e.soon and spins == 0
 	-- what the buttons can do
 	local open, why = false, nil
 	if e.soon then
@@ -698,18 +832,54 @@ refresh = function()
 		end
 	end
 	spin1.Visible, spin10.Visible = open, open
-	lockLabel.Visible = not open
-	lockLabel.Text = why or ""
+	UI.lockLabel.Visible = not open
+	UI.lockLabel.Text = (why and not e.soon) and ("🔒  " .. why) or (why or "")
+	UI.canSpin1, UI.canSpin10 = false, false
+	UI.pressMe.Visible = false
 	if open then
 		local m = e.machine
 		spin1.Text = "SPIN x1\n" .. m.Price .. (m.Price == 1 and " TOKEN" or " TOKENS")
 		spin10.Text = "SPIN x10\n" .. m.Ten .. " TOKENS"
 		local free = math.floor((m.Price * 10 - m.Ten) / m.Price)
-		freeTag.Visible = free > 0
-		freeTag.Text = free .. " FREE!"
-		spin1.BackgroundColor3 = t >= m.Price and WC.Magenta or WC.Off
-		spin10.BackgroundColor3 = t >= m.Ten and WC.Violet or WC.Off
+		UI.freeTag.Visible = free > 0
+		UI.freeTag.Text = free .. " FREE!"
+		UI.canSpin1, UI.canSpin10 = t >= m.Price, t >= m.Ten
+		UI.pressMe.Visible = spins == 0 and UI.canSpin1
+		spin1.BackgroundColor3 = UI.canSpin1 and WC.Magenta or WC.Off
+		spin10.BackgroundColor3 = UI.canSpin10 and WC.Violet or WC.Off
 	end
+end
+
+-- the menu moving while it's open: the UI.bulbs chase, the UI.title wobbles, the
+-- prizes bob, the rare ones glow, and a SPIN you can afford throbs
+do
+	local clock, lastStep = 0, -1
+	RunService.Heartbeat:Connect(function(dt)
+		if not win.Visible then
+			return
+		end
+		clock = clock + dt
+		local step = math.floor(clock * 8)
+		if step ~= lastStep then
+			lastStep = step
+			for i, b in ipairs(UI.bulbs) do
+				b.BackgroundColor3 = ((i + step) % 3 == 0) and YELLOW or UI.BULB_OFF
+			end
+		end
+		UI.title.Rotation = -2 + math.sin(clock * 2.2) * 1.5
+		for i, r in ipairs(UI.tiles) do
+			r.frame.Position = r.home + UDim2.fromOffset(0, math.floor(math.sin(clock * 2.4 + i * 0.8) * 3 + 0.5))
+			if r.glow.Visible then
+				r.glow.BackgroundTransparency = 0.5 + 0.25 * math.sin(clock * 3.2 + i)
+			end
+		end
+		UI.pulse1.Scale = UI.canSpin1 and (1 + 0.025 * math.sin(clock * 5)) or 1
+		UI.pulse10.Scale = UI.canSpin10 and (1 + 0.025 * math.sin(clock * 5 + 1.5)) or 1
+		UI.pityStar.Rotation = math.sin(clock * 3) * 12
+		if UI.pressMe.Visible then
+			UI.pressMe.Position = UDim2.new(0, -14, 0, 4 - math.abs(math.sin(clock * 6)) * 8)
+		end
+	end)
 end
 
 local function openMenu()
@@ -1975,11 +2145,20 @@ UserInputService.InputBegan:Connect(function(input)
 	end
 end)
 
+-- (short of tokens: GET TOKENS gives a shake, so you know where they are)
+local function spinPressed(count)
+	local e = machineEntry(selected)
+	local m = e and e.machine
+	if m and tokens() < (count == 10 and m.Ten or m.Price) then
+		nudge(getBtn, UI.getScale)
+	end
+	task.spawn(roll, selected, count)
+end
 spin1.Activated:Connect(function()
-	task.spawn(roll, selected, 1)
+	spinPressed(1)
 end)
 spin10.Activated:Connect(function()
-	task.spawn(roll, selected, 10)
+	spinPressed(10)
 end)
 equipBtn.Activated:Connect(function()
 	local top = lastRoll and best(lastRoll.results)
