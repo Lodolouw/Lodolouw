@@ -352,6 +352,24 @@ ok, msg = spin("Slime", 1)
 r1 = type(msg) == "table" and msg.results[1]
 check(r1 and r1.refund == 1, "a weapon already mastered gives a token back")
 check(d.Tokens == before - A.Machines.Slime.Price + 1, "so that spin cost nothing")
+-- ten mastered ones on the Slime machine (ten cost 9): 9 back, never 10 - so
+-- spamming them can't make tokens
+for _, rr in ipairs(A.Order) do
+	local wid = Config.arcadeWeapon("Slime", rr)
+	if wid then
+		d.Weapons.own[wid] = max
+	end
+end
+d.Tokens = 20
+before = d.Tokens
+step(A.Gap + 0.05)
+ok, msg = spin("Slime", 10)
+local backs = 0
+for _, rr in ipairs(type(msg) == "table" and msg.results or {}) do
+	backs += rr.refund or 0
+end
+check(ok and d.Tokens == before - A.Machines.Slime.Ten + backs and backs == A.Machines.Slime.Ten, "ten mastered: " .. backs .. " tokens back for " .. A.Machines.Slime.Ten .. " (" .. before .. " -> " .. d.Tokens .. ")")
+check(d.Tokens <= before, "a spin never makes tokens")
 
 -- the BIG WINS board
 local secretId = Config.arcadeWeapon("Slime", "Secret")
