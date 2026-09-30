@@ -3543,4 +3543,41 @@ Config.SoundLoudness["Ship Thrust"] = 0.25 -- (a long buzz)
 Config.SoundLoudness["Wave Zoom"] = 0.25
 Config.SoundLoudness["Spikes Up"] = 0.3
 
+-- FLOORS 7-10's BOSS SOUNDS (Tools/Sounds/boss_sfx.py, loaded by SoundLoader):
+-- softened like the 8-bit ones above - quieter, and their harsh top end
+-- turned down. Every one plays at BossSoundLoudness.Default; the big hits
+-- (roars, booms, crashes, glitches) and the long rumbles and hums at their
+-- own lower level. Lower a number if one's still too much.
+Config.BossSoundNames = {
+	"Bar Whip", "Barrel Break", "Barrel Throw", "Belly Bounce", "Big Inhale", "Chain Rattle", "Choke Cough",
+	"Clone Swipe", "Coin Pickup", "Coin Rain", "Coin Vacuum", "Copy Paste", "Crown Clang", "Delete Warning",
+	"Earthquake", "Eraser Rub", "Error Pop", "Final Gavel", "Flytrap Chomp", "Flytrap Sprout", "Gavel Guilty",
+	"Gavel Smash", "Gavel Swing", "Gavel Transform", "Gavelgrunt Laugh", "Giant Gavel", "Giant Land", "Giant Stomp",
+	"Giant Trip", "Guard Jab", "Gulp", "Hammer Spin", "Ink Dash", "Ink Skid", "Key Pop", "King Fall", "King Roar",
+	"Kongo Chest Pound", "Kongo Death", "Kongo Giant Punch", "Kongo Grab", "Kongo Headbutt", "Kongo Hoot", "Kongo Pant",
+	"Kongo Rage", "Kongo Roar", "Kongo Roll", "Kongo Slap", "Kongo Spin", "Kongo Wind Up", "Lag Glitch", "Mouse Click",
+	"Munching", "Paint Splash", "Paper Crumple", "Pencil Scratch", "Petal Throw", "Petalina Chomp",
+	"Petalina Evil Laugh", "Petalina Giggle", "Petalina Hum", "Petalina Stretch", "Petalina Wilt", "Piston Hiss",
+	"Pollen Puff", "Rocket Hammer", "Root Burst", "Royal Burp", "Royal Feast", "Royal Roll", "Royal Trumpet",
+	"Scribble Crash", "Scribble Dizzy", "Scribble Glitch", "Scribble Laugh", "Scribble Rip", "Seed Land", "Seed Rain",
+	"Seed Spit", "Spit Out", "TNT Boom", "Thorn Ring", "Thorns Spread", "Throne Crash", "Thunder Crack", "Toe Ouch",
+	"Undo Rewind", "Vine Burst",
+}
+Config.BossSoundLoudness = { Default = 0.4 }
+for _, name in ipairs({
+	"Barrel Break", "Belly Bounce", "Delete Warning", "Earthquake", "Error Pop", "Final Gavel", "Gavel Guilty",
+	"Gavel Smash", "Giant Gavel", "Giant Land", "Giant Stomp", "Giant Trip", "King Fall", "King Roar",
+	"Kongo Chest Pound", "Kongo Death", "Kongo Giant Punch", "Kongo Rage", "Kongo Roar", "Lag Glitch",
+	"Petalina Evil Laugh", "Rocket Hammer", "Root Burst", "Royal Trumpet", "Scribble Crash", "Scribble Glitch",
+	"TNT Boom", "Throne Crash", "Thunder Crack", "Vine Burst",
+}) do
+	Config.BossSoundLoudness[name] = 0.28 -- (the big hits)
+end
+for _, name in ipairs({
+	"Chain Rattle", "Coin Rain", "Hammer Spin", "Kongo Roll", "Kongo Spin", "Petalina Hum", "Piston Hiss", "Royal Roll",
+	"Seed Rain", "Thorns Spread",
+}) do
+	Config.BossSoundLoudness[name] = 0.25 -- (long rumbles, hums and rain)
+end
+
 return Config
