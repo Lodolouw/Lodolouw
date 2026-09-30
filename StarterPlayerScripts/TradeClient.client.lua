@@ -120,7 +120,20 @@ if Workspace.CurrentCamera then
 end
 
 -- the little line while you sit and wait
-UI.hint = K.chip(scaler, "", C.Ink, { Name = "Hint", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -150), Size = UDim2.fromOffset(40, 40), TextSize = 14, Visible = false, ZIndex = 5 })
+-- (a small light card with a dark outline, not a big dark bar)
+UI.hint = K.chip(scaler, "", C.White, {
+	Name = "Hint",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -170),
+	Size = UDim2.fromOffset(40, 34),
+	Font = Enum.Font.FredokaOne,
+	TextSize = 20,
+	TextColor3 = C.Ink,
+	TextStrokeTransparency = 1,
+	Visible = false,
+	ZIndex = 5,
+})
+new("UICorner", { CornerRadius = UDim.new(0, 8) }, UI.hint)
 -- a short message (the trade stopped, a weapon came out of it)
 UI.toast = K.big(scaler, { Name = "Toast", Text = "", TextScaled = false, TextSize = 28, TextWrapped = true, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 90), Size = UDim2.fromOffset(760, 70), Visible = false, ZIndex = 30 })
 local toastId = 0

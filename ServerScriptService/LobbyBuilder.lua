@@ -3019,11 +3019,11 @@ local function buildPicnic(parent)
 		end
 		-- the table top (planks), and a red and white checked cloth over it
 		for k = -2, 2 do
-			part(bench, "TablePlank", V3(9, 0.5, 0.78), at(0, 3.25, k * 0.8), (k % 2 == 0) and WOOD_L or RGB(164, 114, 70), Mat.WoodPlanks)
+			part(bench, "TablePlank", V3(9, 0.5, 0.78), at(0, 2.95, k * 0.8), (k % 2 == 0) and WOOD_L or RGB(164, 114, 70), Mat.WoodPlanks)
 		end
 		for cx = 0, 5 do
 			for cz = 0, 2 do
-				part(bench, "Cloth", V3(1, 0.06, 1), at(-2.5 + cx, 3.53, -1 + cz), ((cx + cz) % 2 == 0) and CLOTH_A or CLOTH_B, Mat.Fabric, deco)
+				part(bench, "Cloth", V3(1, 0.06, 1), at(-2.5 + cx, 3.23, -1 + cz), ((cx + cz) % 2 == 0) and CLOTH_A or CLOTH_B, Mat.Fabric, deco)
 			end
 		end
 		-- the seats either side: real Seats you can sit on, each facing the
@@ -3057,7 +3057,10 @@ local function buildPicnic(parent)
 	end
 	-- the signpost between them
 	local sx, sz = 80, 33
-	part(m, "SignPost", V3(0.6, 7, 0.6), CFrame.new(sx, 3.5, sz), WOOD_D, Mat.Wood)
+	-- (two posts at its ends, behind it - one up the middle hid the word)
+	for _, pz in ipairs({ -2.1, 2.1 }) do
+		part(m, "SignPost", V3(0.5, 7, 0.5), CFrame.new(sx + 0.45, 3.5, sz + pz), WOOD_D, Mat.Wood)
+	end
 	local board = part(m, "SignBoard", V3(5, 1.6, 0.35), CFrame.new(sx, 6.2, sz) * CFrame.Angles(0, math.rad(90), 0), WOOD_L, Mat.WoodPlanks) -- (its words face the plaza)
 	local g = Instance.new("SurfaceGui")
 	g.Name = "Gui"
@@ -3073,8 +3076,9 @@ local function buildPicnic(parent)
 	l.TextScaled = true
 	l.TextColor3 = RGB(58, 34, 20)
 	l.Parent = g
-	for _, x in ipairs({ -2.3, 2.3 }) do
-		part(m, "SignNail", V3(0.3, 0.3, 0.1), board.CFrame * CFrame.new(x, 0, -0.2), RGB(60, 60, 70), Mat.Metal, deco)
+	for _, x in ipairs({ -2.1, 2.1 }) do
+		part(m, "SignNail", V3(0.3, 0.3, 0.1), board.CFrame * CFrame.new(x, 0.5, -0.2), RGB(60, 60, 70), Mat.Metal, deco)
+		part(m, "SignNail", V3(0.3, 0.3, 0.1), board.CFrame * CFrame.new(x, -0.5, -0.2), RGB(60, 60, 70), Mat.Metal, deco)
 	end
 end
 
