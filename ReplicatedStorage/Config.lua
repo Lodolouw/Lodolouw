@@ -3115,7 +3115,8 @@ end
 --     machine (the counter shows on the machine).
 --   * Your FIRST spin ever is Rare or better (said on the machine).
 --   * A weapon you already own gives it mastery points instead
---     (`Duplicate`), or a token back once it's at mastery 100.
+--     (`Duplicate`), or coins once it's at mastery 100 (`MaxedCoins`, times
+--     the machine's price) - never a token back, so every spin costs.
 -- Tokens come from quests (Config.Quests.Tokens), a boss's first clear
 -- (`FirstClear`), and later from the Robux shop.
 ----------------------------------------------------------------------
@@ -3150,6 +3151,8 @@ do
 		PityRarities = { "Legendary", "Mythic", "Secret" },
 		FirstSpin = { "Rare", "Epic", "Legendary", "Mythic", "Secret" },
 		Duplicate = { Common = 60, Rare = 90, Epic = 140, Legendary = 220, Mythic = 320, Secret = 500 },
+		-- coins for a weapon you've already mastered (times the machine's price)
+		MaxedCoins = { Common = 100, Rare = 150, Epic = 250, Legendary = 500, Mythic = 1000, Secret = 2500 },
 		-- tokens for beating a Spire floor's boss for the first time
 		FirstClear = { [1] = 5, [2] = 5, [3] = 6, [4] = 6, [5] = 7, [6] = 7, [7] = 8, [8] = 8, [9] = 9, [10] = 10 },
 		-- a spin can't be asked for again sooner than this (seconds)

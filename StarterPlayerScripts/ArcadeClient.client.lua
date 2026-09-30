@@ -1860,8 +1860,8 @@ local function reveal(result, machineId, count)
 	if result.new then
 		cardNote.Text = "NEW WEAPON!"
 		cardNote.BackgroundColor3 = GREEN
-	elseif result.refund then
-		cardNote.Text = "Already mastered: +1 TOKEN back"
+	elseif result.coins and result.coins > 0 then
+		cardNote.Text = "Already mastered: +" .. tostring(result.coins) .. " COINS"
 		cardNote.BackgroundColor3 = GOLD
 	elseif result.maxed then
 		cardNote.Text = "Already mastered!"
@@ -2090,7 +2090,7 @@ local function roll(machineId, count)
 		for i, r in ipairs(answer.results) do
 			local cell = tileFor(gridCells, r.id, r.rarity, 0)
 			cell.LayoutOrder = i
-			local note = r.new and "NEW!" or (r.refund and "+1 TOKEN" or (r.maxed and "MASTERED" or ("+" .. tostring(r.mastery or 0) .. " MASTERY")))
+			local note = r.new and "NEW!" or ((r.coins and r.coins > 0) and ("+" .. tostring(r.coins) .. " COINS") or (r.maxed and "MASTERED" or ("+" .. tostring(r.mastery or 0) .. " MASTERY")))
 			newCount = newCount + (r.new and 1 or 0)
 			local tag = text(cell, { Text = note, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 5), Size = UDim2.fromOffset(128, 24), BackgroundTransparency = 0, BackgroundColor3 = r.new and GREEN or SLATE, ZIndex = 16 })
 			corner(tag, 6)

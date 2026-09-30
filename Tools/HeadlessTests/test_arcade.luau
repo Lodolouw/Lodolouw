@@ -348,12 +348,13 @@ d.Weapons.own[commonId] = max - 10
 ok, msg = spin("Slime", 1)
 check(d.Weapons.own[commonId] == max, "mastery stops at the top")
 before = d.Tokens
+local coins0 = d.Coins or 0
 ok, msg = spin("Slime", 1)
 r1 = type(msg) == "table" and msg.results[1]
-check(r1 and r1.refund == 1, "a weapon already mastered gives a token back")
-check(d.Tokens == before - A.Machines.Slime.Price + 1, "so that spin cost nothing")
--- ten mastered ones on the Slime machine (ten cost 9): 9 back, never 10 - so
--- spamming them can't make tokens
+check(r1 and r1.coins == A.MaxedCoins.Common * A.Machines.Slime.Price and not r1.refund, "a weapon already mastered pays coins (" .. tostring(r1 and r1.coins) .. ")")
+check(d.Tokens == before - A.Machines.Slime.Price, "and the spin still costs its token")
+check((d.Coins or 0) == coins0 + r1.coins, "the coins go into your save")
+-- ten mastered ones on the Slime machine: all 9 tokens spent, coins for each
 for _, rr in ipairs(A.Order) do
 	local wid = Config.arcadeWeapon("Slime", rr)
 	if wid then
@@ -364,12 +365,11 @@ d.Tokens = 20
 before = d.Tokens
 step(A.Gap + 0.05)
 ok, msg = spin("Slime", 10)
-local backs = 0
+local paid = 0
 for _, rr in ipairs(type(msg) == "table" and msg.results or {}) do
-	backs += rr.refund or 0
+	paid += (rr.coins and rr.coins > 0) and 1 or 0
 end
-check(ok and d.Tokens == before - A.Machines.Slime.Ten + backs and backs == A.Machines.Slime.Ten, "ten mastered: " .. backs .. " tokens back for " .. A.Machines.Slime.Ten .. " (" .. before .. " -> " .. d.Tokens .. ")")
-check(d.Tokens <= before, "a spin never makes tokens")
+check(ok and d.Tokens == before - A.Machines.Slime.Ten and paid == 10, "ten mastered: all " .. A.Machines.Slime.Ten .. " tokens spent, coins for all ten (" .. before .. " -> " .. d.Tokens .. ")")
 
 -- the BIG WINS board
 local secretId = Config.arcadeWeapon("Slime", "Secret")

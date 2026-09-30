@@ -10,8 +10,8 @@
 	in a fight, the Spire or the intro) and that you can pay; takes the tokens;
 	picks each result by the odds - your very first spin is Rare or better,
 	and a Legendary or better is guaranteed within Config.Arcade.Pity spins on
-	a machine; gives you each new weapon, or mastery for one you own (a token
-	back once it's at mastery 100); and answers with what you got. Your screen
+	a machine; gives you each new weapon, or mastery for one you own (coins
+	once it's at mastery 100 - never a token back, so a spin always costs); and answers with what you got. Your screen
 	then plays the spin, which only SHOWS the result it was given.
 
 	Everyone's screen is told too (the "ArcadeEvent" RemoteEvent: "Roll",
@@ -102,8 +102,7 @@ local function give(player, d, id, rarity)
 	end
 	local max = Config.masteryPointsFor(W.MasteryMax)
 	if own[id] >= max then
-		-- (nothing left to learn: a token back - paid once the whole spin is
-		-- done, never more than the spin cost: roll, below)
+		-- (nothing left to learn: coins instead - roll, below)
 		return { id = id, rarity = rarity, maxed = true }
 	end
 	local points = A.Duplicate[rarity] or 0
@@ -172,22 +171,13 @@ local function roll(player, d, arg)
 			boardWin(player, id, rarity)
 		end
 	end
-	-- a weapon already mastered gives a token back - but never more than that
-	-- spin cost: ten on the Slime machine cost 9, so ten mastered ones give 9
-	-- back, not 10 (spamming them used to make a token every time)
-	local perSpin = math.min(1, price / count)
-	local maxed = 0
+	-- a weapon already mastered pays coins (more for rarer ones and dearer
+	-- machines) - never a token back: a token back made spins free once
+	-- everything was mastered
 	for _, r in ipairs(results) do
 		if r.maxed then
-			maxed = maxed + 1
-		end
-	end
-	local back = math.floor(maxed * perSpin + 1e-9)
-	d.Tokens = d.Tokens + back
-	for _, r in ipairs(results) do
-		if r.maxed and back > 0 then
-			r.refund = 1
-			back = back - 1
+			r.coins = (A.MaxedCoins[r.rarity] or 0) * machine.Price
+			d.Coins = (d.Coins or 0) + r.coins
 		end
 	end
 	if PlayerService and PlayerService.MarkDirty then

@@ -577,16 +577,14 @@ function ArcadeBuilder.Build(parent)
 	end
 
 	-- THE TOKEN MACHINE, inside against the right-hand wall facing the room
-	-- (the Robux shop, later): a token dispenser - a glass globe full of
-	-- gold tokens on a purple cabinet with gold corners, a lit TOKENS sign,
-	-- a big round coin slot, a crank on its side and a chute with tokens
-	-- spilling into the tray
+	-- (the Robux shop, later): a token dispenser - a purple cabinet with
+	-- gold corners, a lit TOKENS sign, a big round coin slot, a crank on its
+	-- side and a chute with tokens spilling into the tray
 	do
 		local tcf = at(TOKEN_X, FT + 0.4, TOKEN_Z) * CFrame.Angles(0, math.rad(90), 0)
 		local function at2(x, y, z)
 			return tcf * CFrame.new(x, y, z)
 		end
-		local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
 		local t = Instance.new("Model")
 		t.Name = "TokenMachine"
 		part(t, "Foot", V3(4.8, 0.8, 3.8), at2(0, 0.4, 0), INK)
@@ -622,17 +620,6 @@ function ArcadeBuilder.Build(parent)
 		disc(t, "CrankHub", 0.3, 1.1, at2(-2.25, 4.2, 0) * CFrame.Angles(0, math.pi / 2, 0), GOLD, Mat.Metal)
 		part(t, "CrankArm", V3(0.22, 1.5, 0.22), at2(-2.45, 3.6, 0), STEEL, Mat.Metal)
 		ball(t, "CrankBall", 0.6, at2(-2.45, 2.85, 0), PINK)
-		-- the globe on top, full of tokens, with a gold cap
-		part(t, "Collar", V3(0.6, 3.4, 3.4), at2(0, 6.7, 0) * up, GOLD, Mat.Metal, { Shape = Enum.PartType.Cylinder })
-		local gy = 8.8
-		for k = 1, 16 do
-			local a, h, r = k * 2.4, math.sin(k * 1.7) * 0.9, 0.5 + (k % 4) * 0.28
-			local cf = at2(math.cos(a) * r, gy - 0.7 + (k % 5) * 0.3 + h * 0.3, math.sin(a) * r) * CFrame.Angles(k * 0.9, k * 1.3, k * 0.4)
-			disc(t, "GlobeToken", 0.16, 0.75, cf, (k % 3 == 0) and RGB(214, 132, 36) or GOLD)
-		end
-		ball(t, "Globe", 4, at2(0, gy, 0), RGB(220, 230, 255), Mat.Glass).Transparency = 0.6
-		part(t, "Cap", V3(0.8, 1.8, 1.8), at2(0, gy + 2.1, 0) * up, GOLD, Mat.Metal, { Shape = Enum.PartType.Cylinder })
-		ball(t, "CapKnob", 0.8, at2(0, gy + 2.7, 0), PINK)
 		scaleModel(t, tcf, MACHINE_SCALE)
 		CollectionService:AddTag(t, "ArcadeTokens")
 		t.Parent = m
