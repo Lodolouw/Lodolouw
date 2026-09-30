@@ -30,6 +30,10 @@ task.spawn(function()
 	local fx = remotes and remotes:WaitForChild("AbilityFx", 60)
 	if fx then
 		fx.OnClientEvent:Connect(function(player, id, count, step, point, extra)
+			-- (Settings: "hide others' effects" - only your own are drawn)
+			if player ~= Players.LocalPlayer and Players.LocalPlayer:GetAttribute("HideOthersFX") then
+				return
+			end
 			MoveFX.told(player, id, count, step, point, extra)
 		end)
 	end
@@ -81,8 +85,8 @@ end
 local function update(plr, look, dt)
 	local char = plr.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then
-		clear(look)
+	if not root or (plr ~= Players.LocalPlayer and Players.LocalPlayer:GetAttribute("HideOthersFX")) then
+		clear(look) -- (or Settings: "hide others' effects")
 		return
 	end
 	local now = Workspace:GetServerTimeNow()

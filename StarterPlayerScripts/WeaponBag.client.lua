@@ -333,6 +333,16 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.B then
+		-- (the new GUI's Bag, when it's there: BagMenu)
+		local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 1))
+		if Config.NewHud ~= false and ok and type(Menus) == "table" and Menus.defs and Menus.defs.Bag then
+			if Menus.current() == "Bag" then
+				Menus.close()
+			else
+				Menus.open("Bag")
+			end
+			return
+		end
 		if win.Visible then
 			closeWindow()
 		else

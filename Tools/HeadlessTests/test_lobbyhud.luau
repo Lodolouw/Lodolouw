@@ -231,9 +231,11 @@ check(old and find(old, "LeftButtons").Visible == false, "the old left buttons h
 check(old and find(old, "Stats").Visible == false, "the old stats strip hides")
 check(old and find(old, "HintBanner").Visible == false, "the old hint line hides")
 check(old and find(old, "GoalBar").Visible ~= false, "the level bar stays")
-for _, name in ipairs({ "Shop", "Bag", "Arcade", "Index", "Stats", "Gear" }) do
+for _, name in ipairs({ "Shop", "Bag", "Arcade", "Index" }) do
 	check(find(find(root, "Buttons"), name) ~= nil, "the " .. name .. " button is there")
 end
+check(find(find(root, "Buttons"), "Stats") == nil, "no STATS button (stat points are gone)")
+check(find(find(root, "Buttons"), "Gear") == nil, "no GEAR button")
 check(find(root, "Money") and find(find(root, "Money"), "Coin") and find(find(root, "Money"), "Token"), "coins and tokens bottom left, with their pictures")
 
 ----------------------------------------------------------------------
@@ -307,10 +309,6 @@ check(giftLabel.Text == "READY!", "then it's ready (" .. giftLabel.Text .. ")")
 giftBtn.Activated:Fire()
 wait(0.2)
 check(table.find(asked, "RewardGift") ~= nil, "tapping it now claims it")
-
-send({ Quests = quests, Power = Config.powerForLevel(8) })
-local sb = find(find(find(root, "Buttons"), "Stats"), "Badge")
-check(sb and sb.Visible and tonumber(sb.Text) == Config.statPointsLeft(snapshot({ Power = Config.powerForLevel(8) })), "STATS' badge counts your stat points")
 
 ----------------------------------------------------------------------
 -- Boosts, passes and the corner bonuses
@@ -401,9 +399,9 @@ local gearOpened = 0
 Menus.external.Gear = function()
 	gearOpened += 1
 end
-find(find(root, "Buttons"), "Gear").Activated:Fire()
+Menus.go("Gear")
 wait(0.1)
-check(gearOpened == 1, "GEAR opens the gear window (through Menus.external)")
+check(gearOpened == 1, "an older window opens through Menus.external")
 find(find(find(root, "Buttons"), "Arcade"), "Button").Activated:Fire()
 wait(0.1)
 check(arcadeOpened == 1, "ARCADE opens the Arcade's menu")

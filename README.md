@@ -826,7 +826,7 @@ Everything is decided on the server (`PlayerService`): the client only asks.
 Items, rarities, odds, sets and stats all live in `ReplicatedStorage.Items`.
 
 
-## The new GUI (being built: the lobby screen, rewards, the Index and the shop are in)
+## The new GUI (the lobby screen, rewards, the Index, the shop, the Bag and Settings)
 
 The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
 `Config.NewHud = true` turns it on (false brings the old HUD's buttons back).
@@ -835,7 +835,7 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
 `Docs/new_gui_lobby.png`):
 - **Left:** four big picture buttons - SHOP, BAG, ARCADE, INDEX - with red
   badges for what's waiting (tokens to spin, weapons to add to the Index, the
-  starter pack after your first boss), and STATS and GEAR under them.
+  starter pack after your first boss). (No STATS or GEAR buttons.)
 - **Bottom left:** your coins and tokens (the token's **+** opens the shop).
 - **Top middle: the NEXT GOAL** - pick a quest, spin your tokens, hand in a
   finished quest, train in the Colosseum until you're close to the next
@@ -851,7 +851,8 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
   this server and for friends in it with you - hover for what they are).
 - It hides in fights, in the intro and while a menu is open. The old left
   buttons, stats strip, hint line and the GEAR / WEAPONS / ROLL squares are
-  hidden; the level bar, the heart and the dev tools stay.
+  hidden (and stay hidden through fights and the intro); the level bar, the
+  heart and the dev tools stay. At level 256 the level bar says MAX LEVEL.
 
 **Step 2 - Rewards, the Index and the community chest** (preview
 `Docs/new_gui_rewards.png`):
@@ -896,6 +897,29 @@ The whole interface from `Previews/gui_windows_sketch.html`, built in steps.
   the Arcade - and the Arcade's odds show the lucky numbers, the same the
   server rolls with. **Instant x10** skips the ten-spin show straight to the
   results.
+
+**Step 4 - the Bag, the fight screen and Settings** (preview
+`Docs/new_gui_bag_settings.png`):
+- **THE BAG** (`StarterPlayerScripts/BagMenu`, teal; the BAG button or **B**):
+  the weapon in your hand, big - rarity, type, mastery and how far to the next
+  level, its **one ability on [F]** with what it does now and what the next
+  mastery tier adds, IN HAND / FISTS - and every weapon you own, rarest first,
+  with a rarity filter; tap one to look at it and EQUIP it. The **Looks** tab
+  wears titles and auras. (The old gear window still opens with G for now.)
+- **THE FIGHT SCREEN** stays as it is (heart in the middle, flask left, bolt
+  right, the gold level bar); the weapon card gets a title bar in the weapon's
+  rarity colour with its name, and the ability reads "[F] WHIRLWIND".
+- **SETTINGS** (`StarterPlayerScripts/SettingsMenu`): music, sound effects,
+  shadows, low graphics, hide others' effects (their abilities and auras
+  aren't drawn on your screen), camera shake, and whether revive / Boss Rush
+  tickets are used by themselves. Saved with your data.
+
+**No more stat points:** your level alone makes you stronger. Every level
+adds a little damage, max health, defence and Power from training
+(`Config.LevelBonus` - tune the numbers there); your max health goes up the
+moment you level. The STATS button, its panel and the plaza shrine's walk-up
+are gone (the Shrine of Growth stays as decoration). The GEAR button is gone
+from the lobby screen and the Bag too.
 
 **The menus** (`ReplicatedStorage/Menus`): see-through - the world blurs and
 dims behind, and the menu floats over it: a big title top left, tabs down the

@@ -379,8 +379,8 @@ end
 ----------------------------------------------------------------------
 -- Levels (like Blox Fruits): your level is the number that matters. It
 -- comes from your total Power (your XP), which only ever goes up - from
--- the Colosseum and beating bosses - up to MaxLevel. Every level gives you
--- StatPoints.PerLevel points to spend on your stats (see Config.StatPoints).
+-- the Colosseum and beating bosses - up to MaxLevel. Every level makes you
+-- a little stronger at everything (Config.LevelBonus).
 -- Total Power for a level = LevelScale x (level - 1) ^ LevelCurve
 -- (level 2 needs 18, level 44 about 1.4M, level 256 about 297M).
 ----------------------------------------------------------------------
@@ -417,39 +417,23 @@ end
 -- menu (the button on the left, or the Shrine of Growth). `per` is what one
 -- point gives. Resetting them is free.
 ----------------------------------------------------------------------
-Config.StatPoints = {
-	PerLevel = 3,
-	Stats = {
-		{ id = "Strength", name = "Strength", per = 0.5, gives = "Damage", desc = "% more damage to bosses", color = Color3.fromRGB(228, 59, 68) },
-		{ id = "Vitality", name = "Vitality", per = 2, gives = "Health", desc = " more max health", color = Color3.fromRGB(99, 199, 77) },
-		{ id = "Defense", name = "Defense", per = 0.1, gives = "Defense", desc = "% less damage taken (60% max, with gear)", color = Color3.fromRGB(0, 153, 219) },
-		{ id = "Training", name = "Training", per = 0.5, gives = "Power", desc = "% more Power from training", color = Color3.fromRGB(254, 174, 52) },
-	},
+-- WHAT EVERY LEVEL GIVES YOU (there are no stat points to spend any more -
+-- your level alone makes you stronger at everything): each level above 1
+-- adds these, on top of your gear. At level 100 that's +37% damage, +149
+-- health, +7% less damage taken and +37% Power from training.
+Config.LevelBonus = {
+	Damage = 0.375, -- % more damage to bosses
+	Health = 1.5, -- more max health
+	Defense = 0.075, -- % less damage taken (60% at most, with gear)
+	Power = 0.375, -- % more Power from training
 }
-Config.StatById = {}
-for _, st in ipairs(Config.StatPoints.Stats) do
-	Config.StatById[st.id] = st
-end
 
--- how many points you've earned, spent, and have left
-function Config.statPointsTotal(d)
-	return (Config.levelFromPower(d and d.Power or 0) - 1) * Config.StatPoints.PerLevel
-end
-function Config.statPointsSpent(d)
-	local n = 0
-	for _, st in ipairs(Config.StatPoints.Stats) do
-		n = n + ((d and d.Stats and d.Stats[st.id]) or 0)
-	end
-	return n
-end
-function Config.statPointsLeft(d)
-	return math.max(0, Config.statPointsTotal(d) - Config.statPointsSpent(d))
-end
--- what your spent points give: { Damage = %, Health = n, Defense = %, Power = % }
+-- what your level gives: { Damage = %, Health = n, Defense = %, Power = % }
 function Config.statBonus(d)
-	local out = { Damage = 0, Health = 0, Defense = 0, Power = 0 }
-	for _, st in ipairs(Config.StatPoints.Stats) do
-		out[st.gives] = out[st.gives] + ((d and d.Stats and d.Stats[st.id]) or 0) * st.per
+	local levels = math.max(0, Config.levelFromPower(d and d.Power or 0) - 1)
+	local out = {}
+	for k, per in pairs(Config.LevelBonus) do
+		out[k] = levels * per
 	end
 	return out
 end

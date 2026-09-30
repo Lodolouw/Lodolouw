@@ -329,6 +329,9 @@ MoveFX.pop = pop
 local shakeLeft, shakeAmount = 0, 0
 local function shake(at, amount)
 	local me = Players.LocalPlayer
+	if me and me:GetAttribute("NoShake") then
+		return -- (Settings: camera shake off)
+	end
 	local char = me and me.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then

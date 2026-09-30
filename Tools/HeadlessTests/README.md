@@ -457,7 +457,8 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `test_lobbyhud.luau` - THE NEW LOBBY SCREEN (LobbyHud) and THE MENUS'
   HOST (ReplicatedStorage/Menus), with the old HUD beside them and a pretend
   server on a little lobby of walk-up boxes: the old left buttons, stats strip
-  and hint hide (the level bar stays); the picture buttons and badges; coins
+  and hint hide (the level bar stays); the picture buttons and badges (no
+  STATS or GEAR buttons); coins
   and tokens; the NEXT GOAL in order (hand in a quest, spin tokens, pick a
   quest, train, climb the Spire), the trail on the ground pointing at it, the
   distance, the beam over it, and the trail going once you're there; the gift
@@ -488,6 +489,17 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   `render_gui.py` (`Docs/new_gui_shop.png`). (`test_rewards_shop` covers the
   server side, now with revives, Boss Rush and luck; `test_arcade_client`
   the lucky odds and Instant x10.)
+- `test_bag_settings.luau` - THE BAG and THE SETTINGS (BagMenu,
+  SettingsMenu) with a pretend server: B opens the Bag; the weapon in your
+  hand (name, mastery, its one ability on F, what it does now and at the next
+  mastery tier, IN HAND / FISTS); your weapons rarest first with the E on the
+  one in hand; tapping one and EQUIP (EquipWeapon); the rarity filter; no
+  Stats or Gear tab; LOOKS is the shop's page. Settings: your
+  saved ones take effect when your data arrives; music / sound effects (the
+  sound groups), shadows, low graphics (shadows and bloom), camera shake,
+  hide others' effects (another player's ability effects really stop being
+  drawn, yours still are), the tickets' switches - each saved. `-a snaps` for
+  `render_gui.py` (`Docs/new_gui_bag_settings.png`).
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /

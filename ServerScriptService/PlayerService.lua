@@ -2,8 +2,8 @@
 	PlayerService  (ModuleScript, parent: ServerScriptService, name: "PlayerService")
 
 	Server-authoritative game logic for the lobby:
-	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot, Upgrades, Talismans, Stats, Gear) + DataStore saving
-	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, stat points, gear
+	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot, Upgrades, Talismans, Gear) + DataStore saving
+	  * Sell Shop, Upgrade Shop, Talisman crafting/equipping, gear
 	  * quests (the Quest Board: a new set every 6 hours, each paying an Arcade Token)
 	  * remotes for the HUD
 
@@ -73,7 +73,6 @@ local function defaultData()
 		NextId = 1, -- (each item gets a new, never-reused id)
 		BestLevel = 1, -- the highest level you've ever reached (gear needs it)
 		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
-		Stats = {}, -- stat points spent: [stat] = points (see Config.StatPoints)
 		-- the board's quests (see Config.Quests): which set they're from (`day`:
 		-- Config.questPeriod, a new set every 6 hours), and for
 		-- each one how far along you are and whether you've handed it in
@@ -294,18 +293,8 @@ local function mergeSaved(saved)
 			d.Colosseum.pick = c.pick
 		end
 	end
-	-- stat points: only real stats, and never more than you've earned
-	if type(saved.Stats) == "table" then
-		for _, st in ipairs(Config.StatPoints.Stats) do
-			local v = saved.Stats[st.id]
-			if type(v) == "number" and v > 0 then
-				d.Stats[st.id] = math.floor(v)
-			end
-		end
-		if Config.statPointsSpent(d) > Config.statPointsTotal(d) then
-			d.Stats = {}
-		end
-	end
+	-- (stat points are gone - your level gives the same everywhere now, see
+	-- Config.LevelBonus - so an old save's spent points are simply dropped)
 	-- weapons: only real ones, mastery kept in range, holding only one you own
 	local W = Config.Weapons
 	if W and type(saved.Weapons) == "table" then
@@ -879,7 +868,12 @@ function PlayerService.AddPower(player, amount, raw)
 		if not raw then
 			amount = boosted(player, profile.data, "Power", amount)
 		end
+		local before = Config.levelFromPower(profile.data.Power)
 		profile.data.Power = profile.data.Power + amount
+		-- (a new level: more max health - every level gives some, Config.LevelBonus)
+		if Config.levelFromPower(profile.data.Power) ~= before then
+			applyCharacterStats(player, false)
+		end
 		markDirty(player)
 	end
 end
@@ -1103,38 +1097,6 @@ handlers.Unequip = function(player, d, id)
 	return true, "Unequipped."
 end
 
--- Stat points: spend `n` (1-100) on a stat, or reset them all (free)
-handlers.SpendStat = function(player, d, arg)
-	local stat = type(arg) == "table" and arg.stat
-	local n = type(arg) == "table" and arg.n or 1
-	if type(stat) ~= "string" or not Config.StatById[stat] then
-		return false, "Unknown stat."
-	end
-	-- (a real, whole number: NaN or infinity here used to be written straight
-	-- into your stats, and a save with NaN in it can't be written at all)
-	if type(n) ~= "number" or n ~= n or n == math.huge or n == -math.huge then
-		return false, "Bad amount."
-	end
-	n = math.clamp(math.floor(n), 1, 100)
-	n = math.min(n, Config.statPointsLeft(d))
-	if n < 1 then
-		return false, "No stat points left - level up for more!"
-	end
-	d.Stats[stat] = (d.Stats[stat] or 0) + n
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true
-end
-
-handlers.ResetStats = function(player, d)
-	for id in pairs(d.Stats) do
-		d.Stats[id] = 0
-	end
-	applyCharacterStats(player, false)
-	markDirty(player)
-	return true, "Stat points refunded."
-end
-
 -- Choose a quest at the Quest Board (arg = its place on the board, 1-3).
 -- One per set: once you've picked, that's the one until the next set.
 handlers.PickQuest = function(player, d, index)
@@ -1217,8 +1179,8 @@ end
 
 -- DEV: become exactly this level, as a real player at that level would be:
 -- your Power is set to that level's (so the Colosseum and bosses feel as
--- they're meant to), your stat points are all refunded to spend again, and
--- the highest level you've reached becomes this one (so gear needs it too).
+-- they're meant to), and the highest level you've reached becomes this one
+-- (so gear needs it too).
 -- Your gear and coins are left alone.
 handlers.DevSetLevel = function(player, d, level)
 	if not Config.isDev(player) then
@@ -1230,12 +1192,9 @@ handlers.DevSetLevel = function(player, d, level)
 	end
 	d.Power = Config.powerForLevel(level)
 	d.BestLevel = level
-	for id in pairs(d.Stats) do
-		d.Stats[id] = 0
-	end
 	applyCharacterStats(player, true)
 	markDirty(player)
-	return true, "You're level " .. level .. " now (stat points refunded)."
+	return true, "You're level " .. level .. " now."
 end
 
 ----------------------------------------------------------------------

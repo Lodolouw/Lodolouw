@@ -4,8 +4,7 @@
 	THE NEW LOBBY SCREEN (Previews/gui_windows_sketch.html, screen 1), in the
 	new look (WindowKit), over the old HUD's level bar and heart:
 	  * LEFT: four big picture buttons - SHOP, BAG, ARCADE, INDEX - with red
-	    badges for what's waiting, and two small ones under them (STATS: your
-	    stat points, GEAR: your gear and chests)
+	    badges for what's waiting
 	  * BOTTOM LEFT: your coins and tokens (the token's + opens the shop)
 	  * TOP MIDDLE: your NEXT GOAL and how far away it is - and a glowing
 	    trail on the ground and a beam of light lead you there. You walk
@@ -106,7 +105,7 @@ do
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 20, 0.44, 0),
-		Size = UDim2.fromOffset(SIZE * 2 + GAP, SIZE * 2 + GAP + 62),
+		Size = UDim2.fromOffset(SIZE * 2 + GAP, SIZE * 2 + GAP),
 	}, root)
 	ui.buttons = left
 	local list = {
@@ -138,26 +137,6 @@ do
 			end
 		end)
 	end
-	-- the two small ones: STATS and GEAR
-	local function pill(name, icon, x)
-		local b = K.button(left, "", C.Slate, {
-			Name = name,
-			Font = K.FONT,
-			Position = UDim2.fromOffset(x, 2 * (SIZE + GAP) + 6),
-			Size = UDim2.fromOffset(SIZE, 46),
-			ZIndex = 3,
-		})
-		b:FindFirstChildOfClass("UIPadding"):Destroy()
-		K.icon(b, icon, { Position = UDim2.fromOffset(6, 5), Size = UDim2.fromOffset(34, 34), ZIndex = 4 })
-		K.big(b, { Name = "Label", Text = string.upper(name), Position = UDim2.fromOffset(42, 6), Size = UDim2.new(1, -48, 1, -12), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4, Edge = 2 })
-		local badge = K.badge(b)
-		b.Activated:Connect(function()
-			Menus.go(name)
-		end)
-		return badge
-	end
-	ui.statsBadge = pill("Stats", "Stats", 0)
-	ui.gearBadge = pill("Gear", "Gear", SIZE + GAP)
 end
 
 ----------------------------------------------------------------------
@@ -481,9 +460,6 @@ local function nextGoal(d)
 			return { text = "Train in the Colosseum", sub = "Reach Lv " .. f.level .. " for Floor " .. f.id .. " (you're Lv " .. level .. ")", icon = "Weapons", place = "ColosseumEnter" }
 		end
 	end
-	if Config.statPointsLeft(d) > 0 then
-		return { text = "Spend your stat points", sub = Config.statPointsLeft(d) .. " waiting", icon = "Stats", open = "Stats" }
-	end
 	return { text = "Every boss beaten!", sub = "Beat them again for more loot", icon = "Bosses", place = "Spire" }
 end
 ui.nextGoal = nextGoal
@@ -523,7 +499,7 @@ do
 		Material = Enum.Material.Neon,
 		Color = C.Yellow,
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(160, 6, 6),
+		Size = Vector3.new(160, 3.5, 3.5),
 		Transparency = 1,
 	}, folder)
 end
@@ -578,12 +554,6 @@ local function render()
 	ui.tokens.Text = tostring(tokens)
 
 	ui.Arcade.badge(tokens > 0 and tokens or nil)
-	K.setBadge(ui.statsBadge, Config.statPointsLeft(d) > 0 and Config.statPointsLeft(d) or nil)
-	local chests = 0
-	for _, n in pairs(type(d.Chests) == "table" and d.Chests or {}) do
-		chests = chests + (tonumber(n) or 0)
-	end
-	K.setBadge(ui.gearBadge, chests > 0 and chests or nil)
 	-- the Index: weapons found but not claimed, collector levels reached
 	local rw = type(d.Rewards) == "table" and d.Rewards or {}
 	local idx = type(rw.index) == "table" and rw.index or {}
@@ -704,7 +674,8 @@ local function follow(dt)
 	ui.goalFar.Text = math.floor(dist) .. "m"
 	-- the beam stands on the goal
 	trail.beam.CFrame = CFrame.new(to.X, to.Y - zone.Size.Y / 2 + 80, to.Z) * CFrame.Angles(0, 0, math.pi / 2)
-	trail.beam.Transparency = dist < 14 and 1 or 0.72
+	-- (soft: a guide, not a floodlight - and gone once you're close)
+	trail.beam.Transparency = dist < 30 and 1 or 0.86
 	if dist < 14 then
 		for _, dash in ipairs(trail.dashes) do
 			dash.Transparency = 1

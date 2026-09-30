@@ -795,20 +795,8 @@ end
 -- (Upgrades, Backpack and Armory have no buttons any more: walk up to the
 -- Upgrade Shop, the Sell Shop or the forge to use them. The GEAR button sits
 -- beside STATS - Inventory makes it.)
-local prestigeBtn = hudButton("Stats", "⭐", { RGB(255, 226, 100), RGB(255, 140, 40) }, 4, "Stats") -- your stat points, from anywhere
-
-local badge = text({
-	Name = "Badge",
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, 8, 0, -8),
-	Size = UDim2.fromOffset(48, 24),
-	BackgroundTransparency = 0,
-	BackgroundColor3 = C.red,
-	Text = "0%",
-	TextSize = 18,
-	ZIndex = 5, -- above the button's label/icon
-	Parent = prestigeBtn,
-}, { corner(12), border(2.5) })
+-- (the STATS button is gone with stat points: your level alone makes you
+-- stronger now - Config.LevelBonus)
 
 ----------------------------------------------------------------------
 -- HUD: bottom-left stats
@@ -1356,98 +1344,6 @@ do
 end
 
 ----------------------------------------------------------------------
--- Panel: Stats (spend the points each level gives you, Blox Fruits style)
-----------------------------------------------------------------------
-local prestigeUI = {}
-do
-	local p = makePanel("Stats", "STATS", RGB(255, 190, 60), 560)
-	prestigeUI.level = text({
-		LayoutOrder = 1,
-		Size = UDim2.new(1, -10, 0, 44),
-		TextSize = 30,
-		TextColor3 = C.gold,
-		Parent = p.body,
-	}, { stroke(3) })
-	local rows = {}
-	for i, st in ipairs(Config.StatPoints.Stats) do
-		local row = create("Frame", {
-			LayoutOrder = 1 + i,
-			Size = UDim2.new(1, -10, 0, 78),
-			BackgroundColor3 = C.row,
-			Parent = p.body,
-		}, { corner(12), border(3, st.color) })
-		local name = text({
-			Position = UDim2.fromOffset(16, 6),
-			Size = UDim2.new(1, -250, 0, 34),
-			TextSize = 26,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = st.color,
-			Parent = row,
-		}, { stroke(2.5) })
-		local effect = text({
-			Position = UDim2.fromOffset(16, 40),
-			Size = UDim2.new(1, -250, 0, 28),
-			TextSize = 18,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = C.dim,
-			Parent = row,
-		})
-		local function plus(label, n, x)
-			local b = button({
-				AnchorPoint = Vector2.new(1, 0.5),
-				Position = UDim2.new(1, x, 0.5, 0),
-				Size = UDim2.fromOffset(n == 1 and 64 or 84, 52),
-				Text = label,
-				TextSize = 24,
-				Parent = row,
-			})
-			b.Activated:Connect(function()
-				doAction("SpendStat", { stat = st.id, n = n })
-			end)
-			return b
-		end
-		rows[st.id] = { name = name, effect = effect, one = plus("+1", 1, -104), ten = plus("+10", 10, -12) }
-	end
-	local reset = button({
-		LayoutOrder = 10,
-		Size = UDim2.new(1, -10, 0, 50),
-		Text = "RESET POINTS (FREE)",
-		TextSize = 22,
-		Parent = p.body,
-	})
-	local confirmUntil = 0
-	reset.Activated:Connect(function()
-		if os.clock() >= confirmUntil then
-			confirmUntil = os.clock() + 3
-			reset.Text = "TAP AGAIN TO RESET"
-			task.delay(3.1, function()
-				reset.Text = "RESET POINTS (FREE)"
-			end)
-			return
-		end
-		confirmUntil = 0
-		reset.Text = "RESET POINTS (FREE)"
-		doAction("ResetStats")
-	end)
-
-	p.refresh = function()
-		local left = Config.statPointsLeft(state)
-		prestigeUI.level.Text = "Level " .. Config.levelFromPower(state.Power) .. "   -   " .. left .. " point" .. (left == 1 and "" or "s") .. " to spend"
-		local bonus = Config.statBonus(state)
-		for _, st in ipairs(Config.StatPoints.Stats) do
-			local r = rows[st.id]
-			local pts = (state.Stats and state.Stats[st.id]) or 0
-			r.name.Text = st.name .. "  " .. pts
-			local v = bonus[st.gives]
-			r.effect.Text = "+" .. (math.floor(v * 10 + 0.5) / 10) .. st.desc
-			paint(r.one, left >= 1, st.color)
-			paint(r.ten, left >= 1, st.color)
-		end
-		paint(reset, Config.statPointsSpent(state) > 0, C.red)
-	end
-end
-
-----------------------------------------------------------------------
 -- Rendering
 ----------------------------------------------------------------------
 local function renderHint()
@@ -1464,8 +1360,6 @@ local function renderHint()
 	if tokens > 0 then
 		message = tokens == 1 and "You have an Arcade Token! Spin it at the Arcade for a weapon!"
 			or ("You have " .. tokens .. " Arcade Tokens! Spin them at the Arcade for weapons!")
-	elseif Config.statPointsLeft(state) > 0 then
-		message = "You have " .. Config.statPointsLeft(state) .. " stat points! Spend them in STATS."
 	else
 		-- (you grow by fighting in the Colosseum)
 		message = "Enter the Colosseum and beat dummies to grow stronger!"
@@ -1478,15 +1372,16 @@ local function renderBars()
 	local level = Config.levelFromPower(state.Power)
 	local fromPower = Config.powerForLevel(level)
 	local toPower = Config.powerForLevel(level + 1)
-	barFill.Size = UDim2.fromScale(math.clamp((state.Power - fromPower) / math.max(toPower - fromPower, 1), 0, 1), 1)
 	barLabel.Text = "Lv. " .. level
-	barText.Text = Config.format(state.Power) .. " / " .. Config.format(toPower)
+	if level >= Config.MaxLevel then
+		-- (the top level: the bar stays full - no "2.18B / 300M")
+		barFill.Size = UDim2.fromScale(1, 1)
+		barText.Text = "MAX LEVEL"
+	else
+		barFill.Size = UDim2.fromScale(math.clamp((state.Power - fromPower) / math.max(toPower - fromPower, 1), 0, 1), 1)
+		barText.Text = Config.format(state.Power) .. " / " .. Config.format(toPower)
+	end
 
-	-- the STATS button's badge: points waiting to be spent
-	local left = Config.statPointsLeft(state)
-	badge.Visible = left > 0
-	badge.Text = tostring(left)
-	badge.BackgroundColor3 = C.green
 end
 
 local function renderStats()
@@ -1652,19 +1547,11 @@ end)
 
 -- THE NEW LOBBY SCREEN (LobbyHud) has its own buttons, money and next goal:
 -- the old left buttons, stats strip and hint line hide while Config.NewHud
--- is on. STATS opens from its button through ReplicatedStorage/Menus.
+-- is on.
 if Config.NewHud ~= false then
 	leftCol.Visible = false
 	statCol.Visible = false
 	hintBanner.Visible = false
-end
-do
-	local ok, Menus = pcall(require, ReplicatedStorage:WaitForChild("Menus", 5))
-	if ok and type(Menus) == "table" then
-		Menus.external.Stats = function()
-			openPanel("Stats", true)
-		end
-	end
 end
 
 Remotes.OpenPanel.OnClientEvent:Connect(function(name)
@@ -1826,7 +1713,7 @@ do
 		end)
 	end
 	-- SET LEVEL: type a level, press the button (the server sets your Power
-	-- to that level's and refunds your stat points)
+	-- to that level's)
 	local levelRow = create("Frame", {
 		LayoutOrder = 6,
 		Size = UDim2.fromOffset(150, 36),

@@ -322,7 +322,9 @@ assert(closeBtn and spin1 and spin10, "the menu's buttons should be there")
 ----------------------------------------------------------------------
 -- Before anything
 ----------------------------------------------------------------------
-check(rollBtn.Visible ~= false and not win.Visible and not show.Visible, "the ROLL button is there, the menu isn't")
+-- (the new lobby screen has its own ARCADE button: the old ROLL square stays
+-- hidden while Config.NewHud is on - through fights and the intro too)
+check(rollBtn.Visible == false and not win.Visible and not show.Visible, "the old ROLL button stays hidden (the lobby screen's ARCADE replaces it), the menu isn't open")
 check(badge.Visible == false, "no tokens: no badge")
 local cabinets = {}
 for _, m in ipairs(CollectionService:GetTagged("ArcadeCabinet")) do
@@ -830,7 +832,7 @@ step(0.1)
 check(not win.Visible, "and the menu won't open")
 me:SetAttribute("Intro", nil)
 step(0.1)
-check(rollBtn.Visible, "after it, the ROLL button")
+check(rollBtn.Visible == false, "after it, the old ROLL button still stays hidden (it used to come back here)")
 
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))

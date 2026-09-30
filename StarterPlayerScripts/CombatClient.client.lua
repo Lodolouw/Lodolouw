@@ -486,6 +486,9 @@ local slowUntil = 0
 
 -- Knocks the view off centre. Sharp in, quick out.
 local function cameraKick(strength)
+	if player:GetAttribute("NoShake") then
+		return -- (Settings: camera shake off)
+	end
 	shake = math.max(shake, strength or 0.3)
 	local a = math.random() * math.pi * 2
 	shakeDir = Vector3.new(math.cos(a), math.sin(a) * 0.7, 0)
@@ -1922,6 +1925,20 @@ do
 		BorderSizePixel = 0,
 		Parent = barBack,
 	})
+	-- THE NEW GUI's window look (Config.NewHud): the card gets a title bar in
+	-- the weapon's rarity colour with its name on it, and the rest moves down
+	local cardBar = nil
+	if Config.NewHud ~= false then
+		card.Size = UDim2.fromOffset(250, 98)
+		cardBar = create("Frame", { Name = "TitleBar", Size = UDim2.new(1, 0, 0, 24), BackgroundColor3 = GOLD, BorderSizePixel = 0, Parent = card })
+		nameText.Parent = cardBar
+		nameText.Position = UDim2.fromOffset(8, 2)
+		nameText.Size = UDim2.new(1, -16, 0, 20)
+		slot.Position = UDim2.fromOffset(7, 31)
+		abilityText.Position = UDim2.fromOffset(76, 34)
+		masteryText.Position = UDim2.fromOffset(76, 54)
+		barBack.Position = UDim2.fromOffset(76, 80)
+	end
 
 	-- THE PHONE BUTTON (next to ROLL), with the cooldown counting down on it
 	local phoneBtn = roundButton("AbilityButton", "⚔", UDim2.new(1, -300, 1, -110), 74, RGB(162, 38, 51))
@@ -2075,8 +2092,11 @@ do
 			local name = string.upper(def.Name)
 			if nameText.Text ~= name then
 				nameText.Text = name
+				if cardBar then
+					cardBar.BackgroundColor3 = (Config.Arcade and Config.Arcade.Colors and Config.Arcade.Colors[def.Rarity]) or GOLD
+				end
 			end
-			local what = ab and string.upper(ab.Name) or ""
+			local what = ab and ((cardBar and "[F] " or "") .. string.upper(ab.Name)) or ""
 			if abilityText.Text ~= what then
 				abilityText.Text = what
 			end

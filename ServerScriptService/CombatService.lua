@@ -117,7 +117,8 @@ end
 
 -- what your worn gear gives you (see ReplicatedStorage.Items)
 local critRng = Random.new()
--- what your gear AND your stat points give you together (Defense capped)
+-- what your gear AND your level give you together (Defense capped; see
+-- Config.LevelBonus)
 local function gearOf(player)
 	local d = PlayerService and PlayerService.GetData(player)
 	local t = Items.gearStats(d)

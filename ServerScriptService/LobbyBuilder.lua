@@ -1202,8 +1202,8 @@ local function buildShrine(parent)
 	end
 
 
-	addPrompt(tier3, "Stats", "Stat Points", "Shrine of Growth", 18)
-	autoZone(m, O * CFrame.new(0, 5, 0), V3(16, 10, 16), "Panel", "Stats")
+	-- (it used to be where you spent stat points; they're gone - your level
+	-- alone makes you stronger - so it's just the plaza's centrepiece now)
 end
 
 ----------------------------------------------------------------------

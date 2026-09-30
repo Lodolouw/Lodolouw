@@ -2056,13 +2056,14 @@ end
 refresh()
 for _, attr in ipairs({ "SpireFloor", "Colosseum", "Intro" }) do
 	player:GetAttributeChangedSignal(attr):Connect(function()
-		rollBtn.Visible = not player:GetAttribute("Intro")
+		rollBtn.Visible = Config.NewHud == false and not player:GetAttribute("Intro")
 		if win.Visible then
 			refresh()
 		end
 	end)
 end
-rollBtn.Visible = not player:GetAttribute("Intro")
+-- (the new lobby screen has its own ARCADE button: this one stays hidden)
+rollBtn.Visible = Config.NewHud == false and not player:GetAttribute("Intro")
 
 ----------------------------------------------------------------------
 -- Walk in and it opens (the same way as the Quest Board: LobbyActivities)

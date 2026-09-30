@@ -57,6 +57,9 @@ run test_lobbyhud.luau
 run test_rewards_menus.luau
 # the Shop (buying, gifts, SOON, no paid random items where not allowed)
 run test_shop_menu.luau
+# the Bag (weapons, the [F] ability, equip) and the Settings (sound, shadows,
+# low graphics, others' effects, camera shake)
+run test_bag_settings.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls
