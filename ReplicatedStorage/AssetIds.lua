@@ -14,7 +14,9 @@
 	    SoundService under its name ("Goo_Splat" -> "Goo Splat").
 	  * Icons: each weapon's icon (Tools/Weapons/make_icons.py, from its real
 	    picture), uploaded as a decal, by the weapon's key. The Arcade and the
-	    Weapons panel show them (as "rbxthumb://type=Asset&id=...").
+	    Weapons panel show them - through ReplicatedStorage/Pictures, which
+	    swaps each decal for the real image inside it (fast) once the server's
+	    PictureLoader has looked it up.
 	    UI_<name>: the menus' pixel icons (Tools/Icons/make_ui_icons.py) -
 	    WindowKit shows them on the lobby buttons, tabs and cards.
 	Missing ones are fine: a weapon without its model is the blocky one made in

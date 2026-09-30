@@ -343,6 +343,7 @@ local AssetIds = nil
 pcall(function()
 	AssetIds = require(ReplicatedStorage:WaitForChild("AssetIds", 5))
 end)
+local Pictures = require(ReplicatedStorage:WaitForChild("Pictures")) -- (the uploaded pictures, fast)
 
 -- a stand-in for each pixel icon until it's uploaded (Roblox draws emoji in colour)
 K.STAND_IN = {
@@ -353,11 +354,11 @@ K.STAND_IN = {
 	Lock = "🔒", Codes = "🔑", Updates = "📰", Flask = "🧪", Bolt = "⚡", Stats = "📊", Gear = "🧰",
 }
 
--- the uploaded picture for icon `key` ("rbxthumb://..."), or nil
+-- the uploaded picture for icon `key` (ReplicatedStorage/Pictures), or nil
 function K.iconImage(key)
 	local icons = type(AssetIds) == "table" and AssetIds.Icons or nil
 	local id = icons and icons["UI_" .. tostring(key)]
-	return id and ("rbxthumb://type=Asset&id=" .. tostring(id) .. "&w=150&h=150") or nil
+	return id and Pictures.url(id) or nil
 end
 
 -- one of the menus' pixel icons (an ImageLabel), or its stand-in (a TextLabel)
@@ -372,6 +373,7 @@ function K.icon(parent, key, props)
 			ScaleType = Enum.ScaleType.Fit,
 			ResampleMode = Enum.ResamplerMode.Pixelated,
 		}, parent)
+		Pictures.show(i, AssetIds.Icons["UI_" .. tostring(key)]) -- (swaps to the fast picture when it's known)
 	else
 		i = new("TextLabel", {
 			Name = "Icon",

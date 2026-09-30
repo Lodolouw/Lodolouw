@@ -25,8 +25,9 @@ local AssetIds = nil
 pcall(function()
 	AssetIds = require(ReplicatedStorage:WaitForChild("AssetIds", 5))
 end)
+local Pictures = require(ReplicatedStorage:WaitForChild("Pictures")) -- (fast pictures: they download as you join)
 
--- a kind's 8 pictures, or nil if any is missing
+-- a kind's 8 pictures (their ids), or nil if any is missing
 local cache = {}
 local function pictures(kind)
 	if cache[kind] ~= nil then
@@ -40,15 +41,9 @@ local function pictures(kind)
 			cache[kind] = false
 			return nil
 		end
-		list[i] = "rbxthumb://type=Asset&id=" .. tostring(id) .. "&w=150&h=150"
+		list[i] = id
 	end
 	cache[kind] = list
-	-- (all of them start downloading now, so flipping never shows a blank)
-	task.spawn(function()
-		pcall(function()
-			game:GetService("ContentProvider"):PreloadAsync(list)
-		end)
-	end)
 	return list
 end
 
@@ -67,7 +62,7 @@ local function start()
 		for pic, info in pairs(live) do
 			if pic.Parent then
 				if frame ~= shown then
-					pic.Image = info.list[frame]
+					pic.Image = Pictures.url(info.list[frame]) -- (the fast picture once it's known)
 				end
 				if info.kind == "Token" then
 					pic.Position = UDim2.fromScale(0.5, 0.5 + bob)
@@ -98,7 +93,7 @@ function M.make(parent, kind, size, props)
 	pic.Size = UDim2.fromScale(1.15, 1.15) -- (the pictures have a little air round them)
 	pic.ScaleType = Enum.ScaleType.Fit
 	pic.ResampleMode = Enum.ResamplerMode.Pixelated
-	pic.Image = list[1]
+	pic.Image = Pictures.url(list[1])
 	pic.Parent = holder
 	for k, v in pairs(props or {}) do
 		holder[k] = v

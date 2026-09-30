@@ -64,6 +64,10 @@ local Action = Remotes:WaitForChild("Action")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- (every icon starts downloading as soon as you join - ReplicatedStorage/
+-- Pictures does that for every uploaded picture)
+local Pictures = require(ReplicatedStorage:WaitForChild("Pictures"))
+
 -- the weapons' icons (their real pictures, uploaded: AssetIds.Icons)
 local AssetIds = nil
 pcall(function()
@@ -76,25 +80,9 @@ local function iconFor(def, id, size)
 	if not n then
 		return nil
 	end
-	size = size or 150
-	return "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=" .. size .. "&h=" .. size
+	return Pictures.url(n, size or 150)
 end
 
--- (every icon starts downloading as soon as you join, not the first time
--- it's shown - otherwise the strip and the cards sit blank for a moment)
-task.spawn(function()
-	local icons = type(AssetIds) == "table" and AssetIds.Icons
-	if not icons then
-		return
-	end
-	local list = {}
-	for _, n in pairs(icons) do
-		table.insert(list, "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150")
-	end
-	pcall(function()
-		game:GetService("ContentProvider"):PreloadAsync(list)
-	end)
-end)
 
 local WeaponFX = nil -- (for the weapons in 3D: loaded when first needed)
 local function weaponFX()

@@ -168,6 +168,10 @@ new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4) }, 
 
 local data = nil
 
+-- (every icon starts downloading as soon as you join - ReplicatedStorage/
+-- Pictures does that for every uploaded picture)
+local Pictures = require(ReplicatedStorage:WaitForChild("Pictures"))
+
 -- the weapons' icons (their real pictures, uploaded: AssetIds.Icons)
 local AssetIds = nil
 pcall(function()
@@ -176,24 +180,9 @@ end)
 local function iconFor(def, id)
 	local icons = type(AssetIds) == "table" and AssetIds.Icons
 	local n = icons and ((def and def.Model and icons[def.Model]) or icons[id])
-	return n and ("rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150") or nil
+	return n and Pictures.url(n) or nil
 end
 
--- (every icon starts downloading as soon as you join, not the first time
--- it's shown - otherwise the strip and the cards sit blank for a moment)
-task.spawn(function()
-	local icons = type(AssetIds) == "table" and AssetIds.Icons
-	if not icons then
-		return
-	end
-	local list = {}
-	for _, n in pairs(icons) do
-		table.insert(list, "rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150")
-	end
-	pcall(function()
-		game:GetService("ContentProvider"):PreloadAsync(list)
-	end)
-end)
 
 local function setStatus(msg, good)
 	status.Text = msg or ""

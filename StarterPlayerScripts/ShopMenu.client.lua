@@ -30,6 +30,7 @@ if Config.NewHud == false then
 end
 local K = require(ReplicatedStorage:WaitForChild("WindowKit"))
 local Menus = require(ReplicatedStorage:WaitForChild("Menus"))
+local Pictures = require(ReplicatedStorage:WaitForChild("Pictures")) -- (the uploaded pictures, fast)
 local C = K.COLORS
 local S = Config.Shop
 local R = Config.Rewards
@@ -72,7 +73,7 @@ end
 local function weaponImage(id)
 	local icons = type(AssetIds) == "table" and AssetIds.Icons or nil
 	local n = icons and icons[id]
-	return n and ("rbxthumb://type=Asset&id=" .. tostring(n) .. "&w=150&h=150") or nil
+	return n and Pictures.url(n) or nil
 end
 
 ----------------------------------------------------------------------
