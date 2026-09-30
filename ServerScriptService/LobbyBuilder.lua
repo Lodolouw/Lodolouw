@@ -4397,7 +4397,7 @@ end
 
 -- A little flower garden on the lawn between the Quest Board's path and the
 -- farm: a round bed with a stone edge and a blossom tree, flowers, and two
--- park benches looking at it
+-- park benches either side of it, looking at it
 local function buildGarden(parent)
 	local m = folder(parent, "Garden")
 	local cx, cz = 27, 61
@@ -4406,14 +4406,14 @@ local function buildGarden(parent)
 	blossomTree(m, cx, cz, 0.8)
 	flowers(m, cx - 2.5, cz + 2, 2)
 	flowers(m, cx + 2.5, cz - 2, 2)
-	for _, f in ipairs({ { cx - 11, cz - 3 }, { cx + 11, cz + 2 }, { cx - 7, cz + 7 } }) do
+	for _, f in ipairs({ { cx - 12, cz + 7 }, { cx + 12, cz - 6 }, { cx, cz + 9 } }) do
 		flowers(m, f[1], f[2], 3)
 	end
 	bush(m, cx + 13, cz - 5, 0.8)
 	bush(m, cx - 14, cz + 5, 0.7)
-	-- the park benches, on the north side facing the bed
-	for _, bx in ipairs({ cx - 4.5, cx + 4.5 }) do
-		local o = CFrame.new(bx, 0, cz - 8.5)
+	-- the park benches, either side of the bed and facing it (off the path)
+	for _, sx in ipairs({ -1, 1 }) do
+		local o = CFrame.new(cx + sx * 9, 0, cz) * CFrame.Angles(0, math.rad(-sx * 90), 0) -- (its seat faces the tree)
 		part(m, "BenchSeat", V3(5, 0.4, 1.6), o * CFrame.new(0, 1.8, 0), WOOD, Mat.WoodPlanks)
 		part(m, "BenchBack", V3(5, 1.4, 0.3), o * CFrame.new(0, 2.9, -0.8) * CFrame.Angles(math.rad(-10), 0, 0), WOOD, Mat.WoodPlanks)
 		for _, lx in ipairs({ -2.1, 2.1 }) do

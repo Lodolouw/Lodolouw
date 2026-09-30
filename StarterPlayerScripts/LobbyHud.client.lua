@@ -244,6 +244,19 @@ do
 		Size = UDim2.fromOffset(96, 40),
 		ZIndex = 3,
 	})
+	-- GUIDE ON / OFF, just under the card: the trail and the light to the goal
+	-- (saved with your settings: SettingsMenu follows "GuideOff")
+	local guideBtn = K.button(holder, "GUIDE: ON", C.Green, { Name = "GuideToggle", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 1, 10), Size = UDim2.fromOffset(150, 34), ZIndex = 5 })
+	local function showGuide()
+		local off = player:GetAttribute("GuideOff") == true
+		guideBtn.Text = off and "GUIDE: OFF" or "GUIDE: ON"
+		guideBtn.BackgroundColor3 = off and C.Off or C.Green
+	end
+	showGuide()
+	player:GetAttributeChangedSignal("GuideOff"):Connect(showGuide)
+	guideBtn.Activated:Connect(function()
+		player:SetAttribute("GuideOff", (not player:GetAttribute("GuideOff")) or nil)
+	end)
 	-- (tapping it: for a goal with no place to walk to, it opens the thing)
 	local tap = new("TextButton", { Name = "Tap", Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 4 }, face)
 	tap.Activated:Connect(function()
@@ -664,8 +677,12 @@ local function follow(dt)
 	local zone = g and g.place and shown() and zoneFor(g.place) or nil
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not (zone and hrp) then
+	if not (zone and hrp) or player:GetAttribute("GuideOff") then
 		hideTrail()
+		if zone and hrp then -- (guide off: still says how far)
+			ui.goalFar.Text = math.floor(Vector3.new(zone.Position.X - hrp.Position.X, 0, zone.Position.Z - hrp.Position.Z).Magnitude) .. "m"
+			return
+		end
 		ui.goalFar.Text = ""
 		return
 	end

@@ -32,7 +32,7 @@ local Menus = require(ReplicatedStorage:WaitForChild("Menus"))
 local C = K.COLORS
 
 local player = Players.LocalPlayer
-local DEFAULTS = { music = true, sfx = true, shadows = true, low = false, hideOthers = false, shake = true, revives = true, rush = true }
+local DEFAULTS = { music = true, sfx = true, shadows = true, low = false, hideOthers = false, shake = true, revives = true, rush = true, guide = true }
 local current = table.clone(DEFAULTS) -- what's in effect on this screen
 local shadowsWere = nil -- the world's own shadows setting (put back when switched on)
 local effectsWere = {} -- [light effect] = was it on
@@ -44,6 +44,7 @@ local LIST = {
 	{ "Graphics", "low", "Low graphics", "Turns off shadows and the light's extra effects - smoother on slow phones." },
 	{ "Graphics", "hideOthers", "Hide others' effects", "Other players' ability effects and auras aren't drawn on your screen." },
 	{ "Graphics", "shake", "Camera shake", "The camera kicks when big hits land." },
+	{ "Graphics", "guide", "Goal guide", "The glowing trail and light leading you to your next goal (also the GUIDE button under it)." },
 	{ "Fights", "revives", "Use revives", "A revive ticket stands you back up once per boss fight." },
 	{ "Fights", "rush", "Use Boss Rush", "A Boss Rush ticket doubles a win against a boss you've beaten." },
 }
@@ -112,6 +113,7 @@ local function apply(s)
 	player:SetAttribute("HideOthersFX", current.hideOthers or nil)
 	player:SetAttribute("NoShake", (not current.shake) or nil)
 	player:SetAttribute("LowGraphics", current.low or nil)
+	player:SetAttribute("GuideOff", (not current.guide) or nil)
 end
 
 -- other players' auras from their looks (RewardService's LookAura) follow
@@ -200,3 +202,15 @@ do
 		end
 	end)
 end
+
+-- the GUIDE button under the next goal (LobbyHud) flips "GuideOff" on you:
+-- the switch here follows it, and it's saved
+player:GetAttributeChangedSignal("GuideOff"):Connect(function()
+	local on = not player:GetAttribute("GuideOff")
+	if current.guide ~= on then
+		current.guide = on
+		pcall(function()
+			Menus.act("SaveSettings", table.clone(current))
+		end)
+	end
+end)
