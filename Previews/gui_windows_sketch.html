@@ -1,0 +1,251 @@
+<title>Defeat a Boss GUI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@500;700;800&display=swap">
+<style>
+/* Layout: a column of phone-shaped screens (16:9), each a real game moment, with the window pieces labelled underneath. */
+:root {
+  color-scheme: dark;
+  --ground: #16122b;      /* page */
+  --scene: #2b2150;       /* the game world behind the windows */
+  --scene2: #3c2d73;
+  --ink: #181425;         /* outlines, dark text */
+  --paper: #efe9ff;       /* window body */
+  --paper2: #ffffff;
+  --text: #f4f0ff;        /* text on the page */
+  --muted: #b7acd9;
+  --pink: #ff3fa4;        /* window title bars, by role */
+  --teal: #19b3a6;
+  --blue: #4f6bff;
+  --gold: #ffb62e;
+  --green: #52c95a;
+  --red: #e5394a;
+  --yellow: #fee761;
+  /* rarities */
+  --common: #9aa3b8; --rare: #2d8cf0; --epic: #b04ee8; --legendary: #ffa21f; --mythic: #e5394a; --secret: #ff5fd2;
+  --pixel: "Press Start 2P", ui-monospace, monospace;
+  --body: "Rubik", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--text); font-family: var(--body); padding-block: 28px 60px; padding-inline: 16px; }
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 44px; }
+header h1 { font-family: var(--pixel); font-size: clamp(16px, 3.4vw, 26px); color: var(--yellow); line-height: 1.5; margin: 0 0 12px; text-shadow: 3px 3px 0 #a0283a; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); max-width: 64ch; line-height: 1.55; font-size: 15px; }
+h2 { font-family: var(--pixel); font-size: 13px; letter-spacing: .04em; color: var(--text); margin: 0 0 12px; line-height: 1.6; }
+h2 span { color: var(--gold); }
+.note { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 12px 0 0; max-width: 70ch; }
+.note b { color: var(--text); }
+
+/* a screen */
+.screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border: 4px solid var(--ink); border-radius: 14px; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 120%, var(--scene2), var(--scene) 60%, #1d1638);
+  box-shadow: 0 0 0 3px #3a2f63, 0 18px 40px rgba(0,0,0,.45); font-size: clamp(6px, 1.05vw, 11px); }
+.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 2px, transparent 2px 4px); }
+.floor { position: absolute; left: -10%; right: -10%; bottom: -30%; height: 60%; transform: perspective(300px) rotateX(55deg);
+  background: repeating-linear-gradient(90deg, #5a3f9a 0 8%, #4a3383 8% 16%), #4a3383; opacity: .55; }
+
+/* the window look (WindowKit) */
+.win { position: absolute; background: var(--paper); border: .25em solid var(--ink); box-shadow: .45em .45em 0 rgba(10,6,24,.75); color: var(--ink); }
+.bar { display: flex; align-items: center; gap: .5em; padding: .35em .5em; font-family: var(--pixel); font-size: .8em; color: #fff; border-bottom: .25em solid var(--ink); }
+.bar .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: .15em .15em 0 rgba(0,0,0,.35); }
+.bar i { width: 1.35em; height: 1.35em; background: var(--paper); border: .18em solid var(--ink); display: grid; place-items: center; font-style: normal; color: var(--ink); font-size: .8em; }
+.pink { background: var(--pink); } .teal { background: var(--teal); } .blue { background: var(--blue); } .gold { background: var(--gold); } .green { background: var(--green); } .red { background: var(--red); }
+.in { padding: .7em; display: grid; gap: .55em; }
+.btn { font-family: var(--pixel); font-size: .78em; color: #fff; border: .22em solid var(--ink); padding: .6em .7em; text-align: center; box-shadow: .25em .25em 0 var(--ink); }
+.chip { display: inline-block; font-family: var(--pixel); font-size: .62em; color: #fff; border: .18em solid var(--ink); padding: .25em .4em; }
+.row { display: flex; align-items: center; gap: .5em; }
+.meter { height: 1em; border: .2em solid var(--ink); background: #2a1f3f; position: relative; }
+.meter b { position: absolute; inset: 0 auto 0 0; }
+.px { font-family: var(--pixel); }
+.dot { position: absolute; top: -.45em; right: -.45em; width: 1.2em; height: 1.2em; border-radius: 50%; background: var(--red); border: .18em solid var(--ink); }
+.coin { width: 1.4em; height: 1.4em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6a8, var(--gold) 55%, #b86b12); border: .18em solid var(--ink); flex: none; }
+.token { width: 1.4em; height: 1.4em; border-radius: 50%; background: conic-gradient(#ff5fd2, #4f6bff, #19b3a6, #fee761, #ff5fd2); border: .18em solid var(--ink); flex: none; }
+.player { position: absolute; width: 3.2%; aspect-ratio: 1/2.3; background: linear-gradient(#fee761 0 24%, #0099db 24% 58%, #3e8948 58%); left: 48%; bottom: 20%; border: .15em solid var(--ink); }
+.boss { position: absolute; left: 36%; bottom: 22%; width: 28%; aspect-ratio: 1/1.1; background: linear-gradient(#8b5a3c 0 30%, #6d4128 30% 70%, #4a2a1a 70%);
+  border: .3em solid var(--ink); border-radius: 30% 30% 12% 12%; }
+.boss::before { content: ""; position: absolute; left: 20%; right: 20%; top: -18%; height: 22%; background: repeating-linear-gradient(90deg, var(--gold) 0 14%, transparent 14% 20%); }
+.boss::after { content: ""; position: absolute; left: 30%; right: 30%; top: 24%; height: 12%; background: var(--ink); border-radius: 0 0 40% 40%; }
+.cap { position: absolute; font-family: var(--body); font-weight: 700; font-size: .9em; background: var(--gold); color: var(--ink); border: .2em solid var(--ink); padding: .15em .45em; }
+
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 22px; margin: 14px 0 0; padding: 0; list-style: none; }
+.legend li { font-size: 14px; line-height: 1.5; color: var(--muted); min-width: 0; }
+.legend li b { color: var(--text); font-weight: 700; }
+.legend .k { display: inline-block; font-family: var(--pixel); font-size: 10px; color: var(--ink); background: var(--gold); border: 2px solid var(--ink); padding: 2px 5px; margin-right: 6px; }
+.rules { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rules li { background: #221b40; border: 3px solid var(--ink); padding: 12px 14px; line-height: 1.5; font-size: 15px; color: var(--muted); }
+.rules li b { color: var(--text); }
+@media (max-width: 520px) { .screen { font-size: 5.2px; border-width: 3px; } }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>THE WINDOW LOOK, EVERYWHERE</h1>
+  <p>A sketch of every screen in the game with the Arcade's style: bold old-computer windows, loud title bars and chunky pixel buttons. Each window's title bar colour says what kind of window it is, the same on every screen. The numbered tags are explained under each picture.</p>
+</header>
+
+<!-- 1 LOBBY -->
+<section>
+  <h2><span>1</span> · IN THE LOBBY</h2>
+  <div class="screen" role="img" aria-label="Lobby screen with top bar, side buttons, quest tracker and weapon card">
+    <div class="floor"></div>
+    <div class="player"></div>
+    <!-- top bar -->
+    <div class="win" style="left:2%;top:3%;width:30%">
+      <div class="bar blue"><span class="t">LV 12</span></div>
+      <div class="in" style="padding:.5em"><div class="meter"><b style="width:64%;background:var(--green)"></b></div><div class="px" style="font-size:.6em">640 / 1000 XP</div></div>
+    </div>
+    <div class="win" style="left:34%;top:3%;width:32%">
+      <div class="in row" style="padding:.55em;justify-content:space-between">
+        <span class="row"><span class="coin"></span><b class="px" style="font-size:.8em">12,450</b></span>
+        <span class="row"><span class="token"></span><b class="px" style="font-size:.8em">8</b><span class="btn pink" style="padding:.15em .4em">+</span></span>
+      </div>
+    </div>
+    <!-- left buttons -->
+    <div style="position:absolute;left:2%;top:26%;display:grid;gap:.9em;width:11%">
+      <div class="btn pink" style="position:relative">ROLL<span class="dot"></span></div>
+      <div class="btn teal">BAG</div>
+      <div class="btn gold" style="color:var(--ink)">SHOP</div>
+      <div class="btn blue" style="position:relative">QUESTS<span class="dot"></span></div>
+    </div>
+    <!-- quest tracker -->
+    <div class="win" style="right:2%;top:24%;width:27%">
+      <div class="bar blue"><span class="t">QUESTS</span><i>_</i></div>
+      <div class="in">
+        <div style="font-weight:700">Beat 5 Waves</div>
+        <div class="meter"><b style="width:60%;background:var(--blue)"></b></div>
+        <div class="row" style="justify-content:space-between"><span class="px" style="font-size:.6em">3 / 5</span><span class="row" style="gap:.3em"><span class="token" style="width:1em;height:1em"></span><b class="px" style="font-size:.6em">+1</b></span></div>
+        <div class="px" style="font-size:.55em;color:#6b5f8a">NEW QUESTS IN 4:12:08</div>
+      </div>
+    </div>
+    <!-- weapon card -->
+    <div class="win" style="right:2%;bottom:5%;width:24%">
+      <div class="bar" style="background:var(--rare)"><span class="t">RARE</span></div>
+      <div class="in row"><div style="width:2.6em;height:2.6em;background:#63c74d;border:.2em solid var(--ink)"></div><div><div style="font-weight:800">Goo Gloves</div><div class="px" style="font-size:.55em">MASTERY 4</div></div></div>
+    </div>
+    <!-- toast -->
+    <div class="win" style="left:36%;bottom:8%;width:28%">
+      <div class="bar gold"><span class="t" style="color:var(--ink);text-shadow:none">+1 ARCADE TOKEN!</span></div>
+    </div>
+    <div class="cap" style="left:3%;top:18%">A</div><div class="cap" style="left:62%;top:15%">B</div><div class="cap" style="left:13%;top:30%">C</div>
+    <div class="cap" style="right:30%;top:26%">D</div><div class="cap" style="right:27%;bottom:9%">E</div><div class="cap" style="left:33%;bottom:10%">F</div>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Level</b>, with the XP bar right under it.</li>
+    <li><span class="k">B</span><b>Coins and Arcade Tokens</b>, both animated. The pink + opens the token shop.</li>
+    <li><span class="k">C</span><b>Four big buttons</b>: Roll, Bag, Shop, Quests. A red dot means something's waiting.</li>
+    <li><span class="k">D</span><b>Quest tracker</b>: today's quest, its bar, the token it pays and when new ones arrive. Folds down with _.</li>
+    <li><span class="k">E</span><b>Your weapon</b>: the title bar is its rarity colour.</li>
+    <li><span class="k">F</span><b>Toasts</b> slide up here and go away by themselves.</li>
+  </ul>
+</section>
+
+<!-- 2 FIGHT -->
+<section>
+  <h2><span>2</span> · IN A BOSS FIGHT</h2>
+  <div class="screen" role="img" aria-label="Boss fight screen with boss bar, health, stamina, flasks and ability buttons">
+    <div class="floor"></div>
+    <div class="boss"></div>
+    <div class="player" style="left:52%;bottom:10%"></div>
+    <div class="win" style="left:18%;top:3%;width:64%">
+      <div class="bar red"><span class="t">KING GAVELGRUNT · FLOOR 10</span><span class="chip gold" style="color:var(--ink)">ROUND 2</span></div>
+      <div class="in" style="padding:.5em"><div class="meter" style="height:1.4em"><b style="width:58%;background:linear-gradient(var(--red),#a3202e)"></b></div></div>
+    </div>
+    <div class="win" style="left:2%;bottom:5%;width:30%">
+      <div class="in row" style="padding:.55em">
+        <span class="chip teal" style="font-size:.7em">🧪 3</span>
+        <span style="width:2.4em;height:2.2em;background:var(--red);clip-path:polygon(50% 100%,0 35%,15% 5%,50% 22%,85% 5%,100% 35%);flex:none"></span>
+        <div style="flex:1;display:grid;gap:.3em"><div class="meter"><b style="width:80%;background:var(--red)"></b></div><div class="meter" style="height:.7em"><b style="width:55%;background:var(--yellow)"></b></div></div>
+      </div>
+    </div>
+    <div style="position:absolute;right:2%;bottom:5%;display:flex;gap:.6em">
+      <div class="btn teal">Q</div><div class="btn pink">E</div><div class="btn gold" style="color:var(--ink)">R</div>
+    </div>
+    <div class="cap" style="left:15%;top:6%">A</div><div class="cap" style="left:1%;bottom:17%">B</div><div class="cap" style="right:2%;bottom:17%">C</div>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Boss bar</b> in a red window: name, floor, round. It's the only big thing on screen.</li>
+    <li><span class="k">B</span><b>You</b>: flasks, the heart, health and the stamina bolt, together in one small window.</li>
+    <li><span class="k">C</span><b>Your weapon's abilities</b>, with a cooldown sweep on each.</li>
+    <li>The lobby buttons <b>hide during a fight</b>, so nothing covers the boss.</li>
+  </ul>
+</section>
+
+<!-- 3 BAG + SPIRE -->
+<section>
+  <h2><span>3</span> · BAG AND SPIRE</h2>
+  <div class="screen" role="img" aria-label="Bag window with weapon grid next to the Spire floor list">
+    <div class="floor"></div>
+    <div class="win" style="left:3%;top:6%;width:52%;bottom:7%">
+      <div class="bar teal"><span class="t">BAG · 14 WEAPONS</span><i>_</i><i>✕</i></div>
+      <div class="in" style="grid-template-columns:repeat(4,1fr);gap:.5em">
+        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--legendary);font-size:.55em"><span class="t">LEGENDARY</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#2e7d32;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Ooze Daggers</b><span class="px" style="font-size:.5em">EQUIPPED</span></div></div>
+        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--epic);font-size:.55em"><span class="t">EPIC</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#7ec850;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Gelatin Hammer</b><span class="px" style="font-size:.5em">MASTERY 2</span></div></div>
+        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--rare);font-size:.55em"><span class="t">RARE</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#63c74d;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Jellyblade</b><span class="px" style="font-size:.5em">MASTERY 5</span></div></div>
+        <div class="win" style="position:relative;box-shadow:none"><div class="bar" style="background:var(--common);font-size:.55em"><span class="t">COMMON</span></div><div class="in" style="padding:.4em;gap:.2em"><div style="height:2.4em;background:#9bd46a;border:.18em solid var(--ink)"></div><b style="font-size:.8em">Goo Gloves</b><span class="px" style="font-size:.5em">MASTERY 4</span></div></div>
+        <div class="win" style="position:relative;box-shadow:none;grid-column:span 4"><div class="in row" style="padding:.45em;justify-content:space-between"><span><b>Ooze Daggers</b> · Daggers · <i>Slime Trail</i></span><span class="btn green" style="padding:.35em .6em">EQUIP</span></div></div>
+      </div>
+    </div>
+    <div class="win" style="right:3%;top:6%;width:38%;bottom:7%">
+      <div class="bar pink"><span class="t">THE SPIRE</span><i>✕</i></div>
+      <div class="in" style="gap:.4em">
+        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.35em .5em"><b>1 · Oozark</b><span class="chip green">BEATEN</span></div>
+        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.35em .5em"><b>2 · Tuber</b><span class="chip green">BEATEN</span></div>
+        <div class="row" style="justify-content:space-between;background:#fff3c4;border:.22em solid var(--ink);padding:.35em .5em"><b>3 · Knight Burrowmore</b><span class="chip gold" style="color:var(--ink)">FIGHT</span></div>
+        <div class="row" style="justify-content:space-between;background:#d9d2ec;border:.18em solid var(--ink);padding:.35em .5em;color:#6b5f8a"><b>4 · Kaze</b><span class="px" style="font-size:.55em">LV 45</span></div>
+        <div class="row" style="justify-content:space-between;background:#d9d2ec;border:.18em solid var(--ink);padding:.35em .5em;color:#6b5f8a"><b>10 · King Gavelgrunt</b><span class="px" style="font-size:.55em">🔒</span></div>
+      </div>
+    </div>
+    <div class="cap" style="left:2%;top:2%">A</div><div class="cap" style="right:36%;top:2%">B</div>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Bag</b> (teal): one card per weapon, rarity on the title bar, mastery underneath. Tap a card and its details and EQUIP show at the bottom.</li>
+    <li><span class="k">B</span><b>Spire</b> (pink): every floor with a clear state. Beaten is green, your next fight is gold, and locked floors show the level they need.</li>
+  </ul>
+</section>
+
+<!-- 4 QUESTS + SHOP + POPUP -->
+<section>
+  <h2><span>4</span> · QUEST BOARD, SHOP AND POP-UPS</h2>
+  <div class="screen" role="img" aria-label="Quest board, Robux shop and a level-up pop-up">
+    <div class="floor"></div>
+    <div class="win" style="left:3%;top:6%;width:32%;bottom:7%">
+      <div class="bar blue"><span class="t">QUEST BOARD</span><i>✕</i></div>
+      <div class="in" style="gap:.45em">
+        <div style="background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><b>Beat 5 Waves</b><div class="meter" style="margin:.3em 0"><b style="width:60%;background:var(--blue)"></b></div><span class="px" style="font-size:.55em">3/5 · +1 TOKEN</span></div>
+        <div style="background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><b>Beat any boss</b><div class="meter" style="margin:.3em 0"><b style="width:0%"></b></div><span class="px" style="font-size:.55em">0/1 · +1 TOKEN</span></div>
+        <div style="background:#e6ffe0;border:.18em solid var(--ink);padding:.4em"><b>Login day 5 of 7</b><div class="row" style="gap:.2em;margin-top:.3em"><span class="chip green">1</span><span class="chip green">2</span><span class="chip green">3</span><span class="chip green">4</span><span class="chip gold" style="color:var(--ink)">5</span><span class="chip" style="background:#9a90b8">6</span><span class="chip pink">7!</span></div></div>
+      </div>
+    </div>
+    <div class="win" style="left:37%;top:6%;width:30%;bottom:7%">
+      <div class="bar gold"><span class="t" style="color:var(--ink);text-shadow:none">SHOP</span><i>✕</i></div>
+      <div class="in" style="gap:.45em">
+        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><span class="row"><span class="token"></span><b>10 Tokens</b></span><span class="btn green" style="padding:.3em .5em">R$ 99</span></div>
+        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><span class="row"><span class="token"></span><b>50 Tokens</b></span><span class="btn green" style="padding:.3em .5em">R$ 449</span></div>
+        <div class="row" style="justify-content:space-between;background:#fff3c4;border:.22em solid var(--ink);padding:.4em"><b>Starter Pack</b><span class="btn pink" style="padding:.3em .5em">R$ 49</span></div>
+        <div class="row" style="justify-content:space-between;background:var(--paper2);border:.18em solid var(--ink);padding:.4em"><b>2x XP pass</b><span class="btn green" style="padding:.3em .5em">R$ 199</span></div>
+      </div>
+    </div>
+    <div class="win" style="right:3%;top:24%;width:27%">
+      <div class="bar green"><span class="t">LEVEL UP!</span><i>✕</i></div>
+      <div class="in" style="text-align:center"><div class="px" style="font-size:1.6em;color:var(--blue)">LV 13</div><div style="font-weight:700">+1 Arcade Token</div><div class="btn blue">NICE!</div></div>
+    </div>
+    <div class="cap" style="left:2%;top:2%">A</div><div class="cap" style="left:36%;top:2%">B</div><div class="cap" style="right:26%;top:20%">C</div>
+  </div>
+  <ul class="legend">
+    <li><span class="k">A</span><b>Quest Board</b> (blue, like the tracker): the day's quests and the login streak, with a big day 7.</li>
+    <li><span class="k">B</span><b>Shop</b> (gold): token packs, the one-time starter pack and passes. Prices here are placeholders.</li>
+    <li><span class="k">C</span><b>Pop-ups</b> (green for good news, red for warnings): one button, never more than one at a time.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span>★</span> · THE RULES THAT KEEP IT CONSISTENT</h2>
+  <ul class="rules">
+    <li><b>Title bar colour = what the window is.</b> Blue quests, teal bag, pink Spire and Arcade, gold shop, red boss or warning, green good news. On weapons it's always the rarity colour.</li>
+    <li><b>Same parts everywhere.</b> Thick dark outline, hard drop shadow, pixel font for titles and numbers, a rounder font for names and sentences.</li>
+    <li><b>_ folds, ✕ closes.</b> Walking away from a station also closes its window, like today.</li>
+    <li><b>Fights stay clean.</b> Only the boss bar, your stats and your abilities show. Everything else waits until the fight ends.</li>
+    <li><b>Big enough for a phone.</b> Buttons at least as big as a thumb, and nothing important in the bottom corners where Roblox's own buttons sit.</li>
+  </ul>
+</section>
+</div>
