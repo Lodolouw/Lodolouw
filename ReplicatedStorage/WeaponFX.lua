@@ -986,6 +986,14 @@ local function gooFolder()
 	end
 	return f
 end
+-- the swing's goo, jelly and eyes hide while they're right up at your
+-- camera (a blob an inch from your eye filled the whole screen)
+local NEAR_CAMERA = 4
+local function cameraAt()
+	local cam = workspace.CurrentCamera
+	return cam and cam.CFrame and cam.CFrame.Position or nil
+end
+WeaponFX.NEAR_CAMERA = NEAR_CAMERA
 local function fxPart(name, size, cf, color, see, neon, shape)
 	local p = Instance.new("Part")
 	p.Name = name
@@ -997,6 +1005,10 @@ local function fxPart(name, size, cf, color, see, neon, shape)
 	p.Material = neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
 	if shape then
 		p.Shape = shape
+	end
+	local eye = cameraAt()
+	if eye and (cf.Position - eye).Magnitude < NEAR_CAMERA + size.Magnitude / 2 then
+		p.LocalTransparencyModifier = 1
 	end
 	p.Parent = gooFolder()
 	return p
@@ -1044,6 +1056,7 @@ local function splat(b)
 	end
 end
 local function stepGoo(dt)
+	local eye = cameraAt()
 	for i = #goo, 1, -1 do
 		local b = goo[i]
 		b.vel = b.vel - Vector3.new(0, 55 * dt, 0)
@@ -1067,6 +1080,11 @@ local function stepGoo(dt)
 			b.part.Size = Vector3.new(b.size * (1 - stretch * 0.25), b.size * (1 - stretch * 0.25), b.size * (1 + stretch))
 			if b.core then
 				b.core.CFrame = cf
+			end
+			local hide = (eye and (b.pos - eye).Magnitude < NEAR_CAMERA + b.size) and 1 or 0
+			b.part.LocalTransparencyModifier = hide
+			if b.core then
+				b.core.LocalTransparencyModifier = hide
 			end
 		end
 	end
@@ -1921,9 +1939,17 @@ WeaponFX._swingFx = swingFx -- (for the headless tests)
 local function setSmear(h, on)
 	local starting = on and not h.smearOn
 	h.smearOn = on
+	-- (the smear stays off while the blade is right up at your camera - it
+	-- drew a glowing sheet over the whole screen)
+	local show = on
+	local blade = h.trails[1] and h.trails[1].Parent
+	local eye = show and cameraAt()
+	if eye and blade and blade:IsA("BasePart") and (blade.Position - eye).Magnitude < NEAR_CAMERA + 2 then
+		show = false
+	end
 	for _, t in ipairs(h.trails) do
-		if t.Enabled ~= on then
-			t.Enabled = on
+		if t.Enabled ~= show then
+			t.Enabled = show
 		end
 	end
 	-- (the rarer ones throw goo and more: see "Swing effects by rarity")
