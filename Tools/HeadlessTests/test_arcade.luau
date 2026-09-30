@@ -64,6 +64,8 @@ local saves = {
 		Gear = { Weapon = "a", Helmet = "c" },
 		-- and bought from the Upgrade Shop and crafted talismans
 		Upgrades = { PowerGain = 2, Backpack = 0, Nope = 9 }, Owned = { Might = true, Vigor = false },
+		-- and loot never sold at the Sell Shop
+		Loot = { Scrap = 4, Nope = 99 },
 	},
 	u_1008 = { Power = 100, Coins = 100, Tokens = 0, Chests = { ["1"] = 5000 } },
 }
@@ -544,9 +546,9 @@ local want = 3 + 2 + 4 + 1 + 5 + 25 + 1
 check(gd and gd.Tokens == want, "old gear and chests become tokens (" .. tostring(gd and gd.Tokens) .. ", want " .. want .. ")")
 check(gd and gd.Items == nil and gd.Gear == nil and gd.Chests == nil and gd.NextId == nil and gd.BestLevel == nil, "and they're gone from the data")
 check(hd and hd.Tokens == 100, "at most 100 tokens (" .. tostring(hd and hd.Tokens) .. ")")
--- Training Gloves level 2 (150 + 240) and the Talisman of Might (200)
-check(gd and gd.Coins == 100 + 150 + 240 + 200, "the coins spent in the old shop come back (" .. tostring(gd and gd.Coins) .. ")")
-check(gd and gd.Upgrades == nil and gd.Owned == nil and gd.Equipped == nil, "and the upgrades and talismans are gone from the data")
+-- Training Gloves level 2 (150 + 240), the Talisman of Might (200) and 4 Scrap (5 each)
+check(gd and gd.Coins == 100 + 150 + 240 + 200 + 20, "the coins spent in the old shop come back, and the loot is sold (" .. tostring(gd and gd.Coins) .. ")")
+check(gd and gd.Upgrades == nil and gd.Owned == nil and gd.Equipped == nil and gd.Loot == nil, "and the upgrades and talismans are gone from the data")
 check(hd and hd.Coins == 100, "nothing bought, nothing back")
 step(6.5)
 local swapNotice = 0
@@ -562,7 +564,7 @@ check(saves.u_1007 and saves.u_1007.Tokens == want and saves.u_1007.Items == nil
 Players.PlayerAdded:Fire(golf)
 step(0.5)
 gd = PS.GetData(golf)
-check(gd and gd.Tokens == want and gd.Coins == 690, "so it's only ever swapped once (" .. tostring(gd and gd.Tokens) .. ", " .. tostring(gd and gd.Coins) .. ")")
+check(gd and gd.Tokens == want and gd.Coins == 710, "so it's only ever swapped once (" .. tostring(gd and gd.Tokens) .. ", " .. tostring(gd and gd.Coins) .. ")")
 
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))

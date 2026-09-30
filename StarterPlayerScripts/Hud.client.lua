@@ -7,7 +7,6 @@
 	  * bottom middle: THE HEART (your health) - with the potion (flasks) and
 	    the lightning bolt (stamina) either side of it in a fight - drawn by
 	    ReplicatedStorage/Vitals
-	  * panels: Sell Shop / Backpack
 
 	The server owns all data; this script only displays it and sends requests.
 ]]
@@ -220,11 +219,6 @@ local COIN_SOUND = "coin2"
 
 -- One motif per action, so buying, selling, crafting and prestiging each feel distinct.
 local ACTION_CHIMES = {
-	Sell = {
-		{ speed = 1.1, volume = 0.5, soundName = COIN_SOUND },
-		{ delay = 0.06, speed = 1.35, volume = 0.45, soundName = COIN_SOUND },
-		{ delay = 0.12, speed = 1.6, volume = 0.4, soundName = COIN_SOUND },
-	},
 	Prestige = {
 		{ speed = 1.0, volume = 0.6, sound = HIT_SOUND },
 		{ delay = 0.12, speed = 1.19, volume = 0.55 },
@@ -539,9 +533,6 @@ end
 
 openPanel = function(name, force)
 	local key = name
-	if name == "Backpack" then
-		key = "Sell" -- Backpack and Sell Shop share one panel
-	end
 	local p = panels[key]
 	if not p then
 		return
@@ -582,7 +573,6 @@ local BUTTON_GAP = 10
 -- it between the quotes as "rbxassetid://123456789". Any left empty keep
 -- their emoji icon.
 local BUTTON_ICON_IMAGES = {
-	Backpack = "rbxassetid://125324688627530",
 	Prestige = "rbxassetid://115477290507288",
 }
 
@@ -657,7 +647,6 @@ local leftCol = create("Frame", {
 -- shop CFrames/rotations as LobbyBuilder, pushed forward past the counter to
 -- the customer side and turned 180° to face back in at it.
 local STATION_APPROACH = {
-	Backpack = CFrame.new(Config.Stations.Sell) * CFrame.Angles(0, math.rad(Config.StationTurn.Sell or 90), 0) * CFrame.new(0, 0, 11) * CFrame.Angles(0, math.pi, 0),
 	Prestige = CFrame.new(Config.Stations.Prestige) * CFrame.new(0, 0, 12) * CFrame.Angles(0, math.pi, 0),
 }
 
@@ -779,8 +768,8 @@ local function hudButton(name, icon, colors, order, panelName, stationCFrame)
 	return b
 end
 
--- (the Upgrade Shop and the talismans' Armory are gone; the Backpack has no
--- button any more: walk up to the Sell Shop to use it)
+-- (the Upgrade Shop, the talismans' Armory and the Sell Shop / Backpack are
+-- all gone)
 -- (the STATS and GEAR buttons are gone with stat points and armour gear: your
 -- level alone makes you stronger now - Config.LevelBonus)
 
@@ -1028,106 +1017,6 @@ local levelUpLabel = text({
 	Parent = root,
 }, { stroke(5), create("UIScale", { Name = "Pop" }) })
 local levelUpToken = 0
-
-----------------------------------------------------------------------
--- Panel: Sell Shop / Backpack (one panel, two modes)
-----------------------------------------------------------------------
-local sellUI = { rows = {} }
-do
-	local p = makePanel("Sell", "SELL SHOP", RGB(255, 190, 60), 540)
-	sellUI.note = text({
-		LayoutOrder = 0,
-		Size = UDim2.new(1, -10, 0, 26),
-		TextSize = 18,
-		TextColor3 = C.dim,
-		Parent = p.body,
-	})
-	sellUI.info = text({
-		LayoutOrder = 1,
-		Size = UDim2.new(1, -10, 0, 30),
-		TextSize = 22,
-		Parent = p.body,
-	}, { stroke(2.5) })
-	sellUI.all = button({
-		LayoutOrder = 2,
-		Size = UDim2.new(1, -10, 0, 58),
-		BackgroundColor3 = C.green,
-		Text = "SELL ALL",
-		TextSize = 26,
-		Parent = p.body,
-	})
-	sellUI.all.Activated:Connect(function()
-		doAction("Sell", "All")
-	end)
-
-	for i, m in ipairs(Config.Materials) do
-		local row = create("Frame", {
-			LayoutOrder = 10 + i,
-			Size = UDim2.new(1, -10, 0, 64),
-			BackgroundColor3 = C.row,
-			Parent = p.body,
-		}, { corner(12) })
-		create("Frame", {
-			Position = UDim2.fromOffset(12, 14),
-			Size = UDim2.fromOffset(36, 36),
-			BackgroundColor3 = m.color,
-			Parent = row,
-		}, { corner(18), border(2.5) })
-		text({
-			Position = UDim2.fromOffset(62, 6),
-			Size = UDim2.new(1, -230, 0, 26),
-			Text = m.name,
-			TextSize = 22,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		local detail = text({
-			Position = UDim2.fromOffset(62, 34),
-			Size = UDim2.new(1, -230, 0, 22),
-			TextSize = 16,
-			TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = row,
-		})
-		local btn = button({
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -10, 0.5, 0),
-			Size = UDim2.fromOffset(110, 44),
-			BackgroundColor3 = C.gold,
-			Text = "SELL",
-			Parent = row,
-		})
-		btn.Activated:Connect(function()
-			doAction("Sell", m.id)
-		end)
-		sellUI.rows[m.id] = { detail = detail, btn = btn }
-	end
-
-	p.onOpen = function(mode)
-		local selling = (mode == "Sell")
-		p.title.Text = selling and "SELL SHOP" or "BACKPACK"
-		sellUI.all.Visible = selling
-		for _, r in pairs(sellUI.rows) do
-			r.btn.Visible = selling
-		end
-		sellUI.note.Text = selling and "" or "Visit the Sell Shop to cash in your loot!"
-	end
-
-	p.refresh = function()
-		local count = Config.lootCount(state)
-		sellUI.info.Text = "Backpack " .. count .. "/" .. stats.capacity .. "   |   Coin bonus x" .. Config.formatMult(stats.coinMult)
-		local total = 0
-		for _, m in ipairs(Config.Materials) do
-			local n = state.Loot[m.id] or 0
-			total = total + n * m.sell
-			local ui = sellUI.rows[m.id]
-			ui.detail.Text = "x" .. n .. "   |   " .. Config.format(m.sell) .. " coins each   |   worth " .. Config.format(n * m.sell * stats.coinMult) .. " coins"
-			paint(ui.btn, n > 0, C.gold)
-		end
-		sellUI.all.Text = "SELL ALL   " .. Config.format(total * stats.coinMult) .. " coins"
-		paint(sellUI.all, total > 0, C.green)
-	end
-end
 
 ----------------------------------------------------------------------
 -- Rendering
@@ -1484,8 +1373,8 @@ do
 			doAction(what[2])
 		end)
 	end
-	local DEV_LABELS = { Tokens = "DEV: +10 Tokens", Loot = "DEV: +Loot", Coins = "DEV: +Coins", Power = "DEV: +Power" }
-	for i, kind in ipairs({ "Tokens", "Loot", "Coins", "Power" }) do
+	local DEV_LABELS = { Tokens = "DEV: +10 Tokens", Coins = "DEV: +Coins", Power = "DEV: +Power" }
+	for i, kind in ipairs({ "Tokens", "Coins", "Power" }) do
 		local b = button({
 			LayoutOrder = i - 1,
 			Size = UDim2.fromOffset(150, 36),

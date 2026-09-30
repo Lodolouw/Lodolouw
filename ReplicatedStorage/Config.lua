@@ -13,14 +13,12 @@ local Config = {}
 Config.GameName = "Boss Grow" -- working title, rename freely
 Config.BaseHealth = 100
 Config.BaseWalkSpeed = 24 -- your speed outside a fight (the lobby is big: quicker than Roblox's 16)
-Config.BaseCapacity = 20 -- backpack slots (the Sell Shop's loot)
 Config.RequireProximity = true -- shops only work when you stand near them
 Config.StationRange = 34 -- studs
 Config.MaxPrestige = 0 -- (prestige is gone)
 
 -- Where the shops stand. Used by the lobby builder AND by server range checks.
 Config.Stations = {
-	Sell = Vector3.new(52, 0, 45), -- (the Sell Shop was here: it's gone, the Quest Board stands there now)
 	Upgrades = Vector3.new(-50, -18.5, 330), -- the mushroom house, on the sandy cove south of the castle (the Upgrade Shop was here: it's just a house now)
 	Arcade = Vector3.new(75, 0, -41), -- the Arcade (ServerScriptService/ArcadeBuilder), north-east of the fountain
 	Prestige = Vector3.new(0, 0, 0),
@@ -28,7 +26,6 @@ Config.Stations = {
 }
 -- which way each building turns (degrees round the vertical)
 Config.StationTurn = {
-	Sell = -90, -- faces west, towards the path from the plaza
 	Upgrades = 90, -- faces east, towards the stairs and the pier
 	Quests = -90, -- faces west, down the little path to the road
 }
@@ -438,16 +435,6 @@ function Config.statBonus(d)
 	return out
 end
 
-----------------------------------------------------------------------
--- Loot materials (sold at the Sell Shop)
-----------------------------------------------------------------------
-Config.Materials = {
-	{ id = "Scrap", name = "Scrap Metal", color = Color3.fromRGB(170, 176, 190), sell = 5 },
-	{ id = "Shard", name = "Shadow Shard", color = Color3.fromRGB(150, 90, 255), sell = 25 },
-	{ id = "Ember", name = "Ember Core", color = Color3.fromRGB(255, 125, 40), sell = 120 },
-	{ id = "Void", name = "Void Crystal", color = Color3.fromRGB(60, 220, 255), sell = 600 },
-}
-
 -- (Prestige is gone: levels are the true progress now. These stay only so
 -- anything old that asks gets "no bonus".)
 function Config.prestigePowerMult()
@@ -458,25 +445,8 @@ function Config.prestigeCoinMult()
 end
 
 ----------------------------------------------------------------------
--- Lookup tables
-----------------------------------------------------------------------
-Config.MaterialById = {}
-for _, m in ipairs(Config.Materials) do
-	Config.MaterialById[m.id] = m
-end
-
-
-----------------------------------------------------------------------
 -- Derived stats (shared so the HUD and the server always agree)
 ----------------------------------------------------------------------
-function Config.lootCount(data)
-	local n = 0
-	for _, count in pairs(data.Loot or {}) do
-		n = n + count
-	end
-	return n
-end
-
 -- How fast a player moves. In a FIGHT (a Spire arena, the Colosseum, the
 -- intro's fight) everyone moves at the same speed, Config.Combat.ArenaWalkSpeed
 -- - the fights are about dodging, not outrunning. Outside a fight:
@@ -493,20 +463,16 @@ function Config.walkSpeedFor(player, d)
 end
 
 -- What your level makes of you (Config.LevelBonus): Power from training,
--- max health; and the Sell Shop's backpack and coins, walk speed outside
--- fights. (The Upgrade Shop and talismans are gone.)
+-- max health; and walk speed outside fights. (The Upgrade Shop, talismans
+-- and the Sell Shop are gone.)
 function Config.stats(d)
 	local points = Config.statBonus(d)
 	local powerMult = 1 + points.Power / 100
-	local coinMult = 1
-	local capacity = Config.BaseCapacity
 	local walkSpeed = Config.BaseWalkSpeed
 	local maxHealth = math.floor(Config.BaseHealth + points.Health)
 
 	return {
 		powerMult = powerMult,
-		coinMult = coinMult,
-		capacity = capacity,
 		walkSpeed = walkSpeed,
 		maxHealth = maxHealth,
 	}

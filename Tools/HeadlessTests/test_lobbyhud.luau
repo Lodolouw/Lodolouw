@@ -163,7 +163,7 @@ end
 local today = Config.questDay(1700000000 + math.floor(M.now()))
 local function snapshot(over)
 	local d = {
-		Power = 100, Coins = 1234, Tokens = 0, Loot = {},
+		Power = 100, Coins = 1234, Tokens = 0,
 		Weapons = { own = { StarterSword = 0 } }, Quests = { day = 0, list = { { id = "Arena10", n = 0 }, { id = "Boss1", n = 0 }, { id = "Clear1", n = 0 } } },
 		Cleared = {},
 		Rewards = { streak = 1, streakDay = today, giftPlay = 0, gifts = 0, giftsToday = 0, codes = {}, updates = { [R.Updates[1].Id] = true }, index = {}, milestones = {} },

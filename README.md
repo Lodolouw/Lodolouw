@@ -9,8 +9,7 @@ arena will plug in later.
 
 - **Procedurally-built lobby** (toy-brick island, paths, tall mossy castle
   walls, trees, lamps)
-- **Sell Shop** — sell loot materials for coins
-- (The Upgrade Shop, the talismans and prestige are gone: your level alone
+- (The Sell Shop, the Upgrade Shop, the talismans and prestige are gone: your level alone
   makes you stronger, and weapons come from the Arcade. The Upgrade Shop's
   mushroom house stays as the toad's house.)
 - **The Colosseum** — walk through the mini colosseum's door (south-west of
@@ -65,7 +64,7 @@ StarterPlayer/StarterPlayerScripts/
 - **PlayerService.lua** owns all player data (Power, Coins, Arcade Tokens,
   weapons, quests, rewards), validates every action server-side (never trust the
   client), and pushes state snapshots to each player's HUD. It also exposes
-  `PlayerService.AddLoot/AddCoins/AddPower/GetData` for your future arena
+  `PlayerService.AddCoins/AddTokens/AddPower/GetData` for your future arena
   scripts to call when a boss dies.
 - **Hud.client.lua** builds 100% of the GUI from code and only ever *displays*
   the last snapshot from the server — it never assumes anything client-side is
@@ -83,7 +82,6 @@ writing new ones:
 local PlayerService = require(game.ServerScriptService.PlayerService)
 
 -- when a boss dies:
-PlayerService.AddLoot(player, "Ember", 3)   -- returns how many actually fit
 PlayerService.AddCoins(player, 500)
 PlayerService.AddPower(player, 1000)
 ```
@@ -816,6 +814,9 @@ and your level makes you stronger (`Config.LevelBonus`). What that changed:
   toad's house) without its sign, arrow or walk-up. An old save gets back the
   coins it spent on upgrades and talismans, once, up to **50,000** (`OLD_SHOP`
   in `PlayerService.lua`), with a message. (DEV: Max Upgrades is gone.)
+- **The Sell Shop, loot and the backpack are gone too** (nothing dropped loot
+  any more). Loot an old save never sold is sold at its old price, once, in the
+  same refund (up to 50,000 in all). DEV: +Loot is gone.
 
 ## The new GUI (the lobby screen, rewards, the Index, the shop, the Bag and Settings)
 

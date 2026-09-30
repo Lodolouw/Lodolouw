@@ -2,14 +2,12 @@
 	PlayerService  (ModuleScript, parent: ServerScriptService, name: "PlayerService")
 
 	Server-authoritative game logic for the lobby:
-	  * per-player data (Power = XP, Coins, Arcade Tokens, Loot) + DataStore saving
-	  * the Sell Shop
+	  * per-player data (Power = XP, Coins, Arcade Tokens, weapons, quests) + DataStore saving
 	  * quests (the Quest Board: a new set every 6 hours, each paying an Arcade Token)
 	  * remotes for the HUD
 
 	Hooks for your future arena scripts:
 	    local PlayerService = require(game.ServerScriptService.PlayerService)
-	    PlayerService.AddLoot(player, "Scrap", 3)   --> returns how many actually fit
 	    PlayerService.AddCoins(player, 50)
 	    PlayerService.AddTokens(player, 5, "why they got them")
 	    PlayerService.AddPower(player, 10)
@@ -47,15 +45,10 @@ end)
 -- Data
 ----------------------------------------------------------------------
 local function defaultData()
-	local loot = {}
-	for _, m in ipairs(Config.Materials) do
-		loot[m.id] = 0
-	end
 	return {
 		Power = 0,
 		Coins = 0,
 		Prestige = 0,
-		Loot = loot,
 		Cleared = {}, -- ["1"] = how many times you've killed floor 1's boss
 		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
 		-- the board's quests (see Config.Quests): which set they're from (`day`:
@@ -175,18 +168,21 @@ local function oldGearTokens(saved, oldPrestige)
 	return math.min(n, OLD_GEAR.Max)
 end
 
--- THE OLD SHOP, REFUNDED. The Upgrade Shop and the talismans were taken out
--- of the game too; a save from before then still lists what was bought.
--- The coins spent on them come back, once - up to Max in all.
+-- THE OLD SHOP, REFUNDED. The Upgrade Shop, the talismans and the Sell Shop
+-- were taken out of the game too; a save from before then still lists what
+-- was bought, and the loot that was never sold. The coins spent come back,
+-- and the loot is sold at its old price, once - up to Max in all.
 local OLD_SHOP = {
 	Max = 50000,
 	-- the upgrades' prices: { first level's price, how much dearer each level is, most levels }
 	Upgrades = { Backpack = { 100, 1.55, 40 }, PowerGain = { 150, 1.6, 50 }, SellValue = { 200, 1.6, 50 }, WalkSpeed = { 300, 1.7, 40 } },
 	-- the talismans' prices in coins
 	Talismans = { Might = 200, Fortune = 400, Vigor = 600, Haste = 800, Greed = 1500, Titan = 5000 },
+	-- the loot's old sell prices
+	Loot = { Scrap = 5, Shard = 25, Ember = 120, Void = 600 },
 }
 
--- how many coins an old save's upgrades and talismans cost
+-- how many coins an old save's upgrades, talismans and loot are worth
 local function oldShopRefund(saved)
 	local n = 0
 	if type(saved.Upgrades) == "table" then
@@ -196,6 +192,14 @@ local function oldShopRefund(saved)
 				for l = 0, math.min(math.floor(level), price[3]) - 1 do
 					n = n + math.floor(price[1] * price[2] ^ l)
 				end
+			end
+		end
+	end
+	if type(saved.Loot) == "table" then
+		for id, price in pairs(OLD_SHOP.Loot) do
+			local count = saved.Loot[id]
+			if type(count) == "number" and count == count and count > 0 then
+				n = n + math.floor(math.min(count, 1e6)) * price
 			end
 		end
 	end
@@ -230,15 +234,8 @@ local function mergeSaved(saved)
 	-- treasure chests, once - and now the chests are gone too, an Arcade
 	-- Token each: OLD_GEAR, above)
 	local oldPrestige = type(saved.Prestige) == "number" and math.floor(saved.Prestige) or 0
-	if type(saved.Loot) == "table" then
-		for id in pairs(d.Loot) do
-			if type(saved.Loot[id]) == "number" then
-				d.Loot[id] = saved.Loot[id]
-			end
-		end
-	end
-	-- (the Upgrade Shop and talismans are gone: the coins spent on them come
-	-- back, once - OLD_SHOP, above)
+	-- (the Upgrade Shop, talismans and the Sell Shop are gone: the coins spent
+	-- come back and the loot is sold, once - OLD_SHOP, above)
 	local refund = oldShopRefund(saved)
 	d.Coins = d.Coins + refund
 	if type(saved.Cleared) == "table" then
@@ -670,21 +667,6 @@ function PlayerService.GetData(player)
 	return profile and profile.data or nil
 end
 
-function PlayerService.AddLoot(player, materialId, amount)
-	local profile = profiles[player]
-	if not profile or not Config.MaterialById[materialId] then
-		return 0
-	end
-	local d = profile.data
-	local space = Config.stats(d).capacity - Config.lootCount(d)
-	local added = math.max(0, math.min(math.floor(amount), space))
-	if added > 0 then
-		d.Loot[materialId] = d.Loot[materialId] + added
-		markDirty(player)
-	end
-	return added
-end
-
 -- What earned XP and coins are multiplied by (the shop's passes and boosts,
 -- VIP, the corner bonuses): RewardService and ShopService each add a hook,
 -- fn(player, data, kind ("Power" / "Coins"), amount) -> the new amount
@@ -885,43 +867,6 @@ end
 ----------------------------------------------------------------------
 -- Actions (called through the Action RemoteFunction; return ok, message)
 ----------------------------------------------------------------------
-handlers.Sell = function(player, d, arg)
-	if not nearStation(player, "Sell") then
-		return false, "Walk up to the Sell Shop first!"
-	end
-	local s = Config.stats(d)
-	local total = 0
-	local items = 0
-
-	local function sellMaterial(m)
-		local n = d.Loot[m.id] or 0
-		if n > 0 then
-			total = total + n * m.sell
-			items = items + n
-			d.Loot[m.id] = 0
-		end
-	end
-
-	if arg == "All" then
-		for _, m in ipairs(Config.Materials) do
-			sellMaterial(m)
-		end
-	elseif type(arg) == "string" and Config.MaterialById[arg] then
-		sellMaterial(Config.MaterialById[arg])
-	else
-		return false, "Unknown item."
-	end
-
-	if items == 0 then
-		return false, "Nothing to sell."
-	end
-	local coins = math.floor(total * s.coinMult)
-	d.Coins = d.Coins + coins
-	markDirty(player)
-	PlayerService.QuestProgress(player, "sell", items)
-	return true, "Sold " .. items .. (items == 1 and " item" or " items") .. " for " .. Config.format(coins) .. " coins!"
-end
-
 -- Choose a quest at the Quest Board (arg = its place on the board, 1-3).
 -- One per set: once you've picked, that's the one until the next set.
 handlers.PickQuest = function(player, d, index)
@@ -979,12 +924,7 @@ handlers.DevGive = function(player, d, kind)
 	if not Config.isDev(player) then
 		return false, "Dev tools are only for the game's owner."
 	end
-	if kind == "Loot" then
-		for _, m in ipairs(Config.Materials) do
-			PlayerService.AddLoot(player, m.id, 5)
-		end
-		return true, "Gave test loot."
-	elseif kind == "Coins" then
+	if kind == "Coins" then
 		d.Coins = d.Coins + 10000
 	elseif kind == "Tokens" then
 		d.Tokens = (d.Tokens or 0) + 10
@@ -1103,7 +1043,7 @@ local function onPlayerAdded(player)
 	if refund > 0 then
 		task.delay(9, function()
 			if player.Parent then
-				notify(player, "* The Upgrade Shop and talismans are gone: you got back the " .. Config.format(refund) .. " coins you spent on them!", "rare")
+				notify(player, "* The Upgrade Shop, talismans and the Sell Shop are gone: your old upgrades and loot became " .. Config.format(refund) .. " coins!", "rare")
 			end
 		end)
 	end
