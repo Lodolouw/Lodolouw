@@ -359,18 +359,8 @@ for id, m in pairs(cabinets) do
 end
 check(count == 5 and covered == 0, "five machines, none under covers crowding the room (" .. count .. ", " .. covered .. ")")
 
--- the prize: the Slime machine's Secret weapon, standing over the pedestal
-local prize = workspace:FindFirstChild("PrizeWeapon")
-local pedestal = CollectionService:GetTagged("ArcadePrize")[1]
-check(prize ~= nil and pedestal ~= nil, "the Secret weapon turns over the prize pedestal")
-if prize and pedestal then
-	local box, size = prize:GetBoundingBox()
-	local top = pedestal.Position.Y + pedestal.Size.X / 2
-	check(box.Position.Y - size.Y / 2 > top + 0.5 and box.Position.Y - size.Y / 2 < top + 1.5, "it floats just over the pedestal")
-	check(math.abs(box.Position.X - pedestal.Position.X) < 0.05 and math.abs(box.Position.Z - pedestal.Position.Z) < 0.05, "right over its middle")
-	check(size.Y > size.X and size.Y > size.Z, "standing up")
-	check(textOn(pedestal, "SECRET") ~= nil, "under a SECRET sign")
-end
+-- the prize pedestal was taken out (I asked): nothing floats in the middle
+check(#CollectionService:GetTagged("ArcadePrize") == 0 and workspace:FindFirstChild("PrizeWeapon") == nil, "no prize pedestal in the middle")
 local tokenMachine = CollectionService:GetTagged("ArcadeTokens")[1]
 local prompt = tokenMachine and tokenMachine.Body:FindFirstChildOfClass("ProximityPrompt")
 check(prompt ~= nil and prompt.ActionText == "Get Tokens", "the token machine says Get Tokens")

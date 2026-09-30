@@ -42,9 +42,8 @@
 	  * FOR EVERYONE: when anyone spins, that machine's screen lights up and
 	    their result floats over it (and you hear it, if you're near); a
 	    Secret puts a banner on every screen, with its jackpot; the BIG WINS
-	    board at the back lists the lobby's latest Legendary-or-better
-	    spins; the Slime machine's Secret weapon turns over the prize
-	    pedestal.
+	    marquee over the machines lists the lobby's latest Legendary-or-better
+	    spins.
 	  * THE TOKEN MACHINE: walk up to it for "Get Tokens" (the Robux shop,
 	    later; for now it says where free tokens come from).
 ]]
@@ -1190,46 +1189,6 @@ if not event then
 	end)
 end
 
--- THE PRIZE PEDESTAL: the machine's Secret weapon turns over it
-local prizes = {} -- [pedestal] = { model, base }
-local function placePrize(base)
-	if prizes[base] and prizes[base].model and prizes[base].model.Parent then
-		return
-	end
-	local id = Config.arcadeWeapon(base:GetAttribute("Machine") or "Slime", "Secret")
-	local def = id and W.List[id]
-	local model = weaponModel(def)
-	if not model then
-		return
-	end
-	model.Name = "PrizeWeapon"
-	local offset, size = standInfo(model)
-	model.Parent = Workspace
-	prizes[base] = { model = model, base = base, offset = offset, size = size }
-	if not base:FindFirstChild("PrizeSign") then
-		local bb = new("BillboardGui", { Name = "PrizeSign", Size = UDim2.fromScale(9, 2.4), StudsOffset = Vector3.new(0, 7.5, 0), LightInfluence = 0, MaxDistance = 90, Adornee = base }, base)
-		local top = text(bb, { Text = "SECRET", Size = UDim2.fromScale(1, 0.5), TextStrokeTransparency = 0 })
-		rainbow(top)
-		text(bb, { Text = def.Name .. "  -  " .. tostring(A.Odds.Secret) .. "%", Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromScale(1, 0.5), TextStrokeTransparency = 0 })
-	end
-end
-local function tryPrizes()
-	for _, base in ipairs(CollectionService:GetTagged("ArcadePrize")) do
-		placePrize(base)
-	end
-end
-tryPrizes()
-CollectionService:GetInstanceAddedSignal("ArcadePrize"):Connect(placePrize)
-task.spawn(function()
-	local folder = ReplicatedStorage:WaitForChild("WeaponModels", 60)
-	if folder then
-		folder.ChildAdded:Connect(function()
-			task.defer(tryPrizes)
-		end)
-		tryPrizes()
-	end
-end)
-
 -- THE TOKEN MACHINE: "Get Tokens"
 local function hookTokenMachine(m)
 	local body = m:IsA("Model") and m:FindFirstChild("Body")
@@ -1244,8 +1203,8 @@ for _, m in ipairs(CollectionService:GetTagged("ArcadeTokens")) do
 end
 CollectionService:GetInstanceAddedSignal("ArcadeTokens"):Connect(hookTokenMachine)
 
--- the lights: bulbs chasing round the roof, the screens blinking, the
--- prize turning, Secret names running through the rainbow
+-- the lights: bulbs chasing round the sign, the screens blinking, Secret
+-- names running through the rainbow
 local bulbs = {}
 local function trackBulb(b)
 	if b:IsA("BasePart") then
@@ -1266,13 +1225,6 @@ RunService.RenderStepped:Connect(function(dt)
 			g.Rotation = (t * 40) % 360
 		else
 			rainbows[g] = nil
-		end
-	end
-	for base, p in pairs(prizes) do
-		if p.model and p.model.Parent and base.Parent then
-			-- (the pedestal is a cylinder on its side: its height is its X)
-			local centre = base.Position + Vector3.new(0, base.Size.X / 2 + 1 + p.size.Y / 2 + math.sin(t * 1.6) * 0.3, 0)
-			standAt(p.model, centre, p.offset, t * 0.9)
 		end
 	end
 	lightClock = lightClock + dt

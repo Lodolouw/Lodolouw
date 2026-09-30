@@ -14,8 +14,6 @@
 	    like its boss with a topper (Oozark's slime, a shovel, a tyre, a
 	    banana, a pencil), on a plinth in its colour under a spotlight
 	  * the TOKEN MACHINE (the Robux shop, later) against the right-hand wall
-	  * the PRIZE PEDESTAL in the open middle (the Slime machine's Secret
-	    weapon floats and turns over it: ArcadeClient puts it there)
 	  * the BIG WINS marquee along the canopy's front edge (ArcadeClient writes the
 	    lobby's latest Legendary-or-better spins on it)
 	  * a walk-in box over the whole floor (AutoOpenZone, Activity =
@@ -24,7 +22,7 @@
 	Tagged for the screens: each cabinet is a Model tagged "ArcadeCabinet"
 	(attribute Machine = the pack's id) with a
 	"Screen" and a "Marquee" part;
-	the pedestal "ArcadePrize" (Machine); the board "ArcadeWins"; the token
+	the board "ArcadeWins"; the token
 	machine "ArcadeTokens". Everything is in the lobby's palette (RetroWorld).
 ]]
 
@@ -376,9 +374,9 @@ function ArcadeBuilder.Build(parent)
 	local spots = machineSpots(5)
 
 	-- the carpet's pattern: little neon diamonds, dashes and dots, kept off
-	-- the machines' plinths, the pedestal and the token machine
+	-- the machines' plinths and the token machine
 	do
-		local keepOff = { { CX, 2, 7.5 }, { TOKEN_X, TOKEN_Z, 6 } }
+		local keepOff = { { TOKEN_X, TOKEN_Z, 6 } }
 		for _, s in ipairs(spots) do
 			table.insert(keepOff, { s.x, s.z, 6 })
 		end
@@ -640,41 +638,6 @@ function ArcadeBuilder.Build(parent)
 		t.Parent = m
 		part(m, "TokenPlinth", V3(8.4, 0.4, 7.2), tcf * CFrame.new(0, -0.2, -0.4), NIGHT)
 		neon(m, "TokenPlinthGlow", V3(8.4, 0.2, 0.2), tcf * CFrame.new(0, -0.05, -4.05), GOLD, deco)
-	end
-
-	-- THE PRIZE PEDESTAL in the open middle: the Slime machine's Secret weapon
-	-- turns over it, in a cone of light
-	do
-		local px, pz = CX, 2
-		local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
-		part(m, "PrizeStep", V3(0.8, 11, 11), at(px, FT + 0.4, pz) * up, TRIM, nil, { Shape = Enum.PartType.Cylinder })
-		neon(m, "PrizeStepGlow", V3(0.16, 11.3, 11.3), at(px, FT + 0.55, pz) * up, GOLD, { Shape = Enum.PartType.Cylinder, CanCollide = false })
-		local top = FT + 0.8 + 4
-		local base = part(m, "PrizeBase", V3(4, 7, 7), at(px, top - 2, pz) * up, PURPLE, Mat.SmoothPlastic, { Shape = Enum.PartType.Cylinder })
-		neon(m, "PrizeRing", V3(0.3, 7.4, 7.4), at(px, top - 0.1, pz) * up, YELLOW, { Shape = Enum.PartType.Cylinder })
-		local beam = neon(m, "PrizeBeam", V3(0.2, 6, 6), at(px, top + 0.1, pz) * up, WHITE, { Shape = Enum.PartType.Cylinder, Transparency = 0.6 })
-		-- the cone of light rising from it, in steps
-		for i, c in ipairs({ { 6, 2.6, 0.84 }, { 4.6, 2.4, 0.88 }, { 3.2, 2.2, 0.92 } }) do
-			local y0 = top + 0.2 + (i - 1) * 2.6
-			neon(m, "PrizeCone", V3(c[2], c[1], c[1]), at(px, y0 + c[2] / 2, pz) * up, YELLOW, {
-				Shape = Enum.PartType.Cylinder, Transparency = c[3], CanCollide = false, CanQuery = false,
-			})
-		end
-		light(beam, "PointLight", { Color = YELLOW, Range = 16, Brightness = 1.5, Shadows = false })
-		light(beam, "ParticleEmitter", {
-			Name = "Sparkles",
-			Rate = 4,
-			Lifetime = NumberRange.new(2, 3),
-			Speed = NumberRange.new(1, 2),
-			SpreadAngle = Vector2.new(20, 20),
-			EmissionDirection = Enum.NormalId.Right, -- (the cylinder's end: up)
-			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) }),
-			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) }),
-			Color = ColorSequence.new(YELLOW, WHITE),
-			LightEmission = 1,
-		})
-		base:SetAttribute("Machine", "Slime")
-		CollectionService:AddTag(base, "ArcadePrize")
 	end
 
 	-- THE BIG WINS marquee: a lit strip along the canopy's front edge, over
