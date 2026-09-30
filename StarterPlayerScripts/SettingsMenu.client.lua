@@ -57,34 +57,32 @@ local function groupOn(g)
 	return (isMusic and current.music) or (not isMusic and current.sfx)
 end
 
--- A switched-off group STAYS off: other scripts turn groups up again (the
--- Arcade's and the Colosseum's songs fade the lobby's back in when they
--- stop, a fight sets its groups' levels), so any group turned up while it's
--- off goes straight back to silent - the level it was given is kept for when
--- it's switched on again. Groups made later are watched too.
-local watched = {}
-local function watch(g)
-	if not g:IsA("SoundGroup") or watched[g] then
-		return
+-- A switched-off group is silenced by a mute of its own: a "SettingsMute"
+-- equalizer on the group turned all the way down (-80 dB), switched on while
+-- the setting is off. Nothing else touches it - the songs set their groups'
+-- volumes all the time (the Arcade's and the Colosseum's songs fade the
+-- lobby's back in, fights set their levels), which used to let bits of
+-- music back in. Groups made later get one too.
+local function muteOf(g)
+	local mute = g:FindFirstChild("SettingsMute")
+	if not mute then
+		mute = Instance.new("EqualizerSoundEffect")
+		mute.Name = "SettingsMute"
+		mute.LowGain, mute.MidGain, mute.HighGain = -80, -80, -80
+		mute.Priority = 1000
+		mute.Parent = g
 	end
-	watched[g] = true
-	if not groupOn(g) then
-		if g:GetAttribute("FullVolume") == nil then
-			g:SetAttribute("FullVolume", g.Volume)
-		end
-		g.Volume = 0
+	return mute
+end
+local function setMute(g)
+	if g:IsA("SoundGroup") then
+		muteOf(g).Enabled = not groupOn(g)
 	end
-	g:GetPropertyChangedSignal("Volume"):Connect(function()
-		if not groupOn(g) and g.Volume ~= 0 then
-			g:SetAttribute("FullVolume", g.Volume)
-			g.Volume = 0
-		end
-	end)
 end
 for _, g in ipairs(SoundService:GetChildren()) do
-	watch(g)
+	setMute(g)
 end
-SoundService.ChildAdded:Connect(watch)
+SoundService.ChildAdded:Connect(setMute)
 
 local function apply(s)
 	for k, v in pairs(DEFAULTS) do
@@ -96,13 +94,7 @@ local function apply(s)
 	end
 	-- the mix: every music group, and the effects / UI groups
 	for _, g in ipairs(SoundService:GetChildren()) do
-		if g:IsA("SoundGroup") then
-			local on = groupOn(g)
-			if g:GetAttribute("FullVolume") == nil then
-				g:SetAttribute("FullVolume", g.Volume)
-			end
-			g.Volume = on and g:GetAttribute("FullVolume") or 0
-		end
+		setMute(g)
 	end
 	-- shadows and the light's effects
 	if shadowsWere == nil then

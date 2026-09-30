@@ -210,8 +210,15 @@ end
 ----------------------------------------------------------------------
 me:SetAttribute("Weapon", "IronSword")
 send(snapshot())
-check(groups.Music.Volume == 0, "saved: music off - the music group is silent")
-check(groups.Effects.Volume == 1 and groups.UI.Volume == 0.8, "sound effects stay on")
+local function muted(g)
+	local m = g:FindFirstChild("SettingsMute")
+	return m ~= nil and m.Enabled == true and m.MidGain <= -80
+end
+check(muted(groups.Music) and groups.Music.Volume == 0.7, "saved: music off - the music group is silenced by its own mute (its volume left alone)")
+-- whatever else sets its volume (a song fading the lobby back in), it stays silent
+groups.Music.Volume = 0.7
+check(muted(groups.Music), "and it stays silenced when a song turns the group up")
+check(not muted(groups.Effects) and not muted(groups.UI), "sound effects stay on")
 
 ----------------------------------------------------------------------
 -- THE BAG
@@ -272,10 +279,10 @@ local musicRow = find("Setting_music")
 check(musicRow and find("Switch", musicRow).Text == "OFF", "music shows OFF (as saved)")
 snap("SETTINGS · SOUND|each a switch, saved with your data")
 click(find("Switch", musicRow))
-check(groups.Music.Volume == 0.7, "music back on: the group at its full volume")
+check(not muted(groups.Music) and groups.Music.Volume == 0.7, "music back on: the group at its full volume")
 check(saved and saved.music == true, "and it's saved")
 click(find("Switch", find("Setting_sfx")))
-check(groups.Effects.Volume == 0 and groups.UI.Volume == 0 and groups.Music.Volume == 0.7, "sound effects off: the effects and UI groups go quiet")
+check(muted(groups.Effects) and muted(groups.UI) and not muted(groups.Music), "sound effects off: the effects and UI groups go quiet")
 tab("Graphics")
 click(find("Switch", find("Setting_shadows")))
 check(Lighting.GlobalShadows == false, "shadows off")
