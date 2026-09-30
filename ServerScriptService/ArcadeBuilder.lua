@@ -2,8 +2,8 @@
 	ArcadeBuilder  (ModuleScript, parent: ServerScriptService, name: "ArcadeBuilder")
 
 	THE ARCADE, where the forge used to be (north-east of the fountain, at
-	Config.Stations.Arcade): an open-front pavilion - purple toy-brick walls,
-	a canopy over the machines (the middle stays open to the sky), and an
+	Config.Stations.Arcade): an open-front pavilion - a purple toy-brick back
+	wall, low side walls, a canopy over the machines (the middle stays open to the sky), and an
 	entrance arch facing the path with ARCADE in thin neon tubes, chasing
 	bulbs round the opening and the giant token turning on top.
 	LobbyBuilder calls ArcadeBuilder.Build(lobby).
@@ -13,10 +13,10 @@
 	    back, turned to the entrance (Config.Arcade.Machines), each painted
 	    like its boss with a topper (Oozark's slime, a shovel, a tyre, a
 	    banana, a pencil), on a plinth in its colour under a spotlight
-	  * the TOKEN MACHINE (the Robux shop, later) just inside, beside the arch
+	  * the TOKEN MACHINE (the Robux shop, later) against the right-hand wall
 	  * the PRIZE PEDESTAL in the open middle (the Slime machine's Secret
 	    weapon floats and turns over it: ArcadeClient puts it there)
-	  * the BIG WINS scoreboard on the back wall (ArcadeClient writes the
+	  * the BIG WINS marquee along the canopy's front edge (ArcadeClient writes the
 	    lobby's latest Legendary-or-better spins on it)
 	  * a walk-in box over the whole floor (AutoOpenZone, Activity =
 	    "Arcade"): walking in opens the Arcade menu (ArcadeClient)
