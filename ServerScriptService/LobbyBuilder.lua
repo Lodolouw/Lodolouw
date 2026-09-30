@@ -453,7 +453,7 @@ local function buildGround(parent)
 	-- are joined into long pieces. Where paths meet there's no gap in the
 	-- paving, so no curb - every junction opens up by itself.
 	do
-		local NOCURB = { { 7, 88, 20, 104 }, { -15, 83, -11, 97 } } -- (the farm path and the colosseum bridge leave the south road here: no rim)
+		local NOCURB = { { 7, 88, 20, 104 }, { -15, 83, -11, 97 }, { 61, -21, 81, -19 } } -- (the farm path and the colosseum bridge leave the south road here, and the Arcade's steps meet its path: no rim)
 		local PLAZA_R = 23.2
 		local X0, X1, Z0, Z1 = -118, 118, -112, SOUTH_WALL - 1
 		-- (paved by a path: the plaza's round edge has its own smooth rim)
@@ -2996,8 +2996,8 @@ local function buildRiver(parent)
 	for x = x0 + 1, x1 - 1, 2 do
 		part(m, "GrateBar", V3(0.5, 3.6, 0.5), CFrame.new(x, 1.8, zS - 0.2), GATE_IRON, Mat.Metal)
 	end
-	-- (the forge's waterwheel was here: the Arcade's giant token stands on
-	-- the bank now - ArcadeBuilder)
+	-- (the forge's waterwheel was here: the Arcade's giant token turns on
+	-- top of its arch now - ArcadeBuilder)
 end
 
 -- The farm (south-east of the plaza): built chunky and blocky like the rest

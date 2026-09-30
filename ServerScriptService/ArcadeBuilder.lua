@@ -2,19 +2,21 @@
 	ArcadeBuilder  (ModuleScript, parent: ServerScriptService, name: "ArcadeBuilder")
 
 	THE ARCADE, where the forge used to be (north-east of the fountain, at
-	Config.Stations.Arcade): open to the sky - a checkered floor with glowing
-	edges and a giant spinning token floating over the front (the big ARCADE
-	sign was taken down: too bright). LobbyBuilder calls ArcadeBuilder.Build(lobby).
+	Config.Stations.Arcade): an open-front pavilion - purple toy-brick walls,
+	a canopy over the machines (the middle stays open to the sky), and an
+	entrance arch facing the path with ARCADE in thin neon tubes, chasing
+	bulbs round the opening and the giant token turning on top.
+	LobbyBuilder calls ArcadeBuilder.Build(lobby).
 
 	Inside:
-	  * the MACHINES: one arcade cabinet per weapon pack along the back
-	    (Config.Arcade.Machines), each painted like its boss with a topper
-	    (Oozark's slime, a shovel, a tyre, a banana, a pencil); the update
-	    packs' machines join them when their packs come (the sides are open)
-	  * the TOKEN MACHINE (the Robux shop, later) at the front right
-	  * the PRIZE PEDESTAL in the middle (the Slime machine's Secret weapon
-	    floats and turns over it: ArcadeClient puts it there)
-	  * the BIG WINS board hanging at the back (ArcadeClient writes the
+	  * the MACHINES: one arcade cabinet per weapon pack in a curve round the
+	    back, turned to the entrance (Config.Arcade.Machines), each painted
+	    like its boss with a topper (Oozark's slime, a shovel, a tyre, a
+	    banana, a pencil), on a plinth in its colour under a spotlight
+	  * the TOKEN MACHINE (the Robux shop, later) just inside, beside the arch
+	  * the PRIZE PEDESTAL in the open middle (the Slime machine's Secret
+	    weapon floats and turns over it: ArcadeClient puts it there)
+	  * the BIG WINS scoreboard on the back wall (ArcadeClient writes the
 	    lobby's latest Legendary-or-better spins on it)
 	  * a walk-in box over the whole floor (AutoOpenZone, Activity =
 	    "Arcade"): walking in opens the Arcade menu (ArcadeClient)
@@ -253,8 +255,89 @@ end
 local MACHINE_SCALE = 1.5
 
 ----------------------------------------------------------------------
--- The whole building
+-- The whole building. Everything is laid out round the entrance's middle
+-- line (CX), which lines up with the path from the road; the anchor
+-- (Config.Stations.Arcade) stays where it was.
 ----------------------------------------------------------------------
+local FT = 1.8 -- the floor's top (two steps up from the path)
+local CX = -4 -- the entrance's middle, lined up with the path
+local X0, X1 = -28, 20 -- the floor's sides (48 wide)
+local Z0, Z1 = -22, 18 -- its back and front (40 deep)
+local WALL_T = 1.5
+local WALL_TOP = 33 -- the back wall and the tall ends of the side walls
+local CANOPY_Y = 30.5 -- the canopy's underside
+local CANOPY_FRONT = -3 -- the canopy covers the machines, back to here
+local PLINTH_H = 0.8
+local WALL = PURPLE -- the walls (the palette's purple)
+local TRIM = NIGHT -- their base, caps and corner posts
+
+-- a thin neon tube from (x0, y0) to (x1, y1) on a flat face `f` (x across, y up)
+local function tube(parent, name, f, x0, y0, x1, y1, t, color)
+	local dx, dy = x1 - x0, y1 - y0
+	local len = math.sqrt(dx * dx + dy * dy) + t
+	return neon(parent, name, V3(len, t, t), f * CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, 0) * CFrame.Angles(0, 0, math.atan2(dy, dx)), color)
+end
+
+-- the letters of the ARCADE sign as tube strokes (0..1 across and up)
+local LETTERS = {
+	A = { { 0, 0, 0.5, 1 }, { 0.5, 1, 1, 0 }, { 0.22, 0.42, 0.78, 0.42 } },
+	R = { { 0, 0, 0, 1 }, { 0, 1, 0.7, 1 }, { 0.7, 1, 1, 0.8 }, { 1, 0.8, 1, 0.7 }, { 1, 0.7, 0.7, 0.5 }, { 0.7, 0.5, 0, 0.5 }, { 0.45, 0.5, 1, 0 } },
+	C = { { 1, 1, 0.3, 1 }, { 0.3, 1, 0, 0.75 }, { 0, 0.75, 0, 0.25 }, { 0, 0.25, 0.3, 0 }, { 0.3, 0, 1, 0 } },
+	D = { { 0, 0, 0, 1 }, { 0, 1, 0.6, 1 }, { 0.6, 1, 1, 0.7 }, { 1, 0.7, 1, 0.3 }, { 1, 0.3, 0.6, 0 }, { 0.6, 0, 0, 0 } },
+	E = { { 0, 0, 0, 1 }, { 0, 1, 1, 1 }, { 0, 0.5, 0.8, 0.5 }, { 0, 0, 1, 0 } },
+}
+
+local function light(parent, class, props)
+	local l = Instance.new(class)
+	for k, v in pairs(props) do
+		l[k] = v
+	end
+	l.Parent = parent
+	return l
+end
+
+-- a chasing bulb (ArcadeClient lights them in turn)
+local function bulb(parent, cf, index)
+	local b = ball(parent, "Bulb", 0.5, cf, GOLD, Mat.Neon)
+	b.CastShadow = false
+	b.CanCollide = false
+	b:SetAttribute("Index", index)
+	CollectionService:AddTag(b, "ArcadeBulb")
+	return b
+end
+
+-- the arcade token's two faces: a purple middle with a star
+local function tokenFaces(coin)
+	for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
+		local g = screenGui(coin, face, 30)
+		local f = Instance.new("Frame")
+		f.BackgroundColor3 = PURPLE
+		f.Size = UDim2.fromScale(0.78, 0.78)
+		f.Position = UDim2.fromScale(0.11, 0.11)
+		f.Parent = g
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(0.5, 0)
+		round.Parent = f
+		label(f, "Star", "★", YELLOW, UDim2.fromScale(0.1, 0.05), UDim2.fromScale(0.8, 0.8))
+	end
+end
+
+-- where the five machines stand: a gentle curve round the back, each turned
+-- to look at the entrance (x, z, turn)
+local function machineSpots(count)
+	local spots = {}
+	local cx, cz, r = CX, 5, 22 -- (the curve's middle and radius)
+	local look = V3(CX, 0, 14) -- (they all look at this spot, just inside the arch)
+	local stepA = math.rad(26)
+	for i = 1, count do
+		local a = (i - (count + 1) / 2) * stepA
+		local x, z = cx + math.sin(a) * r, cz - math.cos(a) * r
+		table.insert(spots, { x = x, z = z, look = look })
+	end
+	return spots
+end
+ArcadeBuilder.machineSpots = machineSpots
+
 function ArcadeBuilder.Build(parent)
 	local A = Config.Arcade
 	local m = folder(parent, "Arcade")
@@ -262,46 +345,164 @@ function ArcadeBuilder.Build(parent)
 	local function at(x, y, z)
 		return O * CFrame.new(x, y, z)
 	end
-	local HALF = 20 -- the floor is 40 x 40 studs
+	local W, D = X1 - X0, Z1 - Z0
+	local deco = { CanCollide = false }
 
-	-- THE FLOOR: dark with purple checks, glowing edges, a mat to the path
-	part(m, "ArcadeFloor", V3(HALF * 2, 0.8, HALF * 2), at(0, 0.4, 0), INK)
-	for i = 0, 7 do
-		for j = 0, 7 do
-			if (i + j) % 2 == 0 then
-				part(m, "FloorCheck", V3(5, 0.1, 5), at(-17.5 + i * 5, 0.85, -17.5 + j * 5), PURPLE, Mat.SmoothPlastic, { CastShadow = false })
+	-- THE FLOOR: dark arcade carpet with little neon shapes, a glowing trim
+	-- all round, and two steps up from the path
+	part(m, "ArcadeFloor", V3(W, FT, D), at(CX, FT / 2, (Z0 + Z1) / 2), INK, Mat.Fabric)
+	do
+		local sx = CX - 9 -- (the steps: as wide as the path)
+		part(m, "ArcadeStep", V3(18, 1.4, 2), at(CX, 0.7, Z1 + 1), NIGHT)
+		part(m, "ArcadeStep", V3(18, 1.0, 2), at(CX, 0.5, Z1 + 3), NIGHT)
+		neon(m, "StepGlow", V3(18, 0.12, 0.25), at(CX, 1.46, Z1 + 0.125), CYAN, deco)
+		neon(m, "StepGlow", V3(18, 0.12, 0.25), at(CX, 1.06, Z1 + 2.125), CYAN, deco)
+		-- a glowing line along the floor's front edge, either side of the steps
+		neon(m, "FloorEdgeGlow", V3(sx - X0, 0.3, 0.12), at((X0 + sx) / 2, FT - 0.4, Z1 + 0.06), MAGENTA, deco)
+		neon(m, "FloorEdgeGlow", V3(X1 - (CX + 9), 0.3, 0.12), at((CX + 9 + X1) / 2, FT - 0.4, Z1 + 0.06), MAGENTA, deco)
+	end
+	-- the trim round the carpet (inside the walls, and across the arch)
+	do
+		local y = FT + 0.06
+		local inX0, inX1 = X0 + WALL_T + 0.25, X1 - WALL_T - 0.25
+		local backZ, frontZ = Z0 + WALL_T + 0.25, Z1 - WALL_T
+		neon(m, "FloorTrim", V3(inX1 - inX0, 0.12, 0.5), at((inX0 + inX1) / 2, y, backZ + 0.25), MAGENTA, deco)
+		neon(m, "FloorTrim", V3(0.5, 0.12, frontZ - backZ - 0.5), at(inX0 + 0.25, y, (backZ + frontZ) / 2 + 0.25), MAGENTA, deco)
+		neon(m, "FloorTrim", V3(0.5, 0.12, frontZ - backZ - 0.5), at(inX1 - 0.25, y, (backZ + frontZ) / 2 + 0.25), MAGENTA, deco)
+		neon(m, "FloorTrim", V3((CX - 11) - inX0, 0.12, 0.5), at((inX0 + CX - 11) / 2, y, frontZ - 0.25), CYAN, deco)
+		neon(m, "FloorTrim", V3(inX1 - (CX + 11), 0.12, 0.5), at((CX + 11 + inX1) / 2, y, frontZ - 0.25), CYAN, deco)
+		neon(m, "FloorTrim", V3(16, 0.12, 0.5), at(CX, y, Z1 - 0.3), CYAN, deco)
+	end
+
+	local spots = machineSpots(5)
+
+	-- the carpet's pattern: little neon diamonds, dashes and dots, kept off
+	-- the machines' plinths, the pedestal and the token machine
+	do
+		local keepOff = { { CX, 2, 7.5 }, { CX - 15, 11, 6 } }
+		for _, s in ipairs(spots) do
+			table.insert(keepOff, { s.x, s.z, 6 })
+		end
+		local colors = { CYAN, YELLOW, MAGENTA, GREEN }
+		local n = 0
+		for row = 0, 7 do
+			local z = Z0 + 4 + row * 4.6
+			for col = 0, 9 do
+				local x = X0 + 4 + col * 4.8 + (row % 2) * 2.4
+				local free = x < X1 - 3.5 and z < Z1 - 3
+				for _, k in ipairs(keepOff) do
+					if (x - k[1]) ^ 2 + (z - k[2]) ^ 2 < k[3] ^ 2 then
+						free = false
+					end
+				end
+				if free then
+					n += 1
+					local c = colors[(n + row) % #colors + 1]
+					local kind = (n * 7 + row) % 3
+					local e = { CanCollide = false, CastShadow = false, Transparency = 0.25 }
+					if kind == 0 then
+						neon(m, "CarpetShape", V3(0.9, 0.1, 0.9), at(x, FT + 0.05, z) * CFrame.Angles(0, math.rad(45), 0), c, e)
+					elseif kind == 1 then
+						neon(m, "CarpetShape", V3(1.6, 0.1, 0.35), at(x, FT + 0.05, z) * CFrame.Angles(0, math.rad(35 + row * 20), 0), c, e)
+					else
+						e.Shape = Enum.PartType.Cylinder
+						neon(m, "CarpetShape", V3(0.1, 0.9, 0.9), at(x, FT + 0.05, z) * CFrame.Angles(0, 0, math.pi / 2), c, e)
+					end
+				end
 			end
 		end
 	end
-	neon(m, "FloorGlow", V3(HALF * 2, 0.15, 0.4), at(0, 0.82, HALF - 0.2), CYAN)
-	neon(m, "FloorGlow", V3(HALF * 2, 0.15, 0.4), at(0, 0.82, -HALF + 0.2), MAGENTA)
-	neon(m, "FloorGlow", V3(0.4, 0.15, HALF * 2), at(-HALF + 0.2, 0.82, 0), MAGENTA)
-	neon(m, "FloorGlow", V3(0.4, 0.15, HALF * 2), at(HALF - 0.2, 0.82, 0), MAGENTA)
-	part(m, "EntryMat", V3(18, 0.6, 3), at(-4, 0.3, HALF + 1.5), NIGHT)
 
-	-- (no roof and no sign: the big ARCADE sign was too bright, I had it taken
-	-- down; the giant token still turns over the front)
-	-- the giant token over it, turning (LobbyFX spins it)
-	local coin = disc(m, "GiantToken", 0.9, 7, at(0, 13, HALF + 0.4), GOLD, Mat.SmoothPlastic)
-	coin.CastShadow = false
-	for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
-		local g = screenGui(coin, face, 30)
-		local face2 = Instance.new("Frame")
-		face2.BackgroundColor3 = PURPLE
-		face2.Size = UDim2.fromScale(0.78, 0.78)
-		face2.Position = UDim2.fromScale(0.11, 0.11)
-		face2.Parent = g
-		local round = Instance.new("UICorner")
-		round.CornerRadius = UDim.new(0.5, 0)
-		round.Parent = face2
-		label(face2, "Star", "★", YELLOW, UDim2.fromScale(0.1, 0.05), UDim2.fromScale(0.8, 0.8))
+	-- THE WALLS: purple toy-brick walls on a dark base with a dark cap - the
+	-- back wall and two side walls that step down to a low wall at the front
+	do
+		-- a run of wall from (a) to (b) along X or Z, up to `top`
+		local function run(name, x0, z0, x1, z1, top, low)
+			local alongX = (x1 - x0) > (z1 - z0)
+			local len = alongX and (x1 - x0) or (z1 - z0)
+			local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+			local function size(t, h)
+				return alongX and V3(len, h, t) or V3(t, h, len)
+			end
+			if low then
+				part(m, name, size(WALL_T, top - 0.6), at(cx, (top - 0.6) / 2, cz), WALL)
+				part(m, name .. "Cap", size(WALL_T + 0.4, 0.6), at(cx, top - 0.3, cz), TRIM)
+				return
+			end
+			part(m, name .. "Base", size(WALL_T + 0.5, 2.6), at(cx, 1.3, cz), TRIM)
+			part(m, name, size(WALL_T, top - 3.8), at(cx, 2.6 + (top - 3.8) / 2, cz), WALL)
+			part(m, name .. "Cap", size(WALL_T + 0.4, 1.2), at(cx, top - 0.6, cz), TRIM)
+		end
+		local bz = Z0 + WALL_T / 2
+		local lx, rx = X0 + WALL_T / 2, X1 - WALL_T / 2
+		run("BackWall", X0, Z0, X1, Z0 + WALL_T, WALL_TOP)
+		for _, x in ipairs({ lx, rx }) do
+			run("SideWall", x - WALL_T / 2, Z0 + WALL_T, x + WALL_T / 2, CANOPY_FRONT, WALL_TOP)
+			run("SideWallStep", x - WALL_T / 2, CANOPY_FRONT, x + WALL_T / 2, 3, FT + 13)
+			run("SideWallLow", x - WALL_T / 2, 3, x + WALL_T / 2, Z1, FT + 3.2, true)
+		end
+		run("FrontWallLow", X0 + WALL_T, Z1 - WALL_T, CX - 11, Z1, FT + 3.2, true)
+		run("FrontWallLow", CX + 11, Z1 - WALL_T, X1 - WALL_T, Z1, FT + 3.2, true)
+		-- chunky corner posts, and blocks along the top like the castle's
+		for _, c in ipairs({ { X0 + 1, Z0 + 1, WALL_TOP + 1.6 }, { X1 - 1, Z0 + 1, WALL_TOP + 1.6 }, { X0 + 1, Z1 - 1, FT + 5 }, { X1 - 1, Z1 - 1, FT + 5 } }) do
+			part(m, "CornerPost", V3(3, c[3], 3), at(c[1], c[3] / 2, c[2]), TRIM)
+			part(m, "CornerCap", V3(3.4, 0.6, 3.4), at(c[1], c[3] + 0.3, c[2]), GOLD)
+		end
+		for i = 0, 7 do
+			part(m, "WallBlock", V3(2.6, 1.6, WALL_T + 0.4), at(X0 + 6 + i * 5.1, WALL_TOP + 0.8, bz), WALL)
+		end
+		for _, x in ipairs({ lx, rx }) do
+			for i = 0, 2 do
+				part(m, "WallBlock", V3(WALL_T + 0.4, 1.6, 2.6), at(x, WALL_TOP + 0.8, Z0 + 6.5 + i * 5.2), WALL)
+			end
+		end
+		-- neon tubes along the walls, inside (and one outside, facing the road)
+		local tz = Z0 + WALL_T + 0.1
+		neon(m, "WallTube", V3(W - 2 * WALL_T - 0.4, 0.3, 0.3), at(CX, 22, tz), MAGENTA, deco)
+		neon(m, "WallTube", V3(W - 2 * WALL_T - 0.4, 0.3, 0.3), at(CX, FT + 3.4, tz), CYAN, deco)
+		for _, x in ipairs({ X0 + WALL_T + 0.1, X1 - WALL_T - 0.1 }) do
+			neon(m, "WallTube", V3(0.3, 0.3, CANOPY_FRONT - Z0 - WALL_T - 0.2), at(x, 22, (Z0 + WALL_T + CANOPY_FRONT) / 2), MAGENTA, deco)
+			neon(m, "WallTube", V3(0.3, 0.3, 3 - Z0 - WALL_T - 0.2), at(x, FT + 3.4, (Z0 + WALL_T + 3) / 2), CYAN, deco)
+			neon(m, "WallTube", V3(0.3, 20, 0.3), at(x, FT + 12, CANOPY_FRONT - 0.3), MAGENTA, deco)
+		end
+		neon(m, "WallTube", V3(0.3, 0.3, CANOPY_FRONT - Z0 - 3), at(X0 - 0.1, 24, (Z0 + 3 + CANOPY_FRONT) / 2), MAGENTA, deco)
 	end
-	coin:SetAttribute("SpinSpeed", 70)
-	coin:SetAttribute("BobAmp", 0.6)
-	coin:SetAttribute("BobSpeed", 1.6)
-	CollectionService:AddTag(coin, "FX")
 
-	-- THE MACHINES: the launch packs along the back, in floor order
+	-- THE CANOPY over the machines (the middle stays open to the sky), glowing
+	-- purple underneath, with a small spotlight on each machine
+	local canopy = folder(m, "Canopy")
+	do
+		local inX0, inX1 = X0 + WALL_T, X1 - WALL_T
+		local cz0 = Z0 + WALL_T
+		local cw, cd = inX1 - inX0, CANOPY_FRONT - cz0
+		part(canopy, "Canopy", V3(cw, 1.5, cd), at(CX, CANOPY_Y + 0.75, (cz0 + CANOPY_FRONT) / 2), TRIM)
+		part(canopy, "CanopyFascia", V3(cw, 2.4, 0.8), at(CX, CANOPY_Y + 0.5, CANOPY_FRONT - 0.4), WALL)
+		neon(canopy, "CanopyGlow", V3(cw, 0.3, 0.2), at(CX, CANOPY_Y - 0.4, CANOPY_FRONT - 0.9), MAGENTA, deco)
+		neon(canopy, "CanopyGlow", V3(cw, 0.3, 0.2), at(CX, CANOPY_Y + 1.4, CANOPY_FRONT - 0.9), MAGENTA, deco)
+		-- soft purple light panels under it
+		for _, z in ipairs({ cz0 + 4, CANOPY_FRONT - 5 }) do
+			local strip = neon(canopy, "CanopyLight", V3(cw - 8, 0.2, 0.6), at(CX, CANOPY_Y - 0.1, z), PURPLE, { CanCollide = false, Transparency = 0.2 })
+			light(strip, "PointLight", { Color = MAGENTA, Range = 30, Brightness = 1.2, Shadows = false })
+		end
+		-- drifting sparkles under the canopy
+		local zone = part(canopy, "SparkleZone", V3(cw - 6, 1, cd - 4), at(CX, 20, (cz0 + CANOPY_FRONT) / 2), WHITE, Mat.SmoothPlastic, {
+			Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
+		})
+		light(zone, "ParticleEmitter", {
+			Name = "Sparkles",
+			Rate = 5,
+			Lifetime = NumberRange.new(3, 5),
+			Speed = NumberRange.new(0.4, 1.2),
+			SpreadAngle = Vector2.new(180, 180),
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) }),
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }),
+			Color = ColorSequence.new(RGB(255, 190, 240), CYAN),
+			LightEmission = 1,
+		})
+	end
+
+	-- THE MACHINES: the launch packs in a curve round the back, in floor
+	-- order from left to right, each on a plinth in its pack's colour
 	local packs = {}
 	for _, p in ipairs(Config.Weapons.Packs or {}) do
 		if A.Machines[p.Id] then
@@ -311,18 +512,90 @@ function ArcadeBuilder.Build(parent)
 	table.sort(packs, function(a, b)
 		return a.Floor < b.Floor
 	end)
-	local spacing = 8
-	local first = -spacing * (#packs - 1) / 2
+	spots = machineSpots(#packs)
 	for i, p in ipairs(packs) do
-		local cf = at(first + (i - 1) * spacing, 0.8, -14) * CFrame.Angles(0, math.pi, 0)
-		scaleModel(cabinet(m, cf, p.Id, A.Machines[p.Id], p), cf, MACHINE_SCALE)
+		local s, mc = spots[i], A.Machines[p.Id]
+		local base = CFrame.lookAt(at(s.x, 0, s.z).Position, (O * CFrame.new(s.look)).Position)
+		local cf = base + V3(0, FT + PLINTH_H, 0)
+		part(m, "Plinth", V3(8.4, PLINTH_H, 6.8), cf * CFrame.new(0, -PLINTH_H / 2, -0.5), mc.Body)
+		neon(m, "PlinthGlow", V3(8.4, 0.2, 0.2), cf * CFrame.new(0, -0.25, -3.95), mc.Light, deco)
+		local cab, screen = cabinet(m, cf, p.Id, mc, p)
+		scaleModel(cab, cf, MACHINE_SCALE)
+		-- its spotlight, hanging from the canopy and pointing at its screen
+		local lampPos = (cf * CFrame.new(0, 0, -5.5)).Position
+		lampPos = V3(lampPos.X, CANOPY_Y - 1.4, lampPos.Z)
+		part(canopy, "SpotRod", V3(0.3, 1, 0.3), CFrame.new(lampPos + V3(0, 0.9, 0)), INK, nil, deco)
+		local lamp = part(canopy, "SpotLamp", V3(1, 1, 1.2), CFrame.lookAt(lampPos, screen.Position), INK, nil, deco)
+		neon(canopy, "SpotLens", V3(0.7, 0.7, 0.1), lamp.CFrame * CFrame.new(0, 0, -0.62), WHITE, deco)
+		light(lamp, "SpotLight", { Face = Enum.NormalId.Front, Angle = 38, Range = 30, Brightness = 2, Color = mc.Light, Shadows = false })
 	end
-	-- (the update packs' machines come with their packs: the sides stay open
-	-- until then - covered ones there crowded the room)
 
-	-- THE TOKEN MACHINE: gold, a big glowing coin slot (the Robux shop, later)
+	-- THE ENTRANCE ARCH facing the path: chunky posts, a lintel with the
+	-- ARCADE sign in thin neon tubes, bulbs chasing round the opening, and
+	-- the giant token turning on top (seen from the fountain)
 	do
-		local tcf = at(16.5, 0.8, 8) * CFrame.Angles(0, math.pi / 2, 0)
+		local ARCH_H = FT + 12 -- (the opening's top)
+		local LIN_TOP = ARCH_H + 4.5
+		local fz = Z1 + 0.2 -- (the posts' front)
+		for _, sx in ipairs({ -1, 1 }) do
+			local x = CX + sx * 9.5
+			part(m, "ArchBase", V3(4, 2.6, 4), at(x, 1.3, Z1 - 1.4), TRIM)
+			part(m, "ArchPost", V3(3, ARCH_H - 2.6, 3.2), at(x, 2.6 + (ARCH_H - 2.6) / 2, Z1 - 1.4), WALL)
+			neon(m, "ArchGlow", V3(0.25, ARCH_H - 3.2, 0.25), at(CX + sx * 8.1, 2.9 + (ARCH_H - 3.2) / 2, fz + 0.05), CYAN, deco)
+		end
+		part(m, "ArchLintel", V3(24, LIN_TOP - ARCH_H, 3.8), at(CX, (ARCH_H + LIN_TOP) / 2, Z1 - 1.5), WALL)
+		part(m, "ArchBand", V3(24.6, 0.8, 4.2), at(CX, ARCH_H + 0.4, Z1 - 1.5), TRIM)
+		part(m, "ArchBand", V3(24.6, 0.8, 4.2), at(CX, LIN_TOP + 0.4, Z1 - 1.5), TRIM)
+		part(m, "ArchCrown", V3(10, 1.4, 3), at(CX, LIN_TOP + 1.5, Z1 - 1.5), WALL)
+		for _, sx in ipairs({ -1, 1 }) do
+			part(m, "ArchCrownStep", V3(3, 0.7, 3), at(CX + sx * 6.5, LIN_TOP + 1.15, Z1 - 1.5), WALL)
+		end
+		-- the sign: a dark board on the lintel, the word in thin tubes
+		local signZ = Z1 + 0.4 + 0.15
+		local signY = (ARCH_H + 0.8 + LIN_TOP) / 2
+		part(m, "SignBoard", V3(16.4, 3.1, 0.3), at(CX, signY, signZ), INK)
+		for _, dy in ipairs({ -1.6, 1.6 }) do
+			neon(m, "SignEdge", V3(16.6, 0.14, 0.14), at(CX, signY + dy, signZ + 0.1), CYAN, deco)
+		end
+		local face = at(CX, signY, signZ + 0.2)
+		local word, lw, lh, gap = "ARCADE", 1.6, 2.0, 0.65
+		local x = -(#word * lw + (#word - 1) * gap) / 2
+		for i = 1, #word do
+			for _, s in ipairs(LETTERS[string.sub(word, i, i)]) do
+				tube(m, "SignLetter", face, x + s[1] * lw, -lh / 2 + s[2] * lh, x + s[3] * lw, -lh / 2 + s[4] * lh, 0.22, MAGENTA)
+			end
+			x += lw + gap
+		end
+		-- the bulbs: up the left post, along the lintel, down the right post
+		local n = 0
+		for i = 0, 7 do
+			n += 1
+			bulb(m, at(CX - 8.6, FT + 1 + i * 1.45, fz + 0.2), n)
+		end
+		for i = 0, 10 do
+			n += 1
+			bulb(m, at(CX - 8 + i * 1.6, ARCH_H + 1.05, Z1 + 0.65), n)
+		end
+		for i = 7, 0, -1 do
+			n += 1
+			bulb(m, at(CX + 8.6, FT + 1 + i * 1.45, fz + 0.2), n)
+		end
+		-- THE GIANT TOKEN on top, turning (LobbyFX spins it)
+		part(m, "TokenPad", V3(0.6, 4, 4), at(CX, LIN_TOP + 2.5, Z1 - 1.5) * CFrame.Angles(0, 0, math.pi / 2), GOLD, nil, { Shape = Enum.PartType.Cylinder })
+		local coin = disc(m, "GiantToken", 0.9, 7, at(CX, LIN_TOP + 7, Z1 - 1.5), GOLD, Mat.SmoothPlastic)
+		coin.CastShadow = false
+		tokenFaces(coin)
+		coin:SetAttribute("SpinSpeed", 70)
+		coin:SetAttribute("BobAmp", 0.6)
+		coin:SetAttribute("BobSpeed", 1.6)
+		CollectionService:AddTag(coin, "FX")
+		light(coin, "PointLight", { Color = GOLD, Range = 14, Brightness = 1, Shadows = false })
+	end
+
+	-- THE TOKEN MACHINE, just inside beside the arch: gold, a big glowing coin
+	-- slot (the Robux shop, later)
+	do
+		local tcf = at(CX - 15, FT + 0.4, 11) * CFrame.Angles(0, math.rad(-70), 0)
 		local t = Instance.new("Model")
 		t.Name = "TokenMachine"
 		local shell = part(t, "Body", V3(4.4, 7.6, 3.4), tcf * CFrame.new(0, 4.6, 0), GOLD)
@@ -340,25 +613,56 @@ function ArcadeBuilder.Build(parent)
 		scaleModel(t, tcf, MACHINE_SCALE)
 		CollectionService:AddTag(t, "ArcadeTokens")
 		t.Parent = m
+		part(m, "TokenPlinth", V3(8.4, 0.4, 7.2), tcf * CFrame.new(0, -0.2, -0.4), NIGHT)
 	end
 
-	-- THE PRIZE PEDESTAL: the Slime machine's Secret weapon turns over it
+	-- THE PRIZE PEDESTAL in the open middle: the Slime machine's Secret weapon
+	-- turns over it, in a cone of light
 	do
-		local base = part(m, "PrizeBase", V3(3, 5, 5), at(0, 0.8 + 1.5, 4) * CFrame.Angles(0, 0, math.pi / 2), NIGHT, Mat.SmoothPlastic, { Shape = Enum.PartType.Cylinder })
-		neon(m, "PrizeRing", V3(0.3, 5.3, 5.3), at(0, 3.9, 4) * CFrame.Angles(0, 0, math.pi / 2), YELLOW, { Shape = Enum.PartType.Cylinder })
-		neon(m, "PrizeBeam", V3(0.2, 4.2, 4.2), at(0, 4.1, 4) * CFrame.Angles(0, 0, math.pi / 2), WHITE, { Shape = Enum.PartType.Cylinder, Transparency = 0.6 })
+		local px, pz = CX, 2
+		local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
+		part(m, "PrizeStep", V3(0.8, 11, 11), at(px, FT + 0.4, pz) * up, TRIM, nil, { Shape = Enum.PartType.Cylinder })
+		neon(m, "PrizeStepGlow", V3(0.16, 11.3, 11.3), at(px, FT + 0.55, pz) * up, CYAN, { Shape = Enum.PartType.Cylinder, CanCollide = false })
+		local top = FT + 0.8 + 4
+		local base = part(m, "PrizeBase", V3(4, 7, 7), at(px, top - 2, pz) * up, PURPLE, Mat.SmoothPlastic, { Shape = Enum.PartType.Cylinder })
+		neon(m, "PrizeRing", V3(0.3, 7.4, 7.4), at(px, top - 0.1, pz) * up, YELLOW, { Shape = Enum.PartType.Cylinder })
+		local beam = neon(m, "PrizeBeam", V3(0.2, 6, 6), at(px, top + 0.1, pz) * up, WHITE, { Shape = Enum.PartType.Cylinder, Transparency = 0.6 })
+		-- the cone of light rising from it, in steps
+		for i, c in ipairs({ { 6, 2.6, 0.84 }, { 4.6, 2.4, 0.88 }, { 3.2, 2.2, 0.92 } }) do
+			local y0 = top + 0.2 + (i - 1) * 2.6
+			neon(m, "PrizeCone", V3(c[2], c[1], c[1]), at(px, y0 + c[2] / 2, pz) * up, YELLOW, {
+				Shape = Enum.PartType.Cylinder, Transparency = c[3], CanCollide = false, CanQuery = false,
+			})
+		end
+		light(beam, "PointLight", { Color = YELLOW, Range = 16, Brightness = 1.5, Shadows = false })
+		light(beam, "ParticleEmitter", {
+			Name = "Sparkles",
+			Rate = 4,
+			Lifetime = NumberRange.new(2, 3),
+			Speed = NumberRange.new(1, 2),
+			SpreadAngle = Vector2.new(20, 20),
+			EmissionDirection = Enum.NormalId.Right, -- (the cylinder's end: up)
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) }),
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) }),
+			Color = ColorSequence.new(YELLOW, WHITE),
+			LightEmission = 1,
+		})
 		base:SetAttribute("Machine", "Slime")
 		CollectionService:AddTag(base, "ArcadePrize")
 	end
 
-	-- THE BIG WINS board, up on two posts at the back, over the machines
+	-- THE BIG WINS board: a scoreboard on the back wall, over the machines
+	-- and under the canopy, with a frame of chasing bulbs
 	do
-		local WINS_Y, WZ = 23.5, -HALF + 1.4
-		local board = part(m, "WinsBoard", V3(26, 6, 0.4), at(0, WINS_Y, WZ), INK)
-		neon(m, "WinsEdge", V3(26.4, 0.35, 0.5), at(0, WINS_Y + 3.15, WZ), YELLOW)
-		neon(m, "WinsEdge", V3(26.4, 0.35, 0.5), at(0, WINS_Y - 3.15, WZ), YELLOW)
-		for _, x in ipairs({ -12, 12 }) do
-			part(m, "WinsPost", V3(1, WINS_Y - 0.8, 1), at(x, 0.8 + (WINS_Y - 0.8) / 2, WZ - 0.7), NIGHT)
+		local WY, WZ = 26.6, Z0 + WALL_T
+		part(m, "WinsFrame", V3(27.4, 8.2, 0.5), at(CX, WY, WZ + 0.25), TRIM)
+		local board = part(m, "WinsBoard", V3(26, 6.8, 0.4), at(CX, WY, WZ + 0.7), INK)
+		for _, dy in ipairs({ -3.75, 3.75 }) do
+			neon(m, "WinsEdge", V3(27.4, 0.3, 0.3), at(CX, WY + dy, WZ + 0.65), YELLOW, deco)
+		end
+		for i = 0, 11 do
+			bulb(m, at(CX - 12.65 + i * 2.3, WY + 4.3, WZ + 0.4), 40 + i)
+			bulb(m, at(CX - 12.65 + i * 2.3, WY - 4.3, WZ + 0.4), 60 - i)
 		end
 		local g = screenGui(board, Enum.NormalId.Back, 30) -- (its back faces into the room)
 		label(g, "Title", "BIG WINS", YELLOW, UDim2.fromScale(0.3, 0.04), UDim2.fromScale(0.4, 0.26))
@@ -368,8 +672,8 @@ function ArcadeBuilder.Build(parent)
 		CollectionService:AddTag(board, "ArcadeWins")
 	end
 
-	-- walking onto the floor opens the Arcade menu (ArcadeClient)
-	local zone = part(m, "AutoOpenZone", V3(HALF * 2, 12, HALF * 2), at(0, 6.8, 0), WHITE, Mat.SmoothPlastic, {
+	-- walking in (anywhere inside the walls) opens the Arcade menu (ArcadeClient)
+	local zone = part(m, "AutoOpenZone", V3(W - 2 * WALL_T, 14, Z1 + 0.2 - (Z0 + WALL_T)), at(CX, FT + 7, (Z0 + WALL_T + Z1 + 0.2) / 2), WHITE, Mat.SmoothPlastic, {
 		Transparency = 1,
 		CanCollide = false,
 		CanQuery = false,
@@ -378,34 +682,6 @@ function ArcadeBuilder.Build(parent)
 	})
 	zone:SetAttribute("Activity", "Arcade")
 	CollectionService:AddTag(zone, "AutoOpenZone")
-
-	-- and the giant token on the stream's bank, where the forge's waterwheel was
-	ArcadeBuilder.BuildTokenStatue(m, O.X + 23.2, O.Z)
-	return m
-end
-
--- THE GIANT TOKEN by the stream (where the forge's waterwheel was): a stone
--- plinth on the bank with an arcade token turning on it
-function ArcadeBuilder.BuildTokenStatue(parent, x, z)
-	local m = folder(parent, "TokenStatue")
-	part(m, "Plinth", V3(4, 3, 4), CFrame.new(x, 1.5, z), SLATE)
-	part(m, "PlinthTop", V3(4.4, 0.4, 4.4), CFrame.new(x, 3.2, z), NIGHT)
-	local coin = disc(m, "StatueToken", 0.8, 6, CFrame.new(x, 7, z) * CFrame.Angles(0, math.pi / 2, 0), GOLD, Mat.SmoothPlastic)
-	for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
-		local g = screenGui(coin, face, 30)
-		local f = Instance.new("Frame")
-		f.BackgroundColor3 = PURPLE
-		f.Size = UDim2.fromScale(0.78, 0.78)
-		f.Position = UDim2.fromScale(0.11, 0.11)
-		f.Parent = g
-		local round = Instance.new("UICorner")
-		round.CornerRadius = UDim.new(0.5, 0)
-		round.Parent = f
-		label(f, "Star", "★", YELLOW, UDim2.fromScale(0.1, 0.05), UDim2.fromScale(0.8, 0.8))
-	end
-	coin:SetAttribute("SpinSpeed", 60)
-	coin:SetAttribute("BobAmp", 0.4)
-	CollectionService:AddTag(coin, "FX")
 	return m
 end
 
