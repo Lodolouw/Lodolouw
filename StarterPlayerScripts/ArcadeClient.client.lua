@@ -1166,7 +1166,7 @@ local function showWins()
 		local g = board:FindFirstChildOfClass("SurfaceGui")
 		local l = g and g:FindFirstChild("Lines")
 		if l then
-			l.Text = table.concat(lines, "\n")
+			l.Text = table.concat(lines, "     ★     ") -- (one line: the board is a strip over the machines)
 		end
 	end
 end
