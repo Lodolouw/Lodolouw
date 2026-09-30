@@ -16,6 +16,10 @@ off and hit, and their abilities):
     python3 weapon_sfx.py Knight Goo   ...only the Knight pack's and the ones
                                           starting with "Goo"
 
+(Each .ogg made is written afresh, and a fresh one's bytes differ even when
+its sound hasn't changed - the uploader would take it for a new sound - so
+make only the ones you've changed.)
+
 Tools/Upload/upload_assets.bat uploads out/weapons/*.ogg with the models;
 ServerScriptService/SoundLoader puts each in SoundService under its name
 ("Goo_Splat" -> "Goo Splat"), which is what the game asks for.
