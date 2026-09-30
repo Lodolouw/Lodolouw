@@ -972,7 +972,7 @@ local SWING_THEMES = {
 	-- Its sounds are lists: the new one, then what to play till it's uploaded.)
 	Knight = {
 		light = RGBc(254, 231, 97), main = RGBc(254, 174, 52), deep = RGBc(18, 78, 137),
-		bits = { "clod", "clod", "clod", "glint" },
+		bits = { "clod", "clod", "glint", "glint" },
 		blob = { RGBc(194, 133, 105), RGBc(184, 111, 80), RGBc(115, 62, 57) }, blobSee = 0,
 		glint = { RGBc(254, 231, 97), RGBc(254, 174, 52) }, dust = RGBc(214, 176, 150),
 		swingSound = { "Shovel Swish", "Hammer Swing" }, splatSound = { "Dirt Splat", "Dirt Land" },
@@ -1006,7 +1006,7 @@ local SWING_THEMES = {
 	-- Revvington's: sparks skittering off the tarmac, puffs of tyre smoke
 	Speedway = {
 		light = RGBc(255, 240, 180), main = RGBc(247, 118, 34), deep = RGBc(190, 74, 40),
-		bits = { "spark", "spark", "spark", "smoke" },
+		bits = { "spark", "spark", "spark", "spark", "smoke" },
 		blob = { RGBc(255, 240, 180), RGBc(255, 190, 80), RGBc(255, 128, 30) }, blobSee = 0,
 		smoke = { RGBc(210, 210, 220), RGBc(165, 165, 178) },
 		swingSound = { "Tyre Swish", "Sword Swing" }, splatSound = { "Spark Skitter" },
@@ -1239,7 +1239,7 @@ local function stepGoo(dt)
 				if shape == "drop" then
 					b.part.Size = Vector3.new(b.size * (1 - stretch * 0.25), b.size * (1 - stretch * 0.25), b.size * (1 + stretch))
 				else
-					b.part.Size = Vector3.new(b.size * 0.22, b.size * 0.22, b.size * (0.8 + 2.4 * stretch))
+					b.part.Size = Vector3.new(b.size * 0.3, b.size * 0.3, b.size * (1 + 3 * stretch))
 				end
 				if b.core then
 					b.core.CFrame = cf
@@ -1285,7 +1285,7 @@ local function flingGoo(theme, pos, vel, size, floor)
 	if shape == "drop" or shape == "puff" then
 		part = fxPart(bitName(kind), Vector3.new(size, size, size), CFrame.new(pos), c, see, neon, Enum.PartType.Ball)
 	elseif shape == "streak" then
-		part = fxPart(bitName(kind), Vector3.new(size * 0.22, size * 0.22, size), CFrame.new(pos), c, see, neon)
+		part = fxPart(bitName(kind), Vector3.new(size * 0.3, size * 0.3, size), CFrame.new(pos), c, see, neon)
 	elseif shape == "coin" then
 		part = fxPart(bitName(kind), Vector3.new(size * 0.2, size * 1.1, size * 1.1), CFrame.new(pos), c, see, neon, Enum.PartType.Cylinder)
 	elseif shape == "flake" then
@@ -1389,10 +1389,19 @@ local function goldCrack(theme, path, floor)
 	end
 end
 
--- No Quarter's visor: Burrowmore's helm glares out of the arc - his T-shaped
--- slit, his eyes flaring yellow in it - and bursts into gold coins
-local function burrowmoreVisor(theme, at, floor)
-	local look = CFrame.new(at) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+-- a spot on the arc, turned to face `centre` (you) - flat, so it stands up
+local function facing(at, centre)
+	local d = centre and Vector3.new(centre.X - at.X, 0, centre.Z - at.Z)
+	if not d or d.Magnitude < 0.1 then
+		return CFrame.new(at) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	end
+	return CFrame.lookAt(at, at + d)
+end
+
+-- No Quarter's visor: Burrowmore's helm glares out of the arc at you - his
+-- T-shaped slit, his eyes flaring yellow in it - and bursts into gold coins
+local function burrowmoreVisor(theme, at, floor, centre)
+	local look = facing(at, centre)
 	local ink = RGBc(24, 20, 37)
 	local parts = {
 		{ fxPart("Visor", Vector3.new(0.1, 0.1, 0.1), look, ink, 0, false), Vector3.new(2.0, 0.42, 0.14) },
@@ -1452,9 +1461,9 @@ local function checkerWave(theme, path, centre)
 end
 
 -- Victory Lap's eyes: Revvington's big green eyes pop out of the arc, look
--- about, and burst into confetti
-local function revvEyes(theme, at, floor)
-	local look = CFrame.new(at) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+-- at you, and burst into confetti
+local function revvEyes(theme, at, floor, centre)
+	local look = facing(at, centre)
 	local parts = {}
 	for _, x in ipairs({ -0.5, 0.5 }) do
 		local cf = look * CFrame.new(x, 0, 0)
@@ -1622,12 +1631,13 @@ local function swingFx(h, on, starting)
 		elseif wave and hrp then
 			jellyWave(fx.theme, path, hrp.Position)
 		end
+		local centre = hrp and hrp.Position
 		if eyes == "visor" and #path >= 4 then
-			burrowmoreVisor(fx.theme, path[math.floor(#path * 0.6) + 1], floor)
+			burrowmoreVisor(fx.theme, path[math.floor(#path * 0.6) + 1], floor, centre)
 		elseif eyes and #path >= 4 then
 			local pop = eyes == "revv" and revvEyes or oozarkEyes
-			pop(fx.theme, path[math.floor(#path * 0.4) + 1], floor)
-			pop(fx.theme, path[math.floor(#path * 0.8)], floor)
+			pop(fx.theme, path[math.floor(#path * 0.4) + 1], floor, centre)
+			pop(fx.theme, path[math.floor(#path * 0.8)], floor, centre)
 		end
 	end
 end
