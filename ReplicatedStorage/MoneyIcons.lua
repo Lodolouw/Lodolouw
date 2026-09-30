@@ -87,6 +87,7 @@ function M.make(parent, kind, size, props)
 	end
 	local holder = Instance.new("Frame")
 	holder.Name = kind
+	holder:SetAttribute("LivingIcon", true) -- (RetroUI leaves it alone: no old coin drawn over it)
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromOffset(size, size)
 	local pic = Instance.new("ImageLabel")

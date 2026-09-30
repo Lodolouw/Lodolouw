@@ -781,6 +781,11 @@ local function restyle(inst)
 	if done[inst] or skip(inst) then
 		return
 	end
+	-- (a living coin or token and its picture: MoneyIcons draws them - no old
+	-- pixel coin over the top, no recolouring)
+	if inst:GetAttribute("LivingIcon") or (inst.Parent and inst.Parent:GetAttribute("LivingIcon")) then
+		return
+	end
 	done[inst] = true
 	local props = COLOR_PROPS[inst.ClassName]
 	if props then

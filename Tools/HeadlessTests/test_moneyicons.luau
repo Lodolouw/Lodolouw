@@ -33,6 +33,7 @@ local parent = Instance.new("Frame")
 
 local token = Money.make(parent, "Token", 48, { Position = M.UDim2.fromOffset(4, 4) })
 check(token and token.Name == "Token" and token.Parent == parent, "the living token is made")
+check(token and token:GetAttribute("LivingIcon") == true, "marked, so the retro style draws no old coin over it")
 local pic = token and token:FindFirstChild("Picture")
 check(pic and pic.Image == "rbxthumb://type=Asset&id=501&w=150&h=150", "showing its first picture")
 local seen, ys = {}, {}
