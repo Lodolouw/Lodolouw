@@ -204,6 +204,11 @@ local function cabinet(parent, cf, id, machine, pack)
 	ball(m, "StickBall", 0.55, at(-1.2, 5.1, -2.4), PINK)
 	neon(m, "ButtonA", V3(0.5, 0.2, 0.5), at(0.6, 4.45, -2.4), CYAN)
 	neon(m, "ButtonB", V3(0.5, 0.2, 0.5), at(1.4, 4.45, -2.3), YELLOW)
+	-- the lever on the right side (as you face it), like a slot machine's (ArcadeClient pulls
+	-- it when someone spins): a hub, an arm and a red ball on top
+	part(m, "LeverHub", V3(0.4, 0.7, 0.7), at(-2.42, 4.6, -0.7), INK)
+	part(m, "LeverArm", V3(0.18, 2.0, 0.18), at(-2.5, 5.6, -0.7), STEEL)
+	ball(m, "LeverBall", 0.62, at(-2.5, 6.65, -0.7), PINK)
 	-- the screen, in a black bezel (ArcadeClient draws on it)
 	part(m, "Bezel", V3(3.9, 2.9, 0.2), at(0, 6.0, -1.72), INK)
 	local screen = part(m, "Screen", V3(3.3, 2.3, 0.1), at(0, 6.0, -1.86), RGB(18, 78, 137), Mat.SmoothPlastic, { CastShadow = false })

@@ -461,12 +461,34 @@ step(0.1)
 check(result and #result.results == 1, "the server spun once")
 local r1 = result and result.results[1] or {}
 check(show.Visible and not win.Visible, "the show starts, the menu goes")
-check(cam.CameraType == Enum.CameraType.Scriptable and (cam.CFrame.Position - slimeScreen.Position).Magnitude < 15, "the camera flies to the Slime machine")
-check(cam.CFrame.LookVector:Dot((slimeScreen.Position - cam.CFrame.Position).Unit) > 0.95, "looking at its screen")
-check((played["Token Clunk"] or 0) >= 1, "the token clunks in")
-step(0.5)
-local tiles = find("Tiles", show)
+local spinScreen = gui:FindFirstChild("ArcadeSpinScreen")
+check(spinScreen and spinScreen.ClassName == "SurfaceGui" and spinScreen.Enabled and spinScreen.Adornee == slimeScreen, "the spin plays on the Slime machine's own screen")
+check(cam.CameraType == Enum.CameraType.Scriptable, "the camera takes over")
+-- the token flies from your hand into the slot, the lever comes down
+local slot = cabinets.Slime:FindFirstChild("CoinSlot")
+local leverArm = cabinets.Slime:FindFirstChild("LeverArm")
+local leverHome = leverArm and leverArm.CFrame
+local sawToken, tokenNearSlot, leverMoved = false, false, false
+local tiles = nil
+waitFor(function()
+	local tok = workspace:FindFirstChild("ThrownToken")
+	if tok then
+		sawToken = true
+		tokenNearSlot = tokenNearSlot or (slot and (tok.Position - slot.Position).Magnitude < 1.5)
+	end
+	leverMoved = leverMoved or (leverArm and (leverArm.Position - leverHome.Position).Magnitude > 0.3)
+	tiles = find("Tiles", spinScreen)
+	return tiles and #tiles:GetChildren() > 0
+end, 3, "the strip to start")
+check(sawToken and tokenNearSlot, "a token flies into the coin slot")
+check((played["Token Clunk"] or 0) >= 1, "and clunks in")
+check(leverMoved, "the lever comes down")
 check(tiles and #tiles:GetChildren() == 46, "the strip has its tiles")
+step(0.6)
+local camGap = (cam.CFrame.Position - slimeScreen.Position).Magnitude
+check(camGap < 6, "the camera flies right up to the machine's screen (" .. string.format("%.1f", camGap) .. " studs)")
+check(cam.CFrame.LookVector:Dot((slimeScreen.Position - cam.CFrame.Position).Unit) > 0.95, "looking straight at it")
+check(leverArm and (leverArm.Position - leverHome.Position).Magnitude < 0.01, "the lever springs back")
 local iconTiles, gemTiles, rightIcons = 0, 0, true
 for _, t in ipairs(tiles and tiles:GetChildren() or {}) do
 	local ic, gm = t:FindFirstChild("Icon"), t:FindFirstChild("Gem")
@@ -486,11 +508,19 @@ check((played["Roll Tick"] or 0) > 5, "ticking as it goes")
 check(textOn(show, "TAP TO SKIP") ~= nil, "it can be skipped")
 if SNAPS then
 	step(1.6)
-	snap("THE SPIN|the camera flies to the machine; the strip slows onto what the server picked")
+	if snapGui then -- (the machine's own screen, as the camera sees it close up)
+		snapGui(spinScreen, "ON THE MACHINE'S SCREEN|the strip slows onto what the server picked", 860, 600)
+	end
 end
+local landedText = nil
 waitFor(function()
+	local st = find("Status", spinScreen)
+	if st and st.Text ~= "GOOD LUCK!" then
+		landedText = landedText or st.Text
+	end
 	return card.Visible
-end, 5, "the reveal card")
+end, 8, "the reveal card")
+check(landedText == string.upper(tostring(r1.rarity)) .. "!", "the machine's screen says what it landed on (" .. tostring(landedText) .. ")")
 check(r1.rarity ~= "Common", "the first spin was Rare or better (" .. tostring(r1.rarity) .. ")")
 check((played["Spin Riser"] or 0) >= 1, "a drum roll builds under the spin")
 check((played[A.LandSounds[r1.rarity]] or 0) >= 1, "it lands with the " .. tostring(r1.rarity) .. " sound")
@@ -533,7 +563,7 @@ press(spin1)
 step(0.5)
 played = {}
 UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1 }, false)
-step(0.6)
+step(1.2)
 check(card.Visible, "a tap skips straight to the card")
 local landed = 0
 for _, name in pairs(A.LandSounds) do
@@ -545,7 +575,7 @@ press(button(card, "^SPIN AGAIN$"))
 step(0.2)
 check((invokes.ArcadeRoll or 0) == 1 and show.Visible and not card.Visible, "SPIN AGAIN spins again")
 UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.Touch }, false)
-step(0.6)
+step(1.2)
 check(card.Visible, "a touch skips too")
 press(button(card, "^DONE$"))
 step(0.1)
@@ -571,7 +601,7 @@ step(0.3)
 check(result and #result.results == 10, "the server spun ten")
 check(result.results[1].rarity == "Legendary", "the first of them a Legendary")
 UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1 }, false)
-step(1)
+step(1.4)
 check(card.Visible and not grid.Visible and textOn(card, "^LEGENDARY!$"), "a Legendary gets its own reveal first")
 check(textOn(card, "SEE ALL 10") ~= nil, "with SEE ALL 10")
 if SNAPS then
@@ -611,22 +641,27 @@ local watch = SoundService.ChildAdded:Connect(function(c)
 		marks[c.Name] = { t = T, song = song.Volume, from = c.TimePosition }
 	end
 end)
-local t0, fastest, shards = T, 0, false
+local t0, fastest, shards, rattled = T, 0, false, false
+local home = cabinets.Slime:GetPivot()
 press(spin1)
 waitFor(function()
 	fastest = math.max(fastest, song.PlaybackSpeed)
 	shards = shards or find("Shard", show) ~= nil
+	rattled = rattled or (cabinets.Slime:GetPivot().Position - home.Position).Magnitude > 0.01
 	return card.Visible
 end, 8, "the Legendary's card")
 watch:Disconnect()
 AS.rng = realRng
 local riser, heart, jackpot = marks["Spin Riser"], marks["Heartbeat"], marks["Jackpot Legendary"]
-check(riser and riser.t - t0 < 0.6, "the drum roll starts with the spin")
+check(riser and riser.t - t0 > 0.8 and riser.t - t0 < 2.2, "the drum roll starts as the strip does, after the token and the lever (" .. tostring(riser and riser.t - t0) .. ")")
 check(riser and math.abs((riser.from or 0) - 1.1) < 0.05, "timed to end as it goes quiet (from " .. tostring(riser and riser.from) .. ")")
 check(fastest > 1.2, "the song speeds up while it spins (" .. fastest .. ")")
 check(heart and jackpot and math.abs((jackpot.t - heart.t) - 1.6) < 0.1, "a heartbeat for the last 1.6 seconds (" .. tostring(heart and jackpot and jackpot.t - heart.t) .. ")")
 check(jackpot and jackpot.song < 0.01, "in silence: the song has dropped out (" .. tostring(jackpot and jackpot.song) .. ")")
 check(shards, "the screen shatters as the jackpot hits")
+check(rattled, "and the whole machine rattles")
+step(1)
+check((cabinets.Slime:GetPivot().Position - home.Position).Magnitude < 1e-6, "then stands back where it was")
 check(not marks["Win Common"] and not marks["Legendary Reveal"], "just the one landing sound")
 step(1.5)
 check(song.Volume < 0.02, "the song waits while the jackpot rings out")
@@ -660,7 +695,13 @@ step(A.Gap + 0.1)
 local ok = Action.OnServerInvoke(bravo, "ArcadeRoll", { machine = "Slime", count = 1 })
 AS.rng = realRng
 check(ok, "Bravo spins")
-step(0.6)
+local bravoLever = cabinets.Slime:FindFirstChild("LeverArm")
+local bravoHome, bravoPulled = bravoLever.Position, false
+for _ = 1, 18 do
+	step(DT)
+	bravoPulled = bravoPulled or (bravoLever.Position - bravoHome).Magnitude > 0.3
+end
+check(bravoPulled, "everyone sees Bravo's machine's lever come down")
 check(status("Slime") == "SPINNING!", "the Slime machine's screen lights up for everyone (" .. status("Slime") .. ")")
 check((slimeSounds()["Roll Tick"] or 0) >= 1, "ticking, heard from the machine")
 check(not textOn(cabinets.Slime.Marquee, "^Bravo"), "while it spins, the result isn't given away")
@@ -745,7 +786,7 @@ end }
 press(spin1)
 step(0.5)
 UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1 }, false)
-step(0.6)
+step(1.4)
 AS.rng = realRng
 check(card.Visible and (played["Legendary Reveal"] or 0) == 1, "without them, a Legendary still gets the old fanfare")
 press(button(card, "^DONE$"))

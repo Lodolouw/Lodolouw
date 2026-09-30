@@ -14,9 +14,13 @@
 	    spins"), your first spin's promise, and SPIN x1 / SPIN x10. A machine
 	    you haven't opened says whose boss opens it; outside the lobby you
 	    can look but not spin.
-	  * THE SPIN: the camera flies to that machine, a strip of weapon tiles
-	    (filled using the real odds) races past on its screen and slows down
-	    onto what the server already picked. Tap to skip. The landing gets
+	  * THE SPIN: the camera flies beside that machine, your token flicks
+	    from your hand into its coin slot and its lever comes down; then the
+	    camera flies right up to the machine's own screen, where a strip of
+	    weapon tiles (filled using the real odds) races past and slows down
+	    onto what the server already picked - the view rumbling while it
+	    races, going still in the silence, and jolting on the landing (a
+	    Legendary or better rattles the whole machine). Tap to skip. The landing gets
 	    bigger with the rarity: a blip for a Common, flashing lights for an
 	    Epic, a full-screen reveal for a Legendary or better, rainbows for a
 	    Secret. Then your weapon turns in 3D, with EQUIP / SPIN AGAIN / DONE.
@@ -129,6 +133,7 @@ local TILE_SIZE = 150 -- a weapon tile on the spinning strip and in the grid of 
 local state = nil -- the latest snapshot of your data from the server
 local busy = false -- a spin is being asked for or shown
 local inArcade = false -- you're standing in the Arcade (the walk-in zones, at the bottom)
+local pullLever -- (the machine's lever: below)
 
 ----------------------------------------------------------------------
 -- Small helpers
@@ -884,6 +889,9 @@ local function announce(c, name, top, mine)
 	local rank = RANK[top.rarity] or 1
 	local from = not mine and c.screen or nil
 	c.flashUntil = os.clock() + 6
+	if not mine then
+		pullLever(c)
+	end
 	for i = 1, 14 do
 		if c.back then
 			c.back.BackgroundColor3 = rarityColor(A.Order[(i % #A.Order) + 1])
@@ -1094,20 +1102,26 @@ end)
 ----------------------------------------------------------------------
 local show = new("Frame", { Name = "Show", BackgroundColor3 = RGB(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 10, Active = true }, scaler)
 local flash = new("Frame", { Name = "Flash", BackgroundColor3 = WHITE, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 30 }, show)
--- the machine's screen: a window with the machine's name on its title bar
--- (in the machine's colour), the strip racing across a dark screen inside
-local screenFrame, screenBar, screenTitle
+-- THE MACHINE'S OWN SCREEN: the spin plays on the machine itself (a
+-- SurfaceGui laid over its Screen - only on your screen), and the camera
+-- flies right up to it. Its title bar is in the machine's colour; the strip
+-- races across the middle; under it, what it landed on.
+local SCR = {}
+SCR.gui = new("SurfaceGui", { Name = "ArcadeSpinScreen", Face = Enum.NormalId.Front, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = Vector2.new(860, 600), LightInfluence = 0, Brightness = 1.6, ZOffset = 2, ResetOnSpawn = false, Enabled = false }, playerGui)
+SCR.frame = new("Frame", { Name = "Screen", BackgroundColor3 = INK, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, SCR.gui)
+SCR.bar = new("Frame", { Name = "TitleBar", BackgroundColor3 = GREEN, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 96), ZIndex = 2 }, SCR.frame)
+new("Frame", { BackgroundColor3 = WC.Ink, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 6), ZIndex = 2 }, SCR.bar)
+SCR.title = text(SCR.bar, { Text = "", Font = WK.TITLE_FONT, Position = UDim2.fromOffset(24, 18), Size = UDim2.new(1, -48, 1, -36), TextStrokeTransparency = 0, ZIndex = 3 })
+local window = new("Frame", { Name = "Strip", Position = UDim2.fromOffset(40, 200), Size = UDim2.fromOffset(780, 180), BackgroundColor3 = NIGHT, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 2 }, SCR.frame)
+WK.outline(window, WC.Ink, 4)
+local strip = new("Frame", { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.fromOffset(10, 180), ZIndex = 3 }, window)
+new("Frame", { Name = "Marker", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(6, 180), BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 6 }, window)
 do
-	local parts = WK.window(show, { Name = "Screen", Title = "", Color = GREEN, BarHeight = 44, TitleSize = 22, Buttons = false, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(840, 270), ZIndex = 11 })
-	screenFrame, screenBar, screenTitle = parts.frame, parts.bar, parts.title
+	local markerTop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 190), Size = UDim2.fromOffset(32, 32), Rotation = 45, BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 6 }, SCR.frame)
+	stroke(markerTop, INK, 3)
 end
-local window = new("Frame", { Name = "Strip", Position = UDim2.fromOffset(30, 64), Size = UDim2.fromOffset(780, 180), BackgroundColor3 = NIGHT, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 14 }, screenFrame)
-WK.outline(window, WC.Ink, 3)
-local strip = new("Frame", { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.fromOffset(10, 180), ZIndex = 15 }, window)
-new("Frame", { Name = "Marker", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(6, 180), BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 18 }, window)
-local markerTop = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 60), Size = UDim2.fromOffset(28, 28), Rotation = 45, BackgroundColor3 = YELLOW, BorderSizePixel = 0, ZIndex = 18 }, screenFrame)
-stroke(markerTop, INK, 3)
-local skipHint = text(show, { Text = "TAP TO SKIP", Font = WK.TITLE_FONT, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.42, 150), Size = UDim2.fromOffset(300, 24), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 12 })
+SCR.status = text(SCR.frame, { Name = "Status", Text = "", Font = WK.TITLE_FONT, Position = UDim2.fromOffset(30, 420), Size = UDim2.new(1, -60, 0, 110), TextColor3 = YELLOW, TextStrokeTransparency = 0, ZIndex = 2 })
+local skipHint = text(show, { Text = "TAP TO SKIP", Font = WK.TITLE_FONT, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -40), Size = UDim2.fromOffset(300, 24), TextColor3 = WHITE, TextStrokeTransparency = 0, ZIndex = 12 })
 -- the reveal card: a window whose title bar says the rarity, in its colour
 local card, cardBar, cardRarity, cardClose
 do
@@ -1365,30 +1379,193 @@ local function landCue(cue, skipped)
 	end
 end
 
--- flies the camera to the machine (and back after)
-local camSaved, camTween = nil, nil
-local function cameraToMachine(machineId)
-	local c = cabinets[machineId]
+-- THE CAMERA during a spin: it glides from shot to shot (rig.shot) and
+-- shakes (rig.kick: a jolt that dies away; rig.floor: a steady rumble), and
+-- its view can punch in (rig.punch: degrees narrower, springing back)
+local rig = { on = false, shake = 0, floor = 0, punch = 0 }
+function rig.shot(goal, seconds)
 	local cam = Workspace.CurrentCamera
-	if not (c and c.screen and cam) then
+	if not cam then
 		return
 	end
-	camSaved = { type = cam.CameraType }
-	cam.CameraType = Enum.CameraType.Scriptable
-	local s = c.screen
-	local goal = CFrame.lookAt(s.Position + s.CFrame.LookVector * 11 + Vector3.new(0, 1.5, 0), s.Position) -- (the machines are big)
-	camTween = tween(cam, 0.6, { CFrame = goal }, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+	if not rig.on then
+		rig.on, rig.saved, rig.fov = true, cam.CameraType, cam.FieldOfView
+		cam.CameraType = Enum.CameraType.Scriptable
+		rig.base = cam.CFrame
+	end
+	rig.from, rig.to, rig.t0, rig.dur = rig.base, goal, os.clock(), math.max(seconds or 0, 1e-3)
 end
+function rig.kick(amount)
+	rig.shake = math.max(rig.shake, amount)
+end
+RunService.RenderStepped:Connect(function(dt)
+	local cam = Workspace.CurrentCamera
+	if not (rig.on and cam and rig.to) then
+		return
+	end
+	local u = math.clamp((os.clock() - rig.t0) / rig.dur, 0, 1)
+	local k = u < 0.5 and 2 * u * u or 1 - (-2 * u + 2) ^ 2 / 2 -- (easing in and out)
+	rig.base = rig.from:Lerp(rig.to, k)
+	rig.shake = math.max(rig.floor, rig.shake * math.exp(-6 * dt))
+	local a, t = rig.shake, os.clock()
+	cam.CFrame = rig.base * CFrame.new(math.noise(t * 17, 1.5) * a, math.noise(t * 17, 7.5) * a, 0) * CFrame.Angles(0, 0, math.noise(t * 11, 3.5) * a * 0.12)
+	if rig.fov then
+		rig.punch = rig.punch * math.exp(-5 * dt)
+		cam.FieldOfView = rig.fov - rig.punch
+	end
+end)
 local function cameraBack()
 	local cam = Workspace.CurrentCamera
-	if camTween then
-		camTween:Cancel()
-		camTween = nil
+	if rig.on and cam then
+		cam.CameraType = (rig.saved == nil or rig.saved == Enum.CameraType.Scriptable) and Enum.CameraType.Custom or rig.saved
+		if rig.fov then
+			cam.FieldOfView = rig.fov
+		end
 	end
-	if camSaved and cam then
-		cam.CameraType = camSaved.type == Enum.CameraType.Scriptable and Enum.CameraType.Custom or camSaved.type
+	rig.on, rig.to, rig.shake, rig.floor, rig.punch = false, nil, 0, 0, 0
+end
+-- the shots: beside the machine (on its lever side), watching the token go in; then right up
+-- to its screen (`near`: closer still), filling most of the view
+function rig.insertShot(c, target)
+	local s = c.screen
+	local focus = target:Lerp(s.Position, 0.35)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if root and (root.Position - target).Magnitude < 30 then
+		focus = focus:Lerp(root.Position, 0.35)
 	end
-	camSaved = nil
+	rig.shot(CFrame.lookAt(focus + s.CFrame.LookVector * 14 - s.CFrame.RightVector * 7 + Vector3.new(0, 3, 0), focus), 0.6)
+end
+function rig.screenShot(c, near, seconds)
+	local s = c.screen
+	local dist = s.Size.Y / 0.85 / 2 / math.tan(math.rad(35)) * (near or 1)
+	rig.shot(CFrame.lookAt(s.Position + s.CFrame.LookVector * dist, s.Position), seconds or 0.45)
+end
+
+-- THE LEVER on the machine's side, pulled down and springing back (for
+-- anyone's spin: every screen pulls it itself)
+function pullLever(c)
+	local hub, arm, knob = c.model:FindFirstChild("LeverHub"), c.model:FindFirstChild("LeverArm"), c.model:FindFirstChild("LeverBall")
+	if not (hub and arm and knob) or c.pulling then
+		return
+	end
+	c.pulling = true
+	local pivot = hub.CFrame
+	local armHome, knobHome = pivot:ToObjectSpace(arm.CFrame), pivot:ToObjectSpace(knob.CFrame)
+	task.spawn(function()
+		local function set(a) -- (tipped `a` towards the front)
+			local r = pivot * CFrame.Angles(-a, 0, 0)
+			arm.CFrame, knob.CFrame = r * armHome, r * knobHome
+		end
+		local t0 = os.clock()
+		while os.clock() - t0 < 0.62 and arm.Parent do
+			local t = os.clock() - t0
+			local a
+			if t < 0.2 then
+				a = (t / 0.2) ^ 2 * math.rad(75) -- down
+			elseif t < 0.26 then
+				a = math.rad(75) -- (clunk)
+			else
+				local u = (t - 0.26) / 0.36
+				a = math.rad(75) * (1 - u) + math.sin(u * math.pi) * math.rad(-8) -- back up, a little past
+			end
+			set(a)
+			RunService.RenderStepped:Wait()
+		end
+		set(0)
+		c.pulling = false
+	end)
+	task.delay(0.2, function()
+		play({ "Token Clunk", "UI Blip" }, 0.6, 0.5, nil, c.screen)
+	end)
+end
+
+-- YOUR ARM flicking the token (an R6 body's right shoulder, only on your screen)
+local function armFlick(char)
+	local torso = char and char:FindFirstChild("Torso")
+	local shoulder = torso and torso:FindFirstChild("Right Shoulder")
+	if not (shoulder and shoulder:IsA("Motor6D")) then
+		return
+	end
+	local WIND, RELEASE = CFrame.Angles(0, math.rad(-20), math.rad(165)), CFrame.Angles(0, math.rad(10), math.rad(75))
+	local t0 = os.clock()
+	local conn
+	conn = RunService.Stepped:Connect(function()
+		local t = os.clock() - t0
+		if t > 0.55 or not shoulder.Parent then
+			conn:Disconnect()
+			return
+		end
+		local pose, w
+		if t < 0.18 then
+			pose, w = WIND, t / 0.18
+		elseif t < 0.3 then
+			pose, w = WIND:Lerp(RELEASE, (t - 0.18) / 0.12), 1
+		else
+			pose, w = RELEASE, 1 - (t - 0.3) / 0.25
+		end
+		shoulder.Transform = shoulder.Transform:Lerp(pose, math.clamp(w, 0, 1))
+	end)
+end
+
+-- THE TOKEN: flicked from your hand (or, from further off, tossed in from
+-- where you're watching) in an arc into the coin slot, where it clunks.
+-- Returns once it's in (straight away if you tap to skip).
+local function throwToken(c, target)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local cam = Workspace.CurrentCamera
+	local from
+	if root and (root.Position - target).Magnitude < 30 then
+		armFlick(char)
+		task.wait(0.28) -- (the arm winds up and lets go)
+		local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+		from = arm and (arm.CFrame * CFrame.new(0, -1, 0)).Position or root.Position + Vector3.new(0, 1.5, 0)
+	else
+		from = cam and (cam.CFrame * CFrame.new(1.5, -1.5, -3)).Position or target + Vector3.new(0, 6, 8)
+	end
+	local coin = new("Part", { Name = "ThrownToken", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.16, 0.9, 0.9), Color = GOLD, Material = Enum.Material.SmoothPlastic, Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false }, Workspace)
+	new("PointLight", { Color = GOLD, Range = 6, Brightness = 2 }, coin)
+	local height = math.max(2, (target - from).Magnitude * 0.25)
+	local t0 = os.clock()
+	while not skipping do
+		local u = math.clamp((os.clock() - t0) / 0.5, 0, 1)
+		local p = from:Lerp(target, u) + Vector3.new(0, height * 4 * u * (1 - u), 0)
+		coin.CFrame = CFrame.new(p) * CFrame.Angles(0, os.clock() * 9, os.clock() * 14)
+		if u >= 1 then
+			break
+		end
+		RunService.RenderStepped:Wait()
+	end
+	coin:Destroy()
+	play({ "Token Clunk", "UI Blip" }, 1, 1)
+	local slot = c.model:FindFirstChild("CoinSlot")
+	if slot then -- (the slot lights up as it takes it)
+		local was = slot.Color
+		slot.Color = WHITE
+		task.delay(0.25, function()
+			slot.Color = was
+		end)
+	end
+end
+
+-- the whole machine rattling (only here: it jumps back after)
+local function rattle(c, seconds, amount)
+	local m = c.model
+	if c.rattling or not m then
+		return
+	end
+	c.rattling = true
+	local home = m:GetPivot()
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < seconds and m.Parent do
+			local f = 1 - (os.clock() - t0) / seconds
+			m:PivotTo(home * CFrame.new((math.random() - 0.5) * amount * f, (math.random() - 0.5) * amount * f * 0.5, 0) * CFrame.Angles(0, 0, (math.random() - 0.5) * amount * 0.06 * f))
+			RunService.RenderStepped:Wait()
+		end
+		m:PivotTo(home)
+		c.rattling = false
+	end)
 end
 
 local function endShow()
@@ -1401,6 +1578,7 @@ local function endShow()
 		end
 	end
 	cameraBack()
+	SCR.gui.Enabled = false
 	tune.spinning, tune.cut = false, false
 	busy = false
 	openMenu()
@@ -1441,10 +1619,14 @@ local function runStrip(machineId, result, seconds, cue)
 		local x = startX + (endX - startX) * k
 		strip.Position = UDim2.fromOffset(x, 0)
 		local under = math.floor((centre - x) / (TILE + GAP)) + 1
+		rig.floor = (skipping or (cue and cue.quieted)) and 0 or 0.035 * (1 - u) -- (it goes still for the silence)
 		if under ~= lastTile then
 			lastTile = under
 			if not skipping then
 				play({ "Roll Tick", "UI Blip" }, 0.9 + 0.4 * u, 0.5)
+				if not (cue and cue.quieted) then
+					rig.kick(0.03 + 0.05 * (1 - u))
+				end
 			end
 		end
 		if u >= 1 then
@@ -1644,29 +1826,70 @@ local function roll(machineId, count)
 	skipping = false -- (a tap from here on skips the strip)
 	local e = machineEntry(machineId)
 	local light = e and e.machine and e.machine.Light or GREEN
-	screenBar.BackgroundColor3 = light
-	screenTitle.Text = string.upper(machineId) .. " MACHINE"
-	show.Visible, show.BackgroundTransparency = true, 0.55
-	screenFrame.Visible, skipHint.Visible = true, true
+	local c = cabinets[machineId]
+	SCR.bar.BackgroundColor3 = light
+	SCR.title.Text = string.upper(machineId) .. " MACHINE"
+	SCR.status.Text, SCR.status.TextColor3 = count == 10 and "x10  GOOD LUCK!" or "GOOD LUCK!", YELLOW
+	for _, ch in ipairs(strip:GetChildren()) do
+		ch:Destroy()
+	end
+	SCR.gui.Adornee = c and c.screen or nil
+	SCR.gui.Enabled = true
+	show.Visible, show.BackgroundTransparency = true, 1
+	skipHint.Visible = true -- (a tap from here on skips to the landing)
 	card.Visible, grid.Visible = false, false
-	cameraToMachine(machineId)
-	play({ "Token Clunk", "UI Blip" }, 1, 1)
-	task.wait(0.35)
 	local top = best(answer.results) or (answer.results or {})[1]
 	if not top then
 		endShow()
 		return
 	end
+	-- the token goes in, the lever comes down, and the camera flies up to
+	-- the machine's screen
+	if c and c.screen then
+		local slot = c.model:FindFirstChild("CoinSlot")
+		local target = slot and slot.Position or (c.screen.Position - Vector3.new(0, 5, 0))
+		rig.insertShot(c, target)
+		local t0 = os.clock()
+		while not skipping and os.clock() - t0 < 0.55 do
+			task.wait()
+		end
+		throwToken(c, target)
+		pullLever(c)
+		t0 = os.clock()
+		while not skipping and os.clock() - t0 < 0.2 do
+			task.wait()
+		end
+		rig.screenShot(c, 1, skipping and 0.01 or 0.45)
+	else
+		play({ "Token Clunk", "UI Blip" }, 1, 1)
+	end
 	local seconds = count == 10 and 2.2 or 3.8
+	if c and c.screen and not skipping then -- (and slowly closer as it spins)
+		task.delay(0.45, function()
+			if rig.on and busy and not skipping then
+				rig.screenShot(c, 0.8, seconds - 0.45)
+			end
+		end)
+	end
 	local cue = spinCue(top, seconds)
 	local skipped = runStrip(machineId, top, seconds, cue)
 	landCue(cue, skipped)
-	if (RANK[top.rarity] or 0) >= 4 then
+	-- the landing: the machine says what it is, the view jolts (harder the
+	-- rarer), and a Legendary or better smashes the glass and rattles it
+	local rank = RANK[top.rarity] or 1
+	SCR.status.Text, SCR.status.TextColor3 = string.upper(top.rarity) .. "!", rarityColor(top.rarity)
+	rig.floor = 0
+	rig.kick(({ 0.06, 0.1, 0.18, 0.35, 0.5, 0.7 })[rank] or 0.1)
+	rig.punch = ({ 0, 2, 4, 8, 11, 15 })[rank] or 0
+	if rank >= 4 then
 		shatter(rarityColor(top.rarity))
+		if c then
+			rattle(c, 0.7, 0.45)
+		end
 	end
 	skipHint.Visible = false
-	task.wait(0.25)
-	screenFrame.Visible = false
+	task.wait(rank >= 4 and 0.8 or 0.5) -- (a moment on the machine's screen before the card)
+	show.BackgroundTransparency = 0.5
 	if count == 10 then
 		-- a Legendary or better still gets its moment first
 		if (RANK[top.rarity] or 0) >= 4 then
@@ -1722,7 +1945,7 @@ end
 
 -- tap to skip the strip
 UserInputService.InputBegan:Connect(function(input)
-	if show.Visible and screenFrame.Visible and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+	if show.Visible and skipHint.Visible and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
 		skipping = true
 	end
 end)

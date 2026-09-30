@@ -41,7 +41,7 @@ sound effects.
   - [ ] A "pack of the week" card at the top with boosted odds.
 - [x] **The server rolls first**: it takes the tokens and picks the result, including pity (a Legendary or better within 30 spins) and duplicates (mastery, or a token back once mastered). Your first spin is Rare or better.
 - [x] **The show** (`Docs/arcade_screens.png`):
-  1. The camera flies to that machine, and the token goes in with a clunk.
+  1. The camera flies to that machine, your token flicks from your hand into the slot and the lever comes down; then the camera flies up to the machine's own screen (it rumbles while it spins and jolts on the landing).
   2. Weapon tiles scroll across the machine's screen and slow down. Epic and above flash and get rays; Legendary and above a big fanfare.
   3. Tap to skip. Spin x10 shows a grid of 10 (a Legendary gets its own reveal first).
   4. The reveal: EQUIP / SPIN AGAIN / DONE, and the camera flies back.
