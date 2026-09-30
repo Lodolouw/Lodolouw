@@ -110,8 +110,10 @@ Each weapon's ability (F) has its own animation, made the same way as the
 types' swings (posing by direction, swings round a plane) and timed to its
 move in `ReplicatedStorage/Moves`: its big moment lands exactly when the
 move's hit or effect is due, and it lasts the move's `Time`. Change the two
-together. **The Slime pack only for now**; the other packs' come with their
-weapons.
+together. The Slime, Knight and Speedway packs so far; the other packs' come
+with their weapons.
+
+Slime:
 
 - Goo Gloves, Sticky Fists: fists flung out wide, then a CLAP in front of the
   chest (0.18 s, the goo splat).
@@ -127,9 +129,58 @@ weapons.
   hilt while the jaw opens, then a flash of a draw straight across (0.68 s,
   the chomp).
 
+Knight:
+
+- Shovel Hammer, Dig Slam: heaved up high in both hands, the spade chopped
+  down into the ground in front (0.28 s, the dirt bursts), then levered and
+  the dirt tossed back over the right shoulder.
+- Relic Daggers, Treasure Eye: both blades snap up crossed in an X in front
+  of the eyes (0.12 s, the glint), then a cocky twirl of the right one.
+- Spade Scythe, Dirt Spin: down low and wound round, then the whole body spins
+  right round with the blade skimming the ground (0.24 s; the clods fly at
+  0.30), finishing wide and scooping up into the stance.
+- Honour Blade, Pogo Drop: a crouch and a spring, and by the top of the leap
+  the blade points straight down between the tucked knees; blade-first onto
+  them (0.58 s), a bounce straight up (0.62) and down again (1.04 s).
+- Anchor Fists, Anchor Pull: an overhand throw (let go at 0.25 s), reeled in
+  leaning hard with both fists on the chain, then both fists up and a double
+  axe-handle SLAM into the ground (0.66 s).
+- No Quarter, No Quarter: chest out and the sword thrust at the sky while his
+  armour cracks gold, then pointed straight at the enemy (0.6 s, the meteor's
+  called down), and a crouched brace, sword forward, as it hits (1.15 s).
+
+Speedway:
+
+- Tyre Scythe, Burnout: the scythe dropped low, the free fist twisting a
+  throttle, two bounces like a revving engine (0.10 s, the rev) and a lean
+  forward, ready to run.
+- Nitro Katana, Nitro: snapped into a rocket's lean, both arms swept back and
+  the blade trailing low behind like an exhaust, a jolt as the flame bursts
+  out (0.08 s).
+- Piston Punchers, Piston Dash: the piston cocked (the right fist back at the
+  hip), a low dash (0.14 to 0.38 s), then a huge straight right, fully
+  extended (0.40 s, the BOOM).
+- Pit Stop Sabre, Skid Spin: crouched low, a full turn with the sabre out flat
+  at the waist (past the enemy at 0.20 s, the tyres fly at 0.30), skidding
+  round into a low drift, the free hand down by the ground.
+- Wheelie Wrecker, Wheelie: on the flaming wheel, the hammer held across like
+  handlebars, leaning right back and bouncing; hauled up high (0.8 s) and
+  slammed down in front (1.02 s).
+- Victory Lap, Victory Lap: GO! Both daggers flung up in a V over the head
+  (0 s), then down into a sprinter's crouch and off, ready to run.
+
+The Knight and Speedway ones are key poses (`Poses`): the left hand is kept on
+a handle every frame (`hands` puts the right one where two hands can meet: R6
+arms don't bend), a spin turns the whole body round (`yaw`), and the feet stay
+where they're put whatever the chest does (`key`, `level`). Each big moment
+is a marker, so a keyframe lands right on it, and each one ends on a keyframe
+exactly at its move's `Time` (the Slime files are as they were made).
+
 ```
-python3 abilities.py            # -> abilities/<weapon>.rbxmx (one KeyframeSequence each, 30 keyframes a second)
-python3 abilities.py preview    # -> Docs/animations/slime_abilities.mp4 and .png (front and side, full speed and slow)
+python3 abilities.py                  # -> abilities/<weapon>.rbxmx (one KeyframeSequence each, 30 keyframes a second)
+python3 abilities.py preview          # -> Docs/animations/slime_abilities.mp4 and .png (front and side, full speed and slow)
+python3 abilities.py preview knight   # -> Docs/animations/knight_abilities.mp4 and .png
+python3 abilities.py preview speedway # -> Docs/animations/speedway_abilities.mp4 and .png
 ```
 
 They're uploaded with the models by `Tools/Upload/upload_assets.bat` (see
