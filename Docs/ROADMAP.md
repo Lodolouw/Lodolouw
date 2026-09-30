@@ -13,8 +13,8 @@ sound effects.
 
 ## 0. Loose ends (small, any time)
 
-- [ ] **Gridlock Song**: you're making it. Put it in SoundService as "Gridlock Song" and set `Bpm` in his Config to its tempo.
-- [ ] **Thunder Crack** sound for the walrus king's lightning (8-bit, I can make it).
+- [x] **Boss songs**: Gridlock, Kongo, Petalina, Scribble and Gavelgrunt Song are all in SoundService (Gridlock's tiles follow `Bpm` in his Config - set it to the song's tempo).
+- [x] **Thunder Crack** and the rest of floors 7-10's boss sounds (boss_sfx.py, uploaded; softened in Config.BossSoundLoudness).
 - [x] **Sword sounds**: "Sword Swing", "Sword Hit", "Whirlwind" (made with the weapon sounds, uploaded).
 - [ ] **The level gap after the intro**: you finish at level 3, and Oozark wants level 15. We still need to decide how to close it.
 
