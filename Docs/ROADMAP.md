@@ -67,16 +67,20 @@ its card picture for the Arcade menu.
   - [x] 3D models (`Docs/weapons/slime.png`), abilities with their effects and animations (`Docs/animations/slime_abilities_fx.mp4`)
   - [x] You: run the uploader and paste me the IDs, then play-test the pack
   - [x] Sounds (and the Arcade shows each weapon's 3D model in its reveal)
-- [ ] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
-- [ ] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
+- [x] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
+  - [x] 3D models (`Docs/weapons/knight.png`), abilities with their effects and animations (`Docs/animations/knight_abilities_fx.mp4`), swing effects (dirt and gold; No Quarter's coins, gold crack and Burrowmore's visor), sounds (`Docs/sounds/knight_speedway_sounds.mp4`)
+  - [ ] You: run the uploader and paste me the IDs, then play-test the pack
+- [x] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
+  - [x] 3D models (`Docs/weapons/speedway.png`), abilities with their effects and animations (`Docs/animations/speedway_abilities_fx.mp4`), swing effects (sparks and tyre smoke; fire on the Mythic; Victory Lap's confetti, chequered flag and Revvington's eyes), sounds
+  - [ ] You: run the uploader and paste me the IDs, then play-test the pack
 - [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
 - [ ] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
 
 (Each pack is Common → Rare → Epic → Legendary → Mythic → Secret, in that
-order. One test weapon goes first so you can play-test a roll.) The Slime pack
-goes first; the other four packs' abilities already work (with blocky
-stand-in models), and their 3D models are drafted but not finished - they
-come one pack at a time after you've play-tested Slime.
+order. One test weapon goes first so you can play-test a roll.) Slime, Knight
+and Speedway are made; Jungle's and Canvas's abilities already work (with
+blocky stand-in models), and their 3D models are drafted but not finished -
+they come next, one pack at a time.
 
 **Updates after launch (the even floors, one "NEW WEAPON PACK!" update each; the Throne pack is the big one):**
 
@@ -121,7 +125,7 @@ weapons plan.
 
 ## 8. Trading
 
-- [ ] Weapons only (pets later): a two-sided screen, a confirm step and a short cooldown.
+- [x] Weapons only (pets later): sit down across a picnic bench from someone to trade - a two-sided screen, both accept, a 3-second countdown, and the swap happens all at once on the server (`Docs/trade_window.png`). You: try it in Studio with two players.
 
 ## 9. Event bosses
 

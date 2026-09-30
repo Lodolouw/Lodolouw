@@ -11,10 +11,23 @@ and the game colours each mesh itself.
   gold when the weapon is awakened, `glow` is Neon and colours the smear).
 - `kit.py` - shared parts: the palette, grips, blades, drips, bubbles, eyes,
   edges.
-- `packs/<pack>.py` - each pack's weapons, one function each. **Only the Slime
-  pack is being made for now** (Goo Gloves, Jellyblade, Gelatin Hammer, Ooze
-  Daggers, Acid Scythe, Gelatinous Edge); the other four launch packs are
-  drafts in `packs/later` (see its README to bring one in).
+- `packs/<pack>.py` - each pack's weapons, one function each. Three packs are
+  made so far:
+  - **Slime** (Oozark): Goo Gloves, Jellyblade, Gelatin Hammer, Ooze Daggers,
+    Acid Scythe, Gelatinous Edge.
+  - **Knight** (Burrowmore): Shovel Hammer (the hammer end is his helm, T
+    visor, horns and all), Relic Daggers (jewelled silver, a lucky coin on a
+    chain), Spade Scythe, Honour Blade (a round gold guard and a knight's red
+    ribbon), Anchor Fists, No Quarter (his helm for a guard, gold cracks up
+    the blade).
+  - **Speedway** (Revvington): Tyre Scythe, Nitro Katana (a nitro bottle with a
+    gauge for a handle, blue flames off the blade), Piston Punchers (a little
+    Revvington for a gauntlet), Pit Stop Sabre (a spanner for its knuckle
+    guard, a lug nut pommel), Wheelie Wrecker, Victory Lap (a gold trophy with
+    a chequered flag planted in it).
+
+  The other two launch packs (Jungle, Canvas) are drafts in `packs/later`
+  (see its README to bring one in).
 - `make_models.py` - builds every pack's weapons, exports each one as a model,
   renders a sheet of each pack and writes the list the game reads.
 - `make_icons.py` - each weapon's ICON, made from its picture
@@ -28,6 +41,7 @@ and the game colours each mesh itself.
 
 ```
 python3 make_models.py                    # everything (needs Blender's Python module: pip install bpy, Python 3.11)
+python3 make_models.py --pack Knight      # just one pack (the list is always every pack)
 python3 make_models.py --only GooGloves   # just one weapon
 python3 make_models.py --quick            # grainier pictures, much faster (for trying things)
 python3 make_models.py --no-render        # models and the list, no pictures
