@@ -3,9 +3,9 @@
 
 	THE ARCADE, where the forge used to be (north-east of the fountain, at
 	Config.Stations.Arcade): an open-front pavilion - a purple toy-brick back
-	wall, low side walls, a canopy over the machines (the middle stays open to the sky), and an
-	entrance arch facing the path with ARCADE in thin neon tubes, chasing
-	bulbs round the opening and the giant token turning on top.
+	wall, low side walls, a canopy over the machines (the middle stays open
+	to the sky), and a crest on the back wall with ARCADE in thin neon tubes,
+	chasing bulbs round it and the giant token turning on top.
 	LobbyBuilder calls ArcadeBuilder.Build(lobby).
 
 	Inside:
@@ -522,63 +522,53 @@ function ArcadeBuilder.Build(parent)
 		light(lamp, "SpotLight", { Face = Enum.NormalId.Front, Angle = 38, Range = 30, Brightness = 2, Color = mc.Light, Shadows = false })
 	end
 
-	-- THE ENTRANCE ARCH facing the path: chunky posts, a lintel with the
-	-- ARCADE sign in thin neon tubes, bulbs chasing round the opening, and
-	-- the giant token turning on top (seen from the fountain)
+	-- THE SIGN: a raised crest on top of the back wall, over the canopy
+	-- (seen from the plaza and the fountain), with ARCADE in thin pink neon
+	-- tubes on a dark board, bulbs chasing round it and the giant token
+	-- turning on top
 	do
-		local ARCH_H = FT + 13.5 -- (the opening's top)
-		local LIN_TOP = ARCH_H + 4.5
-		local fz = Z1 + 0.2 -- (the posts' front)
-		for _, sx in ipairs({ -1, 1 }) do
-			local x = CX + sx * 9.5
-			part(m, "ArchBase", V3(4, 2.6, 4), at(x, 1.3, Z1 - 1.4), TRIM)
-			part(m, "ArchPost", V3(3, ARCH_H - 2.6, 3.2), at(x, 2.6 + (ARCH_H - 2.6) / 2, Z1 - 1.4), WALL)
-			neon(m, "ArchGlow", V3(0.25, ARCH_H - 3.2, 0.25), at(CX + sx * 8.1, 2.9 + (ARCH_H - 3.2) / 2, fz + 0.05), MAGENTA, deco)
+		local SZ = Z0 + WALL_T + 0.3 -- (the board's face, on the wall's inner side)
+		local B0, B1 = WALL_TOP + 4, WALL_TOP + 9.5 -- (the board's bottom and top)
+		local BW = 22
+		local signY = (B0 + B1) / 2
+		-- the crest the board hangs on: the back wall rising in the middle
+		part(m, "SignCrest", V3(BW + 3, B1 + 1 - WALL_TOP, WALL_T), at(CX, (WALL_TOP + B1 + 1) / 2, Z0 + WALL_T / 2), WALL)
+		part(m, "SignCrestCap", V3(BW + 3.4, 1, WALL_T + 0.4), at(CX, B1 + 1.5, Z0 + WALL_T / 2), TRIM)
+		part(m, "SignBoard", V3(BW, B1 - B0, 0.3), at(CX, signY, SZ), INK)
+		for _, dy in ipairs({ -(B1 - B0) / 2, (B1 - B0) / 2 }) do
+			neon(m, "SignEdge", V3(BW + 0.2, 0.16, 0.16), at(CX, signY + dy, SZ + 0.12), GOLD, deco)
 		end
-		part(m, "ArchLintel", V3(24, LIN_TOP - ARCH_H, 3.8), at(CX, (ARCH_H + LIN_TOP) / 2, Z1 - 1.5), WALL)
-		part(m, "ArchBand", V3(24.6, 0.8, 4.2), at(CX, ARCH_H + 0.4, Z1 - 1.5), TRIM)
-		part(m, "ArchBand", V3(24.6, 0.8, 4.2), at(CX, LIN_TOP + 0.4, Z1 - 1.5), TRIM)
-		part(m, "ArchCrown", V3(10, 1.4, 3), at(CX, LIN_TOP + 1.5, Z1 - 1.5), WALL)
-		for _, sx in ipairs({ -1, 1 }) do
-			part(m, "ArchCrownStep", V3(3, 0.7, 3), at(CX + sx * 6.5, LIN_TOP + 1.15, Z1 - 1.5), WALL)
-		end
-		-- the sign: a dark board on the lintel, the word in thin tubes
-		local signZ = Z1 + 0.4 + 0.15
-		local signY = (ARCH_H + 0.8 + LIN_TOP) / 2
-		part(m, "SignBoard", V3(16.4, 3.1, 0.3), at(CX, signY, signZ), INK)
-		for _, dy in ipairs({ -1.6, 1.6 }) do
-			neon(m, "SignEdge", V3(16.6, 0.14, 0.14), at(CX, signY + dy, signZ + 0.1), GOLD, deco)
-		end
-		local face = at(CX, signY, signZ + 0.2)
-		local word, lw, lh, gap = "ARCADE", 1.6, 2.0, 0.65
+		local face = at(CX, signY, SZ + 0.2)
+		local word, lw, lh, gap = "ARCADE", 2.3, 3.0, 0.9
 		local x = -(#word * lw + (#word - 1) * gap) / 2
 		for i = 1, #word do
-			for _, s in ipairs(LETTERS[string.sub(word, i, i)]) do
-				tube(m, "SignLetter", face, x + s[1] * lw, -lh / 2 + s[2] * lh, x + s[3] * lw, -lh / 2 + s[4] * lh, 0.22, MAGENTA)
+			for _, st in ipairs(LETTERS[string.sub(word, i, i)]) do
+				tube(m, "SignLetter", face, x + st[1] * lw, -lh / 2 + st[2] * lh, x + st[3] * lw, -lh / 2 + st[4] * lh, 0.3, MAGENTA)
 			end
 			x += lw + gap
 		end
-		-- the bulbs: up the left post, along the lintel, down the right post
+		-- the bulbs: up the left side, along the top, down the right side
 		local n = 0
-		for i = 0, 7 do
+		local bz = SZ + 0.3
+		for i = 0, 3 do
 			n += 1
-			bulb(m, at(CX - 8.6, FT + 1 + i * 1.65, fz + 0.2), n)
+			bulb(m, at(CX - BW / 2 - 0.6, B0 + 0.4 + i * 1.55, bz), n)
 		end
-		for i = 0, 10 do
+		for i = 0, 13 do
 			n += 1
-			bulb(m, at(CX - 8 + i * 1.6, ARCH_H + 1.05, Z1 + 0.65), n)
+			bulb(m, at(CX - BW / 2 + 0.6 + i * (BW - 1.2) / 13, B1 + 0.5, bz), n)
 		end
-		for i = 7, 0, -1 do
+		for i = 3, 0, -1 do
 			n += 1
-			bulb(m, at(CX + 8.6, FT + 1 + i * 1.65, fz + 0.2), n)
+			bulb(m, at(CX + BW / 2 + 0.6, B0 + 0.4 + i * 1.55, bz), n)
 		end
 		-- THE GIANT TOKEN on top, turning (LobbyFX spins it)
-		part(m, "TokenPad", V3(0.6, 4, 4), at(CX, LIN_TOP + 2.5, Z1 - 1.5) * CFrame.Angles(0, 0, math.pi / 2), GOLD, nil, { Shape = Enum.PartType.Cylinder })
-		local cy = LIN_TOP + 8
-		local coin = disc(m, "GiantToken", 1.8, 10, at(CX, cy, Z1 - 1.5), RGB(214, 132, 36), Mat.SmoothPlastic) -- (the rim)
-		local face = disc(m, "GiantTokenFace", 2.0, 8.6, at(CX, cy, Z1 - 1.5), GOLD, Mat.SmoothPlastic)
-		tokenFaces(face)
-		for _, c in ipairs({ coin, face }) do
+		local cy = B1 + 7.5
+		part(m, "TokenPad", V3(0.6, 4, 4), at(CX, B1 + 2.3, Z0 + WALL_T / 2) * CFrame.Angles(0, 0, math.pi / 2), GOLD, nil, { Shape = Enum.PartType.Cylinder })
+		local coin = disc(m, "GiantToken", 1.8, 10, at(CX, cy, Z0 + WALL_T / 2), RGB(214, 132, 36), Mat.SmoothPlastic) -- (the rim)
+		local coinFace = disc(m, "GiantTokenFace", 2.0, 8.6, at(CX, cy, Z0 + WALL_T / 2), GOLD, Mat.SmoothPlastic)
+		tokenFaces(coinFace)
+		for _, c in ipairs({ coin, coinFace }) do
 			c.CastShadow = false
 			c:SetAttribute("SpinSpeed", 70)
 			c:SetAttribute("BobAmp", 0.6)
@@ -588,28 +578,68 @@ function ArcadeBuilder.Build(parent)
 		light(coin, "PointLight", { Color = GOLD, Range = 16, Brightness = 1, Shadows = false })
 	end
 
-	-- THE TOKEN MACHINE, inside against the right-hand wall facing the room:
-	-- gold, a big glowing coin slot (the Robux shop, later)
+	-- THE TOKEN MACHINE, inside against the right-hand wall facing the room
+	-- (the Robux shop, later): a token dispenser - a glass globe full of
+	-- gold tokens on a purple cabinet with gold corners, a lit TOKENS sign,
+	-- a big round coin slot, a crank on its side and a chute with tokens
+	-- spilling into the tray
 	do
 		local tcf = at(TOKEN_X, FT + 0.4, TOKEN_Z) * CFrame.Angles(0, math.rad(90), 0)
+		local function at2(x, y, z)
+			return tcf * CFrame.new(x, y, z)
+		end
+		local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
 		local t = Instance.new("Model")
 		t.Name = "TokenMachine"
-		local shell = part(t, "Body", V3(4.4, 7.6, 3.4), tcf * CFrame.new(0, 4.6, 0), GOLD)
+		part(t, "Foot", V3(4.8, 0.8, 3.8), at2(0, 0.4, 0), INK)
+		local shell = part(t, "Body", V3(4.2, 5.2, 3.2), at2(0, 3.4, 0), PURPLE)
 		t.PrimaryPart = shell
-		part(t, "Foot", V3(4.6, 0.8, 3.6), tcf * CFrame.new(0, 0.4, 0), INK)
-		part(t, "Face", V3(3.6, 5.6, 0.2), tcf * CFrame.new(0, 4.6, -1.75), PURPLE)
-		disc(t, "BigSlot", 0.3, 2.2, tcf * CFrame.new(0, 5.6, -1.9), INK)
-		neon(t, "SlotGlow", V3(0.4, 1.4, 0.2), tcf * CFrame.new(0, 5.6, -2.0), YELLOW)
-		part(t, "Tray", V3(2.6, 0.5, 1.0), tcf * CFrame.new(0, 2.4, -2.1), INK)
-		local sign = part(t, "Marquee", V3(4.6, 1.4, 1.3), tcf * CFrame.new(0, 9.1, -1.05), YELLOW, Mat.SmoothPlastic, { CastShadow = false })
-		label(screenGui(sign, Enum.NormalId.Front, 40), "Name", "TOKENS", INK, UDim2.fromScale(0.04, 0.08), UDim2.fromScale(0.92, 0.84))
-		neon(t, "MarqueeGlow", V3(4.6, 0.18, 1.3), tcf * CFrame.new(0, 9.89, -1.05), YELLOW)
-		local g = screenGui(part(t, "Screen", V3(3.0, 1.2, 0.1), tcf * CFrame.new(0, 3.6, -1.9), INK), Enum.NormalId.Front, 60)
-		label(g, "Text", "GET TOKENS", YELLOW, UDim2.fromScale(0.05, 0.1), UDim2.fromScale(0.9, 0.8))
+		for _, x in ipairs({ -2.05, 2.05 }) do
+			for _, z in ipairs({ -1.55, 1.55 }) do
+				part(t, "Corner", V3(0.4, 5.2, 0.4), at2(x, 3.4, z), GOLD)
+			end
+		end
+		part(t, "TopTrim", V3(4.5, 0.4, 3.5), at2(0, 6.2, 0), GOLD)
+		-- the sign across the top of its front
+		local sign = part(t, "Marquee", V3(3.6, 1.1, 0.2), at2(0, 5.3, -1.68), INK, Mat.SmoothPlastic, { CastShadow = false })
+		label(screenGui(sign, Enum.NormalId.Front, 40), "Name", "TOKENS", YELLOW, UDim2.fromScale(0.04, 0.08), UDim2.fromScale(0.92, 0.84))
+		for _, dy in ipairs({ -0.62, 0.62 }) do
+			neon(t, "MarqueeGlow", V3(3.7, 0.12, 0.12), at2(0, 5.3 + dy, -1.72), MAGENTA)
+		end
+		-- the coin slot: a big gold disc with a glowing slot
+		disc(t, "SlotPlate", 0.25, 1.7, at2(-0.6, 3.9, -1.68), GOLD, Mat.Metal)
+		part(t, "BigSlot", V3(0.22, 0.95, 0.1), at2(-0.6, 3.9, -1.83), INK)
+		neon(t, "SlotGlow", V3(0.12, 0.8, 0.06), at2(-0.6, 3.9, -1.88), YELLOW)
+		-- the little screen beside it
+		local g = screenGui(part(t, "Screen", V3(1.4, 1.1, 0.1), at2(1.05, 3.9, -1.66), INK), Enum.NormalId.Front, 60)
+		label(g, "Text", "GET\nTOKENS", YELLOW, UDim2.fromScale(0.06, 0.08), UDim2.fromScale(0.88, 0.84))
+		-- the chute and the tray, tokens spilling out
+		part(t, "Chute", V3(2.0, 1.2, 0.2), at2(0, 1.9, -1.62), INK)
+		part(t, "ChuteLip", V3(2.3, 0.2, 0.3), at2(0, 2.55, -1.7), GOLD)
+		part(t, "Tray", V3(2.4, 0.3, 1.1), at2(0, 1.3, -2.05), GOLD, Mat.Metal)
+		for k, c in ipairs({ { -0.6, -2.0, 20 }, { 0.2, -2.15, -35 }, { 0.75, -1.9, 70 } }) do
+			disc(t, "SpilledToken", 0.14, 0.6, at2(c[1], 1.52 + k * 0.02, c[2]) * CFrame.Angles(math.rad(90), 0, math.rad(c[3])), GOLD)
+		end
+		-- the crank on its right side (as you face it)
+		disc(t, "CrankHub", 0.3, 1.1, at2(-2.25, 4.2, 0) * CFrame.Angles(0, math.pi / 2, 0), GOLD, Mat.Metal)
+		part(t, "CrankArm", V3(0.22, 1.5, 0.22), at2(-2.45, 3.6, 0), STEEL, Mat.Metal)
+		ball(t, "CrankBall", 0.6, at2(-2.45, 2.85, 0), PINK)
+		-- the globe on top, full of tokens, with a gold cap
+		part(t, "Collar", V3(0.6, 3.4, 3.4), at2(0, 6.7, 0) * up, GOLD, Mat.Metal, { Shape = Enum.PartType.Cylinder })
+		local gy = 8.8
+		for k = 1, 16 do
+			local a, h, r = k * 2.4, math.sin(k * 1.7) * 0.9, 0.5 + (k % 4) * 0.28
+			local cf = at2(math.cos(a) * r, gy - 0.7 + (k % 5) * 0.3 + h * 0.3, math.sin(a) * r) * CFrame.Angles(k * 0.9, k * 1.3, k * 0.4)
+			disc(t, "GlobeToken", 0.16, 0.75, cf, (k % 3 == 0) and RGB(214, 132, 36) or GOLD)
+		end
+		ball(t, "Globe", 4, at2(0, gy, 0), RGB(220, 230, 255), Mat.Glass).Transparency = 0.6
+		part(t, "Cap", V3(0.8, 1.8, 1.8), at2(0, gy + 2.1, 0) * up, GOLD, Mat.Metal, { Shape = Enum.PartType.Cylinder })
+		ball(t, "CapKnob", 0.8, at2(0, gy + 2.7, 0), PINK)
 		scaleModel(t, tcf, MACHINE_SCALE)
 		CollectionService:AddTag(t, "ArcadeTokens")
 		t.Parent = m
 		part(m, "TokenPlinth", V3(8.4, 0.4, 7.2), tcf * CFrame.new(0, -0.2, -0.4), NIGHT)
+		neon(m, "TokenPlinthGlow", V3(8.4, 0.2, 0.2), tcf * CFrame.new(0, -0.05, -4.05), GOLD, deco)
 	end
 
 	-- THE PRIZE PEDESTAL in the open middle: the Slime machine's Secret weapon
