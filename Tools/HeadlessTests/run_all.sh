@@ -44,6 +44,9 @@ run test_swordanims.luau
 # tokens on the HUD
 run test_arcade.luau
 run test_arcade_client.luau
+# trading at the picnic benches: the seats, offers, refusals, ACCEPT and the
+# countdown, the swap (exactly once), stopping a trade, and the window
+run test_trade.luau
 run test_hud.luau
 run test_weaponbag.luau
 run test_moneyicons.luau

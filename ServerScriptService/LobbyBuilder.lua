@@ -3002,7 +3002,8 @@ end
 
 -- The trading spot (east of the plaza, between the Quest Board and the
 -- stream): two picnic benches with checked cloths and a signpost. Each
--- bench is a Model tagged "TradeBench" (the trading system meets there).
+-- bench is a Model tagged "TradeBench", with a Seat on each side (tagged
+-- "TradeSeat"): sit across from someone to trade (TradeService).
 local TRADE_BENCHES = { { 70, 23, 12 }, { 73, 43, -9 } } -- x, z, turn (degrees)
 local function buildPicnic(parent)
 	local m = folder(parent, "TradingSpot")
@@ -3025,9 +3026,23 @@ local function buildPicnic(parent)
 				part(bench, "Cloth", V3(1, 0.06, 1), at(-2.5 + cx, 3.53, -1 + cz), ((cx + cz) % 2 == 0) and CLOTH_A or CLOTH_B, Mat.Fabric, deco)
 			end
 		end
-		-- the seats either side
-		for _, z in ipairs({ -2.9, 2.9 }) do
-			part(bench, "Seat", V3(9, 0.45, 1.3), at(0, 1.9, z), WOOD_L, Mat.WoodPlanks)
+		-- the seats either side: real Seats you can sit on, each facing the
+		-- table (side A at the back, side B at the front). Two players sat
+		-- across from each other open a trade (TradeService).
+		for side, z in ipairs({ -2.9, 2.9 }) do
+			local seat = Instance.new("Seat")
+			seat.Name = "TradeSeat"
+			seat.Anchored = true
+			seat.Size = V3(9, 0.45, 1.3)
+			seat.CFrame = at(0, 1.9, z) * CFrame.Angles(0, z < 0 and math.pi or 0, 0) -- (you sit facing its front)
+			seat.Color = WOOD_L
+			seat.Material = Mat.WoodPlanks
+			seat.TopSurface = Enum.SurfaceType.Smooth
+			seat.BottomSurface = Enum.SurfaceType.Smooth
+			seat:SetAttribute("Bench", i)
+			seat:SetAttribute("Side", side == 1 and "A" or "B")
+			CollectionService:AddTag(seat, "TradeSeat")
+			seat.Parent = bench
 		end
 		-- A-frame legs at both ends, and a bar joining them under the seats
 		for _, x in ipairs({ -3.6, 3.6 }) do

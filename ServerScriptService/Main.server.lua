@@ -122,6 +122,13 @@ if PlayerService then
 	start("ArcadeService", ArcadeService and ArcadeService.Start, PlayerService, CombatService)
 end
 
+-- Trading at the lobby's picnic benches: sit across from someone to swap
+-- weapons (needs player data; the benches are part of the lobby)
+local TradeService = load("TradeService", 3)
+if PlayerService then
+	start("TradeService", TradeService and TradeService.Start, PlayerService, CombatService)
+end
+
 -- The new GUI's rewards (login streak, free gift, codes, the Index, looks,
 -- the corner bonuses) and the shop (Robux purchases, passes, Daily Items):
 -- both need player data

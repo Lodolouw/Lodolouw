@@ -630,7 +630,7 @@ M.Signal = Signal
 -- Instances
 ----------------------------------------------------------------------
 local CLASS_PARENT = {
-	Part = "BasePart", WedgePart = "BasePart", TrussPart = "BasePart", MeshPart = "BasePart", BasePart = "PVInstance",
+	Part = "BasePart", Seat = "BasePart", WedgePart = "BasePart", TrussPart = "BasePart", MeshPart = "BasePart", BasePart = "PVInstance",
 	Model = "PVInstance", Workspace = "Model", PVInstance = "Instance",
 	ParticleEmitter = "Instance", PointLight = "Light", SpotLight = "Light", Light = "Instance",
 	Folder = "Instance", BindableEvent = "Instance", RemoteEvent = "Instance", RemoteFunction = "Instance",
@@ -665,7 +665,7 @@ local DEFAULTS = {
 		return {}
 	end,
 	Humanoid = function()
-		return { Health = 100, MaxHealth = 100, WalkSpeed = 16, HipHeight = 2, RigType = Enum.HumanoidRigType.R15 }
+		return { Health = 100, MaxHealth = 100, WalkSpeed = 16, HipHeight = 2, RigType = Enum.HumanoidRigType.R15, Sit = false }
 	end,
 }
 
@@ -812,6 +812,19 @@ Imt.__newindex = function(self, k, v)
 		end
 		if was and was > 0 and v <= 0 then
 			fireSignal(self, "Died")
+		end
+		return
+	elseif k == "Sit" and props.ClassName == "Humanoid" and v == false and props.SeatPart then
+		-- (standing up off a Seat: it's free again)
+		local seat = props.SeatPart
+		props.Sit = false
+		self.SeatPart = nil
+		local weld = seat:FindFirstChild("SeatWeld")
+		if weld then
+			weld:Destroy()
+		end
+		if seat.Occupant == self then
+			seat.Occupant = nil
 		end
 		return
 	end
@@ -1112,6 +1125,20 @@ function methods.ScaleTo(self, s)
 end
 function methods.GetScale(self)
 	return self.__props.Scale or 1
+end
+-- a Seat: sits a Humanoid on it (if it's free), like touching it in the game
+function methods.Sit(self, hum)
+	if self.__props.ClassName ~= "Seat" or self.__props.Occupant or not hum then
+		return
+	end
+	local weld = Instance.new("Weld")
+	weld.Name = "SeatWeld"
+	weld.Part0 = self
+	weld.Part1 = hum.Parent and hum.Parent:FindFirstChild("HumanoidRootPart")
+	weld.Parent = self
+	self.Occupant = hum
+	hum.SeatPart = self
+	hum.Sit = true
 end
 function methods.Emit() end
 function methods.Play() end

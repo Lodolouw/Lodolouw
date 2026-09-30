@@ -429,6 +429,20 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   the banner, BIG WINS), two spins on one machine taking turns, the HUD's
   ArcadeOpen, the token machine, and no spinning outside the lobby or in the
   intro. `-a snaps` also prints snapshots of the screen for `render_gui.py`.
+- `test_trade.luau` - TRADING at the lobby's picnic benches (TradeService
+  and the window, TradeClient), in the real lobby with four pretend
+  players: each bench's two real Seats; sitting alone shows the waiting
+  line, two across from each other open a trade for both; offers put in and
+  taken out (the partner sees them); what's refused (coins, someone else's
+  weapon, the one in your hand, one the partner has, the same one twice, a
+  5th, not in a trade, an old trade); a weapon picked up comes out of the
+  trade; ACCEPT, a change taking both back, the countdown (a change stops
+  it), the swap exactly once (at mastery 0, both saves sent, both stand up,
+  "Trade complete!"), the cooldown; standing up, CANCEL, being knocked out,
+  leaving the lobby or the game stop it with nothing moved; never two
+  trades at once; a flood of requests can't copy a weapon; the swap checks
+  again (the partner got it meanwhile); the window's buttons ask the right
+  things.
 - `test_weaponbag.luau` - the WEAPONS panel (WeaponBag.client.lua): a card
   per weapon you own, rarest first, its icon when it's uploaded
   (`AssetIds.Icons`) and none when it isn't, IN HAND / EQUIP.

@@ -3223,6 +3223,24 @@ function Config.arcadeOpen(data, machineId)
 	return false, "Beat " .. tostring(p.Boss) .. " (Spire floor " .. tostring(p.Floor) .. ") to open this machine."
 end
 
+----------------------------------------------------------------------
+-- TRADING at the picnic benches in the lobby: sit across from someone and a
+-- trade opens for you both (the server decides everything: TradeService;
+-- the window: TradeClient; the benches: LobbyBuilder's buildPicnic).
+-- Only weapons can be traded, and a weapon you get arrives at mastery 0.
+----------------------------------------------------------------------
+Config.Trade = {
+	MaxSlots = 4, -- weapons each side can put in
+	Countdown = 3, -- seconds from both pressing ACCEPT to the swap
+	Cooldown = 10, -- seconds after a trade before you can trade again
+}
+
+-- Whether weapon `id` can be traded (a real weapon, not marked NoTrade)
+function Config.tradeable(id)
+	local def = type(id) == "string" and Config.Weapons.List[id] or nil
+	return def ~= nil and not def.NoTrade
+end
+
 -- The mastery level `points` mastery points make (1 to MasteryMax), and how far
 -- into that level they are (0 to 1)
 function Config.masteryLevel(points)
