@@ -64,9 +64,10 @@ def edge(img, cx, cy, r, depth, dark):
         for x, y, *_ in each(cx, cy + k, r):
             put(img, x, y, dark)
 
-def holo():
+def holo(t=0.0):
     """THE HOLO TOKEN: a rainbow rim that runs round it, a deep purple face,
-    a glowing gold star with a gem in it"""
+    a glowing gold star with a gem in it. `t` (0 to 1) is where it is in its
+    loop: the rainbow turns, a shine sweeps across, the sparkles twinkle."""
     img = blank()
     cx, cy, r = 24, 22, 19
     edge(img, cx, cy, r, 3, (70, 20, 90))
@@ -74,7 +75,7 @@ def holo():
         a = math.atan2(dy, dx)
         if d > 14.5:  # the rainbow rim, brighter to the top left
             lit = 0.75 + 0.25 * (-(dx + dy) / (d * 1.41))
-            put(img, x, y, hue(a / (2 * math.pi) + 0.1, 0.75, band(lit, [0.75, 0.9, 1.0])))
+            put(img, x, y, hue(a / (2 * math.pi) + 0.1 + t, 0.75, band(lit, [0.75, 0.9, 1.0])))
         elif d > 13.2:
             put(img, x, y, (40, 12, 60))
         else:  # the face: deep purple to magenta
@@ -100,13 +101,19 @@ def holo():
     for x, y, dx, dy, d in each(cx, cy + 1, 3.2):
         put(img, x, y, (0, 220, 255) if dy < 0 else (0, 150, 220))
     put(img, cx - 2, cy - 1, (255, 255, 255))
-    # shine across the face
-    for i in range(6):
-        put(img, 11 + i, 12 - i // 2, (255, 255, 255))
+    # the shine: a bright diagonal band sweeping across (in the first half of the loop)
+    sweep = -24 + t * 2 * 60
+    for x, y, dx, dy, d in each(cx, cy, r):
+        k = (dx + dy) - sweep
+        if -2.2 < k < 2.2:
+            c = img[y, x, :3].astype(float)
+            put(img, x, y, c + (255 - c) * (0.75 if abs(k) < 1 else 0.4))
     outline(img)
-    sparkle(img, 41, 6, 3)
-    sparkle(img, 6, 36, 2, (255, 240, 120))
-    sparkle(img, 43, 38, 1, (140, 240, 255))
+    # the sparkles twinkle, each in its own time
+    for (sx, sy, big, col, phase) in ((41, 6, 3, (255, 255, 255), 0.0), (6, 36, 2, (255, 240, 120), 0.35), (43, 38, 2, (140, 240, 255), 0.7)):
+        w = math.sin((t + phase) * 2 * math.pi)
+        if w > -0.2:
+            sparkle(img, sx, sy, max(1, round(big * (0.5 + 0.5 * w))), col)
     return img
 
 def jackpot():
@@ -215,5 +222,28 @@ def main():
     sheet.save(path)
     print('saved', path)
 
+def holo_loop(frames=8, scale=4):
+    """the Holo token's loop: a sprite sheet for the game (4 across, 2 down,
+    frames in reading order) and an animated picture to look at"""
+    pics = [Image.fromarray(holo(i / frames), 'RGBA').resize((N * scale, N * scale), Image.NEAREST) for i in range(frames)]
+    cols = 4
+    sheet = Image.new('RGBA', (cols * N * scale, (frames // cols) * N * scale), (0, 0, 0, 0))
+    for i, p in enumerate(pics):
+        sheet.paste(p, ((i % cols) * N * scale, (i // cols) * N * scale))
+    sheet.save(os.path.join(OUT, 'Token_Holo_Sheet.png'))
+    # the preview: on the window look's purple, a gentle bob too (the game does that part in code)
+    gif = []
+    for j in range(frames * 3):
+        i = j % frames
+        bg = Image.new('RGBA', (320, 320), (116, 40, 232, 255))
+        bob = round(math.sin(j / (frames * 3) * 2 * math.pi * 2) * 6)
+        big = pics[i].resize((256, 256), Image.NEAREST)
+        bg.alpha_composite(big, (32, 32 + bob))
+        gif.append(bg.convert('P', palette=Image.ADAPTIVE))
+    gif[0].save(os.path.join(ROOT, 'Docs', 'token_holo.gif'), save_all=True, append_images=gif[1:], duration=90, loop=0, disposal=2)
+    print('saved the Holo loop')
+
+
 if __name__ == '__main__':
     main()
+    holo_loop()
