@@ -35,6 +35,11 @@ local R = Config.Rewards
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+-- (Roblox's player list sits in the top right, where the gift / rewards /
+-- settings buttons and today's quest are now: it's hidden)
+pcall(function()
+	game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
 
 local ui = {} -- the pieces, by name (keeps this script's locals few)
 local state, stateAt = nil, 0 -- the latest snapshot, and os.clock() when it came
@@ -240,13 +245,14 @@ do
 		TextColor3 = C.Blue,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -16, 0.5, 0),
+		Position = UDim2.new(1, -16, 0, 30),
 		Size = UDim2.fromOffset(96, 40),
 		ZIndex = 3,
 	})
-	-- GUIDE ON / OFF, just under the card: the trail and the light to the goal
-	-- (saved with your settings: SettingsMenu follows "GuideOff")
-	local guideBtn = K.button(holder, "GUIDE: ON", C.Green, { Name = "GuideToggle", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 1, 10), Size = UDim2.fromOffset(150, 34), ZIndex = 5 })
+	-- a little GUIDE ON / OFF switch in the card's corner, under the distance:
+	-- the trail and the light to the goal (saved with your settings:
+	-- SettingsMenu follows "GuideOff")
+	local guideBtn = K.button(face, "GUIDE: ON", C.Green, { Name = "GuideToggle", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -14, 1, -10), Size = UDim2.fromOffset(92, 22), ZIndex = 6 })
 	local function showGuide()
 		local off = player:GetAttribute("GuideOff") == true
 		guideBtn.Text = off and "GUIDE: OFF" or "GUIDE: ON"
@@ -274,7 +280,7 @@ do
 		Name = "Corner",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -24, 0.3, 0),
+		Position = UDim2.new(1, -24, 0, 16), -- (the top right corner, out of the way)
 		Size = UDim2.fromOffset(3 * 88 + 2 * 14, 88),
 	}, root)
 	ui.corner = row
@@ -310,7 +316,7 @@ do
 	local face, holder = K.card(root, {
 		Name = "Quest",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -24, 0.3, 88 + 22),
+		Position = UDim2.new(1, -24, 0, 16 + 88 + 22),
 		Size = UDim2.fromOffset(3 * 88 + 2 * 14, 150),
 	})
 	ui.quest = holder
