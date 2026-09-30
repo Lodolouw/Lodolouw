@@ -5,8 +5,8 @@
 --   * the ROLL button and its token badge; the machines' screens (INSERT
 --     TOKEN / LOCKED); the Secret weapon turning over the prize pedestal;
 --     the token machine's "Get Tokens"
---   * walking in opens the menu (once: close it and it stays closed until
---     you walk out and back in); walking out closes it
+--   * walking in no longer opens the menu: a machine's "Spin" prompt does
+--     (on its pack); walking out closes it
 --   * the menu: each machine's six weapons with their odds, the first-spin
 --     promise, the pity count, a locked machine saying whose boss opens it, a
 --     covered one COMING SOON, SPIN buttons only when you can pay
@@ -371,26 +371,30 @@ check(prompt ~= nil and prompt.ActionText == "Get Tokens", "the token machine sa
 local inside = Config.Stations.Arcade + Vector3.new(0, 3.55, 12)
 local outside = Config.Stations.Arcade + Vector3.new(0, 3.55, 40)
 moveTo(me, inside)
+step(1)
+check(not win.Visible, "walking in doesn't pop the menu open any more (I asked)")
+-- a machine's "Spin" prompt opens it, on that machine's pack
+local slimeCab
+for _, m in ipairs(CollectionService:GetTagged("ArcadeCabinet")) do
+	if m:GetAttribute("Machine") == "Slime" then
+		slimeCab = m
+	end
+end
+local spinPrompt = slimeCab and slimeCab.Body:FindFirstChildOfClass("ProximityPrompt")
+check(spinPrompt ~= nil and spinPrompt.ActionText == "Spin", "each machine says Spin")
+spinPrompt.Triggered:Fire(me)
 waitFor(function()
 	return win.Visible
-end, 1, "the menu to open on walking in")
+end, 1, "the menu to open from the machine")
 moveTo(me, outside)
 waitFor(function()
 	return not win.Visible
 end, 1, "the menu to close on walking out")
 moveTo(me, inside)
+spinPrompt.Triggered:Fire(me)
 waitFor(function()
 	return win.Visible
 end, 1, "the menu to open again")
-press(closeBtn)
-step(1)
-check(not win.Visible, "closed with X, it stays closed while you're inside")
-moveTo(me, outside)
-step(0.5)
-moveTo(me, inside)
-waitFor(function()
-	return win.Visible
-end, 1, "the menu to open after walking out and back in")
 step(2)
 local song = SoundService:FindFirstChild("ArcadeSongPlaying")
 check(song and song.Looped and song.SoundGroup and song.SoundGroup.Name == "ArcadeMusic", "in the Arcade its own song plays (looping, in its own group)")
@@ -461,7 +465,7 @@ Action:InvokeServer("DevGive", "Tokens")
 step(0.3)
 check(badge.Visible and badge.Text == "10", "the badge shows 10 tokens (" .. tostring(badge.Text) .. ")")
 check(textOn(win, "^10$") ~= nil, "and the menu's counter")
-snap("THE MENU|walk into the Arcade and it opens: the six weapons, the real odds, the pity")
+snap("THE MENU|press Spin at a machine and it opens: the six weapons, the real odds, the pity")
 
 ----------------------------------------------------------------------
 -- A spin

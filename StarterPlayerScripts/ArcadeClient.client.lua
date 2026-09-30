@@ -6,9 +6,9 @@
 	ArcadeBuilder), drawn in the old-computer window look
 	(ReplicatedStorage/WindowKit).
 
-	  * THE MENU: walk into the Arcade and it opens (once - close it and it
-	    stays closed until you walk out and back in), or press the ARCADE
-	    button, or your token counter. A bright arcade cabinet: the marquee
+	  * THE MENU: press "Spin" at a machine (it opens on that machine's
+	    pack), the ARCADE button or your token counter; walking out of the
+	    Arcade closes it. A bright arcade cabinet: the marquee
 	    (ARCADE in lights, bulbs chasing round it, your tokens, + GET TOKENS,
 	    the X); then every pack, one under another, as a wide banner of its
 	    boss mid an epic move (its name, boss and price on it; dimmed with
@@ -1203,6 +1203,26 @@ for _, m in ipairs(CollectionService:GetTagged("ArcadeTokens")) do
 end
 CollectionService:GetInstanceAddedSignal("ArcadeTokens"):Connect(hookTokenMachine)
 
+-- THE MACHINES: walk up to one and "Spin" opens the menu on its pack
+do
+	local function hookCabinet(m)
+		local id = m:IsA("Model") and m:GetAttribute("Machine")
+		local body = id and m:FindFirstChild("Body")
+		if not body or body:FindFirstChildOfClass("ProximityPrompt") then
+			return
+		end
+		local pp = new("ProximityPrompt", { ActionText = "Spin", ObjectText = string.upper(id) .. " MACHINE", HoldDuration = 0, MaxActivationDistance = 12, RequiresLineOfSight = false }, body)
+		pp.Triggered:Connect(function()
+			selected = id
+			openMenu()
+		end)
+	end
+	for _, m in ipairs(CollectionService:GetTagged("ArcadeCabinet")) do
+		hookCabinet(m)
+	end
+	CollectionService:GetInstanceAddedSignal("ArcadeCabinet"):Connect(hookCabinet)
+end
+
 -- the lights: bulbs chasing round the sign, the screens blinking, Secret
 -- names running through the rainbow
 local bulbs = {}
@@ -2201,7 +2221,7 @@ end
 rollBtn.Visible = Config.NewHud == false and not player:GetAttribute("Intro")
 
 ----------------------------------------------------------------------
--- Walk in and it opens (the same way as the Quest Board: LobbyActivities)
+-- Walking in and out: in, the Arcade's song plays; out, the menu closes
 ----------------------------------------------------------------------
 do
 	local zones = {}
@@ -2252,10 +2272,8 @@ do
 			return
 		end
 		if isIn and not here then
-			here = true
-			if not opened then
-				opened = openMenu()
-			end
+			here = true -- (walking in no longer pops the menu open - I asked: a machine's
+			-- "Spin" prompt, the ARCADE button or the token counter opens it)
 		elseif not isIn and here then
 			here = false
 			opened = false

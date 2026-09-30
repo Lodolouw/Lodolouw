@@ -17,7 +17,8 @@
 	  * the BIG WINS marquee along the canopy's front edge (ArcadeClient writes the
 	    lobby's latest Legendary-or-better spins on it)
 	  * a walk-in box over the whole floor (AutoOpenZone, Activity =
-	    "Arcade"): walking in opens the Arcade menu (ArcadeClient)
+	    "Arcade"): walking in plays the Arcade's song (ArcadeClient; the
+	    menu opens from a machine's "Spin" prompt)
 
 	Tagged for the screens: each cabinet is a Model tagged "ArcadeCabinet"
 	(attribute Machine = the pack's id) with a
@@ -644,7 +645,7 @@ function ArcadeBuilder.Build(parent)
 		CollectionService:AddTag(board, "ArcadeWins")
 	end
 
-	-- walking in (anywhere inside the walls) opens the Arcade menu (ArcadeClient)
+	-- inside the walls: the Arcade's song plays, and walking out closes its menu (ArcadeClient)
 	local zone = part(m, "AutoOpenZone", V3(W - 2 * WALL_T, 14, Z1 + 0.2 - (Z0 + WALL_T)), at(CX, FT + 7, (Z0 + WALL_T + Z1 + 0.2) / 2), WHITE, Mat.SmoothPlastic, {
 		Transparency = 1,
 		CanCollide = false,
