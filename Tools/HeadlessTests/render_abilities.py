@@ -7,6 +7,7 @@ the ability's name across the top.
     luau abilities_film.luau > abilities_film.txt
     python3 render_abilities.py abilities_film.txt ../../Docs/animations/slime_abilities_fx.mp4
     python3 render_abilities.py abilities_film.txt sheet.png --sheet     (key frames of each, a PNG)
+    (another pack: luau abilities_film.luau -a Knight > knight_film.txt, then the same)
 """
 import json
 import math
@@ -37,9 +38,17 @@ NAMES = {
     'GooGloves': ('Goo Gloves', 'Sticky Fists'), 'Jellyblade': ('Jellyblade', 'Wobble Guard'),
     'GelatinHammer': ('Gelatin Hammer', 'Goo Slam'), 'OozeDaggers': ('Ooze Daggers', 'Slime Trail'),
     'AcidScythe': ('Acid Scythe', 'Acid Rain'), 'GelatinousEdge': ('Gelatinous Edge', "Oozark's Jaw"),
+    'ShovelHammer': ('Shovel Hammer', 'Dig Slam'), 'RelicDaggers': ('Relic Daggers', 'Treasure Eye'),
+    'SpadeScythe': ('Spade Scythe', 'Dirt Spin'), 'HonourBlade': ('Honour Blade', 'Pogo Drop'),
+    'AnchorFists': ('Anchor Fists', 'Anchor Pull'), 'NoQuarter': ('No Quarter', 'No Quarter'),
+    'TyreScythe': ('Tyre Scythe', 'Burnout'), 'NitroKatana': ('Nitro Katana', 'Nitro'),
+    'PistonPunchers': ('Piston Punchers', 'Piston Dash'), 'PitStopSabre': ('Pit Stop Sabre', 'Skid Spin'),
+    'WheelieWrecker': ('Wheelie Wrecker', 'Wheelie'), 'VictoryLap': ('Victory Lap', 'Victory Lap'),
 }
-RARITY = {'GooGloves': ('COMMON', (235, 235, 240)), 'Jellyblade': ('RARE', (0, 153, 219)), 'GelatinHammer': ('EPIC', (170, 100, 255)),
-          'OozeDaggers': ('LEGENDARY', (254, 174, 52)), 'AcidScythe': ('MYTHIC', (255, 0, 68)), 'GelatinousEdge': ('SECRET', (255, 255, 255))}
+TIERS = [('COMMON', (235, 235, 240)), ('RARE', (0, 153, 219)), ('EPIC', (170, 100, 255)),
+         ('LEGENDARY', (254, 174, 52)), ('MYTHIC', (255, 0, 68)), ('SECRET', (255, 255, 255))]
+# (each pack's six in rarity order)
+RARITY = {wid: TIERS[i % 6] for i, wid in enumerate(NAMES)}
 
 
 def load(path):

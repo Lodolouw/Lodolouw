@@ -11,6 +11,7 @@
 --
 --   luau abilities_film.luau > abilities_film.txt
 --   python3 render_abilities.py abilities_film.txt ../../Docs/animations/slime_abilities_fx.mp4
+--   luau abilities_film.luau -a Knight > knight_film.txt     (another pack: its Id in Config.Weapons.Packs)
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -21,7 +22,16 @@ local task = M.task
 local realPrint = print
 math.randomseed(3)
 
+local args = { ... }
 local PACK = { "GooGloves", "Jellyblade", "GelatinHammer", "OozeDaggers", "AcidScythe", "GelatinousEdge" }
+do
+	local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
+	for _, pack in ipairs(Config.Weapons.Packs) do
+		if pack.Id == args[1] then
+			PACK = pack.Weapons
+		end
+	end
+end
 
 ----------------------------------------------------------------------
 -- tweens that really play (numbers, Vector3s, CFrames, Color3s)
