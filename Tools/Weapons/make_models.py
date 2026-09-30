@@ -41,7 +41,7 @@ DOCS = os.path.join(ROOT, 'Docs', 'weapons')
 MANIFEST = os.path.join(ROOT, 'ReplicatedStorage', 'WeaponModelInfo.lua')
 # the packs being made (the other launch packs are drafts in packs/later: we're
 # doing one pack at a time - see packs/later/README.md)
-PACKS = ['slime']
+PACKS = ['slime', 'knight', 'speedway']
 
 RARITY = {
     'Common': (235, 235, 240), 'Rare': (0, 153, 219), 'Epic': (170, 100, 255),

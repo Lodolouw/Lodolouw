@@ -109,11 +109,13 @@ Moves.SpadeScythe = { -- Dirt Spin: a low spin that flings dirt clods all round
 		{ At = 0.3, Shot = { Count = 6, Around = true, Speed = 30, Range = 9, Radius = 2.5, Damage = 0.4, Look = "Clod" }, Fx = "Clods" },
 	},
 }
-Moves.HonourBlade = { -- Pogo Drop: leap high and plunge down on them, shovel-drop style
-	Time = 1.1, Style = "Gold",
+Moves.HonourBlade = { -- Pogo Drop: leap high and plunge down on them blade-first - BOING, bounce off and plunge again
+	Time = 1.45, Style = "Gold",
 	Steps = {
 		{ At = 0, Move = { Kind = "Leap", Distance = 10, Up = 11, Time = 0.55, ToTarget = true, StopShort = 1 }, Fx = "Jump" },
-		{ At = 0.58, Hit = { Shape = "Circle", Radius = 8, Damage = 2.1, Weight = 3 }, Fx = "Plunge", Shake = 1.4 },
+		{ At = 0.58, Hit = { Shape = "Circle", Radius = 8, Damage = 1.5, Weight = 3 }, Fx = "Plunge", Shake = 1.2 },
+		{ At = 0.62, Move = { Kind = "Hop", Distance = 1, Up = 6, Time = 0.4 }, Fx = "Bounce" }, -- (almost straight up: you come down on them again)
+		{ At = 1.04, Hit = { Shape = "Circle", Radius = 7, Damage = 1.0, Weight = 2 }, Fx = "Plunge2", Shake = 1.0 },
 	},
 }
 Moves.AnchorFists = { -- Anchor Pull: throw an anchor on a chain; it drags you to them for a slam
@@ -152,10 +154,11 @@ Moves.PistonPunchers = { -- Piston Dash: a dash-punch forward with a flame trail
 		{ At = 0.4, Hit = { Shape = "Line", From = "Start", Ahead = 3, Width = 6, Damage = 1.8, Weight = 3 }, Fx = "Boom", Shake = 1 },
 	},
 }
-Moves.PitStopSabre = { -- Skid Spin: a skid-turn spin hitting all round you in a cloud of tyre smoke
-	Time = 0.9, Style = "Smoke",
+Moves.PitStopSabre = { -- Skid Spin: a skid-turn spin in a cloud of tyre smoke - and the pit crew's four spare tyres go flying
+	Time = 1.0, Style = "Smoke",
 	Steps = {
-		{ At = 0.2, Hit = { Shape = "Circle", Radius = 11, Damage = 2.1, Weight = 3 }, Fx = "SkidSpin", Shake = 0.8 },
+		{ At = 0.2, Hit = { Shape = "Circle", Radius = 11, Damage = 1.7, Weight = 3 }, Fx = "SkidSpin", Shake = 0.8 },
+		{ At = 0.3, Shot = { Count = 4, Around = true, Speed = 28, Range = 16, Radius = 2.5, Damage = 0.5, Pierce = true, Look = "Tyre" }, Fx = "Tyres" },
 	},
 }
 Moves.WheelieWrecker = { -- Wheelie: charge forward on a flaming wheel, then slam down
