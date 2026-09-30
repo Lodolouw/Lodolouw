@@ -571,6 +571,24 @@ local function wheelProp()
 	end)
 end
 
+-- a racing tyre, white lettering round it, a chrome rim and an orange hub
+-- (its axle along X: it rolls along Z; about 1.2 studs round)
+local function tyreProp()
+	return prop(function(add)
+		local n = 14
+		for i = 1, n do
+			local a = i / n * math.pi * 2
+			add(V3(0.9, 0.55, 0.62), CFrame.Angles(a, 0, 0) * CFrame.new(0, 0.95, 0), INK)
+			if i % 2 == 0 then
+				add(V3(0.96, 0.2, 0.3), CFrame.Angles(a, 0, 0) * CFrame.new(0, 0.8, 0), WHITE)
+			end
+		end
+		add(V3(0.5, 1.25, 1.25), CFrame.new(), RGB(192, 203, 220), Enum.Material.Foil, 0, Enum.PartType.Cylinder)
+		add(V3(0.6, 0.45, 0.45), CFrame.new(), RGB(247, 118, 34), Enum.Material.SmoothPlastic, 0, Enum.PartType.Cylinder)
+	end)
+end
+MoveFX.tyreProp = tyreProp
+
 -- Oozark's ghostly jaw: an upper and a lower half, built out forward (-Z) from
 -- their hinge at the back (the prop's root), so they open like a real jaw
 local function jawHalf(style, upper)
@@ -737,7 +755,7 @@ local function spin(ctx, radius, color, color2, o)
 	local cf = ctx.frame * CFrame.new(0, o.height or -0.5, 0)
 	sweep(cf, radius, 0, 360, color, 0.35, { width = o.width or 2, color2 = color2, count = 26, draw = 0.14 })
 	ring(ctx.feet, color2 or color, radius, 0.35, { size = 0.7 })
-	sfx(WHOOSH, ctx.frame.Position)
+	sfx(o.sound or WHOOSH, ctx.frame.Position)
 end
 
 -- 1. SLIME ------------------------------------------------------------
@@ -936,35 +954,90 @@ R.GelatinousEdge = {
 }
 
 -- 3. KNIGHT -----------------------------------------------------------
+-- (each sound a list: its own, then what plays till it's uploaded)
+local K_DIG = { "Spade Dig", "Shovel Dig", "Punch 3", "Cube Slam" }
+local K_GLINT = { "Treasure Glint", "Relic Get", "Orb Land", "Level Complete" }
+local K_COIN = { "Coin Ding", "Gem Land", "Orb Land" }
+local K_SPIN = { "Dirt Spin", "Whirlwind", "Portal Whoosh" }
+local K_CLOD = { "Dirt Splat", "Dirt Land" }
+local K_BOING = { "Pogo Boing", "Burrowmore Jump", "Dummy Land" }
+local K_CLANG = { "Pogo Clang", "Burrowmore Land", "Cube Slam", "Boss Slam", "Hammer Hit" }
+local K_HURL = { "Anchor Hurl", "Anchor Throw", "Portal Whoosh", "Whirlwind" }
+local K_REEL = { "Chain Reel", "Wave Zoom" }
+local K_ANCHOR = { "Anchor Slam", "Anchor Land", "Cube Slam", "Boss Slam", "Hammer Hit" }
+local K_CRACK = { "Plate Crack", "Armour Crack", "Orb Land", "Level Complete" }
+local K_FALL = { "Meteor Fall", "Portal Whoosh", "Wave Zoom" }
+local K_METEOR = { "Meteor Impact", "Shovel Meteor", "Bomb Drop", "UFO Burst", "Boss Slam" }
+local ARMOUR, ARMOUR_DEEP = RGB(0, 153, 219), RGB(18, 78, 137)
+
+-- a glint: bars of light crossing in a star, facing the way you do
+local function glint(ctx, at, color, arms, long, time)
+	local face = ctx.frame - ctx.frame.Position
+	for i, a in ipairs(arms) do
+		local len = long * (i <= 2 and 1 or 0.6)
+		local p = newPart(V3(0.4, 0.4, len), CFrame.new(at) * face * CFrame.Angles(0, 0, rad(a)) * CFrame.Angles(rad(90), 0, 0),
+			color, Enum.Material.Neon, 0)
+		tween(p, time, { Size = V3(0.05, 0.05, len * 1.3), Transparency = 1 })
+		gone(p, time + 0.05)
+	end
+end
+
 R.ShovelHammer = {
 	Dig = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, 3)
+		-- the spade bites in: a mound of dirt heaves up in front of you, clods
+		-- fly back over your shoulder, and a gold glint off the spade says your
+		-- next hit's a dig slam
+		local mound = newPart(V3(3, 1, 3), CFrame.new(at - V3(0, 0.6, 0)), s.Main, Enum.Material.Slate, 0, Enum.PartType.Ball)
+		tween(mound, 0.15, { CFrame = CFrame.new(at + V3(0, 0.1, 0)), Size = V3(3.4, 1.6, 3.4) }, Enum.EasingStyle.Back)
+		task.delay(0.5, function()
+			tween(mound, 0.4, { CFrame = CFrame.new(at - V3(0, 0.8, 0)), Size = V3(2, 0.4, 2), Transparency = 1 })
+		end)
+		gone(mound, 0.95)
 		bits({ at = at + V3(0, 0.5, 0), colors = { s.Main, s.Dark, s.Light }, count = 16, speed = { 4, 10 }, up = { 8, 16 }, size = 0.55,
 			life = 0.9, floor = at.Y, material = Enum.Material.Slate, dir = ctx.frame.LookVector * -1, spread = 1.2 })
 		puffs(at + V3(0, 0.6, 0), s.Light, 4, 1.8, 2, 0.6, 1.5)
+		glint(ctx, (ctx.frame * CFrame.new(0.8, 1.6, -1.2)).Position, s.Glow, { 0, 90 }, 3.5, 0.3)
 		light(at + V3(0, 2, 0), s.Glow, 10, 0.4)
-		sfx({ "Punch 3", "Cube Slam" }, at, 0.8)
+		sfx(K_DIG, at)
 	end,
 }
 R.RelicDaggers = {
 	Glint = function(ctx)
 		local s = ctx.style
 		local at = (ctx.frame * CFrame.new(0, 1.5, -1)).Position
-		for _, a in ipairs({ 45, -45 }) do
-			local p = newPart(V3(0.4, 0.4, 6), CFrame.new(at) * CFrame.Angles(0, 0, rad(a)) * CFrame.Angles(rad(90), 0, 0), s.Light, Enum.Material.Neon, 0)
-			tween(p, 0.35, { Size = V3(0.05, 0.05, 8), Transparency = 1 })
-			gone(p, 0.4)
+		-- Treasure Eye: a star of gold glints in front of you and a ring of
+		-- coins spins round you and flies off
+		glint(ctx, at, s.Light, { 0, 90, 45, -45 }, 7, 0.35)
+		local centre = ctx.frame.Position
+		for i = 1, 8 do
+			local a0 = i / 8 * math.pi * 2
+			local coin = newPart(V3(0.15, 0.9, 0.9), CFrame.new(centre), i % 2 == 0 and s.Main or s.Light, Enum.Material.Neon, 0, Enum.PartType.Cylinder)
+			local t0 = os.clock()
+			local conn
+			conn = RunService.Heartbeat:Connect(function()
+				local u = (os.clock() - t0) / 0.6
+				if u >= 1 or not coin.Parent then
+					conn:Disconnect()
+					coin:Destroy()
+					return
+				end
+				local a = a0 + u * 5
+				local r = 2.2 + u * 2.5
+				coin.CFrame = CFrame.new(centre + V3(math.cos(a) * r, 0.5 + u * 1.5, math.sin(a) * r)) * CFrame.Angles(0, -a + u * 12, 0)
+				coin.Transparency = math.max(0, (u - 0.6) / 0.4)
+			end)
 		end
 		bits({ at = at, colors = { s.Light, s.Main }, count = 10, speed = { 4, 9 }, up = { 3, 8 }, size = 0.35, life = 0.7, material = Enum.Material.Neon })
 		light(at, s.Light, 12, 0.35)
-		sfx(MAGIC, at, 1.3)
+		sfx(K_GLINT, at)
 	end,
 }
 R.SpadeScythe = {
 	Spin = function(ctx)
 		local s = ctx.style
-		spin(ctx, 10, RGB(192, 203, 220), s.Glow, { height = -1.5 })
+		spin(ctx, 10, RGB(192, 203, 220), s.Glow, { height = -1.5, sound = K_SPIN })
 		puffs(ctx.feet + V3(0, 0.6, 0), s.Light, 8, 2.2, 1.5, 0.8, 6)
 	end,
 	Clods = function(ctx)
@@ -981,6 +1054,9 @@ R.SpadeScythe = {
 				bits({ at = pos + V3(0, 0.4, 0), colors = { s.Main, s.Dark }, count = 6, speed = { 3, 7 }, up = { 4, 8 }, size = 0.4, life = 0.6,
 					floor = pos.Y - 0.4, material = Enum.Material.Slate })
 				puffs(pos, s.Light, 2, 1.4, 1, 0.5, 0.5)
+				if i % 3 == 1 then
+					sfx(K_CLOD, pos, 0.9 + i * 0.05, 0.7) -- (a couple of thuds, not six at once)
+				end
 			end)
 		end
 	end,
@@ -1001,14 +1077,46 @@ R.HonourBlade = {
 	Plunge = function(ctx)
 		local s = ctx.style
 		local at = ctx.feet
-		slam(ctx, at, 8, { s.Light, s.Main, WHITE }, { bits = 16, size = 0.5 })
+		-- blade-first into them: a clang of gold, a pillar of light, a star burst
+		slam(ctx, at, 8, { s.Light, s.Main, WHITE }, { bits = 16, size = 0.5, sound = K_CLANG })
 		column(at, s.Light, 14, 2.2, 0.35)
-		-- a star burst of gold
 		for i = 1, 8 do
 			local a = i / 8 * math.pi * 2
 			streak(at + V3(0, 0.3, 0), at + V3(math.cos(a) * 7, 0.3, math.sin(a) * 7), s.Light, 0.7, 0.3)
 		end
-		pop(at + V3(0, 6, 0), "HONOUR!", s.Light, 7, 0.8)
+	end,
+	Bounce = function(ctx)
+		local s = ctx.style
+		local at = ctx.feet
+		-- BOING: a gold spring shoots up under you and flings you back up
+		for i = 1, 5 do
+			local c = newPart(V3(0.3, 2.6, 2.6), CFrame.new(at + V3(0, 0.15 + i * 0.12, 0)) * CFrame.Angles(0, 0, rad(90)),
+				i % 2 == 0 and s.Main or s.Light, Enum.Material.Neon, 0, Enum.PartType.Cylinder)
+			tween(c, 0.12, { CFrame = CFrame.new(at + V3(0, 0.15 + i * 0.7, 0)) * CFrame.Angles(0, 0, rad(90)) }, Enum.EasingStyle.Back)
+			task.delay(0.12, function()
+				tween(c, 0.25, { Transparency = 1, Size = V3(0.3, 1, 1) })
+			end)
+			gone(c, 0.42)
+		end
+		ring(at, s.Light, 6, 0.3, { size = 0.5 })
+		puffs(at + V3(0, 0.5, 0), WHITE, 3, 1.4, 1, 0.4, 1)
+		pop(at + V3(0, 5, 0), "BOING!", s.Light, 7, 0.6)
+		sfx(K_BOING, at)
+	end,
+	Plunge2 = function(ctx)
+		local s = ctx.style
+		local at = ctx.feet
+		-- and down again, harder: a bigger clang, a taller pillar, a wider star
+		slam(ctx, at, 9, { s.Light, s.Main, WHITE }, { bits = 22, size = 0.6, sound = K_CLANG })
+		column(at, s.Light, 18, 2.6, 0.4)
+		for i = 1, 12 do
+			local a = i / 12 * math.pi * 2
+			streak(at + V3(0, 0.3, 0), at + V3(math.cos(a) * 9, 0.3, math.sin(a) * 9), i % 2 == 0 and s.Light or WHITE, 0.8, 0.35)
+		end
+		pop(at + V3(0, 6, 0), "HONOUR!", s.Light, 8, 0.9)
+		if nearMe(at, 30) then
+			screenFlash(s.Light, 0.25, 0.25)
+		end
 	end,
 }
 R.AnchorFists = {
@@ -1039,10 +1147,13 @@ R.AnchorFists = {
 			bits({ at = pos, colors = { RGB(139, 155, 180), RGB(58, 68, 102) }, count = 8, speed = { 3, 7 }, up = { 4, 8 }, size = 0.4, life = 0.5 })
 		end)
 		task.delay(flyTime, function()
+			-- it bites into the floor
 			ring(target, s.Glow, 4, 0.25, { size = 0.5, count = 14 })
-			sfx({ "Punch 4", "Cube Slam" }, target)
+			bits({ at = target, colors = { RGB(140, 96, 60), RGB(84, 56, 40) }, count = 8, speed = { 3, 8 }, up = { 5, 10 }, size = 0.4, life = 0.6,
+				floor = target.Y - 0.5, material = Enum.Material.Slate })
+			sfx({ "Anchor Land", "Punch 4", "Cube Slam" }, target, 1, 0.7)
 		end)
-		sfx(WHOOSH, from, 0.7)
+		sfx(K_HURL, from)
 	end,
 	Reel = function(ctx)
 		for i = 0, 3 do
@@ -1050,10 +1161,11 @@ R.AnchorFists = {
 				afterimage(ctx.char, ctx.style.Glow, 0.25, 0.6)
 			end)
 		end
+		sfx(K_REEL, ctx.frame.Position)
 	end,
 	Slam = function(ctx)
 		local s = ctx.style
-		slam(ctx, ctx.feet, 9, { s.Glow, s.Light, RGB(254, 174, 52) }, { bits = 18 })
+		slam(ctx, ctx.feet, 9, { s.Glow, s.Light, RGB(254, 174, 52) }, { bits = 18, sound = K_ANCHOR })
 		pop(ctx.feet + V3(0, 6, 0), "ANCHORS AWAY!", RGB(254, 231, 97), 9, 0.8)
 	end,
 }
@@ -1063,19 +1175,23 @@ R.NoQuarter = {
 		column(ctx.feet, s.Light, 20, 3, 0.5)
 		ring(ctx.feet, s.Light, 9, 0.4, { size = 0.8 })
 		bits({ at = ctx.frame.Position, colors = { s.Light, s.Main }, count = 16, speed = { 4, 10 }, up = { 6, 14 }, size = 0.4, life = 0.8, material = Enum.Material.Neon })
+		-- your armour cracks: plates of blue armour fly off you (like his
+		-- shoulder plates) and gold glows through the cracks
+		bits({ at = chest(ctx, 0), colors = { ARMOUR, ARMOUR_DEEP, s.Main }, count = 7, speed = { 6, 12 }, up = { 10, 16 }, size = 1.0, life = 1.1,
+			floor = ctx.feet.Y, bounce = true })
+		afterimage(ctx.char, s.Light, 0.5, 0.35)
 		light(ctx.frame.Position, s.Light, 20, 0.6, 6)
 		pop(ctx.frame.Position + V3(0, 5, 0), "NO QUARTER!", s.Light, 10, 1)
 		if ctx.own then
 			screenFlash(s.Light, 0.3, 0.35)
 		end
-		sfx(MAGIC, ctx.frame.Position, 0.8)
+		sfx(K_CRACK, ctx.frame.Position)
 	end,
 	Meteor = function(ctx)
 		local s = ctx.style
 		local target = onFloor(ctx.point or ahead(ctx, 10))
 		-- the warning on the floor, then the star falls on it
-		local warn = disc(target, s.Main, 10, 0.55, { r0 = 1, transparency = 0.5, material = Enum.Material.Neon })
-		local _ = warn
+		disc(target, s.Main, 10, 0.55, { r0 = 1, transparency = 0.5, material = Enum.Material.Neon })
 		local start = target + V3(-18, 50, 12)
 		local model, root = meteorProp()
 		fly(model, root, 0.55, function(u)
@@ -1087,13 +1203,16 @@ R.NoQuarter = {
 			end
 			return CFrame.new(p) * CFrame.Angles(u * 6, u * 4, 0)
 		end)
-		sfx(WHOOSH, target, 0.6)
+		sfx(K_FALL, target)
 	end,
 	Impact = function(ctx)
 		local s = ctx.style
 		local at = onFloor(ctx.point or ahead(ctx, 10))
-		slam(ctx, at, 10, { s.Light, s.Main, WHITE }, { bits = 30, size = 0.8, sound = BOOM })
+		slam(ctx, at, 10, { s.Light, s.Main, WHITE }, { bits = 30, size = 0.8, sound = K_METEOR })
 		column(at, s.Light, 26, 4, 0.5)
+		-- treasure everywhere: gold coins bursting out of the crater
+		bits({ at = at + V3(0, 1, 0), colors = { s.Main, s.Light }, count = 14, speed = { 6, 14 }, up = { 12, 20 }, size = 0.6, life = 1.2,
+			material = Enum.Material.Neon, shape = Enum.PartType.Cylinder, floor = at.Y, bounce = true })
 		if nearMe(at, 35) then
 			screenFlash(WHITE, 0.3, 0.25)
 		end
@@ -1101,42 +1220,81 @@ R.NoQuarter = {
 }
 
 -- 5. SPEEDWAY ---------------------------------------------------------
+local S_REV = { "Nitro Rev", "Engine Rev", "Ship Thrust", "Wave Zoom" }
+local S_SCREECH = { "Tyre Screech", "Tire Screech", "Tire Skid", "Wave Zoom" }
+local S_NITRO = { "Nitro Boost", "Ship Thrust", "Portal Whoosh" }
+local S_PUMP = { "Piston Pump", "Ship Thrust" }
+local S_PUNCH = { "Piston Punch", "Exhaust Backfire", "Bomb Drop", "UFO Burst", "Boss Slam" }
+local S_BOUNCE = { "Tyre Bounce", "Car Bump", "Dummy Land" }
+local S_ROLL = { "Wheel Roll", "Ship Thrust", "Wave Zoom" }
+local S_WHEELIE = { "Wheelie Slam", "Suspension Slam", "Bomb Drop", "UFO Burst", "Boss Slam" }
+local S_GO = { "Race Go", "Start Go", "Attempt Start", "Level Complete" }
+local S_FINISH = { "Finish Line", "Checkered Flag", "Level Complete" }
+local S_HONK = { "Horn Honk", "Big Honk" }
+local CONFETTI = { RGB(247, 118, 34), WHITE, RGB(254, 231, 97), RGB(99, 199, 77), RGB(44, 232, 245), RGB(228, 59, 68) }
+
 -- a checkered flag burst (black and white squares flying out)
 local function checkers(at, count)
 	bits({ at = at, colors = { WHITE, INK }, count = count or 20, speed = { 8, 18 }, up = { 8, 18 }, size = 0.7, life = 1, floor = at.Y - 1 })
 end
+-- black rubber burnt onto the floor, fading after a while
+local function skidMark(a, b, width, stay)
+	local y = floorAt(a) + 0.05
+	local d = b - a
+	if d.Magnitude < 0.05 then
+		return
+	end
+	local mark = newPart(V3(width, 0.06, d.Magnitude), CFrame.lookAt(V3(a.X, y, a.Z):Lerp(V3(b.X, y, b.Z), 0.5), V3(b.X, y, b.Z)), INK,
+		Enum.Material.SmoothPlastic, 0.2)
+	task.delay(stay, function()
+		tween(mark, 0.6, { Transparency = 1 })
+	end)
+	gone(mark, stay + 0.65)
+end
+
 R.TyreScythe = {
 	Rev = function(ctx)
 		local s = ctx.style
 		local back = ahead(ctx, -1.5)
-		puffs(back + V3(0, 0.6, 0), s.Light, 7, 2, 2, 0.9, 1.5)
-		for _, side in ipairs({ -1, 1 }) do
-			streak(ahead(ctx, 1, side * 1.5) + V3(0, 0.3, 0), ahead(ctx, -6, side * 1.5) + V3(0, 0.3, 0), s.Glow, 0.5, 0.4)
+		-- Burnout: the wheels spin on the spot - two black streaks burnt onto
+		-- the floor under you, a cloud of tyre smoke, a hot orange glow
+		for _, side in ipairs({ -0.7, 0.7 }) do
+			skidMark(ahead(ctx, 0.5, side), ahead(ctx, -3.5, side), 0.5, 1.2)
+			streak(ahead(ctx, 1, side * 2) + V3(0, 0.3, 0), ahead(ctx, -6, side * 2) + V3(0, 0.3, 0), s.Glow, 0.5, 0.4)
 		end
-		sfx({ "Ship Thrust", "Wave Zoom" }, ctx.frame.Position)
+		puffs(back + V3(0, 0.6, 0), s.Light, 9, 2, 2, 1, 2)
+		light(back + V3(0, 1, 0), s.Glow, 10, 0.4)
+		sfx(S_REV, ctx.frame.Position)
+		sfx(S_SCREECH, back, 1, 0.6)
 	end,
 }
 R.NitroKatana = {
 	Boost = function(ctx)
 		local s = ctx.style
 		local back = (ctx.frame * CFrame.new(0, 0.5, 1.5)).Position
-		-- a blue flame blasting out behind you
+		-- a blue flame blasting out behind you, speed lines streaking past
 		for i = 1, 10 do
 			local p = newPart(V3(1, 1, 1), CFrame.new(back), i % 2 == 0 and s.Glow or s.Main, Enum.Material.Neon, 0.1, Enum.PartType.Ball)
 			local out = (ctx.frame * CFrame.new(rnd:NextNumber(-1, 1), rnd:NextNumber(-0.5, 1), 4 + i * 0.6)).Position
 			tween(p, 0.35, { CFrame = CFrame.new(out), Size = V3(2.2, 2.2, 2.2), Transparency = 1 })
 			gone(p, 0.4)
 		end
+		for i = 1, 6 do
+			local side, up = rnd:NextNumber(-2.5, 2.5), rnd:NextNumber(-1, 2.5)
+			local a = (ctx.frame * CFrame.new(side, up, -2)).Position
+			local b = (ctx.frame * CFrame.new(side, up, 5)).Position
+			streak(a, b, i % 2 == 0 and WHITE or s.Light, 0.15, 0.25, { thick = 0.15 })
+		end
 		ring(ctx.feet, s.Glow, 7, 0.3, { size = 0.6 })
 		light(back, s.Glow, 14, 0.4)
-		sfx({ "Ship Thrust", "Portal Whoosh" }, ctx.frame.Position, 1.2)
+		pop(ctx.frame.Position + V3(0, 4.5, 0), "NITRO!", s.Light, 6, 0.6)
+		sfx(S_NITRO, ctx.frame.Position)
 	end,
 }
 R.PistonPunchers = {
 	Pump = function(ctx)
-		local s = ctx.style
 		puffs(chest(ctx, 0.2) + V3(0, 1, 0), WHITE, 5, 1.2, 3, 0.6, 1)
-		sfx({ "Ship Thrust" }, ctx.frame.Position, 0.8)
+		sfx(S_PUMP, ctx.frame.Position)
 	end,
 	Flames = function(ctx)
 		local s = ctx.style
@@ -1158,7 +1316,7 @@ R.PistonPunchers = {
 	Boom = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, 3)
-		slam(ctx, at, 7, { s.Main, s.Light, s.Glow }, { bits = 16, sound = BOOM })
+		slam(ctx, at, 7, { s.Main, s.Light, s.Glow }, { bits = 16, sound = S_PUNCH })
 		puffs(at + V3(0, 1.5, 0), RGB(90, 90, 100), 5, 2, 3, 0.8, 1.5)
 		pop(at + V3(0, 5, 0), "VROOM!", s.Light, 7, 0.7)
 	end,
@@ -1166,7 +1324,7 @@ R.PistonPunchers = {
 R.PitStopSabre = {
 	SkidSpin = function(ctx)
 		local s = ctx.style
-		spin(ctx, 11, s.Glow, WHITE)
+		spin(ctx, 11, s.Glow, WHITE, { sound = S_SCREECH })
 		-- a black skid circle burnt into the floor, sparks and tyre smoke
 		for i = 1, 16 do
 			local a = i / 16 * math.pi * 2
@@ -1178,6 +1336,36 @@ R.PitStopSabre = {
 		end
 		bits({ at = ctx.feet + V3(0, 0.5, 0), colors = { s.Light, s.Glow }, count = 16, speed = { 14, 24 }, up = { 2, 6 }, size = 0.25, life = 0.5, material = Enum.Material.Neon })
 		puffs(ctx.feet + V3(0, 1, 0), s.Light, 10, 2.6, 2, 1.1, 5)
+	end,
+	Tyres = function(ctx)
+		local s = ctx.style
+		local shot = ctx.step.Shot
+		local time = shot.Range / shot.Speed
+		local floorY = ctx.feet.Y
+		-- the pit crew's spare tyres go flying out all round you, bouncing
+		-- twice (lower each time) and rolling as they go
+		for i = 1, shot.Count do
+			local dirv = (ctx.frame * CFrame.Angles(0, rad((i - 1) / shot.Count * 360), 0)).LookVector
+			local start = ctx.frame.Position + dirv * 1.5
+			local model, root = tyreProp()
+			fly(model, root, time, function(u)
+				local hop = math.abs(math.sin(u * math.pi * 2.5)) * (1.8 * (1 - u) + 0.3)
+				local pos = V3(start.X, floorY + 1.2 + hop, start.Z) + dirv * (shot.Range * u)
+				return CFrame.lookAt(pos, pos + dirv) * CFrame.Angles(-u * shot.Range / 1.2, 0, 0)
+			end, function(pos)
+				puffs(pos, s.Light, 3, 1.4, 1.5, 0.5, 0.6)
+				bits({ at = pos, colors = { INK, RGB(58, 68, 102) }, count = 5, speed = { 3, 7 }, up = { 4, 9 }, size = 0.4, life = 0.6, floor = floorY })
+			end)
+			for _, u in ipairs({ 0.4, 0.8 }) do
+				task.delay(time * u, function()
+					local at = V3(start.X, floorY + 0.3, start.Z) + dirv * (shot.Range * u)
+					puffs(at, s.Light, 2, 1.2, 1, 0.4, 0.4)
+					if i == 1 then
+						sfx(S_BOUNCE, at, 1 + u * 0.2, 0.8)
+					end
+				end)
+			end
+		end
 	end,
 }
 R.WheelieWrecker = {
@@ -1204,12 +1392,12 @@ R.WheelieWrecker = {
 				gone(p, 0.5)
 			end
 		end)
-		sfx({ "Ship Thrust", "Wave Zoom" }, ctx.frame.Position)
+		sfx(S_ROLL, ctx.frame.Position)
 	end,
 	Slam = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, 3)
-		slam(ctx, at, 10, { s.Main, s.Light, s.Glow }, { bits = 22, sound = BOOM })
+		slam(ctx, at, 10, { s.Main, s.Light, s.Glow }, { bits = 22, sound = S_WHEELIE })
 		for i = 1, 8 do
 			local a = i / 8 * math.pi * 2
 			local p = newPart(V3(1.4, 2, 1.4), CFrame.new(at + V3(math.cos(a) * 3, 1, math.sin(a) * 3)), s.Light, Enum.Material.Neon, 0.1)
@@ -1235,14 +1423,30 @@ R.VictoryLap = {
 		if ctx.own then
 			screenFlash(WHITE, 0.25, 0.2)
 		end
-		sfx({ "Attempt Start", "Level Complete" }, ctx.frame.Position)
+		sfx(S_GO, ctx.frame.Position)
 	end,
 	Finish = function(ctx)
 		local s = ctx.style
-		slam(ctx, ctx.feet, 12, { s.Glow, WHITE, INK }, { bits = 20, sound = BOOM })
+		slam(ctx, ctx.feet, 12, { s.Glow, WHITE, INK }, { bits = 20, sound = S_FINISH })
 		checkers(ctx.frame.Position + V3(0, 1, 0), 30)
+		-- the finish line pops up across the floor in front of you, and confetti
+		local y = ctx.feet.Y + 0.08
+		for i = -6, 6 do
+			for row = 0, 1 do
+				local at = (ctx.frame * CFrame.new(i * 0.9, 0, -2 - row * 0.9)).Position
+				local lit = (i + row) % 2 == 0
+				local sq = newPart(V3(0.9, 0.1, 0.9), CFrame.new(at.X, y, at.Z) * (ctx.frame - ctx.frame.Position), lit and WHITE or INK,
+					lit and Enum.Material.Neon or Enum.Material.SmoothPlastic, 0)
+				task.delay(0.8, function()
+					tween(sq, 0.5, { Transparency = 1 })
+				end)
+				gone(sq, 1.35)
+			end
+		end
+		bits({ at = ctx.frame.Position + V3(0, 3, 0), colors = CONFETTI, count = 36, speed = { 6, 14 }, up = { 10, 18 }, size = 0.4, life = 1.6,
+			gravity = 14, floor = ctx.feet.Y })
 		pop(ctx.frame.Position + V3(0, 6, 0), "FINISH!", RGB(254, 231, 97), 10, 1)
-		sfx({ "Level Complete" }, ctx.frame.Position)
+		sfx(S_HONK, ctx.frame.Position, 1, 0.7)
 	end,
 }
 
@@ -1649,7 +1853,7 @@ SPECIALS.Crit = function(ctx)
 		-- treasure: gold coins popping out
 		bits({ at = ctx.point, colors = { RGB(254, 174, 52), RGB(254, 231, 97) }, count = 10, speed = { 4, 9 }, up = { 8, 14 }, size = 0.45, life = 0.9,
 			material = Enum.Material.Neon, shape = Enum.PartType.Cylinder, floor = floorAt(ctx.point), bounce = true })
-		sfx(MAGIC, ctx.point, 1.6, 0.6)
+		sfx(K_COIN, ctx.point, 1.1, 0.6)
 	else
 		bits({ at = ctx.point, colors = { s.Glow, WHITE }, count = 8, speed = { 5, 10 }, up = { 4, 9 }, size = 0.35, life = 0.6, material = Enum.Material.Neon })
 	end
