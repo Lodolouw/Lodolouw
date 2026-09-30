@@ -11,6 +11,10 @@
 --   * awakened (mastery 100): its metal turns gold
 --   * before its model arrives it's the blocky one, and the real one swaps in
 --     the moment it does
+--   * its swing effects by rarity, in its pack's theme (Slime goo, Knight dirt
+--     and gold, Speedway sparks and fire), the Secrets' own shows, and their
+--     sounds (Knight's new ones; Speedway's falling back on older ones, as if
+--     its new sounds weren't uploaded yet)
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -135,7 +139,10 @@ local function fakeModel(key)
 end
 
 -- the swing sounds, in SoundService like the game has them (SoundLoader)
-for _, name in ipairs({ "Goo Swish", "Goo Splat", "Acid Swish", "Acid Hiss", "Jelly Swing", "Jelly Wave", "Eye Pop", "Goo Hit" }) do
+for _, name in ipairs({ "Goo Swish", "Goo Splat", "Acid Swish", "Acid Hiss", "Jelly Swing", "Jelly Wave", "Eye Pop", "Goo Hit",
+	"Shovel Swish", "Dirt Splat", "Clang Hit", "Chain Swish", "Gold Swing", "Gold Chop", "Coin Spill", "Plate Crack", "Treasure Glint",
+	-- (Speedway's new sounds left out: these are what they fall back on)
+	"Sword Swing", "Hammer Swing", "Checkered Flag", "Big Honk" }) do
 	local snd = Instance.new("Sound")
 	snd.Name = name
 	snd.Volume, snd.PlaybackSpeed, snd.TimeLength = 0.6, 1, 0.4
@@ -156,7 +163,21 @@ folder.Name = "WeaponModels"
 folder.Parent = ReplicatedStorage
 
 me:SetAttribute("SpireFloor", 2)
-for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers", "AcidScythe", "GelatinousEdge" }) do
+-- each pack's swing effects: what it throws, its Secret's wave and eyes, the
+-- swing sound heard for each rarity (Epic, Legendary, Mythic, Secret) and
+-- the Secret's wave and eye sounds
+local THEMED = {
+	Slime = { bits = { Goo = true }, wave = "JellyWave", eyes = "OozarkEye",
+		swing = { [3] = "Goo Swish", [4] = "Goo Swish", [5] = "Acid Swish", [6] = "Jelly Swing" }, waveSound = "Jelly Wave", eyeSound = "Eye Pop" },
+	Knight = { bits = { Clod = true, Glint = true, Chip = true, Coin = true }, wave = "GoldCrack", eyes = "VisorEye",
+		swing = { [3] = "Shovel Swish", [4] = "Shovel Swish", [5] = "Chain Swish", [6] = "Gold Swing" }, waveSound = "Plate Crack", eyeSound = "Treasure Glint" },
+	Speedway = { bits = { Spark = true, Smoke = true, Flame = true, Confetti = true }, wave = "CheckerWave", eyes = "RevvEye",
+		swing = { [3] = "Sword Swing", [4] = "Sword Swing", [5] = "Hammer Swing", [6] = "Sword Swing" }, waveSound = "Checkered Flag", eyeSound = "Big Honk" },
+}
+local OTHER_SHOWS = { "JellyWave", "OozarkEye", "GoldCrack", "VisorEye", "CheckerWave", "RevvEye" }
+for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers", "AcidScythe", "GelatinousEdge",
+	"ShovelHammer", "RelicDaggers", "SpadeScythe", "HonourBlade", "AnchorFists", "NoQuarter",
+	"TyreScythe", "NitroKatana", "PistonPunchers", "PitStopSabre", "WheelieWrecker", "VictoryLap" }) do
 	local info = Info[key]
 	check(info ~= nil, key .. ": is in WeaponModelInfo")
 	if info then
@@ -244,20 +265,35 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 				for _, d in ipairs(folder and folder:GetDescendants() or {}) do
 					names[d.Name] = (names[d.Name] or 0) + 1
 				end
-				check(((names.Goo or 0) > 0) == (tier >= 3), key .. ": goo flies off the tip (" .. tostring(names.Goo or 0) .. ")")
-				check(((names.GooHeart or 0) > 0) == (tier >= 6), key .. ": glowing hearts in the goo only on the Secret")
-				check(((names.JellyWave or 0) > 0) == (tier >= 6), key .. ": the jelly wave only on the Secret")
-				check(((names.OozarkEye or 0) > 0) == (tier >= 6), key .. ": Oozark's eyes only on the Secret")
+				local th = THEMED[def.Pack]
+				local thrown, strays = 0, 0
+				for name, n in pairs(names) do
+					if th.bits[name] then
+						thrown += n
+					end
+					for _, other in pairs(THEMED) do
+						if other ~= th and other.bits[name] then
+							strays += n
+						end
+					end
+				end
+				check((thrown > 0) == (tier >= 3), key .. ": " .. def.Pack .. " bits fly off the tip (" .. thrown .. ")")
+				check(strays == 0, key .. ": nothing from another pack's theme (" .. strays .. ")")
+				check(((names.GooHeart or 0) > 0) == (tier >= 6 and def.Pack == "Slime"), key .. ": glowing hearts in the goo only on the Slime Secret")
+				for _, show in ipairs(OTHER_SHOWS) do
+					local want = tier >= 6 and (show == th.wave or show == th.eyes)
+					check(((names[show] or 0) > 0) == want, key .. ": " .. show .. (want and " on its Secret" or " not here"))
+				end
 				local heard = soundsPlaying()
-				local swingSound = ({ [3] = "Goo Swish", [4] = "Goo Swish", [5] = "Acid Swish", [6] = "Jelly Swing" })[tier]
+				local swingSound = th.swing[tier]
 				check(swingSound == nil or (heard[swingSound] or 0) > 0, key .. ": its swing sound plays (" .. tostring(swingSound) .. ")")
-				check(((heard["Jelly Wave"] or 0) > 0) == (tier >= 6), key .. ": the jelly wave's sound only on the Secret")
+				check(((heard[th.waveSound] or 0) > 0) == (tier >= 6), key .. ": the wave's sound only on the Secret (" .. th.waveSound .. ")")
 				step(0.5)
-				check(tier < 6 or (soundsPlaying()["Eye Pop"] or 0) > 0, key .. ": the eyes pop with a sound")
+				check(tier < 6 or (soundsPlaying()[th.eyeSound] or 0) > 0, key .. ": the eyes pop with a sound (" .. th.eyeSound .. ")")
 				h.handle.CFrame = start
 				step(3)
 				local left = folder and #folder:GetChildren() or 0
-				check(left == 0 and #WeaponFX._goo == 0, key .. ": the goo lands, splats and is gone (" .. left .. " left)")
+				check(left == 0 and #WeaponFX._goo == 0, key .. ": what it threw lands and is gone (" .. left .. " left)")
 			end
 		end
 		src:Destroy()

@@ -312,6 +312,17 @@ local function squash(s)
 end
 local soundCache = {}
 local function findSound(name)
+	if type(name) == "table" then
+		-- (a list: the first one that's there - a new sound, then the ones
+		-- it falls back on until it's uploaded)
+		for _, n in ipairs(name) do
+			local s = findSound(n)
+			if s then
+				return s
+			end
+		end
+		return nil
+	end
 	if not name or name == "" then
 		return nil
 	end
@@ -894,14 +905,24 @@ WeaponFX.buildVoxel = buildVoxel
 
 ----------------------------------------------------------------------
 -- Swing effects by rarity: the rarer the weapon, the bigger its swings, in
--- its pack's own theme (the Slime pack's are goo). On top of the two smears
--- every weapon has: Rare and up a wide crescent from the grip past the tip,
--- Epic and up a bright edge and goo flung off the tip that splats on the
--- floor, Legendary and up a burst of goo and a flash as each cut starts,
--- Mythic a second crescent hanging on (the Acid Scythe's glowing acid hisses
--- where it lands), and Secret its own show: a lingering body of jelly, goo
--- with glowing hearts, a wave of jelly flying off every cut and Oozark's eyes
--- popping out of it.
+-- its pack's own theme. On top of the two smears every weapon has: Rare and
+-- up a wide crescent from the grip past the tip, Epic and up a bright edge
+-- and bits flung off the tip, Legendary and up a burst of them and a flash
+-- as each cut starts, Mythic a second crescent hanging on, and Secret its
+-- own show: a lingering body behind the cut, a wave flying off every cut
+-- and the boss's eyes popping out of it.
+--   Slime: goo that splats on the floor (the Acid Scythe's glowing acid
+--     hisses where it lands); the Secret's see-through jelly with glowing
+--     hearts, a wave of jelly and Oozark's eyes.
+--   Knight: dirt off the dig - clods that bounce once and puff into dust,
+--     glints of gold in it (Anchor Fists: iron chips and gold sparks, hits
+--     ringing like an anchor); No Quarter's gold coins clinking down, a
+--     crack of gold splitting the floor along the arc and Burrowmore's
+--     visor glaring out of it.
+--   Speedway: sparks skittering off the tarmac and puffs of tyre smoke
+--     (Wheelie Wrecker: balls of fire that land and burn); Victory Lap's
+--     confetti, a chequered trail, a chequered flag flying off every cut and
+--     Revvington's big green eyes popping out of it.
 ----------------------------------------------------------------------
 local RARITY_TIER = { Common = 1, Uncommon = 1, Rare = 2, Epic = 3, Legendary = 4, Mythic = 5, Secret = 6 }
 WeaponFX.RARITY_TIER = RARITY_TIER
@@ -943,6 +964,75 @@ local SWING_THEMES = {
 			blob = { RGBc(105, 210, 70), RGBc(130, 225, 85) }, blobSee = 0.35, hearts = RGBc(214, 255, 120),
 			wave = true, eyes = true,
 			swingSound = "Jelly Swing", splatSound = "Goo Splat", hitSound = "Goo Hit", waveSound = "Jelly Wave", eyeSound = "Eye Pop",
+		},
+	},
+	-- Burrowmore's: dirt flung up off the dig, a glint of gold in it. (A
+	-- theme's `bits`: what it throws, one picked at random each time - see
+	-- BITS; a bit's colours are the theme's list of that name, or `blob`.
+	-- Its sounds are lists: the new one, then what to play till it's uploaded.)
+	Knight = {
+		light = RGBc(254, 231, 97), main = RGBc(254, 174, 52), deep = RGBc(18, 78, 137),
+		bits = { "clod", "clod", "clod", "glint" },
+		blob = { RGBc(194, 133, 105), RGBc(184, 111, 80), RGBc(115, 62, 57) }, blobSee = 0,
+		glint = { RGBc(254, 231, 97), RGBc(254, 174, 52) }, dust = RGBc(214, 176, 150),
+		swingSound = { "Shovel Swish", "Hammer Swing" }, splatSound = { "Dirt Splat", "Dirt Land" },
+		hitSound = { "Clang Hit", "Sword Hit" },
+		-- Anchor Fists: iron and gold - iron chips and sparks off the gold
+		-- rivets in the dirt, and every hit rings like an anchor landing
+		Mythic = {
+			light = RGBc(255, 250, 200), main = RGBc(254, 174, 52), deep = RGBc(38, 43, 68),
+			bits = { "clod", "chip", "glint", "glint" },
+			blob = { RGBc(194, 133, 105), RGBc(115, 62, 57) }, blobSee = 0,
+			chip = { RGBc(139, 155, 180), RGBc(90, 105, 136) }, glint = { RGBc(254, 231, 97), RGBc(255, 255, 255) },
+			dust = RGBc(214, 176, 150),
+			swingSound = { "Chain Swish", "Hammer Swing" }, splatSound = { "Dirt Splat", "Dirt Land" },
+			hitSound = { "Clang Hit", "Anchor Land", "Hammer Hit" },
+		},
+		-- No Quarter: his armour cracks gold - gold coins spill off every cut
+		-- and clink on the floor, a crack of gold splits the floor along the
+		-- arc, and Burrowmore's visor glares out of it
+		Secret = {
+			light = RGBc(255, 250, 200), main = RGBc(254, 174, 52), deep = RGBc(18, 78, 137),
+			bits = { "coin", "coin", "glint", "clod" },
+			blob = { RGBc(194, 133, 105), RGBc(115, 62, 57) }, blobSee = 0,
+			coin = { RGBc(254, 174, 52), RGBc(254, 231, 97) }, glint = { RGBc(254, 231, 97), RGBc(255, 255, 255) },
+			dust = RGBc(254, 231, 97),
+			wave = "crack", eyes = "visor",
+			swingSound = { "Gold Swing", "Sword Swing" }, splatSound = { "Coin Spill", "Gem Land" },
+			hitSound = { "Gold Chop", "Clang Hit", "Sword Hit" },
+			waveSound = { "Plate Crack", "Armour Crack" }, eyeSound = { "Treasure Glint", "Relic Get" },
+		},
+	},
+	-- Revvington's: sparks skittering off the tarmac, puffs of tyre smoke
+	Speedway = {
+		light = RGBc(255, 240, 180), main = RGBc(247, 118, 34), deep = RGBc(190, 74, 40),
+		bits = { "spark", "spark", "spark", "smoke" },
+		blob = { RGBc(255, 240, 180), RGBc(255, 190, 80), RGBc(255, 128, 30) }, blobSee = 0,
+		smoke = { RGBc(210, 210, 220), RGBc(165, 165, 178) },
+		swingSound = { "Tyre Swish", "Sword Swing" }, splatSound = { "Spark Skitter" },
+		hitSound = { "Spark Hit", "Sword Hit" },
+		-- Wheelie Wrecker: it's on fire - balls of fire that land and burn a
+		-- moment, black smoke
+		Mythic = {
+			light = RGBc(255, 231, 97), main = RGBc(255, 128, 30), deep = RGBc(200, 40, 30),
+			bits = { "flame", "flame", "spark", "smoke" },
+			blob = { RGBc(255, 231, 97), RGBc(255, 160, 40), RGBc(255, 90, 30) }, blobSee = 0,
+			smoke = { RGBc(90, 90, 100), RGBc(62, 62, 72) },
+			swingSound = { "Flame Swish", "Hammer Swing" }, splatSound = { "Flame Burst" },
+			hitSound = { "Flame Burst", "Hammer Hit" },
+		},
+		-- Victory Lap: the winner's lap - confetti everywhere, a chequered
+		-- trail, a chequered flag flying off every cut and Revvington's big
+		-- green eyes popping out of it
+		Secret = {
+			light = RGBc(255, 255, 255), main = RGBc(255, 255, 255), deep = RGBc(24, 20, 37),
+			bits = { "confetti", "confetti", "confetti", "spark" },
+			blob = { RGBc(255, 240, 180), RGBc(255, 190, 80) }, blobSee = 0,
+			confetti = { RGBc(247, 118, 34), RGBc(255, 255, 255), RGBc(254, 231, 97), RGBc(99, 199, 77), RGBc(44, 232, 245), RGBc(228, 59, 68) },
+			stripes = true, wave = "checker", eyes = "revv",
+			swingSound = { "Victory Swing", "Sword Swing" }, splatSound = { "Checker Pop" },
+			hitSound = { "Checker Pop", "Spark Hit", "Sword Hit" },
+			waveSound = { "Finish Line", "Checkered Flag" }, eyeSound = { "Horn Honk", "Big Honk" },
 		},
 	},
 }
@@ -1035,14 +1125,39 @@ local function soundAt(name, pos, pitch, volume)
 	end)
 end
 WeaponFX.soundAt = soundAt
+-- WHAT FLIES: a theme's bits (see SWING_THEMES). shape: how it's drawn
+-- (a drop stretched the way it flies, a streak, a tumbling lump, a coin, a
+-- scrap of paper); fall: its gravity (below 0 it rises); drag: how fast the
+-- air slows it; bounce: how many times it bounces before it lands; land:
+-- what it leaves on the floor; life: seconds before it's gone anyway
+local BITS = {
+	goo = { shape = "drop", fall = 55, land = "splat" }, -- a drop that splats flat
+	clod = { shape = "lump", fall = 60, bounce = 1, land = "puff" }, -- dirt: bounces once, puffs into dust
+	chip = { shape = "lump", fall = 60, bounce = 1, land = "fade" }, -- a chip of iron
+	glint = { shape = "streak", fall = 45, bounce = 1, land = "fade", neon = true }, -- a spark of gold
+	spark = { shape = "streak", fall = 40, bounce = 2, land = "fade", neon = true }, -- skitters along the floor
+	smoke = { shape = "puff", fall = -4, drag = 2.5, life = 0.9, see = 0.35 }, -- tyre smoke drifting up
+	flame = { shape = "drop", fall = 30, land = "burn", neon = true }, -- a ball of fire: lands and burns
+	coin = { shape = "coin", fall = 55, bounce = 1, land = "lie", neon = true }, -- flips, clinks, lies there
+	confetti = { shape = "flake", fall = 9, drag = 1.6, land = "lie", life = 2.2 }, -- flutters down
+}
+WeaponFX.BITS = BITS
+local function bitName(kind)
+	return kind == "goo" and "Goo" or (string.upper(string.sub(kind, 1, 1)) .. string.sub(kind, 2))
+end
+
 local lastSplat = 0
-local function splat(b)
+local function landSound(b, volume)
+	-- (not every one: a pitter-patter, not a wall of noise)
 	local t = b.theme
-	-- (not every splat: a pitter-patter, not a wall of noise)
 	if t.splatSound and os.clock() - lastSplat > 0.07 then
 		lastSplat = os.clock()
-		soundAt(t.splatSound, b.pos, 0.85 + math.random() * 0.4, 0.35)
+		soundAt(t.splatSound, b.pos, 0.85 + math.random() * 0.4, volume or 0.35)
 	end
+end
+local function splat(b)
+	local t = b.theme
+	landSound(b)
 	local r = b.size * (2.6 + math.random() * 1.6)
 	local disc = fxPart("Splat", Vector3.new(0.08, r, r), CFrame.new(b.pos.X, b.floor + 0.05, b.pos.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		t.deep:Lerp(t.main, 0.5), t.neon and 0.2 or 0.25, t.neon, Enum.PartType.Cylinder)
@@ -1055,17 +1170,58 @@ local function splat(b)
 		end
 	end
 end
+-- what a bit leaves where it lands
+local function land(b)
+	local how = b.spec.land
+	local at = Vector3.new(b.pos.X, b.floor, b.pos.Z)
+	if how == "splat" then
+		splat(b)
+	elseif how == "puff" then
+		-- a puff of dust
+		landSound(b, 0.3)
+		local puff = fxPart("Dust", Vector3.new(b.size, b.size, b.size) * 1.1, CFrame.new(at + Vector3.new(0, b.size * 0.4, 0)),
+			b.theme.dust or b.part.Color, 0.3, false, Enum.PartType.Ball)
+		fadeAway(puff, 0.55, { Size = Vector3.new(b.size, b.size, b.size) * 2.6, CFrame = puff.CFrame + Vector3.new(0, 0.8, 0) })
+	elseif how == "burn" then
+		-- a lick of fire, flaring up and dying
+		landSound(b, 0.25)
+		local lick = fxPart("Burn", Vector3.new(b.size * 0.9, b.size * 0.6, b.size * 0.9), CFrame.new(at + Vector3.new(0, b.size * 0.3, 0)),
+			b.theme.light, 0, true)
+		fadeAway(lick, 0.5, { Size = Vector3.new(b.size * 0.3, b.size * 2.4, b.size * 0.3), CFrame = lick.CFrame + Vector3.new(0, b.size * 1.1, 0) })
+	elseif how == "lie" then
+		-- (a coin or a scrap of paper, lying flat where it fell)
+		landSound(b, 0.3)
+		local flat = fxPart(b.part.Name, b.part.Size, CFrame.new(at + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+			* (b.spec.shape == "coin" and CFrame.Angles(0, 0, math.rad(90)) or CFrame.new()),
+			b.part.Color, b.part.Transparency, b.part.Material == Enum.Material.Neon, b.part.Shape)
+		fadeAway(flat, b.spec.shape == "coin" and 0.8 or 0.6)
+	end
+end
 local function stepGoo(dt)
 	local eye = cameraAt()
 	for i = #goo, 1, -1 do
 		local b = goo[i]
-		b.vel = b.vel - Vector3.new(0, 55 * dt, 0)
+		local spec = b.spec
+		b.vel = b.vel - Vector3.new(0, spec.fall * dt, 0)
+		if spec.drag then
+			b.vel = b.vel * math.max(0, 1 - spec.drag * dt)
+		end
 		b.pos = b.pos + b.vel * dt
 		b.age = b.age + dt
-		local landed = b.pos.Y <= b.floor + b.size * 0.4
-		if landed or b.age > 2 or not b.part.Parent then
+		local landed = spec.fall > 0 and b.pos.Y <= b.floor + b.size * 0.4
+		if landed and b.bounces > 0 and b.part.Parent then
+			-- a bounce: up off the floor, slower (sparks skitter, clods hop)
+			b.bounces -= 1
+			b.pos = Vector3.new(b.pos.X, b.floor + b.size * 0.4, b.pos.Z)
+			b.vel = Vector3.new(b.vel.X * 0.6, math.abs(b.vel.Y) * (spec.shape == "streak" and 0.45 or 0.35), b.vel.Z * 0.6)
+			if spec.shape ~= "lump" then
+				landSound(b, 0.2)
+			end
+			landed = false
+		end
+		if landed or b.age > (spec.life or 2) or not b.part.Parent then
 			if landed and b.part.Parent then
-				splat(b)
+				land(b)
 			end
 			b.part:Destroy()
 			if b.core then
@@ -1073,13 +1229,30 @@ local function stepGoo(dt)
 			end
 			table.remove(goo, i)
 		else
-			-- (stretched along the way it's flying, like a drop)
-			local stretch = math.clamp(b.vel.Magnitude / 30, 0, 1)
-			local cf = CFrame.lookAt(b.pos, b.pos + b.vel)
-			b.part.CFrame = cf
-			b.part.Size = Vector3.new(b.size * (1 - stretch * 0.25), b.size * (1 - stretch * 0.25), b.size * (1 + stretch))
-			if b.core then
-				b.core.CFrame = cf
+			local shape = spec.shape
+			if shape == "drop" or shape == "streak" then
+				-- (stretched along the way it's flying, like a drop - a spark
+				-- much more)
+				local stretch = math.clamp(b.vel.Magnitude / 30, 0, 1)
+				local cf = CFrame.lookAt(b.pos, b.pos + b.vel)
+				b.part.CFrame = cf
+				if shape == "drop" then
+					b.part.Size = Vector3.new(b.size * (1 - stretch * 0.25), b.size * (1 - stretch * 0.25), b.size * (1 + stretch))
+				else
+					b.part.Size = Vector3.new(b.size * 0.22, b.size * 0.22, b.size * (0.8 + 2.4 * stretch))
+				end
+				if b.core then
+					b.core.CFrame = cf
+				end
+			elseif shape == "puff" then
+				local k = b.age / (spec.life or 1)
+				b.part.CFrame = CFrame.new(b.pos)
+				b.part.Size = Vector3.new(b.size, b.size, b.size) * (1.2 + 1.8 * k)
+				b.part.Transparency = spec.see + (1 - spec.see) * k
+			else
+				-- (tumbling end over end)
+				local w = b.spin * b.age
+				b.part.CFrame = CFrame.new(b.pos) * CFrame.fromEulerAnglesXYZ(w.X, w.Y, w.Z)
 			end
 			local hide = (eye and (b.pos - eye).Magnitude < NEAR_CAMERA + b.size) and 1 or 0
 			b.part.LocalTransparencyModifier = hide
@@ -1093,17 +1266,41 @@ local function stepGoo(dt)
 		gooConn = nil
 	end
 end
+-- throw one bit of the theme's stuff: from pos at vel, `size` big, landing on
+-- the floor at height `floor`
 local function flingGoo(theme, pos, vel, size, floor)
 	if #goo > 160 then
 		return
 	end
-	local c = theme.blob[math.random(1, #theme.blob)]
-	local part = fxPart("Goo", Vector3.new(size, size, size), CFrame.new(pos), c, theme.blobSee, theme.neon, Enum.PartType.Ball)
+	local kinds = theme.bits
+	local kind = type(kinds) == "table" and kinds[math.random(1, #kinds)] or kinds or "goo"
+	local spec = BITS[kind] or BITS.goo
+	local list = theme[kind]
+	list = type(list) == "table" and #list > 0 and list or theme.blob
+	local c = list[math.random(1, #list)]
+	local shape = spec.shape
+	local see = kind == "goo" and theme.blobSee or (spec.see or 0)
+	local neon = (kind == "goo" and theme.neon) or spec.neon or false
+	local part
+	if shape == "drop" or shape == "puff" then
+		part = fxPart(bitName(kind), Vector3.new(size, size, size), CFrame.new(pos), c, see, neon, Enum.PartType.Ball)
+	elseif shape == "streak" then
+		part = fxPart(bitName(kind), Vector3.new(size * 0.22, size * 0.22, size), CFrame.new(pos), c, see, neon)
+	elseif shape == "coin" then
+		part = fxPart(bitName(kind), Vector3.new(size * 0.2, size * 1.1, size * 1.1), CFrame.new(pos), c, see, neon, Enum.PartType.Cylinder)
+	elseif shape == "flake" then
+		part = fxPart(bitName(kind), Vector3.new(size * 0.9, size * 0.08, size * 0.6), CFrame.new(pos), c, see, neon)
+	else
+		local k = 0.8 + math.random() * 0.4
+		part = fxPart(bitName(kind), Vector3.new(size, size * 0.8, size * 0.9) * k, CFrame.new(pos), c, see, neon)
+	end
 	local core = nil
-	if theme.hearts then
+	if kind == "goo" and theme.hearts then
 		core = fxPart("GooHeart", Vector3.new(size * 0.4, size * 0.4, size * 0.4), CFrame.new(pos), theme.hearts, 0, true, Enum.PartType.Ball)
 	end
-	table.insert(goo, { part = part, core = core, pos = pos, vel = vel, size = size, floor = floor, age = 0, theme = theme })
+	local spin = Vector3.new(math.random() * 16 - 8, math.random() * 16 - 8, math.random() * 16 - 8)
+	table.insert(goo, { part = part, core = core, pos = pos, vel = vel, size = size, floor = floor, age = 0, theme = theme,
+		kind = kind, spec = spec, bounces = spec.bounce or 0, spin = spin })
 	if not gooConn then
 		gooConn = RunService.Heartbeat:Connect(stepGoo)
 	end
@@ -1166,6 +1363,140 @@ local function oozarkEyes(theme, at, floor)
 	end
 end
 
+-- No Quarter's crack: the arc splits the floor under it with a crack of gold
+-- that flares and fades (jagged: each bit of it knocked a little aside)
+local function goldCrack(theme, path, floor)
+	if #path < 3 then
+		return
+	end
+	if theme.waveSound then
+		soundAt(theme.waveSound, path[math.ceil(#path / 2)], 1, 0.8)
+	end
+	local prev = nil
+	for i = 1, #path, 2 do
+		local p = path[i]
+		local q = Vector3.new(p.X + (math.random() - 0.5) * 0.9, floor + 0.06, p.Z + (math.random() - 0.5) * 0.9)
+		if prev and (q - prev).Magnitude > 0.1 then
+			local mid = (prev + q) / 2
+			local len = (q - prev).Magnitude
+			local cf = CFrame.lookAt(mid, q)
+			local crack = fxPart("GoldCrack", Vector3.new(0.3, 0.1, len + 0.2), cf, theme.light, 0, true)
+			local glow = fxPart("GoldCrackGlow", Vector3.new(1.1, 0.06, len + 0.4), cf, theme.main, 0.45, true)
+			fadeAway(crack, 1.0)
+			fadeAway(glow, 0.6, { Size = Vector3.new(2.4, 0.06, len + 0.6) })
+		end
+		prev = q
+	end
+end
+
+-- No Quarter's visor: Burrowmore's helm glares out of the arc - his T-shaped
+-- slit, his eyes flaring yellow in it - and bursts into gold coins
+local function burrowmoreVisor(theme, at, floor)
+	local look = CFrame.new(at) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local ink = RGBc(24, 20, 37)
+	local parts = {
+		{ fxPart("Visor", Vector3.new(0.1, 0.1, 0.1), look, ink, 0, false), Vector3.new(2.0, 0.42, 0.14) },
+		{ fxPart("Visor", Vector3.new(0.1, 0.1, 0.1), look * CFrame.new(0, -0.5, 0), ink, 0, false), Vector3.new(0.42, 1.0, 0.14) },
+	}
+	for _, x in ipairs({ -0.52, 0.52 }) do
+		table.insert(parts, { fxPart("VisorEye", Vector3.new(0.1, 0.1, 0.1), look * CFrame.new(x, 0, -0.09), RGBc(254, 231, 97), 0, true),
+			Vector3.new(0.55, 0.28, 0.1) })
+	end
+	for _, pr in ipairs(parts) do
+		pcall(function()
+			TweenService:Create(pr[1], TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = pr[2] }):Play()
+		end)
+	end
+	task.delay(0.4, function()
+		local first = parts[1][1]
+		if first.Parent then
+			if theme.eyeSound then
+				soundAt(theme.eyeSound, first.Position, 0.95 + math.random() * 0.1, 0.8)
+			end
+			for _ = 1, 6 do
+				flingGoo(theme, first.Position, Vector3.new(math.random() * 12 - 6, 7 + math.random() * 6, math.random() * 12 - 6), 0.5, floor)
+			end
+		end
+		for _, pr in ipairs(parts) do
+			pr[1]:Destroy()
+		end
+	end)
+end
+
+-- Victory Lap's wave: the arc the tip just drew, as a strip of chequered flag
+-- flying out from you
+local function checkerWave(theme, path, centre)
+	if #path < 3 then
+		return
+	end
+	if theme.waveSound then
+		soundAt(theme.waveSound, path[math.ceil(#path / 2)], 1, 0.8)
+	end
+	local white, ink = RGBc(255, 255, 255), RGBc(24, 20, 37)
+	for i = 1, #path - 1 do
+		local a, b = path[i], path[i + 1]
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude
+		if len > 0.05 then
+			local out = Vector3.new(mid.X - centre.X, 0, mid.Z - centre.Z)
+			out = out.Magnitude > 0.1 and out.Unit or Vector3.new(0, 0, -1)
+			local cf = CFrame.lookAt(mid, b)
+			for row = 0, 1 do
+				local lit = (i + row) % 2 == 0
+				local at = cf * CFrame.new((row - 0.5) * 0.8, 0, 0)
+				local sq = fxPart("CheckerWave", Vector3.new(0.75, 0.12, len * 1.1), at, lit and white or ink, 0, lit)
+				fadeAway(sq, 0.5, { CFrame = at + out * (6 + row * 1.5) + Vector3.new(0, 0.5, 0) })
+			end
+		end
+	end
+end
+
+-- Victory Lap's eyes: Revvington's big green eyes pop out of the arc, look
+-- about, and burst into confetti
+local function revvEyes(theme, at, floor)
+	local look = CFrame.new(at) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local parts = {}
+	for _, x in ipairs({ -0.5, 0.5 }) do
+		local cf = look * CFrame.new(x, 0, 0)
+		table.insert(parts, { fxPart("RevvEye", Vector3.new(0.1, 0.1, 0.1), cf, RGBc(255, 255, 255), 0, false, Enum.PartType.Ball), 0.9 })
+		table.insert(parts, { fxPart("RevvIris", Vector3.new(0.05, 0.05, 0.05), cf * CFrame.new(0, 0.05, -0.28), RGBc(99, 199, 77), 0, true, Enum.PartType.Ball), 0.5 })
+		table.insert(parts, { fxPart("RevvPupil", Vector3.new(0.05, 0.05, 0.05), cf * CFrame.new(0, 0.05, -0.45), RGBc(24, 20, 37), 0, false, Enum.PartType.Ball), 0.24 })
+	end
+	for _, pr in ipairs(parts) do
+		pcall(function()
+			TweenService:Create(pr[1], TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(pr[2], pr[2], pr[2]) }):Play()
+		end)
+	end
+	task.delay(0.35, function()
+		local eye = parts[1][1]
+		if eye.Parent then
+			if theme.eyeSound then
+				soundAt(theme.eyeSound, eye.Position, 1, 0.7)
+			end
+			for k = 1, 2 do
+				local from = parts[(k - 1) * 3 + 1][1].Position
+				for _ = 1, 5 do
+					flingGoo(theme, from, Vector3.new(math.random() * 10 - 5, 6 + math.random() * 5, math.random() * 10 - 5), 0.45, floor)
+				end
+			end
+		end
+		for _, pr in ipairs(parts) do
+			pr[1]:Destroy()
+		end
+	end)
+end
+
+-- a chequered ColorSequence: n hard stripes, a and b in turn
+local function stripes(a, b, n)
+	local keys = {}
+	for i = 0, n - 1 do
+		local c = (i % 2 == 0) and a or b
+		table.insert(keys, ColorSequenceKeypoint.new(i / n + (i > 0 and 0.001 or 0), c))
+		table.insert(keys, ColorSequenceKeypoint.new((i + 1) / n - (i < n - 1 and 0.001 or 0), c))
+	end
+	return ColorSequence.new(keys)
+end
+
 -- the extra trails along the same line as the weapon's own smear
 -- (`trails[1]`), added to `trails` so they switch on and off with it; what
 -- the swing throws is kept in `trails.fx` (see setSmear)
@@ -1219,8 +1550,9 @@ local function dressTrails(trails, def, glow, golden)
 		trail("SwingDeep", 0.1, 1.25, colors({ theme.main, theme.deep }),
 			fades({ { 0, 0.35 }, { 1, 1 } }), 0.5, NumberSequence.new(1, 0.4))
 	elseif tier >= 6 then
-		-- Secret: a thick body of see-through jelly that lingers
-		trail("SwingJelly", -0.1, 1.4, colors({ theme.light, theme.main, theme.deep }),
+		-- Secret: a thick body that lingers behind the cut - see-through
+		-- jelly, or (Victory Lap) a chequered flag
+		trail("SwingJelly", -0.1, 1.4, theme.stripes and stripes(theme.light, theme.deep, 8) or colors({ theme.light, theme.main, theme.deep }),
 			fades({ { 0, 0.25 }, { 0.5, 0.5 }, { 1, 1 } }), 0.6, NumberSequence.new(1, 0.7))
 	end
 	trails.fx = {
@@ -1234,9 +1566,9 @@ local function dressTrails(trails, def, glow, golden)
 end
 WeaponFX.dressTrails = dressTrails
 
--- while a cut's on: goo off the tip (Epic and up), a burst and a flash as
--- it starts (Legendary and up), and when it ends the Secret's jelly wave and
--- Oozark's eyes along the arc it drew
+-- while a cut's on: bits off the tip (Epic and up), a burst and a flash as
+-- it starts (Legendary and up), and when it ends the Secret's wave (jelly, a
+-- crack of gold, a chequered flag) and the boss's eyes along the arc it drew
 local function swingFx(h, on, starting)
 	local fx = h.trails and h.trails.fx
 	if not (fx and fx.fling and fx.part and fx.part.Parent) then
@@ -1282,12 +1614,20 @@ local function swingFx(h, on, starting)
 		-- the cut's over
 		local path = fx.path
 		fx.path = nil
-		if fx.theme.wave and hrp then
+		local wave, eyes = fx.theme.wave, fx.theme.eyes
+		if wave == "crack" then
+			goldCrack(fx.theme, path, floor)
+		elseif wave == "checker" and hrp then
+			checkerWave(fx.theme, path, hrp.Position)
+		elseif wave and hrp then
 			jellyWave(fx.theme, path, hrp.Position)
 		end
-		if fx.theme.eyes and #path >= 4 then
-			oozarkEyes(fx.theme, path[math.floor(#path * 0.4) + 1], floor)
-			oozarkEyes(fx.theme, path[math.floor(#path * 0.8)], floor)
+		if eyes == "visor" and #path >= 4 then
+			burrowmoreVisor(fx.theme, path[math.floor(#path * 0.6) + 1], floor)
+		elseif eyes and #path >= 4 then
+			local pop = eyes == "revv" and revvEyes or oozarkEyes
+			pop(fx.theme, path[math.floor(#path * 0.4) + 1], floor)
+			pop(fx.theme, path[math.floor(#path * 0.8)], floor)
 		end
 	end
 end
@@ -1377,7 +1717,8 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 			end)
 		end
 	end
-	-- Legendary and up: goo splatters off what you hit
+	-- Legendary and up: the theme's bits fly off what you hit (goo, dirt,
+	-- coins, sparks, fire, confetti)
 	if tier >= 4 then
 		if theme.hitSound then
 			soundAt(theme.hitSound, position, 0.95 + math.random() * 0.1, heavy and 1 or 0.8)
