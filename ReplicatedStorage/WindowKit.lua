@@ -432,7 +432,8 @@ function K.badge(parent)
 		ZIndex = (parent.ZIndex or 1) + 6,
 	}, parent)
 	new("UICorner", { CornerRadius = UDim.new(1, 0) }, b)
-	outline(b, C.Ink, 2.5)
+	-- (a round ring: the sharp-cornered edge drew a black square round the circle)
+	outline(b, C.Ink, 2.5).LineJoinMode = Enum.LineJoinMode.Round
 	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, b)
 	return b
 end
@@ -697,7 +698,7 @@ local function money(parent, kind, size, props)
 		rim[k] = v
 	end
 	new("UICorner", { CornerRadius = UDim.new(1, 0) }, rim)
-	outline(rim, C.Ink, math.max(2, size / 16))
+	outline(rim, C.Ink, math.max(2, size / 16)).LineJoinMode = Enum.LineJoinMode.Round -- (round, like the badges)
 	if kind == "Coin" then
 		new("UIGradient", { Rotation = 45, Color = ColorSequence.new(RGB(255, 246, 168), RGB(184, 107, 18)) }, rim)
 	else
