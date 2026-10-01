@@ -1334,8 +1334,8 @@ def brush_swish():
 
 def ink_splat():
     # a little wet splat of ink (gentle and short: lots land)
-    smack = band(noise(n_of(0.015)), 700, 5000) * env(n_of(0.015), 0.0005, 0.015, 3) * 0.5
-    return master(mix(squelch(0.15, 430, 100, 0.9), smack, at(drip(1100, 0.2), 0.05), at(drip(1500, 0.12), 0.09), at(drip(1250, 0.07), 0.13)),
+    smack = band(noise(n_of(0.015)), 700, 5000) * env(n_of(0.015), 0.0005, 0.015, 3) * 0.8
+    return master(mix(squelch(0.1, 430, 120, 0.7), smack, at(drip(1100, 0.18), 0.05), at(drip(1500, 0.11), 0.09), at(drip(1250, 0.07), 0.13)),
                   lo=80, hi=9000)
 
 
