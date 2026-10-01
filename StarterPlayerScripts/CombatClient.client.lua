@@ -1697,9 +1697,39 @@ do
 	end)
 	task.spawn(warmMove)
 
+	-- an enemy within `reach` studs of your feet? (the edge of its body: its
+	-- HitRadius; one you can hit - Colosseum dummies carry their Owner)
+	local function enemyWithin(pos, reach)
+		for _, model in ipairs(game:GetService("CollectionService"):GetTagged("CombatTarget")) do
+			if model.Parent and (model:GetAttribute("Health") or 0) > 0 then
+				local owner = model:GetAttribute("Owner")
+				if owner == nil or owner == player.UserId then
+					local ok, cf = pcall(function()
+						return model:GetPivot()
+					end)
+					if ok and cf then
+						local d = Vector3.new(cf.X - pos.X, 0, cf.Z - pos.Z).Magnitude - (tonumber(model:GetAttribute("HitRadius")) or 2)
+						if d <= reach and math.abs(cf.Y - pos.Y) < 14 then
+							return true
+						end
+					end
+				end
+			end
+		end
+		return false
+	end
+
 	-- a move's movement (Moves: Dash along the floor, Leap up and over - landing
 	-- right when its Time runs out - or a little Hop): your screen moves you,
-	-- the server trusts where you end up
+	-- the server trusts where you end up. A dash with StopAt stops when you run
+	-- into an enemy (Barrel Roll: the barrel bursts on them - and when the
+	-- server says it burst: MoveFX.onContact)
+	local stopDash = nil
+	MoveFX.onContact = function()
+		if stopDash then
+			stopDash()
+		end
+	end
 	local function doMove(spec)
 		local hum, hrp, char = charParts()
 		if not hum then
@@ -1746,10 +1776,18 @@ do
 		lv.Parent = hrp
 		local t0 = os.clock()
 		local conn
+		local stopped = false
+		stopDash = function()
+			stopped = true
+		end
 		conn = RunService.Heartbeat:Connect(function()
 			local t = os.clock() - t0
-			if t >= time or not lv.Parent or not hrp.Parent then
+			if spec.StopAt and not stopped and t > 0.03 and enemyWithin(hrp.Position, spec.StopAt) then
+				stopped = true
+			end
+			if stopped or t >= time or not lv.Parent or not hrp.Parent then
 				conn:Disconnect()
+				stopDash = nil
 				lv:Destroy()
 				if hrp.Parent then
 					local v = hrp.AssemblyLinearVelocity
@@ -3188,7 +3226,7 @@ local function playHitSound(weight)
 	end)
 end
 
-CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
+CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 	if kind == "State" then
 		-- the server is in charge: take its numbers (a = stamina, b = max, c = flasks)
 		if math.abs(a - stamina) > 6 or os.clock() - lastSpend > 0.5 then
@@ -3201,6 +3239,10 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d)
 		-- a punch off a shield: "BLOCKED!" and a small jolt (go round the back)
 		damageNumber(a, 0, false, "BLOCKED!")
 		cameraKick(0.35)
+	elseif kind == "Hit" and e == true and not c then
+		-- a burn tick from your puddle or trail (Goo Slam, Slime Trail...): just
+		-- its number - no hit-stop, shake or swing jolt every half second
+		damageNumber(a, b, c)
 	elseif kind == "Hit" then
 		damageNumber(a, b, c)
 		-- d is which swing of the string landed: the finisher hits hardest

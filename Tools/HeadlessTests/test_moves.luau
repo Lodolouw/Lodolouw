@@ -236,7 +236,17 @@ for _, id in ipairs(ids) do
 		end
 		step(math.max(0.1, last - (t - t0)))
 		local lost = totalLost()
-		check(lostEarly == 0, ("%s: nothing hurt before its first hit is due (%.1f lost early)"):format(id, lostEarly))
+		-- (a Contact step - Barrel Roll's burst - goes off early on running
+		-- into an enemy: here, early is the point)
+		local contact = false
+		for _, st in ipairs(move.Steps or {}) do
+			contact = contact or st.Contact ~= nil
+		end
+		if contact then
+			check(lostEarly > 0, ("%s: it bursts the moment it runs into them, before its time (%.1f early)"):format(id, lostEarly))
+		else
+			check(lostEarly == 0, ("%s: nothing hurt before its first hit is due (%.1f lost early)"):format(id, lostEarly))
+		end
 		check(lostBy(far) == 0, id .. ": the dummy 120 studs away is never touched")
 		if firstHit then
 			check(lost > 0, id .. ": it hurts what's close in front")

@@ -395,6 +395,7 @@ player:SetAttribute("Colosseum", true)
 fire("State", { wave = 3, of = 5, left = 4, quest = 2, goal = 5, diff = "Normal", pick = "Normal", questPower = 500, questCoins = 300 })
 step(0.1)
 local tab = find(hud, "QuestTab")
+assert(tab and tab.Visible == false, "the quest box is off the screen")
 local tabTexts = {}
 for _, d in ipairs(tab:GetDescendants()) do
 	if d.ClassName == "TextLabel" then

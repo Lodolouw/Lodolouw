@@ -743,7 +743,10 @@ local function hitTarget(player, model, damage, weight, remote)
 	local cf = at and CFrame.new(at)
 	local killed = hp <= 0
 	weight = math.clamp(weight or 1, 1, 3)
-	send(player, "Hit", cf and cf.Position or Vector3.new(), damage, killed, weight)
+	-- (a puddle's or trail's burn - remote == "tick" - is a small repeated hit:
+	-- your screen shows its number but doesn't jolt your swing for it)
+	local tick = remote == "tick"
+	send(player, "Hit", cf and cf.Position or Vector3.new(), damage, killed, weight, tick or nil)
 	-- which way the blow drives it (flat, away from you), and every screen
 	-- sees it land: "HitFx" = "count:weight:x:z" - the enemy flashes white and
 	-- flinches away (CombatClient, BossClient); the Colosseum's dummies are
@@ -763,7 +766,9 @@ local function hitTarget(player, model, damage, weight, remote)
 	local _, root = charParts(player)
 	if cf and root then
 		local toward = cf.Position - root.Position
-		if remote then
+		if tick then
+			-- (no shockwave for a burn tick)
+		elseif remote then
 			impact(cf.Position, toward, weight)
 		else
 			local hitAt = root.Position + Vector3.new(toward.X, 0, toward.Z).Unit * math.min(toward.Magnitude, CC.PunchRange * 0.7)
@@ -1314,7 +1319,7 @@ local function stepZones()
 					target:SetAttribute("SlowUntil", serverNow() + (z.spec.Tick or 0.5) + 0.25)
 				end
 			end
-			moveHits(z.player, z.st, z.def, z.id, list, z.spec.Damage or 0.2, 1, z.scale, true)
+			moveHits(z.player, z.st, z.def, z.id, list, z.spec.Damage or 0.2, 1, z.scale, "tick")
 		end
 	end
 end
@@ -1396,11 +1401,32 @@ local function useMove(player, st, def, id, move, now, locked)
 	applyEffects(player, st, ab.Effects, scale, ab.Aura)
 	tell(player, id, count, 0)
 	local marks = {}
+	local done = {} -- [step] = true once it's happened (a Contact step can come early)
 	for i, step in ipairs(move.Steps or {}) do
+		-- a Contact step (Barrel Roll's burst) happens the moment you run into
+		-- an enemy - within Contact studs of you - or at its time if you never do
+		if step.Contact then
+			task.spawn(function()
+				local stop = os.clock() + (step.At or 0)
+				while os.clock() < stop and not done[i] and fighters[player] == st do
+					task.wait(1 / 30)
+					local _, root = charParts(player)
+					if root and #targetsNear(root.Position, player, step.Contact) > 0 and not done[i] then
+						done[i] = true
+						local frame = flatFrame(root)
+						if step.Hit then
+							shapeHit(player, st, def, id, step.Hit, frame, marks, scale)
+						end
+						tell(player, id, count, i) -- (every screen bursts it now)
+					end
+				end
+			end)
+		end
 		task.delay(step.At or 0, function()
-			if fighters[player] ~= st then
+			if fighters[player] ~= st or done[i] then
 				return
 			end
+			done[i] = true
 			local _, root = charParts(player)
 			if not root then
 				return

@@ -2443,15 +2443,16 @@ function MoveFX.begin(player, id, count, own)
 	if not move then
 		return
 	end
-	local inst = { id = id, count = count, marks = {}, data = {}, own = own, t0 = os.clock() }
+	local inst = { id = id, count = count, marks = {}, data = {}, own = own, t0 = os.clock(), fired = {} }
 	live[player] = inst
 	local style = styleOf(move.Style)
-	for _, step in ipairs(move.Steps or {}) do
+	for i, step in ipairs(move.Steps or {}) do
 		if step.Mark or (step.Fx and not step.Pick) or (step.Shake and not step.Pick) then
 			task.delay(step.At or 0, function()
-				if live[player] ~= inst then
-					return -- (a newer one's started)
+				if live[player] ~= inst or inst.fired[i] then
+					return -- (a newer one's started; or a Contact step already went off)
 				end
+				inst.fired[i] = true
 				local ctx = makeCtx(player, inst, step, style)
 				if not ctx then
 					return
@@ -2486,6 +2487,16 @@ function MoveFX.told(player, id, count, step, point, extra)
 		local s = move and move.Steps and move.Steps[step]
 		if not (inst and s and inst.id == id) then
 			return
+		end
+		-- (a Contact step - it ran into an enemy: now, once)
+		if s.Contact then
+			if inst.fired[step] then
+				return
+			end
+			inst.fired[step] = true
+			if player == Players.LocalPlayer and MoveFX.onContact then
+				pcall(MoveFX.onContact) -- (your screen stops your dash there)
+			end
 		end
 		if typeof(point) == "Vector3" and s.Pick then
 			inst.marks[s.Pick] = point

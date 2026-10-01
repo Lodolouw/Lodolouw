@@ -20,7 +20,8 @@
 	            you're locked on to, or the nearest one in front within Range,
 	            else Ahead studs in front of you - every screen is told where
 	    Move    YOUR screen moves you (the server trusts where you end up):
-	              { Kind = "Dash", Distance, Time, ToTarget, StopShort }  - along the floor
+	              { Kind = "Dash", Distance, Time, ToTarget, StopShort, StopAt }  - along
+	                the floor (StopAt: stop on running into an enemy that close)
 	              { Kind = "Leap", Distance, Up, Time, ToTarget, StopShort } - up and over,
 	                landing exactly when Time runs out
 	              { Kind = "Hop", Distance, Up, Time }   - a small jump forward
@@ -205,8 +206,9 @@ Moves.BarrelDaggers = { -- Barrel Roll: curl up inside a barrel and roll right t
 	Time = 0.8, Style = "Wood",
 	Steps = {
 		{ At = 0, Mark = "Start", Fx = "Barrel" },
-		{ At = 0.06, Move = { Kind = "Dash", Distance = 16, Time = 0.46, ToTarget = true, StopShort = 1 } },
-		{ At = 0.52, Hit = { Shape = "Line", From = "Start", Width = 6, Damage = 2.1, Weight = 3 }, Fx = "Burst", Shake = 0.9 },
+		{ At = 0.06, Move = { Kind = "Dash", Distance = 16, Time = 0.46, ToTarget = true, StopShort = 1, StopAt = 2.5 } },
+		-- (it bursts the moment it rolls into an enemy - Contact - or at the end)
+		{ At = 0.52, Contact = 2.5, Hit = { Shape = "Line", From = "Start", Width = 6, Damage = 2.1, Weight = 3 }, Fx = "Burst", Shake = 0.9 },
 	},
 }
 Moves.BarrelHammer = { -- Barrel Toss: bat two barrels forward; they roll and blow up
@@ -247,7 +249,7 @@ Moves.DoodleKatana = { -- Doodle Clone: dash-slash; a doodle of you repeats it a
 	Time = 0.8, Style = "Doodle",
 	Steps = {
 		{ At = 0, Mark = "Start", Fx = "Doodle" },
-		{ At = 0.1, Move = { Kind = "Dash", Distance = 12, Time = 0.25 } },
+		{ At = 0.1, Move = { Kind = "Dash", Distance = 16, Time = 0.26 } },
 		{ At = 0.37, Mark = "End", Hit = { Shape = "Line", From = "Start", Width = 6, Ahead = 1, Damage = 2.1, Weight = 3 }, Fx = "Slash" },
 		{ At = 1.3, Hit = { Shape = "Line", From = "Start", To = "End", Width = 6, Ahead = 1, Damage = 1.0, Weight = 2 }, Fx = "Redraw" },
 	},
