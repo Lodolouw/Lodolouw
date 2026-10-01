@@ -3934,8 +3934,11 @@ local function buildIsland(parent)
 					end
 					local start = mid - inward * myGap
 					blob(start + inward * ((rnd() - 0.5) * 1.6), 1.2 + math.floor(rnd() * 4) * 0.4, 0)
-					for _ = 1, math.floor(rnd() * 3) do
-						blob(start - inward * (1 + rnd() * 3) + tangent * ((rnd() - 0.5) * 3), 0.5 + rnd() * 0.6, 0.15 + rnd() * 0.3)
+					for k = 1, math.floor(rnd() * 3) do
+						local p, size, tr = start - inward * (1 + rnd() * 3) + tangent * ((rnd() - 0.5) * 3), 0.5 + rnd() * 0.6, 0.15 + rnd() * 0.3
+						if k == 1 then -- (one bubble at most: a second one doubled the foam for nothing - the dice still roll, so the rest of the island stays put)
+							blob(p, size, tr)
+						end
 					end
 					n = n + 1
 				end

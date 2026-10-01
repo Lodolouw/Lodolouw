@@ -175,56 +175,62 @@ local function doorsRespawn()
 	return pad
 end
 
--- Getting the arenas ready BEFORE you go in, so nothing is still loading when
+-- Getting an arena ready BEFORE you go in, so nothing is still loading when
 -- you arrive. (Only matters if the place uses streaming - Workspace >
--- StreamingEnabled - otherwise everything is always loaded anyway.) As soon as
--- you open the Spire menu, every arena is made to load for you in full and
--- stay loaded, and the sand round it streams in too, while you're still
--- choosing a floor.
-local warmed = {} -- [player] = true once their arenas have started loading
-local function arenaModels()
-	local list = {}
+-- StreamingEnabled - otherwise everything is always loaded anyway.) Only ONE
+-- arena is kept loaded for you at a time: the next floor you'd fight as you
+-- open the Spire menu, the one you pick as you go in - and it's let go again
+-- when you're back in the lobby. (Every arena used to stay loaded for you
+-- for good once you'd opened the menu: some 14,000 parts on your screen.)
+local warmed = {} -- [player] = the arena model kept loaded for them
+local function arenaModel(floorId)
 	for _, anchor in ipairs(CollectionService:GetTagged("ArenaSpawn")) do
 		local arena = anchor:FindFirstAncestorWhichIsA("Model")
-		if arena and not table.find(list, arena) then
-			list[#list + 1] = arena
+		if arena and (arena:GetAttribute("Floor") or 1) == floorId then
+			return arena
 		end
 	end
-	return list
+	return nil
 end
 
-local function warmArenas(player)
-	if warmed[player] then
+local function coolArena(player)
+	local arena = warmed[player]
+	warmed[player] = nil
+	if arena and arena.Parent then
+		pcall(function()
+			arena:RemovePersistentPlayer(player)
+		end)
+	end
+end
+
+-- (wait: block until it's streamed in round where you'll stand)
+local function warmArena(player, floorId, wait)
+	local arena = arenaModel(floorId)
+	if not arena then
 		return
 	end
-	warmed[player] = true
-	for _, arena in ipairs(arenaModels()) do
+	if warmed[player] ~= arena then
+		coolArena(player)
+		warmed[player] = arena
 		pcall(function()
-			-- the whole arena, kept loaded for this player from now on
+			-- the whole arena, kept loaded for this player till they're back
 			if arena.ModelStreamingMode ~= Enum.ModelStreamingMode.Persistent then
 				arena.ModelStreamingMode = Enum.ModelStreamingMode.PersistentPerPlayer
 				arena:AddPersistentPlayer(player)
 			end
 		end)
-		local center = arena:GetAttribute("Center")
-		if typeof(center) ~= "Vector3" then
-			local ok, cf = pcall(function()
-				return arena:GetPivot()
+	end
+	local dest = arenaSpawnFor(floorId)
+	if dest then
+		local function stream()
+			pcall(function()
+				player:RequestStreamAroundAsync(dest.Position, 10)
 			end)
-			center = ok and cf and cf.Position or nil
 		end
-		if center then
-			-- and the ground all round it (terrain isn't part of the model, and a
-			-- sand floor is wide: its middle, then a ring of spots round it)
-			task.spawn(function()
-				for i = 0, 8 do
-					local a = i / 8 * math.pi * 2
-					local spot = (i == 0) and center or center + Vector3.new(math.sin(a) * 110, 0, math.cos(a) * 110)
-					pcall(function()
-						player:RequestStreamAroundAsync(spot, 10)
-					end)
-				end
-			end)
+		if wait then
+			stream()
+		else
+			task.spawn(stream)
 		end
 	end
 end
@@ -234,7 +240,8 @@ local function openMenu(player)
 	if not root then
 		return
 	end
-	warmArenas(player)
+	-- (the next floor you'd fight: most likely the one you'll pick)
+	warmArena(player, math.max(1, (player:GetAttribute("SpireCleared") or 0) + 1), false)
 	remotes.SpireEvent:FireClient(player, "OpenMenu")
 end
 
@@ -278,7 +285,7 @@ local function travel(player, action, floorId)
 			return false, "That arena isn't built yet."
 		end
 		lastTravel[player] = now
-		warmArenas(player) -- (normally already done when the menu opened)
+		warmArena(player, floor.id, true) -- (often already done when the menu opened)
 		if not moveCharacter(player, char, dest) then
 			return false, "You can't travel right now."
 		end
@@ -301,6 +308,7 @@ local function travel(player, action, floorId)
 			return false, "You can't travel right now."
 		end
 		player:SetAttribute("SpireFloor", nil)
+		coolArena(player)
 		-- out of the arena: patched up, back to full health
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum and hum.Health > 0 then
@@ -385,6 +393,7 @@ function SpireService.Start()
 		end)
 		player.CharacterAdded:Connect(function(char)
 			player:SetAttribute("SpireFloor", nil)
+			coolArena(player) -- (back in the lobby: the arena can go)
 			if not player:GetAttribute("DiedInSpire") then
 				return
 			end

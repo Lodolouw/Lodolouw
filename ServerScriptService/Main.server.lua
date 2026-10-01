@@ -184,6 +184,29 @@ start("CanvasBuilder", CanvasBuilder and CanvasBuilder.Build)
 local ThroneBuilder = load("ThroneBuilder", 3)
 start("ThroneBuilder", ThroneBuilder and ThroneBuilder.Build)
 
+-- Lighter shadows: every small piece of the world built above (foam, pebbles,
+-- leaves, flowers, rocks, trim - anything under 5 studs at its longest) stops
+-- casting a shadow. Thousands of them did; you'd never miss them, but every
+-- screen had to draw them all into the shadow map, every frame. (The big
+-- shapes - walls, towers, trees, the ground - keep theirs.)
+local SMALL_SHADOW = 5
+local function lightenShadows()
+	local Players = game:GetService("Players")
+	for _, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("BasePart") and d.CastShadow then
+			local size = d.Size
+			local owner = d:FindFirstAncestorWhichIsA("Model")
+			if math.max(size.X, size.Y, size.Z) < SMALL_SHADOW and not (owner and Players:GetPlayerFromCharacter(owner)) then
+				d.CastShadow = false
+			end
+		end
+	end
+end
+pcall(lightenShadows)
+task.delay(3, function()
+	pcall(lightenShadows) -- (and whatever the builders finished a moment later)
+end)
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

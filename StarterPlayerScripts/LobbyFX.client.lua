@@ -324,6 +324,13 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
+-- Settings > Low graphics: the sea and the palms hold still (the busiest
+-- moving detail in the lobby: thousands of bits of foam)
+local function lowGraphics()
+	local me = Players.LocalPlayer
+	return me ~= nil and me:GetAttribute("LowGraphics") == true
+end
+
 ----------------------------------------------------------------------
 -- Waves: foam lapping at the shore, crests drifting in over the sea
 ----------------------------------------------------------------------
@@ -363,7 +370,7 @@ local waveTick = 0
 local waveParts, waveCFs = {}, {}
 RunService.Heartbeat:Connect(function(dt)
 	waveClock = waveClock + dt
-	if waveClock < STEP then
+	if waveClock < STEP or lowGraphics() then
 		return
 	end
 	waveClock = 0
@@ -396,7 +403,9 @@ RunService.Heartbeat:Connect(function(dt)
 				parts[#parts + 1] = inst
 				cfs[#cfs + 1] = w.base + w.dir * off
 			end
-			if tr ~= w.tr then
+			-- (fading only close up: a change of see-through-ness makes the
+			-- screen redo the part, and far out you can't tell)
+			if tr ~= w.tr and far < WAVE_NEAR then
 				w.tr = tr
 				inst.Transparency = tr
 			end
@@ -449,7 +458,7 @@ local SWAY_STEP = math.rad(1) -- (tilted in one-degree steps)
 local swayParts, swayCFs = {}, {}
 RunService.Heartbeat:Connect(function(dt)
 	swayClock = swayClock + dt
-	if swayClock < 1 / 12 then
+	if swayClock < 1 / 12 or lowGraphics() then
 		return
 	end
 	swayClock = 0

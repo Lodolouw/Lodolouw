@@ -1268,9 +1268,14 @@ RunService.RenderStepped:Connect(function(dt)
 	if grade then
 		grade.Enabled = here
 	end
-	local moteHome = (here and #motes > 0) and mine or nil
+	-- (Settings > Low graphics: no motes, and the moving detail holds still)
+	local low = player:GetAttribute("LowGraphics") == true
+	local moteHome = (here and #motes > 0 and not low) and mine or nil
 	if moteFolder.Parent ~= moteHome then
 		moteFolder.Parent = moteHome
+	end
+	if low then
+		return
 	end
 	if not here then
 		if saying then

@@ -41,7 +41,7 @@ local LIST = {
 	{ "Sound", "music", "Music", "The songs in the lobby, the Arcade and the fights." },
 	{ "Sound", "sfx", "Sound effects", "Hits, bosses, coins and buttons." },
 	{ "Graphics", "shadows", "Shadows", "The world's shadows." },
-	{ "Graphics", "low", "Low graphics", "Turns off shadows and the light's extra effects - smoother on slow phones." },
+	{ "Graphics", "low", "Low graphics", "Turns off shadows, the light's extra effects and the lobby's moving sea, palms and motes - smoother on slow phones." },
 	{ "Graphics", "hideOthers", "Hide others' effects", "Other players' ability effects and auras aren't drawn on your screen." },
 	{ "Graphics", "shake", "Camera shake", "The camera kicks when big hits land." },
 	{ "Graphics", "guide", "Goal guide", "The glowing trail and light leading you to your next goal (also the GUIDE button under it)." },
