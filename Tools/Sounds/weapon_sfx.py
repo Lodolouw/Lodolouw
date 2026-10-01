@@ -1306,6 +1306,241 @@ def fist_smash():
     return master(mix(hit, rubble, *rocks), lo=55, drive=1.5)
 
 
+# ----------------------------------------------------------------------
+# THE CANVAS PACK (Scribble, a living doodle: pencils, paper, erasers, ink
+# and paint - and the computer he lives in: keys, copy and paste, pixels,
+# glitches, DELETE)
+# ----------------------------------------------------------------------
+def brush_swish():
+    # a swing: a paintbrush swished - the air, the bristles' soft "shhk",
+    # a flick of ink off the end
+    s = 0.28
+    n = n_of(s)
+    fl = np.abs(band(noise(n), hi=120))
+    bristles = band(noise(n), 2500, 9000) * (fl / (np.max(fl) + 1e-9)) ** 1.5 * env(n, 0.06, s, 1.8)
+    air = whoosh(s, 450, 3800, 1.2, 1.6)
+    return master(mix(air / np.max(np.abs(air)), bristles / (np.max(np.abs(bristles)) + 1e-9) * 0.5,
+                      at(squelch(0.08, 700, 260, 0.35), 0.17), at(drip(1300, 0.25), 0.205)))
+
+
+def ink_splat():
+    # a little wet splat of ink (gentle and short: lots land)
+    smack = band(noise(n_of(0.015)), 700, 5000) * env(n_of(0.015), 0.0005, 0.015, 3) * 0.5
+    return master(mix(squelch(0.12, 430, 110, 0.9), smack, at(drip(1100, 0.2), 0.05), at(drip(1500, 0.12), 0.085)), lo=80, hi=9000)
+
+
+def ink_thwack():
+    # a hit: an inky slap - a crack and a thud, a wet splat, drops flying
+    knock_ = tri(sweep(210, 80, 0.12)) * env(n_of(0.12), 0.001, 0.12, 3) * 0.6
+    slap = crushed(mix(strike(0.025, 800, 9000), knock_), 22)
+    r = S.rng
+    drops = mix(*[at(drip(r.uniform(900, 1800), r.uniform(0.12, 0.25) * (1 - i / 6)), 0.06 + i * 0.05 + r.uniform(0, 0.02)) for i in range(5)])
+    return master(mix(slap * 0.8, at(squelch(0.3, 330, 60, 0.9), 0.01), drops), drive=1.3)
+
+
+def copy_swish():
+    # the Mythic's swing: a swish, and a digital copy of it right behind -
+    # lower-res and crunchier - and a fainter copy of the copy
+    sw = whoosh(0.2, 500, 4300, 1.3, 1.5)
+    sw = sw / np.max(np.abs(sw))
+    copy = band(crushed(hold(sw, 5), 10), hi=7000) * 0.55
+    copy2 = band(crushed(hold(sw, 9), 6), hi=5000) * 0.25
+    blip = chip(midi(91), 0.05, 0.25, 0.12, d=0.03, s=0.4, r=0.015)
+    return master(mix(sw, at(copy, 0.14), at(blip, 0.14), at(copy2, 0.28)))
+
+
+def pixel_pop():
+    # pixels popping: a tiny digital blip, up a step (gentle and short: lots pop)
+    tick = sine(sweep(600, 1500, 0.015)) * env(n_of(0.015), 0.0005, 0.015, 2) * 0.45
+    a = chip(midi(88), 0.04, 0.5, 0.4, d=0.012, s=0.15, r=0.01)
+    b = chip(midi(95), 0.08, 0.5, 0.4, d=0.015, s=0.06, r=0.04)
+    return master(band(mix(tick, a, at(b, 0.035)), hi=5000), hi=9000)
+
+
+def paste_hit():
+    # the Mythic's hit: an inky thwack, the digital "paste" bleep (bl-ip!)
+    # and a crunchy copy of the hit landing on it
+    knock_ = tri(sweep(220, 85, 0.12)) * env(n_of(0.12), 0.001, 0.12, 3) * 0.6
+    slap = crushed(mix(strike(0.025, 800, 9000), knock_, squelch(0.15, 340, 80, 0.6)), 20)
+    bleep = mix(chip(midi(84), 0.05, 0.25, 0.26, d=0.03, s=0.6, r=0.01), at(chip(midi(91), 0.2, 0.25, 0.26, d=0.06, s=0.3, r=0.1), 0.05))
+    echo = band(crushed(hold(slap, 6), 8), hi=6000) * 0.3
+    echo2 = band(crushed(hold(slap, 11), 5), hi=4500) * 0.15
+    return master(mix(slap * 0.85, at(bleep, 0.03), at(echo, 0.1), at(echo2, 0.2)), drive=1.3)
+
+
+def glitch_swing():
+    # the Secret's swing: a swish that glitches - it catches and stutters,
+    # drops to a crunchy low resolution, catches again
+    s = 0.42
+    n = n_of(s)
+    sw = whoosh(s, 400, 4800, 1.3, 1.4)
+    x = stutter(stutter(sw / np.max(np.abs(sw)), 0.1, 0.022, 3), 0.27, 0.016, 4, 0.85)
+    low = gate(n, [(0.17, 0.24), (0.34, 0.39)])
+    x = x * (1 - low) + band(crushed(hold(x, 7), 7), hi=8000) * low
+    blips = mix(at(chip(midi(96), 0.03, 0.5, 0.15, d=0.02, s=0.5, r=0.005), 0.1), at(chip(midi(89), 0.03, 0.5, 0.12, d=0.02, s=0.5, r=0.005), 0.27))
+    return master(mix(x, blips))
+
+
+def glitch_hit():
+    # the Secret's hit: a crunchy impact that glitches - the hit caught and
+    # played again, cruder each time, digital noise spitting after it
+    body = band(noise(n_of(0.15)), 150, 3000) * env(n_of(0.15), 0.001, 0.15, 2.8) * 0.7
+    hit = crushed(mix(thump(130, 55, 0.3, 0.6, 2.4), strike(0.03, 500, 9000, 1.0), body * 1.3), 16)
+    m = n_of(0.028)
+    caught = hit[:m] * np.minimum(1, np.minimum(np.arange(m), m - 1 - np.arange(m)) / n_of(0.001))
+    again = [at(band(crushed(hold(caught, e), q), hi=9000) * v, t0) for t0, e, q, v in ((0.05, 3, 8, 0.7), (0.078, 6, 6, 0.5), (0.106, 10, 4, 0.35))]
+    n = n_of(0.25)
+    spit = crushed(hold(noise(n), 12), 4) * gate(n, [(0.0, 0.03), (0.06, 0.08), (0.13, 0.15), (0.2, 0.21)]) * env(n, 0.001, 0.25, 1.2) * 0.25
+    bwoop = chip(np.geomspace(900, 160, n_of(0.18)), 0.18, 0.5, 0.15, d=0.05, s=0.6, r=0.04)
+    return master(mix(hit, *again, at(spit, 0.14), at(bwoop, 0.04)), drive=1.4)
+
+
+def glitch_wave():
+    # a wave of glitch: a sweep of digital noise swelling up and away,
+    # stuttering and stepping as it goes
+    s = 0.6
+    n = n_of(s)
+    t = np.arange(n) / RATE
+    k = t / s
+    r = S.rng
+    swell = np.sin(np.pi * k ** 0.7) ** 2.5
+    hiss = A.sweep_lp(hold(noise(n), np.interp(k, [0, 0.4, 1], [14, 2, 10])), 700 + 6500 * swell)
+    spans, tt = [], 0.0
+    while tt < s:
+        on = r.uniform(0.012, 0.045)
+        spans.append((tt, tt + on))
+        tt += on + r.uniform(0.004, 0.02)
+    tone = band(pulse(hold(300 * 6 ** swell, n_of(1 / 40)), n, 0.25), hi=4000) * 0.2
+    return master(crushed(mix(hiss, tone) * gate(n, spans) * swell, 14))
+
+
+def doodle_pop():
+    # a doodle popping into being: a quick scribble, a cartoon POP, a happy
+    # little "ta-da"
+    tada = mix(*[at(chip(midi(m), ln, 0.25, 0.4, d=0.04, s=0.4, r=0.02 if i < 2 else 0.05), i * 0.045)
+                 for i, (m, ln) in enumerate(((84, 0.05), (88, 0.05), (91, 0.12)))])
+    sketch = scratch(0.08, 30, 0.5) * env(n_of(0.08), 0.01, 0.08, 1.0)
+    return master(mix(sketch, at(pop(260, 1400, 0.06, 0.7), 0.07), at(tada, 0.12)))
+
+
+def eraser_squeak():
+    # rubbing out with an eraser: squeak-squeak-squeak, the rubber dragging
+    # back and forth over the paper
+    out = np.zeros(n_of(0.42))
+    for t0, d, f0, f1 in ((0.0, 0.12, 1500, 1900), (0.14, 0.12, 1850, 1450), (0.28, 0.13, 1550, 2000)):
+        n = n_of(d)
+        t = np.arange(n) / RATE
+        wob = band(noise(n), hi=60)
+        ph = np.cumsum(np.geomspace(f0, f1, n) * (1 + 0.03 * wob / (np.max(np.abs(wob)) + 1e-9))) / RATE
+        squeak = (sine(ph) + 0.35 * sine(2 * ph) + 0.12 * sine(3 * ph)) * (0.55 + 0.45 * np.sin(2 * np.pi * 38 * t) ** 2)
+        rub = band(noise(n), 500, 3200)
+        A.place(out, (0.5 * squeak + 0.5 * rub / (np.max(np.abs(rub)) + 1e-9)) * A.adsr(n, 0.015, 0.05, 0.8, 0.03), t0)
+    return master(out, hi=8000)
+
+
+def erase_poof():
+    # something rubbed out: a soft poof, a little shimmer as it goes
+    s = 0.32
+    n = n_of(s)
+    puff = A.sweep_lp(noise(n), np.geomspace(3000, 300, n)) * env(n, 0.012, s, 2.2)
+    body = band(noise(n_of(0.15)), 150, 900) * env(n_of(0.15), 0.01, 0.15, 2.0) * 0.5
+    return master(mix(puff, body, glints(0.05, 4, 0.045, 0.12, (103, 100, 98, 96), climb=True)), hi=10000)
+
+
+def pencil_sharpen():
+    # a pencil sharpener grinding: the blade shaving the wood round and
+    # round - crunchy and rasping
+    s = 0.6
+    n = n_of(s)
+    t = np.arange(n) / RATE
+    turns = np.abs(np.sin(np.pi * 7 * t)) ** 0.6
+    rasp = band(noise(n), 900, 6000) * (0.35 + 0.65 * turns)
+    crunch = grit(s, 1500, 1000, 7000, 0.6, grain=0.0012, shape=0.3 + 0.7 * turns)
+    wob = band(noise(n), hi=40)
+    chatter = band(pulse(210 * (1 + 0.1 * wob / (np.max(np.abs(wob)) + 1e-9)), n, 0.3), 300, 2500) * turns * 0.15
+    return master(mix(rasp, crunch, chatter) * A.adsr(n, 0.03, 0.1, 1.0, 0.06), hi=10000)
+
+
+def ink_splosh():
+    # the ink splash: a heavy, wet SPLOSH slamming down, a spray of ink and
+    # drops raining after it
+    spray = band(noise(n_of(0.4)), 500, 6000) * env(n_of(0.4), 0.003, 0.4, 2.4) * 0.5
+    slam = crushed(mix(thump(120, 44, 0.5, 0.9, 2.2), strike(0.04, 400, 8000, 0.9)), 22)
+    r = S.rng
+    drops = mix(*[at(drip(r.uniform(800, 2000), r.uniform(0.1, 0.3) * (1 - i / 14)), 0.12 + i * 0.03 + r.uniform(0, 0.025)) for i in range(12)])
+    return master(mix(slam * 0.8, squelch(0.38, 300, 48, 1.0), at(squelch(0.18, 560, 150, 0.45), 0.06), at(spray, 0.01), drops), lo=45, drive=1.4)
+
+
+def scribble_slash():
+    # the doodle's dash-slash: a pencil scratching furiously back and forth,
+    # and the cut through the air
+    s = 0.38
+    return master(mix(whoosh(0.3, 700, 6000, 1.0, 1.8), scratch(s, 26, 1.0) * env(n_of(s), 0.01, s, 1.5)))
+
+
+def redraw_swish():
+    # redrawn: a quick swish played backwards - the pencil strokes sucked
+    # back in with a rewinding chirp - snapping back into place
+    s = 0.36
+    n = n_of(s)
+    t = np.arange(n) / RATE
+    k = t / s
+    strokes = scratch(s, 22, 0.6)[::-1] * k ** 1.5
+    strokes[-n_of(0.006):] *= np.linspace(1, 0, n_of(0.006))
+    f = 2400 * (500 / 2400) ** k * (1 + 0.25 * np.sign(np.sin(2 * np.pi * 28 * t)))
+    chirp = band(pulse(f, n, 0.5), hi=4000) * np.sin(np.pi * k) * 0.12
+    return master(mix(swoop(s, 600, 6600, 2.5), strokes, chirp, at(knock(1300, 0.04, 0.4), s - 0.004)))
+
+
+def copy_click():
+    # ctrl+C: two keys clicking down (ctrl, then C) and a blip - copied
+    return master(mix(key(0.8), at(key(1.0, 1.08), 0.07), at(chip(midi(88), 0.13, 0.25, 0.3, d=0.04, s=0.4, r=0.06), 0.12)), hi=10000)
+
+
+def paste_pop():
+    # ctrl+V: the keys clicking down, then a bright POP as it's pasted in
+    bright = mix(chip(midi(96), 0.04, 0.25, 0.3, d=0.03, s=0.5, r=0.01), at(chip(midi(103), 0.1, 0.25, 0.28, d=0.04, s=0.3, r=0.04), 0.035))
+    return master(mix(key(0.8), at(key(1.0, 1.12), 0.06), at(pop(300, 1700, 0.05, 1.0), 0.1), at(bright, 0.12), glints(0.16, 2, 0.05, 0.08)),
+                  hi=11000, drive=1.5)
+
+
+def glitch_buzz():
+    # the computer glitching: a harsh error buzz cutting in and out, getting
+    # stuck, spitting digital noise, then dying away
+    s = 0.8
+    n = n_of(s)
+    t = np.arange(n) / RATE
+    f = 110 * np.where(t < 0.6, 1.0, (40 / 110) ** ((t - 0.6) / 0.2))
+    buzz = band(crushed(0.5 * pulse(f, n, 0.5) + 0.35 * pulse(f * 1.06, n, 0.25) + 0.25 * pulse(f * 2.01, n, 0.125), 8), hi=4000)
+    whine = band(pulse(3100, n, 0.5), hi=6000) * 0.05
+    g = gate(n, [(0, 0.12), (0.15, 0.2), (0.235, 0.255), (0.29, 0.44), (0.47, 0.5), (0.52, s)])
+    spit = crushed(hold(noise(n), 10), 4) * gate(n, [(0.12, 0.15), (0.2, 0.235), (0.44, 0.47)]) * 0.45
+    x = stutter((buzz + whine) * g + spit, 0.33, 0.025, 4)
+    return master(x * A.adsr(n, 0.005, 0.1, 1.0, 0.05), lo=55, hi=9000)
+
+
+def delete_shatter():
+    # DELETE: the key slammed down, a big crunchy digital smash, and
+    # everything shattering into pixels that rain away
+    s = 1.0
+    n = n_of(s)
+    t = np.arange(n) / RATE
+    r = S.rng
+    crunch = crushed(hold(noise(n_of(0.5)), 6), 6) * env(n_of(0.5), 0.001, 0.5, 2.4)
+    smash = crushed(mix(thump(110, 38, 0.6, 1.0, 2.5), strike(0.05, 400, 10000, 1.2), crunch * 0.6), 12)
+    pixels = np.zeros(n)
+    notes = (84, 86, 88, 91, 93, 96, 98, 100, 103, 105, 108)
+    tt = 0.0
+    while tt < 0.88:
+        u = tt / 0.88
+        ln = r.uniform(0.02, 0.06)
+        f = midi(notes[int(r.integers(len(notes)))]) * np.geomspace(1, r.uniform(0.7, 0.95), n_of(ln))
+        A.place(pixels, chip(f, ln, (0.125, 0.25, 0.5)[int(r.integers(3))], r.uniform(0.4, 1.0) * (1 - 0.8 * u), d=0.01, s=0.3, r=0.005), tt)
+        tt += r.exponential(0.006 + 0.04 * u ** 1.5)
+    fall = band(pulse(hold(1400 * (70 / 1400) ** (t / 0.8), n_of(1 / 60)), n, 0.5), hi=3500) * env(n, 0.005, 0.8, 1.2) * 0.25
+    return master(mix(key(0.9, 0.9), at(smash, 0.035), at(band(pixels, hi=9000) * 0.3, 0.035), at(fall, 0.035)), lo=45, drive=1.5)
+
+
 PACKS = {
     'Knight': {
         # the swings, what they throw off and what they hit
@@ -1380,6 +1615,31 @@ PACKS = {
         'Crown Call': crown_call,
         'Sky Whoosh': sky_whoosh,
         'Fist Smash': fist_smash,
+    },
+    'Canvas': {
+        # the swings, what they throw off and what they hit (and the
+        # Secret's glitch wave, and a doodle popping out of it)
+        'Brush Swish': brush_swish,
+        'Ink Splat': ink_splat,
+        'Ink Thwack': ink_thwack,
+        'Copy Swish': copy_swish,
+        'Pixel Pop': pixel_pop,
+        'Paste Hit': paste_hit,
+        'Glitch Swing': glitch_swing,
+        'Glitch Hit': glitch_hit,
+        'Glitch Wave': glitch_wave,
+        'Doodle Pop': doodle_pop,
+        # the abilities: Erase, Sharpen, Ink Splash, Doodle Clone, Copy-Paste, DELETE
+        'Eraser Squeak': eraser_squeak,
+        'Erase Poof': erase_poof,
+        'Pencil Sharpen': pencil_sharpen,
+        'Ink Splosh': ink_splosh,
+        'Scribble Slash': scribble_slash,
+        'Redraw Swish': redraw_swish,
+        'Copy Click': copy_click,
+        'Paste Pop': paste_pop,
+        'Glitch Buzz': glitch_buzz,
+        'Delete Shatter': delete_shatter,
     },
 }
 
