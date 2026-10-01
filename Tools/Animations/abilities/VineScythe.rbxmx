@@ -1280,7 +1280,7 @@
 					</Properties>
 					<Item class="Pose" referent="RBX5101">
 						<Properties>
-							<CoordinateFrame name="CFrame"><X>0</X><Y>0</Y><Z>0.287462</Z><R00>0.105424</R00><R01>0.993671</R01><R02>0.03877</R02><R10>-0.993893</R10><R11>0.104009</R11><R12>0.036873</R12><R20>0.032607</R20><R21>-0.042421</R21><R22>0.998568</R22></CoordinateFrame>
+							<CoordinateFrame name="CFrame"><X>0</X><Y>0</Y><Z>0.307047</Z><R00>0.105424</R00><R01>0.993671</R01><R02>0.03877</R02><R10>-0.993893</R10><R11>0.104009</R11><R12>0.036873</R12><R20>0.032607</R20><R21>-0.042421</R21><R22>0.998568</R22></CoordinateFrame>
 							<token name="EasingDirection">0</token>
 							<token name="EasingStyle">0</token>
 							<string name="Name">Torso</string>
@@ -1358,7 +1358,7 @@
 					</Properties>
 					<Item class="Pose" referent="RBX5110">
 						<Properties>
-							<CoordinateFrame name="CFrame"><X>0</X><Y>0</Y><Z>0.132515</Z><R00>0.414951</R00><R01>0.908064</R01><R02>-0.056886</R02><R10>-0.908685</R10><R11>0.410456</R11><R12>-0.076276</R12><R20>-0.045914</R20><R21>0.083342</R21><R22>0.995463</R22></CoordinateFrame>
+							<CoordinateFrame name="CFrame"><X>0</X><Y>0</Y><Z>0.331108</Z><R00>0.414951</R00><R01>0.908064</R01><R02>-0.056886</R02><R10>-0.908685</R10><R11>0.410456</R11><R12>-0.076276</R12><R20>-0.045914</R20><R21>0.083342</R21><R22>0.995463</R22></CoordinateFrame>
 							<token name="EasingDirection">0</token>
 							<token name="EasingStyle">0</token>
 							<string name="Name">Torso</string>
@@ -1436,7 +1436,7 @@
 					</Properties>
 					<Item class="Pose" referent="RBX5119">
 						<Properties>
-							<CoordinateFrame name="CFrame"><X>0</X><Y>0</Y><Z>0.17379</Z><R00>0.599185</R00><R01>0.796808</R01><R02>-0.077935</R02><R10>-0.798312</R10><R11>0.587257</R11><R12>-0.133517</R12><R20>-0.06062</R20><R21>0.142218</R21><R22>0.987977</R22></CoordinateFrame>
+							<CoordinateFrame name="CFrame"><X>0</X><Y>0</Y><Z>0.322974</Z><R00>0.599185</R00><R01>0.796808</R01><R02>-0.077935</R02><R10>-0.798312</R10><R11>0.587257</R11><R12>-0.133517</R12><R20>-0.06062</R20><R21>0.142218</R21><R22>0.987977</R22></CoordinateFrame>
 							<token name="EasingDirection">0</token>
 							<token name="EasingStyle">0</token>
 							<string name="Name">Torso</string>

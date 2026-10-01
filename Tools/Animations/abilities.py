@@ -669,9 +669,9 @@ def aloft(p, rise=0.0):
     """a pose up in the air (a leap or a hop the game carries you through):
     its hop set so the chest stays where it is when standing (+ rise) however
     the legs tuck - left alone, the body would drop till a foot touched the
-    floor"""
+    floor (but never a foot below it)"""
     p = dict(p)
-    p['hop'] = rise - anims.dir_transforms(dict(p, hop=0.0))['RootJoint'][2, 3]
+    p['hop'] = max(0.0, rise - anims.dir_transforms(dict(p, hop=0.0))['RootJoint'][2, 3])
     return p
 
 
@@ -1038,6 +1038,118 @@ ABILITIES['KongsCrown'] = ('Sword', shown(Poses('KongsCrownAbility', [
     (1.30, S_IDLE, 'inout'),
 ], hit=0.9, marks=[('Call', 0.0), ('SkyFist', 0.15), ('Hit', 0.9)]),
     (0.10, 'CALL'), (0.15, 'SKY FIST'), (0.24, 'PUMP'), (0.62, 'HOLD IT UP'), (0.80, 'REAR BACK'), (0.90, 'SMASH')))
+
+
+# ======================================================================
+# CANVAS
+# ======================================================================
+# ERASER HAMMER - Erase: hunched over, the hammer down on the floor in front
+# and its eraser end scrubbing hard from side to side, rubbing out a mistake
+# (0.2, the rub: the hardest stroke); then it comes up in front of him for a
+# satisfied blow on it, and back to the stance
+RUB = ((-0.45, -1, -0.35), (0.45, -1, 0.30))  # (feet wide, bent over it)
+
+
+def rubbing(side, lean=26):
+    """the hammer pointed down at the floor in front, both hands low on it
+    like a mop, its eraser end (the face that chops) scrubbing the floor,
+    side degrees round to the left (+) or right (-)"""
+    root = (lean, 0, -6 + 0.4 * side)
+    return key(root, level(root, RUB), chop(root, (0.0, -0.55, -0.75), yawed((0.0, -0.50, -0.87), side)),
+               look=(0.004 * side, -0.35, -1))
+
+
+ABILITIES['EraserHammer'] = ('Hammer', shown(Poses('EraserHammerAbility', [
+    (0.00, dict(wt.H_IDLE, grip=0.0), 'linear'),
+    (0.06, rubbing(14, lean=22), 'out'),
+    (0.10, rubbing(-14), 'inout'),
+    (0.14, rubbing(14), 'inout'),
+    (0.17, rubbing(-14), 'inout'),
+    (0.20, rubbing(17, lean=31), 'inout'),
+    (0.24, rubbing(-12, lean=29), 'inout'),
+    (0.28, rubbing(2, lean=24), 'inout'),
+    (0.38, hammer((6, 0, -6), 'back', (0.05, 0.25, -1.1), (0.05, 0.50, -0.86), look=(0, 0.45, -1)), 'inout'),
+    (0.43, hammer((14, 0, -4), 'back', (0.05, 0.22, -1.1), (0.05, 0.47, -0.88), look=(0, 0.30, -1)), 'out'),
+    (0.49, hammer((-6, 0, -8), 'back', (0.05, 0.30, -1.08), (0.06, 0.55, -0.83), look=(0, 0.55, -1)), 'inout'),
+    (0.60, dict(wt.H_IDLE, grip=0.0), 'inout'),
+], two=(-0.6, -0.05), hit=0.2, marks=[('Rub', 0.2)]),
+    (0.06, 'SCRUB'), (0.14, 'SCRUB'), (0.20, 'RUB'), (0.28, 'DONE'), (0.38, 'UP'), (0.43, 'BLOW')))
+
+# PENCIL SWORD - Sharpen: the pencil-sword stood up in front of his face,
+# its blade gripped in the free fist like a sharpener, and twisted round and
+# round in it - quick turns (0.1, the shavings fly) - then let go, a flourish
+# of the blade round and down, and pointed straight at the enemy, freshly
+# sharpened
+SHARP_AT, SHARP_B = (0.05, 0.25, -1.15), unit((-0.08, 0.91, 0.41))  # (the right hand low, the blade up past the face)
+SHARP_E0 = unit((0.0, 0.0, -1.0) + 0.41 * SHARP_B)  # (its edge to the front)
+
+
+def sharpening(turn, lean=-4):
+    """the blade gripped in the left fist (Poses' two) and twisted `turn`
+    degrees round in it"""
+    a = math.radians(turn)
+    e = math.cos(a) * SHARP_E0 + math.sin(a) * np.cross(SHARP_B, SHARP_E0)
+    root = (lean, 0, -6)
+    return key(root, 'square', hands(root, SHARP_AT, SHARP_B, e), look=(0, 0.3, -1))
+
+
+SHARP_HELD = two_hand(sharpening(-270, lean=-5), (0.9, 1.6))  # (how the left hand holds the blade at the end)
+
+
+def let_go(left):
+    """the free arm along `left`, its twist carried on from the hand on the
+    blade, so it lets go without rolling over"""
+    return dict(larm=unit(left), lfwd=carry(SHARP_HELD['larm'], SHARP_HELD['lfwd'], left))
+
+
+# (three quarters of a turn the right way round leaves the edge facing left,
+# just where tipping the blade out and then forward brings it up for the
+# point - so the flourish never rolls the blade over in the hand)
+ABILITIES['PencilSword'] = ('Sword', shown(Poses('PencilSwordAbility', [
+    (0.00, dict(S_IDLE, grip=0.0), 'linear'),
+    (0.05, sharpening(0), 'out'),
+    (0.0833, sharpening(-60, lean=-5), 'linear'),
+    (0.10, sharpening(-90, lean=-6), 'linear'),
+    (0.1333, sharpening(-150, lean=-5), 'linear'),
+    (0.1667, sharpening(-210, lean=-6), 'linear'),
+    (0.20, sharpening(-270, lean=-5), 'linear'),
+    (0.25, dict(key((6, 0, -12), 'back', (unit((0.45, 0.20, -0.87)), unit((0.75, 0.60, -0.25)), (-0.45, 0.89, 0.0)),
+                    look=AHEAD), grip=0.0, **let_go((-0.35, -0.45, -0.82))), 'out'),
+    (0.32, dict(key((12, 0, -22), 'lunge', blade((0.20, -0.05, -0.98), (-0.10, 0.45, -0.89)), (-0.30, -0.55, 0.78),
+                    look=AHEAD), grip=0.0), 'inout'),
+    (0.40, dict(key((14, 0, -24), 'lunge', blade((0.20, -0.07, -0.98), (-0.10, 0.43, -0.90)), (-0.32, -0.56, 0.77),
+                    look=AHEAD), grip=0.0), 'hold'),
+    (0.50, dict(S_IDLE, grip=0.0), 'inout'),
+], two=(0.9, 1.6), hit=0.1, marks=[('Sharpen', 0.1)]),
+    (0.05, 'IN THE SHARPENER'), (0.10, 'TWIST'), (0.1667, 'TWIST'), (0.25, 'FLOURISH'), (0.32, 'POINT'), (0.40, 'SHARP')))
+
+# INK FISTS - Ink Splash: up with the hop (0 to 0.35), both fists swung up
+# and raised high overhead together, knees tucked; down he comes with them
+# still up - and both fists SLAM into the ground in front as he lands (0.37,
+# the ink splashes), down in a deep squat; then up again
+
+
+def airborne(lean, right, left, legs, rise, look=AHEAD):
+    """in the hop (the game carries him up): both fists, the legs tucked"""
+    return aloft(gauntlets((lean, 0, -4), legs, right, left, look=look), rise)
+
+
+POUND = ((-0.70, -1, -0.35), (0.70, -1, 0.30))  # (landed wide and low)
+ABILITIES['InkFists'] = ('Fists', shown(Poses('InkFistsAbility', [
+    (0.00, wt.F_IDLE, 'linear'),
+    (0.07, airborne(-6, (0.45, 0.62, -0.65), (-0.45, 0.62, -0.65), ((-0.18, -1, 0.10), (0.18, -1, 0.20)), 0.15,
+                    look=(0, 0.25, -1)), 'out'),
+    (0.17, airborne(-12, (-0.22, 0.95, -0.18), (0.22, 0.95, -0.18), ((-0.30, -0.70, -0.62), (0.30, -0.72, -0.55)), 0.35,
+                    look=(0, 0.35, -1)), 'out'),
+    (0.29, airborne(-16, (-0.18, 0.88, 0.42), (0.18, 0.88, 0.42), ((-0.35, -1, -0.30), (0.35, -1, -0.10)), 0.2,
+                    look=(0, 0.1, -1)), 'inout'),
+    (0.35, gauntlets((20, 0, -2), POUND, (-0.20, 0.30, -0.93), (0.20, 0.30, -0.93), look=AHEAD), 'in'),
+    (0.37, gauntlets((54, 0, 0), level((54, 0, 0), POUND), (-0.22, -0.90, -0.38), (0.22, -0.90, -0.38), look=DOWN), 'in2'),
+    (0.50, gauntlets((56, 0, 0), level((56, 0, 0), POUND), (-0.22, -0.91, -0.35), (0.22, -0.91, -0.35), look=DOWN), 'out'),
+    (0.62, gauntlets((22, 0, -8), 'crouch', (-0.10, -0.30, -0.95), (0.25, -0.20, -0.95), look=AHEAD), 'inout'),
+    (0.85, wt.F_IDLE, 'inout'),
+], hit=0.37, marks=[('Hop', 0.0), ('Land', 0.35), ('Hit', 0.37)]),
+    (0.07, 'SPRING'), (0.17, 'FISTS UP'), (0.29, 'COMING DOWN'), (0.35, 'LAND'), (0.37, 'SPLASH'), (0.50, 'SPLASH')))
 
 
 # which pack each weapon is from (the preview shows a pack at a time)
