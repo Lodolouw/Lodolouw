@@ -430,10 +430,14 @@ local TRIP_STATES = {
 	Enum.HumanoidStateType.Physics,
 }
 
+-- (Tripping is switched off for good now: abilities' dashes and hops, the
+-- daggers' lunges and every shove kept knocking you over - your character
+-- never falls over, whatever moves you. `allowed` is kept so the callers
+-- read the same, but it can't switch tripping back on.)
 local function allowTripping(hum, allowed)
 	for _, state in ipairs(TRIP_STATES) do
 		pcall(function()
-			hum:SetStateEnabled(state, allowed)
+			hum:SetStateEnabled(state, false)
 		end)
 	end
 end
@@ -855,6 +859,27 @@ local function warmSoon()
 end
 warmSoon()
 player.CharacterAdded:Connect(warmSoon)
+-- no tripping from the moment you spawn, and if something still tips you
+-- over (a state another script forces), you're straight back on your feet
+local function neverTrip(char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	if not hum then
+		return
+	end
+	allowTripping(hum, false)
+	hum.StateChanged:Connect(function(_, new)
+		if (new == Enum.HumanoidStateType.FallingDown or new == Enum.HumanoidStateType.Ragdoll)
+			and hum.Health > 0 then
+			task.defer(function()
+				hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+			end)
+		end
+	end)
+end
+if player.Character then
+	task.spawn(neverTrip, player.Character)
+end
+player.CharacterAdded:Connect(neverTrip)
 
 -- Being thrown by a hit. The same R6 balance problem the roll had applies:
 -- a sideways shove along the ground trips the humanoid into lying on the
