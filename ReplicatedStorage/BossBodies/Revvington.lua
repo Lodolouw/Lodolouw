@@ -54,6 +54,8 @@ local Workspace = game:GetService("Workspace")
 local CarPath = require(ReplicatedStorage:WaitForChild("CarPath"))
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, easeOut, easeOutBack, spring, flat
@@ -264,12 +266,7 @@ local function speedwayOf(B)
 		return nil
 	end
 	B.speedwayLook = os.clock()
-	B.speedway = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == B.floor and child:GetAttribute("Spine") then
-			B.speedway = child
-		end
-	end
+	B.speedway = Arenas.arenaFor(B.model, "Spine") -- (his own arena copy)
 	return B.speedway
 end
 

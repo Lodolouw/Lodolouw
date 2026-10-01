@@ -21,6 +21,7 @@ local CollectionService = game:GetService("CollectionService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Arenas = require(ReplicatedStorage:WaitForChild("Arenas"))
 local SpireRemotes = ReplicatedStorage:WaitForChild("SpireRemotes")
 local SpireEvent = SpireRemotes:WaitForChild("SpireEvent")
 local SpireTravel = SpireRemotes:WaitForChild("SpireTravel")
@@ -653,11 +654,13 @@ end
 local yesBtn = dialogButton("Leave", 0.28, RGB(90, 40, 60))
 local noBtn = dialogButton("Stay", 0.72, C.row)
 
--- (the boss of your floor is awake: you can't walk out on a fight)
+-- (the boss of your arena is awake: you can't walk out on a fight - your own
+-- copy of the floor's arena: ReplicatedStorage/Arenas)
 local function fightOn(floorId)
 	for _, boss in ipairs(game:GetService("CollectionService"):GetTagged("Boss")) do
 		local state = boss:GetAttribute("State")
-		if boss:GetAttribute("Floor") == floorId and (state == "Waking" or state == "Fighting" or state == "Transition") then
+		if boss:GetAttribute("Floor") == floorId and Arenas.isMine(player, boss)
+			and (state == "Waking" or state == "Fighting" or state == "Transition") then
 			return true
 		end
 	end

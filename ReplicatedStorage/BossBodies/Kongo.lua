@@ -40,6 +40,8 @@ local RGB = Color3.fromRGB
 local V3 = Vector3.new
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, flat
@@ -1531,7 +1533,7 @@ local function monkeysOf(B)
 	B.monkeys = B.monkeys or {}
 	B.monkeySeen = B.monkeySeen or {}
 	for _, mk in ipairs(game:GetService("CollectionService"):GetTagged("JungleMonkey")) do
-		if not B.monkeySeen[mk] and mk:IsA("Model") and mk:GetAttribute("Floor") == B.floor and mk.PrimaryPart then
+		if not B.monkeySeen[mk] and mk:IsA("Model") and mk:GetAttribute("Floor") == B.floor and mk.PrimaryPart and Arenas.inside(Arenas.arenaFor(B.model), mk) then
 			B.monkeySeen[mk] = true
 			local baseCF = mk.PrimaryPart.CFrame
 			local parts = {}
@@ -1591,7 +1593,7 @@ local function stepTorches(B)
 	if not B.torches then
 		B.torches = {}
 		for _, f in ipairs(game:GetService("CollectionService"):GetTagged("JungleTorch")) do
-			if f:IsA("BasePart") and f:GetAttribute("Floor") == B.floor then
+			if f:IsA("BasePart") and f:GetAttribute("Floor") == B.floor and Arenas.inside(Arenas.arenaFor(B.model), f) then
 				table.insert(B.torches, { part = f, size = f.Size, cf = f.CFrame, color = f.Color })
 			end
 		end

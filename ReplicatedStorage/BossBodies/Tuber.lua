@@ -48,6 +48,8 @@ local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, easeOut, easeOutBack, spring, flat
@@ -821,7 +823,7 @@ local function cactiOf(B)
 	B.cactiLook = os.clock()
 	local added = false
 	for _, m in ipairs(CollectionService:GetTagged("DuneCactus")) do
-		if not B.cactusSeen[m] and m:IsA("Model") and m:GetAttribute("Floor") == B.floor then
+		if not B.cactusSeen[m] and m:IsA("Model") and m:GetAttribute("Floor") == B.floor and Arenas.inside(Arenas.arenaFor(B.model), m) then
 			local hub = m.PrimaryPart or m:FindFirstChild("CactusBase")
 			if hub then
 				B.cactusSeen[m] = true
@@ -954,7 +956,7 @@ local function buildAudience(B)
 	local list = {}
 	local spots = {}
 	for _, a in ipairs(CollectionService:GetTagged("DuneLookout")) do
-		if a:IsA("BasePart") and a:GetAttribute("Floor") == B.floor and ANIMALS[a:GetAttribute("Kind")] then
+		if a:IsA("BasePart") and a:GetAttribute("Floor") == B.floor and ANIMALS[a:GetAttribute("Kind")] and Arenas.inside(Arenas.arenaFor(B.model), a) then
 			table.insert(spots, { cf = a.CFrame, kind = a:GetAttribute("Kind"), index = num(a:GetAttribute("Index"), #spots + 1) })
 		end
 	end
@@ -1254,7 +1256,7 @@ end
 local function watchShot(B, c)
 	local best, bestD = nil, math.huge
 	for _, a in ipairs(CollectionService:GetTagged("DuneLookout")) do
-		if a:IsA("BasePart") and a:GetAttribute("Floor") == B.floor and a:GetAttribute("Kind") == "Camel" then
+		if a:IsA("BasePart") and a:GetAttribute("Floor") == B.floor and a:GetAttribute("Kind") == "Camel" and Arenas.inside(Arenas.arenaFor(B.model), a) then
 			local d = flat(a.Position - c).Magnitude
 			if d < bestD then
 				best, bestD = a.Position, d
@@ -1759,7 +1761,7 @@ end
 -- roll slips free
 local function dragMe(B, center, radius, pull, dt)
 	local hrp = myRoot()
-	if not hrp or Players.LocalPlayer:GetAttribute("SpireFloor") ~= B.floor then
+	if not hrp or Players.LocalPlayer:GetAttribute("SpireFloor") ~= B.floor or not Arenas.isMine(Players.LocalPlayer, B.model) then
 		return
 	end
 	local off = flat(center - hrp.Position)
@@ -1843,7 +1845,7 @@ local PROP_MAKERS = { Wall = makeWall, Turret = makeTurret, Buddy = makeBuddy, S
 local function stepProps(B, now, dt)
 	B.props = B.props or {}
 	B.propOf = B.propOf or {}
-	local folder = Workspace:FindFirstChild("TuberProps")
+	local folder = Arenas.folderFor(B.model, "TuberProps") -- (his own arena copy's)
 	if folder then
 		local fresh = {}
 		for _, inst in ipairs(folder:GetChildren()) do

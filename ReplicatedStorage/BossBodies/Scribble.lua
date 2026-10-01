@@ -55,6 +55,8 @@ local RGB = Color3.fromRGB
 local V3 = Vector3.new
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, easeOut, spring, flat
@@ -1433,7 +1435,7 @@ end
 -- THE END: he crumples into a paper ball... which is thrown into the
 -- recycle bin
 local function binSpot(B)
-	local arena = Workspace:FindFirstChild("CanvasArena")
+	local arena = Arenas.arenaFor(B.model, "Bin") -- (its own arena copy)
 	local bin = arena and arena:GetAttribute("Bin")
 	return typeof(bin) == "Vector3" and bin or nil
 end
@@ -1910,7 +1912,7 @@ local PROP_STEPS = { Clone = stepClone, UndoKey = stepKey, NoButton = stepBox }
 
 local function stepProps(B, now)
 	B.props = B.props or {}
-	local folder = Workspace:FindFirstChild("ScribbleProps")
+	local folder = Arenas.folderFor(B.model, "ScribbleProps") -- (its own arena copy's)
 	if folder then
 		for _, inst in ipairs(folder:GetChildren()) do
 			local kind = inst:GetAttribute("Kind")
@@ -1941,7 +1943,7 @@ local function stepEdge(B, now)
 	local m = B.model
 	local half = CanvasPlan.paperNow(m, now)
 	local to = m:GetAttribute("EraseTo")
-	local arena = Workspace:FindFirstChild("CanvasArena")
+	local arena = Arenas.arenaFor(B.model, "Center") -- (its own arena copy)
 	local centre = arena and arena:GetAttribute("Center") or nil
 	if typeof(centre) ~= "Vector3" then
 		return

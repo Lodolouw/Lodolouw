@@ -53,6 +53,8 @@ local RGB = Color3.fromRGB
 local V3 = Vector3.new
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, flat, easeOut
@@ -207,7 +209,7 @@ local function centerOf(B)
 	if B.center then
 		return B.center
 	end
-	local arena = workspace:FindFirstChild("ThroneArena")
+	local arena = Arenas.arenaFor(B.model, "Center") -- (his own arena copy)
 	local c = arena and arena:GetAttribute("Center")
 	if typeof(c) == "Vector3" then
 		B.center = c
@@ -3038,7 +3040,7 @@ local MAKERS = { Guard = makeGuard, Toe = makeToe, Coin = makeCoin, Platter = ma
 local STEPPERS = { Guard = stepGuard, Toe = stepToe, Coin = stepCoin, Platter = stepPlatter }
 
 local function stepProps(B, now)
-	local folder = workspace:FindFirstChild("GavelgruntProps")
+	local folder = Arenas.folderFor(B.model, "GavelgruntProps") -- (his own arena copy's)
 	B.props = B.props or {}
 	if folder then
 		for _, inst in ipairs(folder:GetChildren()) do
@@ -3096,7 +3098,7 @@ local function stepThrone(B)
 	B.throneModel = (B.throneModel and B.throneModel.Parent) and B.throneModel or nil
 	if not B.throneModel then
 		for _, t in ipairs(game:GetService("CollectionService"):GetTagged("KingThrone")) do
-			if t:GetAttribute("Floor") == B.floor then
+			if t:GetAttribute("Floor") == B.floor and Arenas.inside(Arenas.arenaFor(B.model), t) then
 				B.throneModel = t
 				B.throneParts = {}
 				for _, p in ipairs(t:GetDescendants()) do
@@ -3143,7 +3145,7 @@ local function stepTorches(B)
 	if not B.torches then
 		B.torches = {}
 		for _, f in ipairs(game:GetService("CollectionService"):GetTagged("ThroneTorch")) do
-			if f:IsA("BasePart") and f:GetAttribute("Floor") == B.floor then
+			if f:IsA("BasePart") and f:GetAttribute("Floor") == B.floor and Arenas.inside(Arenas.arenaFor(B.model), f) then
 				table.insert(B.torches, { part = f, size = f.Size, cf = f.CFrame, color = f.Color })
 			end
 		end
@@ -3569,7 +3571,7 @@ function Body.everyFrame()
 		return
 	end
 	local me = game:GetService("Players").LocalPlayer
-	local stillHere = me and me:GetAttribute("SpireFloor") == B.floor and B.model.Parent ~= nil
+	local stillHere = me and me:GetAttribute("SpireFloor") == B.floor and Arenas.isMine(me, B.model) and B.model.Parent ~= nil
 	if stillHere then
 		return
 	end

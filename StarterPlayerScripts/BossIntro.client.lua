@@ -32,6 +32,7 @@ local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Arenas = require(ReplicatedStorage:WaitForChild("Arenas"))
 local R = Config.Retro or {}
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -493,10 +494,16 @@ local function playIntro(def)
 	playing = false
 end
 
--- watch every boss: when one starts waking and it's on YOUR floor, play it
+-- Is this boss the one in YOUR arena? (Your floor, and your copy of it: every
+-- player or party has an arena of their own - ReplicatedStorage/Arenas.)
+local function yours(model)
+	return model:GetAttribute("Floor") == player:GetAttribute("SpireFloor") and Arenas.isMine(player, model)
+end
+
+-- watch every boss: when one starts waking and it's in YOUR arena, play it
 local function watchBoss(model)
 	model:GetAttributeChangedSignal("State"):Connect(function()
-		if model:GetAttribute("State") ~= "Waking" then
+		if model:GetAttribute("State") ~= "Waking" or not yours(model) then
 			return
 		end
 		local floor = player:GetAttribute("SpireFloor")
@@ -1070,7 +1077,7 @@ end
 local function watchTalk(model)
 	model:GetAttributeChangedSignal("State"):Connect(function()
 		local def = onMyFloor()
-		if not def then
+		if not def or not yours(model) then
 			return
 		end
 		local st = model:GetAttribute("State")
@@ -1086,7 +1093,7 @@ local function watchTalk(model)
 		end
 	end)
 	model:GetAttributeChangedSignal("Phase"):Connect(function()
-		local def = onMyFloor()
+		local def = yours(model) and onMyFloor()
 		if def and model:GetAttribute("Phase") == 2 then
 			local becomes = LINES[def.Short] and LINES[def.Short].becomes
 			if becomes and LINES[becomes] then

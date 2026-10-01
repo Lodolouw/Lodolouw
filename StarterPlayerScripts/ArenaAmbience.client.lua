@@ -33,6 +33,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Arenas = require(ReplicatedStorage:WaitForChild("Arenas"))
 local player = Players.LocalPlayer
 
 local current = nil -- the floor whose ambience is on (nil in the lobby)
@@ -454,20 +455,10 @@ local level = 0 -- 0..1: how far faded in the arena's look, sand and wind are
 local storm = 0 -- 0..1: how hard the storm is blowing on your screen
 local sandColor = nil
 
--- the arena model for a floor (it says which floor it is)
-local arenaCache = {}
+-- the arena you're in on that floor: your own copy of it (every player or
+-- party has one - ReplicatedStorage/Arenas), never a boss's model
 local function arenaFor(floorId)
-	local cached = arenaCache[floorId]
-	if cached and cached.Parent then
-		return cached
-	end
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == floorId then
-			arenaCache[floorId] = child
-			return child
-		end
-	end
-	return nil
+	return Arenas.find(player:GetAttribute("SpireArena"), floorId)
 end
 
 -- how hard the arena says the storm is blowing, 0 (calm) .. 1 (its height)

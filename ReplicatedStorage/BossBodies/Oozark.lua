@@ -31,6 +31,8 @@ local RGB = Color3.fromRGB
 local V3 = Vector3.new
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init): the helpers every boss shares
 local serverNow, clamp, lerp, smooth, easeOut, easeOutBack, spring, flat, tween
@@ -990,8 +992,8 @@ end
 -- The arena answering phase two: its slime pools brighten
 ----------------------------------------------------------------------
 local POOL_NAMES = { SlimePool = true, SlimePoolDeep = true, SlimePuddle = true, Moat = true, SlimeFall = true }
-local function brightenPools(on)
-	local arena = Workspace:FindFirstChild("SlimeArena")
+local function brightenPools(B, on)
+	local arena = Arenas.arenaFor(B.model) or Workspace:FindFirstChild("SlimeArena") -- (its own arena copy)
 	if not arena then
 		return
 	end
@@ -1020,12 +1022,12 @@ end
 
 -- its arena settling again when it wakes, sleeps or resets...
 function Body.calm(B, name)
-	brightenPools(false)
+	brightenPools(B, false)
 end
 
 -- ...and answering its shell breaking
 function Body.breaks(B)
-	brightenPools(true)
+	brightenPools(B, true)
 end
 
 return Body

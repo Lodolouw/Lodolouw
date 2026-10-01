@@ -43,6 +43,8 @@ local CollectionService = game:GetService("CollectionService")
 local BeatGrid = require(ReplicatedStorage:WaitForChild("BeatGrid"))
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, easeOutBack, spring, flat
@@ -209,12 +211,7 @@ local function levelOf(B)
 		return nil
 	end
 	B.levelLook = os.clock()
-	B.level = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == B.floor and child:GetAttribute("Tiles") then
-			B.level = child
-		end
-	end
+	B.level = Arenas.arenaFor(B.model, "Tiles") -- (his own arena copy)
 	if B.level then
 		local c = B.level:GetAttribute("Center")
 		B.grid = BeatGrid.grid(c, B.level:GetAttribute("Tiles") or 15, B.level:GetAttribute("TileSize") or 8)

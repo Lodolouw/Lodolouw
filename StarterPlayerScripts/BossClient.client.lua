@@ -35,6 +35,7 @@ local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Arenas = require(ReplicatedStorage:WaitForChild("Arenas"))
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -229,15 +230,26 @@ end
 -- is the height of whatever surface is actually showing at a spot.
 local pit = nil
 local nextPitLook = 0
+-- (the slime pit of the arena copy you're in - or, with no copies in play,
+-- the one slime arena)
+local function pitArena()
+	if player:GetAttribute("SpireArena") then
+		return Arenas.mine(player)
+	end
+	return Workspace:FindFirstChild("SlimeArena")
+end
 function surfaceY(pos, floorY)
-	if not pit and os.clock() >= nextPitLook then
+	if (not pit or not pit.lip.Parent) and os.clock() >= nextPitLook then
 		nextPitLook = os.clock() + 1
-		local arena = Workspace:FindFirstChild("SlimeArena")
+		pit = nil
+		local arena = pitArena()
 		local lip = arena and arena:FindFirstChild("PitLip", true)
 		if lip then
 			-- (a cylinder lies on its side: its X size is its thickness)
-			pit = { center = lip.Position, radius = lip.Size.Y / 2, top = lip.Position.Y + lip.Size.X / 2 - 0.1 }
+			pit = { lip = lip, center = lip.Position, radius = lip.Size.Y / 2, top = lip.Position.Y + lip.Size.X / 2 - 0.1 }
 		end
+	elseif pit and player:GetAttribute("SpireArena") and not pit.lip:IsDescendantOf(pitArena() or game) then
+		pit = nil -- (you're in another copy now: look again)
 	end
 	if pit and flat(pos - pit.center).Magnitude <= pit.radius then
 		return math.max(floorY, pit.top)
@@ -500,8 +512,9 @@ local function onStone(B, pos)
 	if not B.stones or (#B.stones == 0 and os.clock() > (B.stonesLook or 0)) then
 		B.stonesLook = os.clock() + 2 -- (the arena may not have loaded in yet: look again soon)
 		B.stones = {}
+		local arena = Arenas.arenaFor(B.model)
 		for _, pm in ipairs(CollectionService:GetTagged("DunePlatform")) do
-			local slab = pm:GetAttribute("Floor") == B.floor and pm:FindFirstChild("PlatformSlab")
+			local slab = pm:GetAttribute("Floor") == B.floor and Arenas.inside(arena, pm) and pm:FindFirstChild("PlatformSlab")
 			if slab then
 				table.insert(B.stones, { center = slab.Position, radius = pm:GetAttribute("Radius") or 10, model = pm })
 			end
@@ -515,19 +528,20 @@ local function onStone(B, pos)
 	return false
 end
 
--- The arena a boss fights in (the model that says which floor it is)
+-- The arena a boss fights in, with a sandstorm (its own copy: see
+-- ReplicatedStorage/Arenas)
 local function arenaOf(B)
 	if B.arena and B.arena.Parent then
 		return B.arena
 	end
-	B.arena = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == B.floor and child:GetAttribute("Storm") ~= nil then
-			B.arena = child
-			break
-		end
-	end
+	B.arena = Arenas.arenaFor(B.model, "Storm")
 	return B.arena
+end
+
+-- Is this boss the one in the arena you're in? (Your floor, and your copy of
+-- it.) Its sounds, bar, music and big moments are only for you then.
+local function isMine(B)
+	return player:GetAttribute("SpireFloor") == B.floor and Arenas.isMine(player, B.model)
 end
 
 -- The sandstorm in the dunes (ArenaAmbience draws it from the arena's Storm
@@ -587,6 +601,18 @@ local kit = {
 	SPLAT_VOLUME = SPLAT_VOLUME, SPLAT_LEAD = SPLAT_LEAD,
 	-- warnings in the world, the arena, one-off moments
 	addTelegraph = addTelegraph, shockRing = shockRing, onStone = onStone, arenaOf = arenaOf, at = at,
+	-- its own arena copy (see ReplicatedStorage/Arenas): is it yours, its
+	-- arena model, is a part of the world in that arena, its props' folder
+	isMine = isMine,
+	arenaFor = function(B, need)
+		return Arenas.arenaFor(B.model, need)
+	end,
+	inArena = function(B, inst)
+		return Arenas.inside(Arenas.arenaFor(B.model), inst)
+	end,
+	propsOf = function(B, name)
+		return Arenas.folderFor(B.model, name)
+	end,
 }
 
 -- Two more things any boss's body can use, only on your screen:
@@ -1127,10 +1153,19 @@ local function rootGround(B)
 	return root.Position - V3(0, root.Size.Y / 2, 0)
 end
 
+-- Another arena copy's boss isn't drawn at all (nor is its body made) until
+-- you go into that copy: a full server can have a fight in every copy.
+local waiting = setmetatable({}, { __mode = "k" }) -- [boss model] = true
 local function track(model)
 	if bosses[model] or not model:IsA("Model") then
 		return
 	end
+	local id = model:GetAttribute("ArenaId")
+	if id ~= nil and id ~= player:GetAttribute("SpireArena") then
+		waiting[model] = true
+		return
+	end
+	waiting[model] = nil
 	local floorId = model:GetAttribute("Floor")
 	local def = floorId and Config.Bosses and Config.Bosses[floorId]
 	if not def or not model.PrimaryPart then
@@ -1144,6 +1179,7 @@ local function track(model)
 		model = model,
 		def = def,
 		floor = floorId,
+		arenaId = id, -- which arena copy it's in (nil: no copies in play)
 		mod = mod, -- its body file (ReplicatedStorage/BossBodies)
 		body = mod.build(def),
 		telegraphs = {},
@@ -1195,6 +1231,16 @@ for _, m in ipairs(CollectionService:GetTagged("Boss")) do
 	track(m)
 end
 CollectionService:GetInstanceAddedSignal("Boss"):Connect(track)
+-- into another arena copy: its boss is drawn from now on
+player:GetAttributeChangedSignal("SpireArena"):Connect(function()
+	for m in pairs(waiting) do
+		if m.Parent then
+			track(m)
+		else
+			waiting[m] = nil
+		end
+	end
+end)
 
 
 -- a new action began on the server
@@ -1442,7 +1488,7 @@ local function stepBoss(B, now, dt)
 	if mod.afterPose then
 		mod.afterPose(B) -- (its body file's extras once it's posed)
 	end
-	if player:GetAttribute("SpireFloor") == B.floor then
+	if isMine(B) then
 		publishAim(B, B.vpos + jolt, dt) -- (for your lock-on and its words)
 	end
 	if B.def.Weather == "Sandstorm" then
@@ -1459,7 +1505,7 @@ local function stepBoss(B, now, dt)
 	end
 
 	-- the bar, while you're in its arena and it's awake
-	local here = player:GetAttribute("SpireFloor") == B.floor
+	local here = isMine(B)
 	local awake = state == "Waking" or state == "Fighting" or state == "Transition"
 	if mod.senses then
 		mod.senses(B, dt, here, awake, state) -- (e.g. Tuber: the cacti flying, the audience, his walls)
@@ -1514,7 +1560,7 @@ local function stepMusic(dt)
 	end
 	for model, B in pairs(bosses) do
 		local state = model:GetAttribute("State")
-		if not dead and player:GetAttribute("SpireFloor") == model:GetAttribute("Floor")
+		if not dead and isMine(B)
 			and (state == "Waking" or state == "Fighting" or state == "Transition") then
 			want, def, wantB = model, B.def, B
 		end
@@ -1775,7 +1821,7 @@ local function stepRain(dt)
 	local fight = nil
 	for model, B in pairs(bosses) do
 		local state = model:GetAttribute("State")
-		if alive and player:GetAttribute("SpireFloor") == model:GetAttribute("Floor")
+		if alive and isMine(B)
 			and (state == "Waking" or state == "Fighting" or state == "Transition")
 			and (B.def.Weather or "AcidRain") == "AcidRain" then
 			fight = B
@@ -1837,12 +1883,30 @@ end
 
 RunService.RenderStepped:Connect(function(dt)
 	local now = serverNow()
+	local myArena = player:GetAttribute("SpireArena")
 	for _, B in pairs(bosses) do
+		-- Only the boss of the arena copy you're in moves: the boss of a copy
+		-- you've left is put away (its fight is someone else's now).
+		local live = B.arenaId == nil or B.arenaId == myArena
+		if live ~= (B.away ~= true) then
+			B.away = not live
+			if B.away then
+				B.bodyParent = B.bodyParent or B.body.folder.Parent
+				B.body.folder.Parent = nil
+				if barFor == B then
+					showBar(nil)
+				end
+			else
+				B.body.folder.Parent = B.bodyParent
+			end
+		end
 		-- each boss on its own: if drawing one ever errors, the other still draws
-		local ok, err = pcall(stepBoss, B, now, dt)
-		if not ok and not B.warned then
-			B.warned = true
-			warn("[BossClient] drawing " .. B.def.Short .. " failed: " .. tostring(err))
+		if live then
+			local ok, err = pcall(stepBoss, B, now, dt)
+			if not ok and not B.warned then
+				B.warned = true
+				warn("[BossClient] drawing " .. B.def.Short .. " failed: " .. tostring(err))
+			end
 		end
 	end
 	stepBar(now, dt)

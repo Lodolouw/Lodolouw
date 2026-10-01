@@ -1252,12 +1252,17 @@ local function arenaDetail(arena, slime)
 	end
 end
 
--- [arena name] = true once its detail is in. An arena is only kept loaded
--- while you're on its floor (SpireService), so it can unload in the lobby and
--- arrive again as a new model next time. Its detail lives in RetroWorld's own
--- folder and is still standing, so only the arena's look is redone; its grass
--- and dust aren't added a second time on top.
+-- [arena] = true once its detail is in - keyed by its copy's id (every
+-- player or party has a copy of the floor's arena of their own, all with the
+-- same name: ReplicatedStorage/Arenas), or its name with no copies in play.
+-- An arena is only kept loaded while you're on its floor (SpireService), so
+-- it can unload in the lobby and arrive again as a new model next time. Its
+-- detail lives in RetroWorld's own folder and is still standing, so only the
+-- arena's look is redone; its grass and dust aren't added a second time.
 local detailed = {}
+local function detailKey(arena)
+	return arena:GetAttribute("ArenaId") or arena.Name
+end
 local function dressArena(arena)
 	if W.Arenas == false then
 		return
@@ -1267,10 +1272,10 @@ local function dressArena(arena)
 	-- hasn't streamed in yet is an empty model, and an empty model says it
 	-- sits at 0,0,0 - the middle of the lobby's plaza - so its dust would all
 	-- pile up there in one tall column. Wait until it has size, then dress it.
-	if D.On ~= false and not detailed[arena.Name] then
+	if D.On ~= false and not detailed[detailKey(arena)] then
 		task.spawn(function()
 			for _ = 1, 600 do -- (keeps looking for up to 10 minutes)
-				if detailed[arena.Name] or not arena.Parent then
+				if detailed[detailKey(arena)] or not arena.Parent then
 					return -- (dressed meanwhile, or gone again)
 				end
 				local ok, _, size = pcall(function()
@@ -1286,7 +1291,7 @@ local function dressArena(arena)
 					end
 				end
 				if ok and size and size.Magnitude > 60 and count > 50 then
-					detailed[arena.Name] = true
+					detailed[detailKey(arena)] = true
 					pcall(arenaDetail, arena, arena.Name == "SlimeArena")
 					return
 				end

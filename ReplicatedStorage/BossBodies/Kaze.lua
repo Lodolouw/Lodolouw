@@ -42,6 +42,8 @@ local RGB = Color3.fromRGB
 local V3 = Vector3.new
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, spring, flat
@@ -263,7 +265,7 @@ local function pillarsOf(B)
 	B.pillarsLook = os.clock()
 	list = {}
 	for _, pm in ipairs(CollectionService:GetTagged("DojoPillar")) do
-		if pm:GetAttribute("Floor") == B.floor then
+		if pm:GetAttribute("Floor") == B.floor and Arenas.inside(Arenas.arenaFor(B.model), pm) then -- (his own arena copy's)
 			local core = pm:FindFirstChild("PillarCore") or pm.PrimaryPart
 			if core then
 				table.insert(list, { model = pm, core = core, center = V3(core.Position.X, B.vpos.Y, core.Position.Z), radius = pm:GetAttribute("Radius") or 3.5 })

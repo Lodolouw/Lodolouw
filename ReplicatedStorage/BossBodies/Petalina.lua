@@ -52,6 +52,8 @@ local Players = game:GetService("Players")
 local GardenPlan = require(ReplicatedStorage:WaitForChild("GardenPlan"))
 
 local Body = {}
+-- (which arena copy is this boss's: ReplicatedStorage/Arenas)
+local Arenas = require(game:GetService("ReplicatedStorage"):WaitForChild("Arenas"))
 
 -- The drawing kit, from BossClient (see Body.init)
 local serverNow, clamp, lerp, smooth, flat
@@ -1518,7 +1520,7 @@ end
 local function stepTraps(B, now)
 	B.traps = B.traps or {}
 	B.trapOf = B.trapOf or {}
-	local folder = Workspace:FindFirstChild("PetalinaProps")
+	local folder = Arenas.folderFor(B.model, "PetalinaProps") -- (her own arena copy's)
 	if folder then
 		for _, inst in ipairs(folder:GetChildren()) do
 			if B.trapOf[inst] == nil and inst:GetAttribute("Floor") == B.floor and inst:GetAttribute("Kind") == "Flytrap" then
@@ -1557,7 +1559,7 @@ local function thornsOf(B)
 	if not B.thorns then
 		local list = {}
 		for _, c in ipairs(CollectionService:GetTagged("GardenThorn")) do
-			if c:IsA("Model") and c:GetAttribute("Floor") == B.floor and c.PrimaryPart then
+			if c:IsA("Model") and c:GetAttribute("Floor") == B.floor and c.PrimaryPart and Arenas.inside(Arenas.arenaFor(B.model), c) then
 				table.insert(list, { model = c, base = c:GetPivot(), up = num(c:GetAttribute("Up"), 4.5), delay = num(c:GetAttribute("Delay"), 0), k = 0 })
 			end
 		end
@@ -1598,7 +1600,7 @@ local function fliesOf(B)
 	if not B.flies then
 		local list = {}
 		for _, f in ipairs(CollectionService:GetTagged("GardenButterfly")) do
-			if f:IsA("Model") and f:GetAttribute("Floor") == B.floor and f.PrimaryPart then
+			if f:IsA("Model") and f:GetAttribute("Floor") == B.floor and f.PrimaryPart and Arenas.inside(Arenas.arenaFor(B.model), f) then
 				local rec = { model = f, body = f.PrimaryPart, wings = {}, base = f.PrimaryPart.Position, seed = num(f:GetAttribute("Index"), 1) }
 				for _, p in ipairs(f:GetChildren()) do
 					if p:IsA("BasePart") and p ~= f.PrimaryPart then
