@@ -1033,7 +1033,7 @@ Config.Retro = {
 		Flat = true, -- realistic textures (cobblestone, slate, metal...) become flat colour
 		Motes = 36, -- glowing pixel cubes drifting around you (0 = none)
 		SaveStar = true, -- the spinning pixel star over the spawn
-		Flavour = true, -- a line of text typed out when you walk up to a shop, the shrine...
+		Flavour = false, -- (off: a line of text typed out when you walk up to a place - the user found it useless; true brings it back)
 		Repeat = 150, -- seconds before the same place talks again
 		Grade = true, -- a slightly warmer, punchier colour grade in the lobby
 		-- Lines = { SellShop = "* your own line" }, -- (to change what a place says)
