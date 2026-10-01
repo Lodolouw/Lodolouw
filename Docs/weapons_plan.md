@@ -110,7 +110,7 @@ packs x 6) and 16 event weapons (8 event bosses x 2). 78 in all.
 | Common | Chest Pound Fists | Fists | a roar: +20% damage for 4 s |
 | Rare | Jungle Fang | Katana | lifesteal: 15% of your damage heals you for 5 s |
 | Epic | Vine Scythe | Scythe | a rope-swing leap forward into a sweeping arc |
-| Legendary | Barrel Daggers | Daggers | roll a barrel forward that bowls through enemies |
+| Legendary | Barrel Daggers | Daggers | curl up inside a barrel and roll right through them - it bursts apart at the end |
 | Mythic | Barrel Hammer | Hammer | rolls barrels (mastery: bigger, two barrels, exploding, a giant golden barrel) |
 | Secret | Kong's Crown | Sword | a giant ape fist smashes down from the sky |
 

@@ -11,8 +11,8 @@ and the game colours each mesh itself.
   gold when the weapon is awakened, `glow` is Neon and colours the smear).
 - `kit.py` - shared parts: the palette, grips, blades, drips, bubbles, eyes,
   edges.
-- `packs/<pack>.py` - each pack's weapons, one function each. Three packs are
-  made so far:
+- `packs/<pack>.py` - each pack's weapons, one function each. All five
+  launch packs are made:
   - **Slime** (Oozark): Goo Gloves, Jellyblade, Gelatin Hammer, Ooze Daggers,
     Acid Scythe, Gelatinous Edge.
   - **Knight** (Burrowmore): Shovel Hammer (the hammer end is his helm, T
@@ -25,9 +25,15 @@ and the game colours each mesh itself.
     Revvington for a gauntlet), Pit Stop Sabre (a spanner for its knuckle
     guard, a lug nut pommel), Wheelie Wrecker, Victory Lap (a gold trophy with
     a chequered flag planted in it).
+  - **Jungle** (Kongo): Chest Pound Fists (Kongo's grinning face, a gold chain
+    and a banana medallion), Jungle Fang (teeth down its back, a glowing blood
+    channel), Vine Scythe, Barrel Daggers, Barrel Hammer, Kong's Crown.
+  - **Canvas** (Scribble): Eraser Hammer, Pencil Sword (a hex pencil with HB on
+    it and an eraser pommel), Ink Fists (dripping ink, Scribble's face), Doodle
+    Katana, Copy-Paste Scythe (a scissor blade with its pasted copy in a
+    marching-ants selection box), Delete Key.
 
-  The other two launch packs (Jungle, Canvas) are drafts in `packs/later`
-  (see its README to bring one in).
+  (A new pack: a file here and its name in `PACKS` in `make_models.py`.)
 - `make_models.py` - builds every pack's weapons, exports each one as a model,
   renders a sheet of each pack and writes the list the game reads.
 - `make_icons.py` - each weapon's ICON, made from its picture

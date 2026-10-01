@@ -39,8 +39,7 @@ MODELS = os.path.join(OUT, 'models')
 TILES = os.path.join(OUT, 'tiles')
 DOCS = os.path.join(ROOT, 'Docs', 'weapons')
 MANIFEST = os.path.join(ROOT, 'ReplicatedStorage', 'WeaponModelInfo.lua')
-# the packs being made (the other launch packs are drafts in packs/later: we're
-# doing one pack at a time - see packs/later/README.md)
+# the packs (a new one: its file in packs/ and its name here)
 PACKS = ['slime', 'knight', 'speedway', 'jungle', 'canvas']
 
 RARITY = {
