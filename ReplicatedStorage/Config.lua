@@ -3030,31 +3030,7 @@ Config.Weapons = {
 				Guard = Color3.fromRGB(254, 174, 52),
 				Grip = Color3.fromRGB(115, 62, 57),
 			},
-			-- F (gamepad X, the phone's ability button): spin round, cutting
-			-- everything close to you. Close range only, like every ability.
-			Ability = {
-				Name = "Whirlwind",
-				Cooldown = 10, -- seconds
-				Cost = 20, -- stamina
-				SpinTime = 0.32, -- seconds per spin
-				Sound = "Whirlwind", -- a Sound in SoundService (missing: the swing sound)
-				-- what it does at each mastery (the highest one you've reached counts)
-				Tiers = {
-					{ Mastery = 1, Spins = 1, Radius = 9, Damage = 1.6 },
-					{ Mastery = 25, Spins = 1, Radius = 11, Damage = 1.9 },
-					{ Mastery = 50, Spins = 2, Radius = 11, Damage = 1.6 },
-					{ Mastery = 75, Spins = 2, Radius = 12, Damage = 1.6, Ring = 16, RingDamage = 1.2 },
-					{ Mastery = 100, Spins = 3, Radius = 13, Damage = 1.6, Ring = 16, RingDamage = 1.2, Golden = true },
-				},
-				-- the words for each tier (the weapon card shows what's next)
-				Say = {
-					"Spin once, cutting all round you",
-					"A wider, harder spin",
-					"Spin twice",
-					"The last spin sends out a shockwave",
-					"AWAKENED: three golden spins",
-				},
-			},
+			-- no ability: it's the starter weapon (F does nothing with it)
 		},
 	},
 	-- what every player owns from the start (saved with their mastery; the
@@ -3070,10 +3046,34 @@ Config.Weapons = {
 }
 
 -- The other 3D swords (Tools/Weapons), to try them in hand: for now they're
--- Iron Swords in everything but their looks (the same swings and Whirlwind).
+-- Iron Swords in everything but their looks (the same swings), with the Whirlwind.
 -- Their models must be in ReplicatedStorage (EmberCleaver, Tidefang, Voidstar).
 do
 	local L = Config.Weapons.List
+	-- (the Whirlwind: spin round, cutting everything close to you)
+	local WHIRLWIND = {
+		Name = "Whirlwind",
+		Cooldown = 10, -- seconds
+		Cost = 20, -- stamina
+		SpinTime = 0.32, -- seconds per spin
+		Sound = "Whirlwind", -- a Sound in SoundService (missing: the swing sound)
+		-- what it does at each mastery (the highest one you've reached counts)
+		Tiers = {
+			{ Mastery = 1, Spins = 1, Radius = 9, Damage = 1.6 },
+			{ Mastery = 25, Spins = 1, Radius = 11, Damage = 1.9 },
+			{ Mastery = 50, Spins = 2, Radius = 11, Damage = 1.6 },
+			{ Mastery = 75, Spins = 2, Radius = 12, Damage = 1.6, Ring = 16, RingDamage = 1.2 },
+			{ Mastery = 100, Spins = 3, Radius = 13, Damage = 1.6, Ring = 16, RingDamage = 1.2, Golden = true },
+		},
+		-- the words for each tier (the weapon card shows what's next)
+		Say = {
+			"Spin once, cutting all round you",
+			"A wider, harder spin",
+			"Spin twice",
+			"The last spin sends out a shockwave",
+			"AWAKENED: three golden spins",
+		},
+	}
 	local function sword(name, rarity, model, blade, guard, grip)
 		return {
 			Name = name,
@@ -3081,7 +3081,7 @@ do
 			Rarity = rarity,
 			Model = model,
 			Colors = { Blade = blade, Edge = Color3.fromRGB(255, 255, 255), Guard = guard, Grip = grip }, -- (the blocky one, if its model's missing)
-			Ability = L.IronSword.Ability,
+			Ability = WHIRLWIND,
 		}
 	end
 	L.EmberCleaver = sword("Ember Cleaver", "Rare", "EmberCleaver", Color3.fromRGB(255, 120, 30), Color3.fromRGB(60, 40, 40), Color3.fromRGB(120, 28, 30))

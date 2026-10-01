@@ -205,7 +205,7 @@ local function all()
 	local ST = WeaponFX.STANCE
 	step(0.2)
 	check(not weapon(char), "no weapon: nothing in the hand")
-	me:SetAttribute("Weapon", "IronSword")
+	me:SetAttribute("Weapon", "EmberCleaver")
 	me:SetAttribute("Mastery", 1)
 	step(0.2)
 	check(not weapon(char), "a weapon, but not in a fight: it's put away")
@@ -518,7 +518,7 @@ local function all()
 	------------------------------------------------------------------
 	for tierIndex, want in ipairs({ 1, 1, 2, 2, 3 }) do
 		local total, last = 0, turn()
-		local ab = Config.Weapons.List.IronSword.Ability
+		local ab = Config.Weapons.List.EmberCleaver.Ability
 		local tier = ab.Tiers[tierIndex]
 		local legsTurned = 0
 		WeaponFX.spin(me, tierIndex)
@@ -567,7 +567,7 @@ local function all()
 	local oc = r6("Friend")
 	other.Character = oc
 	table.insert(M.players, other)
-	other:SetAttribute("Weapon", "IronSword")
+	other:SetAttribute("Weapon", "EmberCleaver")
 	other:SetAttribute("Colosseum", true)
 	other:SetAttribute("SwingN", "7:1") -- (an old swing, from before we could see them)
 	step(0.2)
@@ -639,7 +639,7 @@ local function all()
 	bm.Parent = M.workspace
 	blocky.Character = bm
 	table.insert(M.players, blocky)
-	blocky:SetAttribute("Weapon", "IronSword")
+	blocky:SetAttribute("Weapon", "EmberCleaver")
 	blocky:SetAttribute("Colosseum", true)
 	blocky:SetAttribute("SwingN", "1:1")
 	step(0.5)
@@ -690,7 +690,7 @@ end
 
 -- every joint over each swing and the spin, for the pictures
 local function poses()
-	me:SetAttribute("Weapon", "IronSword")
+	me:SetAttribute("Weapon", "EmberCleaver")
 	me:SetAttribute("Mastery", 1)
 	me:SetAttribute("SpireFloor", 2)
 	step(1.5)
@@ -730,7 +730,7 @@ local function poses()
 		end)
 	end
 	step(WeaponFX.SETTLE + 0.4)
-	local ab = Config.Weapons.List.IronSword.Ability
+	local ab = Config.Weapons.List.EmberCleaver.Ability
 	WeaponFX.spin(me, 1)
 	local dur = ab.SpinTime / 0.76
 	local start, i = t, 1

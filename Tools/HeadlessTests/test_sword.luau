@@ -287,20 +287,29 @@ actions.DevMastery(me, data) -- back to 1
 ----------------------------------------------------------------------
 -- The Whirlwind
 ----------------------------------------------------------------------
+-- the Iron Sword is the starter: no ability, F does nothing
+healAll()
+step(3)
+fire("Ability")
+step(1.5)
+check(SWORD.Ability == nil and lost(targets.Behind) == 0 and lost(targets.FrontLeft) == 0, "the Iron Sword (the starter) has no ability: F does nothing")
+-- the other swords spin the Whirlwind
+local SPIN = W.List.EmberCleaver
+CombatService.Equip(me, "EmberCleaver")
 local function spin()
 	healAll()
 	step(3)
 	fire("Ability")
 	step(1.5)
 end
-local tier1 = SWORD.Ability.Tiers[1]
+local tier1 = SPIN.Ability.Tiers[1]
 events = {}
 spin()
 check(lost(targets.FrontLeft) > 0 and lost(targets.FrontRight) > 0 and lost(targets.Behind) > 0,
 	"the Whirlwind cuts all round you, even behind")
 check(lost(targets.Far) == 0, "...but not far away (it's close range)")
-check(math.abs(lost(targets.Behind) - math.floor(punch * tier1.Damage)) <= 1,
-	("tier 1: one spin at 1.6x (%d vs %d)"):format(lost(targets.Behind), math.floor(punch * tier1.Damage)))
+check(math.abs(lost(targets.Behind) - math.floor(punch * Config.weaponMultiplier(SPIN, 1) * tier1.Damage)) <= 1,
+	("tier 1: one spin at 1.6x (%d vs %d)"):format(lost(targets.Behind), math.floor(punch * Config.weaponMultiplier(SPIN, 1) * tier1.Damage)))
 check(eventsOf("Ability") == 1, "the screen is told the cooldown")
 local an = me:GetAttribute("AbilityN")
 check(an ~= nil and string.match(an, ":1$"), "everyone's screen is told to spin it (tier 1)")
@@ -311,20 +320,20 @@ fire("Ability")
 step(1)
 check(lost(targets.Behind) == 0, "the Whirlwind can't be used again straight away")
 check(eventsOf("Denied") >= 1, "...and the screen is told no")
-step(SWORD.Ability.Cooldown)
+step(SPIN.Ability.Cooldown)
 
 -- mastery 50: two spins (each enemy cut twice)
 actions.DevMastery(me, data) -- 25
 actions.DevMastery(me, data) -- 50
-step(SWORD.Ability.Cooldown)
+step(SPIN.Ability.Cooldown)
 spin()
-local tier3 = SWORD.Ability.Tiers[3]
-local mult50 = Config.weaponMultiplier(SWORD, 50)
+local tier3 = SPIN.Ability.Tiers[3]
+local mult50 = Config.weaponMultiplier(SPIN, 50)
 check(math.abs(lost(targets.Behind) - 2 * math.floor(punch * mult50 * tier3.Damage)) <= 2,
 	("mastery 50: two spins (%d vs %d)"):format(lost(targets.Behind), 2 * math.floor(punch * mult50 * tier3.Damage)))
 
 -- no swinging mid-spin
-step(SWORD.Ability.Cooldown)
+step(SPIN.Ability.Cooldown)
 healAll()
 step(3)
 fire("Ability")
@@ -338,16 +347,18 @@ local _ = mid
 
 -- mastery 75: the shockwave reaches the far one
 actions.DevMastery(me, data) -- 75
-step(SWORD.Ability.Cooldown)
+step(SPIN.Ability.Cooldown)
 spin()
 check(lost(targets.Far) > 0, "mastery 75: the last spin's shockwave reaches further out")
 -- mastery 100: three spins
 actions.DevMastery(me, data) -- 100
-step(SWORD.Ability.Cooldown)
+step(SPIN.Ability.Cooldown)
 spin()
-local tier5 = SWORD.Ability.Tiers[5]
-check(math.abs(lost(targets.Behind) - 3 * math.floor(punch * 1.5 * tier5.Damage)) <= 3,
-	("mastery 100: three spins (%d vs %d)"):format(lost(targets.Behind), 3 * math.floor(punch * 1.5 * tier5.Damage)))
+local tier5 = SPIN.Ability.Tiers[5]
+check(math.abs(lost(targets.Behind) - 3 * math.floor(punch * Config.weaponMultiplier(SPIN, 100) * tier5.Damage)) <= 3,
+	("mastery 100: three spins (%d vs %d)"):format(lost(targets.Behind), 3 * math.floor(punch * Config.weaponMultiplier(SPIN, 100) * tier5.Damage)))
+actions.DevMastery(me, data) -- (back to 1)
+CombatService.Equip(me, "IronSword")
 
 ----------------------------------------------------------------------
 -- Leaving mid-swing, and back to fists

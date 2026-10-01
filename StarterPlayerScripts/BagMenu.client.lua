@@ -125,7 +125,7 @@ local function weaponsPage(page, api)
 		local now, nxt, at = abilityWords(def, level)
 		local key = new("TextLabel", { Name = "Key", BackgroundColor3 = C.White, BorderSizePixel = 0, Font = K.TITLE_FONT, Text = "F", TextColor3 = C.Ink, TextSize = 20, Position = UDim2.fromOffset(216, 146), Size = UDim2.fromOffset(40, 40), ZIndex = 9 }, detail)
 		K.outline(key, C.Ink, 3)
-		K.big(detail, { Name = "Ability", Text = (ab.Name or "Ability") .. (ab.Cooldown and ("  ·  " .. ab.Cooldown .. "s") or ""), TextScaled = false, TextSize = 28, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(268, 146), Size = UDim2.new(1, -490, 0, 40), ZIndex = 9 })
+		K.big(detail, { Name = "Ability", Text = (ab.Name or (def.Ability and "Ability" or "No ability")) .. (ab.Cooldown and ("  ·  " .. ab.Cooldown .. "s") or ""), TextScaled = false, TextSize = 28, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(268, 146), Size = UDim2.new(1, -490, 0, 40), ZIndex = 9 })
 		K.big(detail, { Name = "Now", Text = now, TextScaled = false, TextSize = 20, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(216, 194), Size = UDim2.new(1, -440, 0, 44), ZIndex = 9, Edge = 2 })
 		if nxt then
 			K.big(detail, { Name = "Next", Text = "At mastery " .. at .. ": " .. nxt, TextScaled = false, TextSize = 18, TextWrapped = true, TextColor3 = C.Yellow, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(216, 240), Size = UDim2.new(1, -440, 0, 40), ZIndex = 9, Edge = 2 })

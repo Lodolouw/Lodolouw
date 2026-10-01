@@ -1867,7 +1867,7 @@ function CombatService.Start(playerService)
 				return false, "There's no test weapon in Config.Weapons."
 			end
 			CombatService.Equip(player, W.Test)
-			return true, def.Name .. " in hand! It swings in fights - F is " .. (def.Ability and def.Ability.Name or "its ability") .. "."
+			return true, def.Name .. " in hand! It swings in fights" .. (def.Ability and (" - F is " .. def.Ability.Name) or "") .. "."
 		end)
 		-- "DEV: Next Sword": fists -> each sword in Config.Weapons.TestList -> fists
 		PlayerService.AddAction("DevNextWeapon", function(player)

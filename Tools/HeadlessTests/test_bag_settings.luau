@@ -230,9 +230,8 @@ local detail = find("Detail")
 check(detail and find("WeaponName", detail).Text == "Iron Sword", "the weapon in your hand, big")
 check(find("InHand", detail) ~= nil and find("Fists", detail) ~= nil, "IN HAND, and FISTS to put it away")
 check(string.find(find("Mastery", detail):FindFirstChild("Text").Text, "MASTERY 3") ~= nil, "its mastery (" .. find("Mastery", detail):FindFirstChild("Text").Text .. ")")
-check(find("Key", detail).Text == "F" and string.find(find("Ability", detail).Text, W.List.IronSword.Ability.Name) ~= nil, "its one ability, on F")
-check(find("Now", detail).Text == W.List.IronSword.Ability.Say[1], "what it does now")
-check(find("Next", detail) and string.find(find("Next", detail).Text, "At mastery 25") ~= nil, "and what the next mastery tier adds")
+check(find("Ability", detail).Text == "No ability" and find("Now", detail).Text == "No ability", "the starter sword: no ability")
+check(find("Next", detail) == nil, "...so nothing more at the next mastery")
 -- the grid: rarest first, the E on the one in your hand
 local order = {}
 for _, c in ipairs(find("Grid"):GetChildren()) do

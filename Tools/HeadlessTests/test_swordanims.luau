@@ -426,7 +426,10 @@ local function all()
 	check(sw3.fade == 0.1 or not sw3.IsPlaying, "from the stance it eases in (not chained)")
 	step(0.6)
 
-	-- the Whirlwind stops a swing and isn't cut short by it
+	-- the Whirlwind stops a swing and isn't cut short by it (the Iron Sword
+	-- has no ability - it's the starter - so it borrows Ember Cleaver's here)
+	local ownDef = h.def
+	h.def = Config.Weapons.List.EmberCleaver
 	WeaponFX.swing(me, 1)
 	step(0.15)
 	WeaponFX.spin(me, 1)
@@ -437,6 +440,7 @@ local function all()
 	check(h.weights.Root > 0.5, ("...and it shows (%.2f)"):format(h.weights.Root))
 	step(1.5)
 	check(h.anim == nil and idle.IsPlaying, "after it: the idle again")
+	h.def = ownDef
 
 	------------------------------------------------------------------
 	-- SOMEONE ELSE
