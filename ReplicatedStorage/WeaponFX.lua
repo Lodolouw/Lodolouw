@@ -1039,7 +1039,8 @@ local SWING_THEMES = {
 			stripes = true, wave = "checker", eyes = "revv",
 			swingSound = { "Victory Swing", "Sword Swing" }, splatSound = { "Checker Pop" },
 			hitSound = { "Checker Pop", "Spark Hit", "Sword Hit" },
-			waveSound = { "Finish Line", "Checkered Flag" }, eyeSound = { "Horn Honk", "Big Honk" },
+			-- (no "Finish Line" fanfare or honks on every cut: they got annoying
+			-- swing after swing - the flag and the eyes still show, quietly)
 		},
 	},
 	-- Kongo's: jungle leaves fluttering off the cut, a banana now and then
