@@ -429,4 +429,293 @@ return {
 			tyre_l = { Color = { 38, 43, 68 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
 		},
 	},
+	ChestPoundFists = {
+		Name = "Chest Pound Fists", Type = "Fists", Pack = "Jungle", Rarity = "Common",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 1.5, 1.7, 1.8 }, -- (studs: across X, across Y, its length)
+		Glow = { 254, 231, 97 },
+		Smear = { { 0, 0, 0.4 }, { 0, 0, -0.9 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, 0.4 }, { 0, 0, -0.9 } },
+		Head = { 0, 0, -0.6 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			bglow = { Color = { 254, 231, 97 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			fur = { Color = { 70, 68, 82 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			fur_d = { Color = { 38, 36, 50 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			fur_l = { Color = { 104, 102, 120 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			gold = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_d = { Color = { 196, 122, 38 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			ivory_l = { Color = { 252, 246, 230 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf = { Color = { 99, 199, 77 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_d = { Color = { 62, 137, 72 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_dd = { Color = { 38, 92, 66 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_l = { Color = { 170, 226, 96 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			skin = { Color = { 165, 160, 172 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			skin_d = { Color = { 116, 111, 128 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			skin_l = { Color = { 192, 188, 196 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	JungleFang = {
+		Name = "Jungle Fang", Type = "Katana", Pack = "Jungle", Rarity = "Rare",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 1.1, 1.2, 6.6 }, -- (studs: across X, across Y, its length)
+		Glow = { 255, 60, 70 },
+		Smear = { { 0, 0, -1.3 }, { 0, 0, -5.6 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, -1.1 }, { 0, 0, -5.7 } },
+		Head = { 0, 0, -5.65 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			bamboo = { Color = { 184, 204, 92 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bamboo_d = { Color = { 114, 126, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bamboo_l = { Color = { 208, 221, 149 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			carve = { Color = { 115, 62, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			eyeglow = { Color = { 255, 0, 68 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			fur_d = { Color = { 38, 36, 50 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			gold = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_d = { Color = { 196, 122, 38 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_l = { Color = { 254, 231, 97 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			ivory = { Color = { 234, 212, 170 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			ivory_d = { Color = { 206, 182, 140 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			ivory_l = { Color = { 252, 246, 230 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf = { Color = { 99, 199, 77 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_d = { Color = { 62, 137, 72 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_l = { Color = { 170, 226, 96 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			root = { Color = { 228, 166, 114 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			ruby = { Color = { 255, 0, 68 }, Material = "SmoothPlastic", Transparency = 0, Role = "gem" },
+			wood_d = { Color = { 115, 62, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	VineScythe = {
+		Name = "Vine Scythe", Type = "Scythe", Pack = "Jungle", Rarity = "Epic",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 4.6, 1.2, 7.4 }, -- (studs: across X, across Y, its length)
+		Glow = { 254, 231, 97 },
+		Smear = { { 0.4, 0, -5.3 }, { 3.9, 0, -3.9 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0.2, 0, -5.5 }, { 4.1, 0, -3.8 } },
+		Head = { 0, 0, -6.05 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			banana = { Color = { 254, 231, 97 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			bark = { Color = { 115, 62, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bark_d = { Color = { 62, 39, 49 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bark_l = { Color = { 184, 111, 80 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bglow = { Color = { 254, 231, 97 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			leaf = { Color = { 99, 199, 77 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_d = { Color = { 62, 137, 72 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_dd = { Color = { 38, 92, 66 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_l = { Color = { 170, 226, 96 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			petal = { Color = { 246, 117, 122 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			petal_d = { Color = { 181, 80, 136 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	BarrelDaggers = {
+		Name = "Barrel Daggers", Type = "Daggers", Pack = "Jungle", Rarity = "Legendary",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 0.7, 1.1, 3.3 }, -- (studs: across X, across Y, its length)
+		Glow = { 254, 231, 97 },
+		Smear = { { 0, 0, -0.9 }, { 0, 0, -2.5 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, -0.7 }, { 0, 0, -2.6 } },
+		Head = { 0, 0, -2.55 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			bglow = { Color = { 254, 231, 97 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			gold = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			iron = { Color = { 58, 68, 102 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			stone = { Color = { 104, 104, 100 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			stone_l = { Color = { 146, 146, 138 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood = { Color = { 184, 111, 80 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_d = { Color = { 115, 62, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_l = { Color = { 228, 166, 114 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wrap = { Color = { 70, 68, 82 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+		},
+	},
+	BarrelHammer = {
+		Name = "Barrel Hammer", Type = "Hammer", Pack = "Jungle", Rarity = "Mythic",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 2.7, 1.9, 6.4 }, -- (studs: across X, across Y, its length)
+		Glow = { 254, 174, 52 },
+		Smear = { { -1.4, 0, -3.8 }, { 1.4, 0, -3.8 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { -1.6, 0, -3.8 }, { 1.6, 0, -3.8 } },
+		Head = { 0, 0, -4.45 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			bamboo = { Color = { 184, 204, 92 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bamboo_d = { Color = { 114, 126, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bamboo_l = { Color = { 208, 221, 149 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bark = { Color = { 115, 62, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			bglow = { Color = { 254, 231, 97 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			fur_d = { Color = { 38, 36, 50 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			gglow = { Color = { 254, 174, 52 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			gold = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_d = { Color = { 196, 122, 38 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_l = { Color = { 254, 231, 97 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			iron = { Color = { 58, 68, 102 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			iron_l = { Color = { 90, 105, 136 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			leaf_d = { Color = { 62, 137, 72 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_l = { Color = { 170, 226, 96 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood = { Color = { 184, 111, 80 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_d = { Color = { 115, 62, 57 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_l = { Color = { 228, 166, 114 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	KongsCrown = {
+		Name = "Kong's Crown", Type = "Sword", Pack = "Jungle", Rarity = "Secret",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 1.3, 1.7, 6.1 }, -- (studs: across X, across Y, its length)
+		Glow = { 254, 174, 52 },
+		Smear = { { 0, 0, -1.2 }, { 0, 0, -4.9 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, -0.9 }, { 0, 0, -5 } },
+		Head = { 0, 0, -4.95 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			bglow = { Color = { 254, 231, 97 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			fur_d = { Color = { 38, 36, 50 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			gem = { Color = { 44, 190, 104 }, Material = "SmoothPlastic", Transparency = 0, Role = "gem" },
+			gem_d = { Color = { 38, 92, 66 }, Material = "SmoothPlastic", Transparency = 0, Role = "gem" },
+			gem_l = { Color = { 170, 255, 190 }, Material = "SmoothPlastic", Transparency = 0, Role = "gem" },
+			gemglow = { Color = { 120, 255, 150 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			gold = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_d = { Color = { 196, 122, 38 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			gold_l = { Color = { 254, 231, 97 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			leaf_d = { Color = { 62, 137, 72 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			leaf_l = { Color = { 170, 226, 96 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			ruby = { Color = { 255, 0, 68 }, Material = "SmoothPlastic", Transparency = 0, Role = "gem" },
+			velvet = { Color = { 162, 38, 51 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wrap = { Color = { 70, 68, 82 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+		},
+	},
+	EraserHammer = {
+		Name = "Eraser Hammer", Type = "Hammer", Pack = "Canvas", Rarity = "Common",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 2.5, 1.5, 5.9 }, -- (studs: across X, across Y, its length)
+		Glow = { 246, 117, 122 },
+		Smear = { { -1.3, 0, -3.8 }, { 1.3, 0, -3.8 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { -1.5, 0, -3.8 }, { 1.5, 0, -3.8 } },
+		Head = { 0, 0, -3.85 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			lead = { Color = { 58, 68, 102 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			lead_l = { Color = { 90, 105, 136 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			line = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			pen = { Color = { 0, 153, 219 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pgrip = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			pgrip_d = { Color = { 198, 135, 40 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			pgrip_l = { Color = { 254, 231, 97 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			rubber = { Color = { 246, 117, 122 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			rubber_d = { Color = { 191, 91, 95 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			rubber_l = { Color = { 248, 158, 161 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			steel = { Color = { 139, 155, 180 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			steel_d = { Color = { 90, 105, 136 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			steel_l = { Color = { 192, 203, 220 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			wood = { Color = { 228, 166, 114 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	PencilSword = {
+		Name = "Pencil Sword", Type = "Sword", Pack = "Canvas", Rarity = "Rare",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 0.7, 1.1, 6.3 }, -- (studs: across X, across Y, its length)
+		Glow = { 254, 174, 52 },
+		Smear = { { 0, 0, -1.2 }, { 0, 0, -4.7 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, -0.9 }, { 0, 0, -4.9 } },
+		Head = { 0, 0, -4.95 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			grip = { Color = { 18, 78, 137 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			grip_l = { Color = { 0, 153, 219 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			inkglow = { Color = { 0, 153, 219 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			inkglow_l = { Color = { 44, 232, 245 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			lead = { Color = { 58, 68, 102 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			line = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			pencil = { Color = { 254, 174, 52 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pencil_d = { Color = { 198, 135, 40 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pencil_l = { Color = { 254, 231, 97 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			rubber = { Color = { 246, 117, 122 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			rubber_d = { Color = { 191, 91, 95 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			rubber_l = { Color = { 248, 158, 161 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			steel = { Color = { 139, 155, 180 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			steel_d = { Color = { 90, 105, 136 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			steel_l = { Color = { 192, 203, 220 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			wood = { Color = { 228, 166, 114 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_d = { Color = { 184, 111, 80 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_l = { Color = { 234, 212, 170 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	InkFists = {
+		Name = "Ink Fists", Type = "Fists", Pack = "Canvas", Rarity = "Epic",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 1.5, 1.3, 1.6 }, -- (studs: across X, across Y, its length)
+		Glow = { 0, 153, 219 },
+		Smear = { { 0, 0, 0.4 }, { 0, 0, -0.9 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, 0.4 }, { 0, 0, -0.9 } },
+		Head = { 0, 0, -0.6 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			line = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			paper = { Color = { 255, 255, 255 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			paper_d = { Color = { 192, 203, 220 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pen = { Color = { 0, 153, 219 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pen_d = { Color = { 18, 78, 137 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pen_l = { Color = { 114, 198, 235 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			whiteglow = { Color = { 255, 255, 255 }, Material = "Neon", Transparency = 0, Role = "glow" },
+		},
+	},
+	DoodleKatana = {
+		Name = "Doodle Katana", Type = "Katana", Pack = "Canvas", Rarity = "Legendary",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 0.7, 1.1, 6.8 }, -- (studs: across X, across Y, its length)
+		Glow = { 0, 153, 219 },
+		Smear = { { 0, 0, -1.4 }, { 0, 0, -5.5 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, -1 }, { 0, 0, -5.7 } },
+		Head = { 0, 0, -5.85 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			grip_k = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			grip_w = { Color = { 255, 255, 255 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			inkglow = { Color = { 0, 153, 219 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			inkglow_l = { Color = { 44, 232, 245 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			line = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			paper = { Color = { 255, 255, 255 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pen = { Color = { 0, 153, 219 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			pen_d = { Color = { 18, 78, 137 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	CopyPasteScythe = {
+		Name = "Copy-Paste Scythe", Type = "Scythe", Pack = "Canvas", Rarity = "Mythic",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 5.5, 0.7, 8.7 }, -- (studs: across X, across Y, its length)
+		Glow = { 0, 153, 219 },
+		Smear = { { 0.4, 0, -5.4 }, { 4, 0, -4.6 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0.2, 0, -5.6 }, { 4.2, 0, -4.4 } },
+		Head = { 0, 0, -6.85 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			chrome = { Color = { 223, 229, 237 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			clone = { Color = { 0, 153, 219 }, Material = "SmoothPlastic", Transparency = 0.45, Role = "body" },
+			clone_l = { Color = { 127, 204, 237 }, Material = "SmoothPlastic", Transparency = 0.35, Role = "body" },
+			grip = { Color = { 18, 78, 137 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			grip_l = { Color = { 0, 153, 219 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			inkglow = { Color = { 0, 153, 219 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			line = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "trim" },
+			marker = { Color = { 228, 59, 68 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			marker_d = { Color = { 162, 38, 51 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			paper = { Color = { 255, 255, 255 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			rubber_d = { Color = { 191, 91, 95 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			steel = { Color = { 139, 155, 180 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			steel_d = { Color = { 90, 105, 136 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			steel_l = { Color = { 192, 203, 220 }, Material = "SmoothPlastic", Transparency = 0, Role = "metal" },
+			whiteglow = { Color = { 255, 255, 255 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			wood = { Color = { 228, 166, 114 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			wood_l = { Color = { 234, 212, 170 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+		},
+	},
+	DeleteKey = {
+		Name = "Delete Key", Type = "Daggers", Pack = "Canvas", Rarity = "Secret",
+		Tip = 1, Up = 1, -- (the markers: studs from the grip, up the weapon and to its front)
+		Size = { 0.7, 1.1, 3.5 }, -- (studs: across X, across Y, its length)
+		Glow = { 255, 0, 68 },
+		Smear = { { 0, 0, -0.9 }, { 0, 0, -2.5 } }, -- (the handle's own space: -Z up the weapon)
+		SmearWide = { { 0, 0, -0.7 }, { 0, 0, -2.6 } },
+		Head = { 0, 0, -2.75 }, -- (the business end: a hammer's head, a blade's tip)
+		Parts = {
+			grip_k = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "grip" },
+			inkglow_l = { Color = { 44, 232, 245 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			key = { Color = { 38, 43, 68 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			key_d = { Color = { 24, 20, 37 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			marker = { Color = { 228, 59, 68 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			marker_d = { Color = { 162, 38, 51 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			marker_l = { Color = { 237, 127, 133 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			paper = { Color = { 255, 255, 255 }, Material = "SmoothPlastic", Transparency = 0, Role = "body" },
+			redglow = { Color = { 255, 0, 68 }, Material = "Neon", Transparency = 0, Role = "glow" },
+			whiteglow = { Color = { 255, 255, 255 }, Material = "Neon", Transparency = 0, Role = "glow" },
+		},
+	},
 }

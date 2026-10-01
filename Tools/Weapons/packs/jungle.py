@@ -202,8 +202,10 @@ def _barrel(v, axis, c, lo, hi, r_mid, r_end, staves=12, hoops=(), seam_off=0.5,
 
 # ----------------------------------------------------------------------
 # COMMON - Chest Pound Fists (Fists): Kongo's own fist - a block of
-# charcoal fur, pale grey fingers curled over the top with big knuckles,
-# the wrist wrapped in green leaves that cross over the back of the hand
+# charcoal fur, pale grey fingers curled over the top with big knuckles, and
+# his face on the back of it: the heavy brow, beady eyes, flared nostrils and
+# a toothy grin; leaves wrapped round the wrist and his gold chain with its
+# banana medallion round the cuff
 # ----------------------------------------------------------------------
 def chest_pound_fists(v, pal):
     # the hand
@@ -226,14 +228,23 @@ def chest_pound_fists(v, pal):
     for x in (0, 4):
         v.box(x, x, -3, 5, 7, 7, 'skin_d')
         v.box(x, x, 4, 5, 0, 7, 'skin_d')
-    # leaf strips crossing over the back of the hand (-Y)
-    for x in range(0, 7):
-        for z in range(-3, 8):
-            for zc in (2 + x * 5 / 6.0, 2 - x * 5 / 6.0):
-                d = abs(z - zc)
-                if d <= 1.25:
-                    v.set(x, -6, z, 'leaf' if d <= 0.6 else 'leaf_d')
-    v.set(0, -6, 2, 'leaf_l')
+    # his face on the back of the hand (-Y): a pale grey muzzle and brow
+    for x in range(0, 6):
+        for z in range(-2, 6):
+            if x == 5 and z in (-2, 5):
+                continue
+            v.set(x, -6, z, 'skin')
+    v.box(0, 5, -7, -6, 4, 5, 'fur_d')            # the heavy brow, sticking out
+    v.box(0, 4, -7, -7, 5, 5, 'fur')
+    v.box(1, 3, -6, -6, 2, 3, 'ivory_l')          # an eye...
+    v.box(1, 1, -6, -6, 2, 3, 'fur_d')            # ...looking in, under the brow
+    v.set(2, -6, 3, 'fur_d')
+    v.box(0, 2, -7, -7, 0, 1, 'skin_l')           # the muzzle, standing out
+    v.set(1, -7, 0, 'skin_d')                     # a flared nostril
+    v.box(0, 4, -6, -6, -2, -1, 'fur_d')          # the grin...
+    for x in (0, 2):
+        v.set(x, -6, -1, 'ivory_l')               # ...with big teeth in it
+    v.set(4, -6, 0, 'fur_d')
     # the wrap round the wrist, and leaf tips poking up out of it
     rounded_box(v, -6, 6, -6, 6, -8, -4, 'leaf', cut=1)
     for (x, y, z), m in list(v.v.items()):
@@ -246,14 +257,25 @@ def chest_pound_fists(v, pal):
     for x, y in ((3, -6), (6, -3), (6, 2), (3, 6)):
         v.box(x - 1, x + 1, y, y, -3, -3, 'leaf_l') if abs(y) == 6 else v.box(x, x, y - 1, y + 1, -3, -3, 'leaf_l')
         v.set(x, y, -2, 'leaf_l')
+    # his gold chain round the cuff, links in turn, the banana medallion on
+    # the back of the wrist
+    for x in range(-7, 8):
+        for y in range(-7, 8):
+            if max(abs(x), abs(y)) == 7 and not (abs(x) == 7 and abs(y) == 7):
+                v.set(x, y, -6, 'gold' if (x + y) % 2 == 0 else 'gold_d')
+    v.cyl('y', (0, -6), 2.4, -8, -8, 'gold')
+    v.cyl('y', (0, -6), 1.4, -9, -9, 'fur_d')
+    for (x, z) in ((1, -5), (1, -6), (0, -7), (-1, -7)):
+        v.set(x, -9, z, 'bglow')
     v.mirror_x()
     return {'smear': ((0, 0, -0.4), (0, 0, 0.9))}
 
 
 # ----------------------------------------------------------------------
-# RARE - Jungle Fang (Katana): a long curved ivory fang for a blade, carved
-# with tribal bands at its root, set in a gold collar on a guard of leaves,
-# and a bamboo grip
+# RARE - Jungle Fang (Katana): a long curved ivory fang for a blade, a row
+# of little teeth along its back like a jaw's, a blood channel glowing red up
+# it, red tribal paint and carved bands at its root, set in a gold collar on
+# a guard of leaves, a tuft of fur and feathers under it, a bamboo grip
 # ----------------------------------------------------------------------
 def jungle_fang(v, pal):
     _bamboo(v, -7, 6, (-3, 2))
@@ -314,8 +336,29 @@ def jungle_fang(v, pal):
             return 'ivory_d'
         return 'ivory'
     blade(v, 11, 56, width, mat, thick=thick, curve=curve)
+    # a row of little teeth along its back, like a jaw's
+    for z0 in range(19, 47, 5):
+        e = width(z0)
+        y0 = int(math.floor(e[1] + curve(z0) + 0.5))
+        for k, (dy, dz) in enumerate(((1, 0), (1, 1), (2, 1), (1, 2), (2, 2), (3, 2))):
+            v.set(0, y0 + dy, z0 + dz, 'ivory_l' if dy >= 2 else 'ivory')
+    # a glowing blood channel up both flats, and red tribal paint at its root
+    for z in range(16, 49):
+        e = width(z)
+        w = int(math.floor((e[0] + e[1]) / 2 + curve(z) + 0.2))
+        for x in (-1, 1):
+            v.put(x, w, z, 'eyeglow', only={'ivory', 'ivory_d', 'ivory_l', 'carve'})
+    for z in (13, 14):
+        for (x, y, zz), m in list(v.v.items()):
+            if zz == z and m in ('ivory', 'ivory_d', 'ivory_l') and v.exposed(x, y, zz, dirs=((1, 0, 0), (-1, 0, 0))):
+                v.v[(x, y, zz)] = 'ruby'
+    # a tuft of fur and two feathers tied under the guard
+    v.box(-1, 1, -2, 2, 5, 6, 'fur_d')
+    for (y, col) in ((-3, 'ruby'), (3, 'leaf')):
+        for k in range(5):
+            v.set(0, y + (k // 2) * (1 if y > 0 else -1), 5 - k, col if k < 4 else 'ivory_l')
     return {'smear': ((0, 0, 1.3), (0, 0, 5.6)), 'smear_wide': ((0, 0, 1.1), (0, 0, 5.7)),
-            'glow': (236, 226, 190)}
+            'glow': (255, 60, 70)}
 
 
 # ----------------------------------------------------------------------

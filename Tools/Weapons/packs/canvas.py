@@ -205,13 +205,126 @@ def eraser_hammer(v, pal):
 
 # ----------------------------------------------------------------------
 # RARE - Pencil Sword (Sword): a giant sharpened pencil for a blade - yellow
-# facets stamped HB, the sharpener's scallops, bare wood and a graphite
-# point with a drop of glowing ink on it - a ribbed ferrule for a guard, a
-# pink eraser for a pommel
+# facets stamped HB, a doodled face on one, the sharpener's scallops, bare
+# wood and a graphite point with a drop of glowing ink on it - a ribbed
+# ferrule for a guard, a pink eraser for a pommel, a grip wound in blue tape
+# ----------------------------------------------------------------------
+def pencil_sword(v, pal):
+    grip(v, -6, 5, 'grip', wrap='grip_l', style='diamond', step=2)
+    # the pommel: a pink eraser in a ribbed ferrule
+    for z, m in ((-7, 'steel_d'), (-8, 'steel_l'), (-9, 'steel')):
+        v.box(-2, 2, -2, 2, z, z, m)
+    rounded_box(v, -2, 2, -2, 2, -13, -10, 'rubber', cut=1)
+    v.box(-2, 2, -2, 2, -13, -13, 'rubber_d', only={'rubber'})
+    edges(v, 'rubber', 'rubber_l', min_open=3)
+    # the guard: the ferrule's ribbed rings, wider than the pencil
+    for z, m in ((6, 'steel_d'), (7, 'steel'), (8, 'steel_l'), (9, 'steel'), (10, 'steel_d')):
+        for x in range(-3, 4):
+            for y in range(-5, 6):
+                if abs(x) + abs(y) * 0.6 <= 5.2:
+                    v.set(x, y, z, m)
+    for y in (-5, 5):
+        v.box(-1, 1, y, y, 7, 9, 'steel_l')
+    # the pencil: six sides (seen end on: hexw), painted yellow, lit on +X
+    H, T = 3.4, 2.3
+    Z0, Z1, TIP = 11, 38, 47
+
+    def facet(x, y, t):
+        if abs(y) <= H / 2.0:
+            return 'pencil_l' if x > 0 else 'pencil_d'
+        return 'pencil'
+    for z in range(Z0, Z1 + 1):
+        for y in range(-4, 5):
+            t = hexw(y, H, T)
+            if t is None:
+                continue
+            n = int(round(t))
+            for x in range(-n, n + 1):
+                m = facet(x, y, t)
+                if abs(x) == n and abs(y) == 2:
+                    m = 'pencil_d'   # (the ridges between the faces)
+                v.set(x, y, z, m)
+    # the sharpened end: the cone of bare wood, the paint's scallops round
+    # its foot, the graphite point, a drop of glowing ink on the tip
+    for z in range(Z1 + 1, TIP + 1):
+        f = (z - Z1) / float(TIP - Z1)
+        R = 4.0 * (1 - f) + 0.3
+        for y in range(-4, 5):
+            for x in range(-3, 4):
+                d = math.hypot(x * 1.45, y)
+                if d > R:
+                    continue
+                if z >= TIP - 2:
+                    m = 'lead_l' if x > 0 and y < 0 else 'lead'
+                else:
+                    scallop = Z1 + 1.6 + 0.9 * math.cos(math.atan2(y, x) * 6)
+                    if z < scallop and d > R - 1.2:
+                        m = facet(x, y, 0)
+                    else:
+                        m = 'wood_l' if x > 0 else ('wood_d' if x < 0 and y > 0 else 'wood')
+                v.set(x, y, z, m)
+    v.set(0, 0, TIP + 1, 'inkglow')
+    v.set(0, 0, TIP + 2, 'inkglow_l')
+    # HB stamped on the lit face, in dark letters
+    rows = text_rows('HB')
+    v.sprite(rows, {'#': 'line'}, (2, -3, 18), plane='yz')
+    v.sprite(rows, {'#': 'line'}, (-2, 3, 18), plane='yz', flip=True)
+    # a little doodled face on its side, and a pen scribble spiralling
+    doodle_face(v, '+y', 0, 30, 'line', 'line', w=3)
+    doodle_face(v, '-y', 0, 30, 'line', 'line', w=3)
+    for z in range(22, 27):
+        v.put(0, 4 if z % 2 else -4, z, 'pen', only={'pencil', 'pencil_d', 'pencil_l'})
+    return {'smear': ((0, 0, 1.2), (0, 0, 4.7)), 'smear_wide': ((0, 0, 0.9), (0, 0, 4.9)), 'glow': PENCIL}
+
+
 # ----------------------------------------------------------------------
 # EPIC - Ink Fists (Fists): a cartoon's white glove, drawn with a dark
-# outline, dipped knuckles-first in blue ink - and the ink's alive: Scribble's
-# dark eyes and grin look out of it, and it runs down the hand in drips
+# outline, dipped knuckles-first in blue ink - and the ink's alive:
+# Scribble's eyes and grin look out of it, and it runs down the hand in
+# drips; a puffy rolled cuff
+# ----------------------------------------------------------------------
+def ink_fists(v, pal):
+    # the glove: white, outlined like a cartoon
+    toon_box(v, -6, 6, -5, 5, -3, 7, 'paper', 'line', cut=2)
+    # the fingers curled over the top: grooves between them
+    for x in (-3, 0, 3):
+        for y in range(-5, 6):
+            for z in range(4, 8):
+                if v.get(x, y, z) and v.exposed(x, y, z):
+                    v.set(x, y, z, 'line')
+    # dipped in ink: everything above a wavy line, the ink glossy on top
+    for (x, y, z), m in list(v.v.items()):
+        level = 3.2 + 0.8 * math.sin(x * 0.9 + y * 0.6)
+        if z >= level:
+            v.v[(x, y, z)] = 'pen_d' if m == 'line' else ('pen_l' if z >= 7 and (x + y) % 3 == 0 else 'pen')
+    # drips running down the white glove from the ink
+    for x, y, n in ((-5, -5, 3), (-2, -5, 2), (2, -5, 4), (5, -5, 2), (-6, 1, 3), (6, -2, 2), (1, 5, 3), (-4, 5, 2)):
+        top = max((z for z in range(-3, 8) if v.get(x, y, z)), default=None)
+        if top is None:
+            continue
+        lv = int(math.ceil(3.2 + 0.8 * math.sin(x * 0.9 + y * 0.6)))
+        for k in range(1, n + 1):
+            v.put(x, y, lv - k, 'pen', only={'paper', 'line'})
+        v.put(x, y, lv - n - 1, 'pen_d', only={'paper', 'line'})
+    # Scribble's face on the back of the hand: eyes and his big grin, in the ink
+    for face in ('-y',):
+        cells = {}
+        for s in (-1, 1):
+            for dz in (0, 1):
+                cells[(s * 2, 5 + dz)] = 'whiteglow'
+            cells[(s * 2, 5)] = 'line'
+        for a in range(-3, 4):
+            cells[(a, 1)] = 'line'
+        cells[(-4, 2)] = 'line'
+        cells[(4, 2)] = 'line'
+        paint_on(v, face, list(cells), lambda a, b: cells[(a, b)])
+    # the cuff: a puffy rolled band, outlined
+    toon_box(v, -7, 7, -6, 6, -8, -4, 'paper', 'line', cut=2)
+    v.box(-7, 7, -6, 6, -6, -6, 'paper_d', only={'paper'})
+    v.mirror_x()
+    return {'smear': ((0, 0, -0.4), (0, 0, 0.9)), 'glow': INK}
+
+
 # ----------------------------------------------------------------------
 # LEGENDARY - Doodle Katana (Katana): a katana drawn in pen - white paper
 # inside a dark outline, blue ballpoint shading strokes, its edge glowing
@@ -287,6 +400,93 @@ def doodle_katana(v, pal):
 # on a wooden ruler - its red finger loop, the pivot screw, a long steel
 # blade - and a see-through copy of the blade pasted just above it, a
 # glowing marching-ants selection round the copy; a glue stick for a butt
+# ----------------------------------------------------------------------
+def copy_paste_scythe(v, pal):
+    # the pole: a wooden ruler, its marks and numbers along its face
+    v.box(-1, 1, -2, 2, -9, 50, 'wood')
+    v.box(1, 1, -2, 2, -9, 50, 'wood_l')
+    for z in range(-8, 50):
+        if z % 2 == 0:
+            n = 2 if z % 10 == 0 else 1
+            v.box(1, 1, -2, -2 + n - 1, z, z, 'line')
+            v.box(-1, -1, 2 - n + 1, 2, z, z, 'line')
+    # the grip: blue tape wound round it
+    for z in range(-6, 7):
+        if z % 3 != 0:
+            v.box(-1, 1, -2, 2, z, z, 'grip')
+            v.box(1, 1, -2, 2, z, z, 'grip_l')
+    # the butt: a glue stick - white tube, a purple label, an orange cap
+    v.cyl('z', (0, 0), 2.6, -16, -10, 'paper')
+    v.cyl('z', (0, 0), 2.6, -14, -12, 'marker')
+    v.cyl('z', (0, 0), 2.6, -17, -17, 'rubber_d')
+    v.box(-1, 1, -1, 1, -18, -18, 'rubber_d')
+    # the scissors' finger loop behind the pole (-X), red, outlined
+    loop = ['..####..',
+            '.#....#.',
+            '#......#',
+            '#......#',
+            '.#....#.',
+            '..####..']
+    v.sprite(loop, {'#': 'marker'}, (-11, 0, 58), plane='xz', depth={'#': (-1, 1)})
+    v.box(-4, -2, -1, 1, 54, 55, 'marker')
+    edges(v, 'marker', 'marker_d', min_open=4)
+    # the pivot screw at the top of the pole
+    v.cyl('y', (0, 53), 2.4, -2, 2, 'steel')
+    v.cyl('y', (0, 53), 1.4, -3, 3, 'steel_l')
+    v.box(0, 0, -3, 3, 52, 54, 'steel_d')
+
+    # the blade: a scissor blade out along +X, nearly straight, tapering to
+    # its point; its cutting edge underneath, bright
+    def spine(x):
+        return 56.0 - 9.0 * (x / 40.0) ** 2
+
+    def width_at(x):
+        return 1.0 + 7.0 * (1 - x / 41.0) ** 0.9
+
+    blade_cells = {}
+    for x in range(3, 41):
+        top = spine(x)
+        bot = top - width_at(x)
+        for z in range(int(math.floor(bot)), int(math.ceil(top)) + 1):
+            if z > top + 0.3 or z < bot - 0.3:
+                continue
+            up, down = z - bot, top - z
+            if up < 1.0:
+                m = 'chrome'
+            elif down < 1.0:
+                m = 'steel_d'
+            elif up < 2.2:
+                m = 'steel_l'
+            else:
+                m = 'steel'
+            blade_cells[(x, z)] = m
+            half = 1 if up > 1.5 and down > 1.0 else 0
+            for y in range(-half, half + 1):
+                v.set(x, y, z, m)
+    # the pasted copy: see-through, a little above and along
+    DX, DZ = 1, 9
+    sel = []
+    for (x, z), m in blade_cells.items():
+        cx, cz = x + DX, z + DZ
+        v.put(cx, 0, cz, 'clone_l' if m in ('chrome', 'steel_l') else 'clone', keep=True)
+        sel.append((cx, cz))
+    # the selection round the copy: marching ants, glowing
+    x0 = min(x for x, z in sel) - 2
+    x1 = max(x for x, z in sel) + 1
+    z0 = min(z for x, z in sel) - 2
+    z1 = max(z for x, z in sel) + 2
+    k = 0
+    for x in range(x0, x1 + 1):
+        for z in (z0, z1):
+            v.put(x, 0, z, 'whiteglow' if (x // 2) % 2 == 0 else 'inkglow', keep=True)
+    for z in range(z0, z1 + 1):
+        for x in (x0, x1):
+            v.put(x, 0, z, 'whiteglow' if (z // 2) % 2 == 0 else 'inkglow', keep=True)
+    # the little "CTRL+V" handle nub at the selection's corner
+    v.box(x1 - 1, x1 + 1, 0, 0, z1 - 1, z1 + 1, 'whiteglow')
+    return {'smear': ((0.4, 0, 5.4), (4.0, 0, 4.6)), 'smear_wide': ((0.2, 0, 5.6), (4.2, 0, 4.4)), 'glow': INK}
+
+
 # ----------------------------------------------------------------------
 # SECRET - Delete Key (Daggers): a red pixel blade glitching - its colours
 # split (cyan down one edge, hot red down the other), slices of it slipped
