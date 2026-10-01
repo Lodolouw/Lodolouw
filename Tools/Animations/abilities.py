@@ -773,7 +773,8 @@ ABILITIES['ChestPoundFists'] = ('Fists', shown(Poses('ChestPoundFistsAbility', [
     (0.47, roar(-18, 0.62, look=(0.06, 0.92, -0.40)), 'inout'),
     (0.54, roar(-15, 0.52, look=(-0.06, 0.88, -0.45)), 'inout'),
     (0.60, roar(-16, 0.58), 'inout'),
-    (0.80, wt.F_IDLE, 'inout'),
+    (0.70, dict(gauntlets((2, 0, -10), 'square', (-0.10, 0.10, -1.0), (0.20, 0.05, -1.0)), hop=0.12), 'inout'),
+    (0.80, wt.F_IDLE, 'out'),
 ], hit=0.4, marks=[('Pound', 0.05), ('Pound', 0.16), ('Pound', 0.27), ('Roar', 0.4)]),
     (0.05, 'POUND L'), (0.16, 'POUND R'), (0.27, 'POUND L'), (0.33, 'GATHER'), (0.40, 'ROAR'), (0.54, 'ROARING')))
 
@@ -1024,17 +1025,17 @@ def calling(lean, left, sword=TO_SKY, look=(0, 0.85, -0.55), legs=SKY, hop=0.0):
 ABILITIES['KongsCrown'] = ('Sword', shown(Poses('KongsCrownAbility', [
     (0.00, S_IDLE, 'linear'),
     (0.10, calling(-16, (-0.40, -0.85, 0.25), hop=0.06), 'out'),
-    (0.15, calling(-19, (-0.58, 0.78, -0.22)), 'snap'),
-    (0.24, calling(-10, (-0.88, 0.10, -0.45), look=(0, 0.6, -1)), 'inout'),
-    (0.32, calling(-18, (-0.55, 0.82, -0.15)), 'out'),
-    (0.62, calling(-22, (-0.52, 0.85, -0.08), look=(0, 0.75, -0.65)), 'hold'),
-    (0.80, calling(-24, (-0.25, 0.75, 0.60), sword=blade((0.60, -0.70, 0.38), (0.30, -0.30, 0.90)), look=(0, 0.5, -1),
+    (0.15, calling(-19, (-0.78, 0.58, -0.22)), 'snap'),
+    (0.24, calling(-8, (-0.95, -0.05, -0.30), look=(0, 0.5, -1)), 'inout'),
+    (0.32, calling(-18, (-0.75, 0.62, -0.15)), 'out'),
+    (0.62, calling(-22, (-0.72, 0.66, -0.10), look=(0, 0.75, -0.65)), 'hold'),
+    (0.80, calling(-24, (-0.55, 0.65, 0.52), sword=blade((0.60, -0.70, 0.38), (0.30, -0.30, 0.90)), look=(0, 0.5, -1),
                    legs=((-0.35, -1, -0.30), (0.40, -1, 0.25)), hop=0.14), 'inout'),
     (0.90, key((58, 0, -10), SLAM, blade((0.90, -0.30, 0.20), (0.35, -0.10, 0.93)), (0.18, -0.92, -0.33), look=DOWN), 'in2'),
     (1.02, key((60, 0, -10), SLAM, blade((0.90, -0.32, 0.18), (0.35, -0.12, 0.93)), (0.18, -0.93, -0.32), look=DOWN), 'out'),
     # (rising, the sword brought round the outside to the front)
-    (1.16, key((26, 0, -16), 'crouch', blade((0.75, -0.40, -0.50), (0.90, 0.25, -0.35)), (-0.20, -0.90, -0.25), look=AHEAD),
-     'inout'),
+    (1.16, key((26, 0, -16), 'crouch', blade((0.75, -0.40, -0.50), (0.90, 0.25, -0.35)), (-0.20, -0.90, -0.25), look=AHEAD,
+               hop=0.14), 'inout'),
     (1.30, S_IDLE, 'inout'),
 ], hit=0.9, marks=[('Call', 0.0), ('SkyFist', 0.15), ('Hit', 0.9)]),
     (0.10, 'CALL'), (0.15, 'SKY FIST'), (0.24, 'PUMP'), (0.62, 'HOLD IT UP'), (0.80, 'REAR BACK'), (0.90, 'SMASH')))
@@ -1047,33 +1048,34 @@ ABILITIES['KongsCrown'] = ('Sword', shown(Poses('KongsCrownAbility', [
 # and its eraser end scrubbing hard from side to side, rubbing out a mistake
 # (0.2, the rub: the hardest stroke); then it comes up in front of him for a
 # satisfied blow on it, and back to the stance
-RUB = ((-0.45, -1, -0.35), (0.45, -1, 0.30))  # (feet wide, bent over it)
+RUB = level((26, 0, -6), ((-0.45, -1, -0.35), (0.45, -1, 0.30)))  # (feet wide and planted, bent over it)
 
 
 def rubbing(side, lean=26):
     """the hammer pointed down at the floor in front, both hands low on it
     like a mop, its eraser end (the face that chops) scrubbing the floor,
-    side degrees round to the left (+) or right (-)"""
-    root = (lean, 0, -6 + 0.4 * side)
-    return key(root, level(root, RUB), chop(root, (0.0, -0.55, -0.75), yawed((0.0, -0.50, -0.87), side)),
+    side degrees round to the left (+) or right (-) - the arms doing it, so
+    the feet stay put"""
+    root = (lean, 0, -6 + 0.15 * side)
+    return key(root, RUB, chop(root, (0.0, -0.55, -0.75), yawed((0.0, -0.50, -0.87), side)),
                look=(0.004 * side, -0.35, -1))
 
 
 ABILITIES['EraserHammer'] = ('Hammer', shown(Poses('EraserHammerAbility', [
     (0.00, dict(wt.H_IDLE, grip=0.0), 'linear'),
-    (0.06, rubbing(14, lean=22), 'out'),
-    (0.10, rubbing(-14), 'inout'),
-    (0.14, rubbing(14), 'inout'),
-    (0.17, rubbing(-14), 'inout'),
-    (0.20, rubbing(17, lean=31), 'inout'),
-    (0.24, rubbing(-12, lean=29), 'inout'),
+    (0.06, rubbing(22, lean=22), 'out'),
+    (0.10, rubbing(-22), 'inout'),
+    (0.14, rubbing(22), 'inout'),
+    (0.17, rubbing(-22), 'inout'),
+    (0.20, rubbing(24, lean=31), 'inout'),
+    (0.24, rubbing(-18, lean=29), 'inout'),
     (0.28, rubbing(2, lean=24), 'inout'),
     (0.38, hammer((6, 0, -6), 'back', (0.05, 0.25, -1.1), (0.05, 0.50, -0.86), look=(0, 0.45, -1)), 'inout'),
     (0.43, hammer((14, 0, -4), 'back', (0.05, 0.22, -1.1), (0.05, 0.47, -0.88), look=(0, 0.30, -1)), 'out'),
     (0.49, hammer((-6, 0, -8), 'back', (0.05, 0.30, -1.08), (0.06, 0.55, -0.83), look=(0, 0.55, -1)), 'inout'),
     (0.60, dict(wt.H_IDLE, grip=0.0), 'inout'),
 ], two=(-0.6, -0.05), hit=0.2, marks=[('Rub', 0.2)]),
-    (0.06, 'SCRUB'), (0.14, 'SCRUB'), (0.20, 'RUB'), (0.28, 'DONE'), (0.38, 'UP'), (0.43, 'BLOW')))
+    (0.06, 'SCRUB'), (0.10, 'SCRUB'), (0.20, 'RUB'), (0.28, 'DONE'), (0.38, 'UP'), (0.43, 'BLOW')))
 
 # PENCIL SWORD - Sharpen: the pencil-sword stood up in front of his face,
 # its blade gripped in the free fist like a sharpener, and twisted round and
@@ -1086,11 +1088,14 @@ SHARP_E0 = unit((0.0, 0.0, -1.0) + 0.41 * SHARP_B)  # (its edge to the front)
 
 def sharpening(turn, lean=-4):
     """the blade gripped in the left fist (Poses' two) and twisted `turn`
-    degrees round in it"""
+    degrees round in it, the hands cranking round in a little circle with it"""
     a = math.radians(turn)
     e = math.cos(a) * SHARP_E0 + math.sin(a) * np.cross(SHARP_B, SHARP_E0)
+    crank = np.array([math.cos(a), 0.0, math.sin(a)])
+    b = unit(SHARP_B + 0.07 * crank)
     root = (lean, 0, -6)
-    return key(root, 'square', hands(root, SHARP_AT, SHARP_B, e), look=(0, 0.3, -1))
+    return key(root, 'square', hands(root, np.asarray(SHARP_AT) + 0.06 * crank, b, unit(e - (e @ b) * b)),
+               look=(0, 0.3, -1))
 
 
 SHARP_HELD = two_hand(sharpening(-270, lean=-5), (0.9, 1.6))  # (how the left hand holds the blade at the end)
@@ -1146,7 +1151,7 @@ ABILITIES['InkFists'] = ('Fists', shown(Poses('InkFistsAbility', [
     (0.35, gauntlets((20, 0, -2), POUND, (-0.20, 0.30, -0.93), (0.20, 0.30, -0.93), look=AHEAD), 'in'),
     (0.37, gauntlets((54, 0, 0), level((54, 0, 0), POUND), (-0.22, -0.90, -0.38), (0.22, -0.90, -0.38), look=DOWN), 'in2'),
     (0.50, gauntlets((56, 0, 0), level((56, 0, 0), POUND), (-0.22, -0.91, -0.35), (0.22, -0.91, -0.35), look=DOWN), 'out'),
-    (0.62, gauntlets((22, 0, -8), 'crouch', (-0.10, -0.30, -0.95), (0.25, -0.20, -0.95), look=AHEAD), 'inout'),
+    (0.62, gauntlets((22, 0, -8), 'crouch', (-0.10, -0.30, -0.95), (0.25, -0.20, -0.95), look=AHEAD, hop=0.12), 'inout'),
     (0.85, wt.F_IDLE, 'inout'),
 ], hit=0.37, marks=[('Hop', 0.0), ('Land', 0.35), ('Hit', 0.37)]),
     (0.07, 'SPRING'), (0.17, 'FISTS UP'), (0.29, 'COMING DOWN'), (0.35, 'LAND'), (0.37, 'SPLASH'), (0.50, 'SPLASH')))
