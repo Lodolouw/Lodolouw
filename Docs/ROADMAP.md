@@ -75,10 +75,10 @@ its card picture for the Arcade menu.
   - [x] You: run the uploader and paste me the IDs (done) - then play-test the pack
 - [x] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
   - [x] 3D models (`Docs/weapons/jungle.png`), abilities with their effects and animations (`Docs/animations/jungle_abilities_fx.mp4`), swing effects (leaves and bananas; splinters on the Mythic; Kong's Crown's gold bananas, lashing vine and Kongo's glare), sounds (`Docs/sounds/jungle_canvas_sounds.mp4`)
-  - [ ] You: run the uploader and paste me the IDs (models, sounds and icons done; the 12 ability animations still to come) - then play-test the pack
+  - [x] You: run the uploader and paste me the IDs (done) - then play-test the pack
 - [x] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
   - [x] 3D models (`Docs/weapons/canvas.png`), abilities with their effects and animations (`Docs/animations/canvas_abilities_fx.mp4`), swing effects (ink and paper; pixels on the Mythic; Delete Key's glitch and Scribble's face - `Docs/weapons/swing_effects_jungle_canvas.png`), sounds
-  - [ ] You: run the uploader and paste me the IDs (models, sounds and icons done; the ability animations still to come) - then play-test the pack
+  - [x] You: run the uploader and paste me the IDs (done) - then play-test the pack
 
 (Each pack is Common → Rare → Epic → Legendary → Mythic → Secret, in that
 order. One test weapon goes first so you can play-test a roll.) All five
