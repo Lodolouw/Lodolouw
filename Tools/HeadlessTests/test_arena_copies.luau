@@ -269,6 +269,69 @@ check(made and made.model.Parent == nil, "its boss's model too")
 check(BS.Encounter(1) == E1 and E1.model.Parent == workspace, "the first copy's boss is still there")
 local _ = folder
 
+----------------------------------------------------------------------
+-- 6. on a player's screen: only their own copy's boss is drawn
+----------------------------------------------------------------------
+local Z, Y = makePlayer("Zulu", 26), makePlayer("Yankee", 25)
+local arenaY = Pool.Acquire(1, { Y })
+local arenaZ = Pool.Acquire(1, { Z })
+enter(Y, arenaY, 1)
+enter(Z, arenaZ, 1)
+Players.LocalPlayer = Z
+local gui = Instance.new("PlayerGui")
+gui.Name = "PlayerGui"
+gui.Parent = Z
+local scripts = Instance.new("PlayerScripts")
+scripts.Name = "PlayerScripts"
+scripts.Parent = Z
+local kick = Instance.new("BindableEvent")
+kick.Name = "CombatCameraKick"
+kick.Parent = scripts
+local cam = Instance.new("Camera")
+cam.CFrame = M.CFrame.new(Vector3.new(0, 20, 60), Vector3.new(0, 0, 0))
+cam.Parent = workspace
+workspace.CurrentCamera = cam
+mount.runClient("StarterPlayerScripts/BossClient.client.lua", Z)
+local function framesC(n)
+	for _ = 1, n do
+		T += 1 / 30
+		M.run(T)
+		RunService.Heartbeat:Fire(1 / 30)
+		RunService.RenderStepped:Fire(1 / 30)
+	end
+end
+framesC(30)
+-- how close the body's nearest part is to a spot
+local function nearest(body, spot)
+	local best = math.huge
+	for _, d in ipairs(body:GetDescendants()) do
+		if d:IsA("BasePart") then
+			best = math.min(best, (d.Position - spot).Magnitude)
+		end
+	end
+	return best
+end
+local function bodies()
+	local list = {}
+	for _, c in ipairs(workspace:GetDescendants()) do
+		if c.Name == "OozarkBody" and c:IsA("Model") then
+			table.insert(list, c)
+		end
+	end
+	return list
+end
+local EZ = BS.EncounterIn(arenaZ:GetAttribute("ArenaId"))
+local seen = bodies()
+local near = seen[1] and nearest(seen[1], EZ.home) or math.huge
+check(#seen == 1 and near < 60, string.format("Zulu's screen draws one Oozark: his own copy's (%d drawn, %.0f studs from his boss)", #seen, near))
+-- over to the other copy: that one's boss is drawn, his old one put away
+Z:SetAttribute("SpireArena", arenaY:GetAttribute("ArenaId"))
+framesC(30)
+local EY = BS.EncounterIn(arenaY:GetAttribute("ArenaId"))
+seen = bodies()
+near = seen[1] and nearest(seen[1], EY.home) or math.huge
+check(#seen == 1 and near < 60, string.format("in the other copy, only that copy's Oozark (%d drawn, %.0f studs)", #seen, near))
+
 check(#M.errors == 0, "no errors (" .. #M.errors .. ")")
 for i = 1, math.min(3, #M.errors) do
 	print("    " .. tostring(M.errors[i]))

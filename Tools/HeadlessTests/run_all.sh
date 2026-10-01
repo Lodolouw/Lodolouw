@@ -21,6 +21,10 @@ for seed in 1 2 3; do run test_colosseum.luau -a hard $seed; run test_colosseum.
 run test_client.luau
 run test_builder.luau
 run test_arenas_apart.luau
+# arena copies: two players on one floor get an arena and a boss each (the
+# fights, the wins, a party's health, moved runways and pillars, reuse and
+# take-down, and only your own copy's boss drawn on your screen)
+run test_arena_copies.luau
 run test_boss_template.luau
 # the heart, the potion and the bolt at the bottom of the screen, and the drink
 run test_vitals.luau
