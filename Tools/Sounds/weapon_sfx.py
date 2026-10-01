@@ -893,16 +893,23 @@ def swoop(seconds, lo, hi, curve=2.0, tail=0.012):
     return A.sweep_lp(noise(n), lo + (hi - lo) * k ** 2) * np.where(t < seconds, k ** curve, np.exp(-(t - seconds) / tail))
 
 
-def leaves(seconds, rate, vol=1.0, lo=1600, hi=8000, shape=None):
-    """leaves rustling: dry little crackles coming in flurries, and the hush
-    of them brushing past each other (`shape`: a loudness for each sample)"""
+def leaves(seconds, rate, vol=1.0, lo=1800, hi=8000, shape=None):
+    """leaves rustling: crisp little crackles (`rate` a second, most of them
+    faint) over the grainy hush of leaves brushing, coming in flurries
+    (`shape`: a loudness for each sample); `vol` at the loudest"""
     n = n_of(seconds)
-    flurry = np.abs(band(noise(n), hi=22))
-    flurry = 0.2 + 0.8 * flurry / (np.max(flurry) + 1e-9)
+    r = S.rng
+    flurry = np.abs(band(noise(n), hi=25))
+    flurry = 0.15 + 0.85 * (flurry / (np.max(flurry) + 1e-9)) ** 1.5
     if shape is not None:
         flurry = flurry * shape
-    crackle = grit(seconds, rate, lo, hi, 1.0, grain=0.0025, shape=flurry)
-    return (crackle + band(noise(n), lo, hi) * flurry * 0.15) * vol
+    grain = np.abs(band(noise(n), hi=250))
+    hush = band(noise(n), lo, hi) * (grain / (np.max(grain) + 1e-9)) ** 2.5
+    hits = (r.random(n) < rate / RATE) * r.uniform(0, 1, n) ** 2
+    m = n_of(0.0012)
+    crackle = band(np.convolve(hits, r.uniform(-1, 1, m) * np.exp(-5 * np.arange(m) / m))[:n], lo, hi)
+    x = (hush / (np.max(np.abs(hush)) + 1e-9) + 1.5 * crackle / (np.max(np.abs(crackle)) + 1e-9)) * flurry
+    return x / (np.max(np.abs(x)) + 1e-9) * vol
 
 
 def pat(vol=1.0, up=1.0):
@@ -1022,11 +1029,14 @@ def scratch(seconds, rate, vol=1.0, lo=1500, hi=6500):
 # bananas, wooden barrels with iron bands, jungle drums, gold for his crown)
 # ----------------------------------------------------------------------
 def leaf_swish():
-    # a swing through leaves: an airy swish, the leaves rustling along it
+    # a swing through leaves: an airy swish, the leaves rustling all along it
+    # (the swish kept soft on top, so the leaves are what you hear up there)
     s = 0.3
     t = np.arange(n_of(s)) / RATE
+    air = band(whoosh(s, 300, 2400, 1.3, 1.5), hi=2200)
     hum = tri(sweep(90, 130, s)) * env(n_of(s), 0.1, s, 1.6) * 0.18
-    return master(mix(whoosh(s, 320, 3000, 1.3, 1.5), hum, leaves(s, 650, 0.9, shape=np.sin(np.pi * t / s) ** 1.5)))
+    rustle = leaves(s, 1200, 1.5, shape=np.sin(np.pi * t / s) ** 1.5)
+    return master(mix(air / np.max(np.abs(air)), hum, rustle), drive=1.5)
 
 
 def leaf_rustle():
@@ -1034,16 +1044,17 @@ def leaf_rustle():
     # and short: lots land)
     s = 0.14
     pats = mix(pat(0.8), at(pat(0.45, 1.2), 0.05), at(pat(0.25, 0.9), 0.09))
-    return master(mix(pats, leaves(s, 500, 0.6, shape=env(n_of(s), 0.004, s, 1.4))), lo=80, hi=8000)
+    return master(mix(pats, leaves(s, 500, 0.5, shape=env(n_of(s), 0.004, s, 1.4))), lo=80, hi=8000)
 
 
 def bark_thwack():
-    # a hit: a woody THWACK - the crack of it, a hollow tock, bits of bark flying
-    tock = mix(metal(330, 0.24, WOOD, 0.8, 11), metal(520, 0.14, WOOD, 0.45, 12))
-    knock_ = tri(sweep(230, 95, 0.1)) * env(n_of(0.1), 0.001, 0.1, 3) * 0.6
-    hit = crushed(mix(strike(0.025, 700, 9000), knock_, tock * 0.6), 22)
-    bark = grit(0.2, 220, 900, 5500, 0.3, grain=0.003, shape=env(n_of(0.2), 0.01, 0.2, 1.6))
-    return master(mix(hit * 0.75, tock * 0.5, at(bark, 0.015)), drive=1.3)
+    # a hit: a woody THWACK - the crack of it, a hollow tock ringing, bits
+    # of bark flying off
+    tock = mix(metal(300, 0.34, WOOD, 0.8, 11), metal(470, 0.2, WOOD, 0.5, 12), metal(760, 0.12, WOOD, 0.3, 10))
+    knock_ = tri(sweep(240, 95, 0.12)) * env(n_of(0.12), 0.001, 0.12, 2.6) * 0.7
+    hit = crushed(mix(strike(0.03, 600, 9000), knock_, tock * 0.6), 22)
+    bark = grit(0.3, 200, 900, 5500, 0.35, grain=0.003, shape=env(n_of(0.3), 0.01, 0.3, 1.6))
+    return master(mix(hit * 0.7, tock * 0.6, at(bark, 0.015)), drive=1.5)
 
 
 def barrel_swing():
@@ -1075,7 +1086,7 @@ def barrel_thud():
     # a heavy hit: a deep, hollow barrel THUD, its iron band ringing
     body = band(noise(n_of(0.12)), 150, 1200) * env(n_of(0.12), 0.001, 0.12, 3) * 0.6
     hit = crushed(mix(thump(125, 50, 0.42, 0.8, 2.2), strike(0.03, 400, 6000, 0.8), body), 24)
-    hoop = mix(metal(540, 0.45, HOOP, 0.28, 16), metal(1220, 0.3, HOOP, 0.1, 17))
+    hoop = mix(metal(540, 0.45, HOOP, 0.4, 16), metal(1220, 0.3, HOOP, 0.15, 17))
     return master(mix(hit * 0.8, metal(175, 0.4, BARREL, 0.7, 15), at(hoop, 0.004)), lo=50, drive=1.4)
 
 
@@ -1104,9 +1115,9 @@ def banana_bounce():
 def gold_thump():
     # the Secret's hit: a heavy THUMP, a golden chime ringing out of it
     body = band(noise(n_of(0.15)), 120, 1500) * env(n_of(0.15), 0.001, 0.15, 2.8) * 0.5
-    hit = crushed(mix(thump(118, 46, 0.45, 0.85, 2.2), strike(0.04, 500, 8000, 0.9), body), 24)
+    hit = crushed(mix(thump(118, 46, 0.38, 0.85, 2.2), strike(0.04, 500, 8000, 0.9), body), 24)
     gold = mix(chime(midi(86), 0.5, 0.34), chime(midi(93), 0.42, 0.2), at(chime(midi(98), 0.3, 0.12), 0.03))
-    return master(mix(hit * 0.8, at(gold, 0.008), glints(0.1, 4, 0.06, 0.08, (98, 102, 105))), lo=50, drive=1.3)
+    return master(mix(hit * 0.8, at(gold, 0.008), glints(0.1, 4, 0.06, 0.08, (98, 102, 105))), lo=50, drive=1.2)
 
 
 def vine_whip():
@@ -1119,15 +1130,15 @@ def vine_whip():
     sing = sine(sweep(600, 2400, s)) * k ** 2.6 * 0.12
     crack = crushed(mix(strike(0.006, 1500, 11000, 1.3), strike(0.035, 700, 6000, 0.45), thump(180, 90, 0.08, 0.25, 2.0)), 16)
     shake = leaves(0.26, 550, 0.5, shape=env(n_of(0.26), 0.004, 0.26, 1.7))
-    return master(mix(lash, sing, at(crack * 0.9, s), at(shake, s + 0.008)), hi=10000, drive=1.6)
+    return master(mix(lash, sing, at(crack * 0.9, s), at(shake, s + 0.008)), hi=10000, drive=1.4)
 
 
 def ape_grunt():
     # a funny little gorilla grunt: "uh-HOO!" (round and buzzy, not scary)
     n1, n2 = n_of(0.09), n_of(0.28)
-    uh = ape(np.geomspace(150, 125, n1), ('o',), 0.4, 0.15) * A.adsr(n1, 0.008, 0.05, 0.7, 0.03)
+    uh = ape(np.geomspace(150, 125, n1), ('o',), 0.4, 0.08) * A.adsr(n1, 0.008, 0.05, 0.7, 0.03)
     t = np.arange(n2) / RATE
-    hoo = ape(smooth(np.interp(t, [0, 0.1, 0.28], [175, 300, 235]), 0.02), ('u', 'o'), 0.25, 0.1) * A.adsr(n2, 0.015, 0.12, 0.75, 0.07)
+    hoo = ape(smooth(np.interp(t, [0, 0.1, 0.28], [175, 300, 235]), 0.02), ('u', 'o'), 0.25, 0.1) * A.adsr(n2, 0.015, 0.1, 0.55, 0.07)
     huff = band(noise(n_of(0.05)), 600, 3500) * env(n_of(0.05), 0.005, 0.05, 1.5) * 0.25
     return master(crushed(mix(uh * 0.6, at(huff, 0.085), at(hoo, 0.1)), 24), lo=70, hi=7000)
 
@@ -1148,10 +1159,10 @@ def ape_roar():
 def chest_thump():
     # three quick, hollow chest pounds: thump-thump-THUMP
     def pound(f, v):
-        chest = metal(f * 2.1, 0.16, ((1, 1.0), (1.62, 0.45), (2.43, 0.2)), 0.6, int(f))
-        slap = band(noise(n_of(0.03)), 300, 2500) * env(n_of(0.03), 0.0005, 0.03, 3) * 0.5
-        return mix(thump(f, f * 0.55, 0.2, 0.8, 2.4), chest, slap) * v
-    return master(mix(pound(122, 0.75), at(pound(132, 0.8), 0.16), at(pound(116, 1.0), 0.32)), lo=50, drive=1.3)
+        chest = metal(f * 2.1, 0.18, ((1, 1.0), (1.62, 0.45), (2.43, 0.2)), 0.8, int(f))
+        slap = band(noise(n_of(0.035)), 300, 3000) * env(n_of(0.035), 0.0005, 0.035, 3) * 0.7
+        return mix(thump(f, f * 0.6, 0.18, 0.7, 2.4), chest, slap) * v
+    return master(mix(pound(135, 0.75), at(pound(145, 0.8), 0.16), at(pound(128, 1.0), 0.32)), lo=60, drive=1.3)
 
 
 def fang_snap():
@@ -1185,8 +1196,10 @@ def leaf_sweep():
     s = 0.52
     n = n_of(s)
     t = np.arange(n) / RATE
-    swirl = band(noise(n), 60, 320) * env(n, 0.18, s, 1.5) * 0.45
-    return master(mix(whoosh(s, 220, 3000, 1.5, 1.3), swirl, leaves(s, 1100, 1.0, shape=np.sin(np.pi * t / s) ** 1.2)))
+    air = band(whoosh(s, 220, 2600, 1.5, 1.3), hi=2400)
+    swirl = band(noise(n), 60, 320) * env(n, 0.18, s, 1.5) * 0.3
+    rustle = leaves(s, 1500, 1.6, shape=np.sin(np.pi * t / s) ** 1.2)
+    return master(mix(air / np.max(np.abs(air)), swirl, rustle), drive=1.5)
 
 
 def barrel_curl():
@@ -1203,12 +1216,12 @@ def barrel_rumble():
     n = n_of(s)
     t = np.arange(n) / RATE
     r = S.rng
-    roll = band(noise(n), 40, 400) * (0.55 + 0.45 * np.sin(2 * np.pi * 11 * t) ** 2) * 1.3
+    roll = band(noise(n), 40, 400) * (0.55 + 0.45 * np.sin(2 * np.pi * 11 * t) ** 2) * 1.8
     times = np.arange(0.012, s - 0.04, 1 / 22)
-    staves = mix(*[at(knock(r.uniform(190, 280), 0.05, r.uniform(0.15, 0.3)), tt + r.uniform(-0.005, 0.005)) for tt in times])
+    staves = mix(*[at(knock(r.uniform(190, 280), 0.05, r.uniform(0.12, 0.22)), tt + r.uniform(-0.005, 0.005)) for tt in times])
     crunch = grit(s, 160, 600, 4000, 0.35, grain=0.004)
     grow = np.clip(t / 0.06, 0, 1) * np.clip((s - t) / 0.12, 0, 1)
-    return master(mix(roll, staves, crunch)[:n] * grow, lo=45)
+    return master(mix(roll, staves, crunch)[:n] * grow, lo=45, drive=1.4)
 
 
 def barrel_burst():
@@ -1240,12 +1253,12 @@ def barrel_blast():
     n = n_of(s)
     blast = A.sweep_lp(noise(n), np.geomspace(6000, 300, n)) * env(n, 0.002, s, 2.2)
     crunch = band(noise(n_of(0.2)), 300, 4000) * env(n_of(0.2), 0.001, 0.2, 2.6) * 0.8
-    hit = crushed(mix(thump(105, 34, 0.75, 1.0, 2.5), strike(0.06, 300, 10000, 1.0), blast, crunch), 22)
+    hit = crushed(mix(thump(110, 40, 0.6, 0.9, 2.5), strike(0.06, 300, 10000, 1.0), blast, crunch), 22)
     r = S.rng
-    debris = mix(*[at(knock(r.uniform(260, 1000), r.uniform(0.05, 0.1), r.uniform(0.3, 0.7) * np.exp(-tt / 0.3)), tt)
-                   for tt in 0.04 + r.exponential(0.16, 16)])
-    splinters = grit(0.6, 260, 1000, 7000, 0.35, grain=0.002, shape=env(n_of(0.6), 0.01, 0.6, 1.8))
-    return master(mix(hit, debris * 0.6, splinters), lo=45, drive=1.5)
+    debris = mix(*[at(knock(r.uniform(260, 1000), r.uniform(0.05, 0.1), r.uniform(0.3, 0.6) * min(1, tt / 0.15) * np.exp(-tt / 0.4)), tt)
+                   for tt in 0.04 + np.minimum(r.exponential(0.22, 18), 0.55)])
+    splinters = grit(0.75, 260, 1000, 7000, 0.5, grain=0.002, shape=env(n_of(0.75), 0.01, 0.75, 1.6))
+    return master(mix(hit, debris, splinters), lo=50, drive=1.5)
 
 
 def crown_call():
@@ -1280,17 +1293,17 @@ def sky_whoosh():
 def fist_smash():
     # the giant fist smashing the ground: a huge, crunchy BOOM, rocks flying
     # and tumbling
-    crunch = band(noise(n_of(0.35)), 200, 3500) * env(n_of(0.35), 0.001, 0.35, 2.6) * 0.9
-    dust = band(noise(n_of(0.9)), 60, 1000) * env(n_of(0.9), 0.003, 0.9, 2.0) * 0.5
-    hit = crushed(mix(thump(88, 30, 0.95, 1.0, 2.6), strike(0.08, 300, 9000, 1.1), crunch, dust), 20)
+    crunch = band(noise(n_of(0.35)), 200, 3500) * env(n_of(0.35), 0.001, 0.35, 2.6) * 1.1
+    dust = band(noise(n_of(1.0)), 60, 1000) * env(n_of(1.0), 0.003, 1.0, 1.8) * 0.5
+    hit = crushed(mix(thump(100, 38, 0.85, 1.0, 2.6), strike(0.08, 300, 9000, 1.1), crunch, dust), 20)
     r = S.rng
     rocks = []
-    for i in range(10):
-        tt = 0.06 + r.exponential(0.2)
-        v = r.uniform(0.3, 0.7) * np.exp(-tt / 0.5)
+    for i in range(12):
+        tt = 0.06 + 0.66 * r.random() ** 1.8
+        v = r.uniform(0.5, 1.0) * np.exp(-tt / 0.6)
         rocks.append(at(mix(strike(0.012, 700, 5000, 0.8), thump(r.uniform(170, 320), 80, 0.07, 0.5, 2.0)) * v, tt))
-    rubble = grit(0.8, 150, 250, 3000, 0.8, grain=0.008, shape=env(n_of(0.8), 0.02, 0.8, 1.8))
-    return master(mix(hit, rubble, *rocks), lo=45, drive=1.5)
+    rubble = grit(0.95, 150, 250, 3000, 1.0, grain=0.008, shape=env(n_of(0.95), 0.02, 0.95, 1.6))
+    return master(mix(hit, rubble, *rocks), lo=55, drive=1.5)
 
 
 PACKS = {
