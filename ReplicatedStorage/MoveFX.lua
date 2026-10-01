@@ -2010,13 +2010,17 @@ end
 R.EraserHammer = {
 	Rub = function(ctx)
 		local s = ctx.style
-		local at = ahead(ctx, 2.5) + V3(0, 1.5, 0)
-		-- rubbing out a mistake: white strokes scrubbed back and forth in the
-		-- air, crumbs of pink rubber, and a sparkle - your next hit erases
+		local at = ahead(ctx, 2.8) + V3(0, 0.5, 0)
+		-- rubbing out a mistake on the floor in front of you: white strokes
+		-- scrubbed back and forth where the eraser goes, crumbs of pink
+		-- rubber, and a sparkle off it - your next hit erases
+		local y = ctx.feet.Y + 0.07
 		for i = 0, 3 do
-			task.delay(i * 0.06, function()
+			task.delay(i * 0.05, function()
 				local side = i % 2 == 0 and 1 or -1
-				streak(ctx.frame * V3(-side * 1.8, 0.8 + i * 0.45, -2.6), ctx.frame * V3(side * 1.8, 1.1 + i * 0.45, -2.6), WHITE, 0.12, 0.5, { thick = 0.7 })
+				local a = ctx.frame * V3(-side * 1.6, 0, -2.4 - i * 0.3)
+				local b = ctx.frame * V3(side * 1.6, 0, -2.6 - i * 0.3)
+				streak(V3(a.X, y, a.Z), V3(b.X, y, b.Z), WHITE, 0.55, 0.6, { thick = 0.06 })
 			end)
 		end
 		puffs(at, s.Light, 6, 1, 1, 0.6, 1)
