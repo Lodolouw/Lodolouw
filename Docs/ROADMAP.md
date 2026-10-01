@@ -69,10 +69,10 @@ its card picture for the Arcade menu.
   - [x] Sounds (and the Arcade shows each weapon's 3D model in its reveal)
 - [x] **Knight (Burrowmore):** Shovel Hammer · Relic Daggers · Spade Scythe · Honour Blade · Anchor Fists · *No Quarter*
   - [x] 3D models (`Docs/weapons/knight.png`), abilities with their effects and animations (`Docs/animations/knight_abilities_fx.mp4`), swing effects (dirt and gold; No Quarter's coins, gold crack and Burrowmore's visor), sounds (`Docs/sounds/knight_speedway_sounds.mp4`)
-  - [ ] You: run the uploader and paste me the IDs, then play-test the pack
+  - [x] You: run the uploader and paste me the IDs (done) - then play-test the pack
 - [x] **Speedway (Revvington):** Tyre Scythe · Nitro Katana · Piston Punchers · Pit Stop Sabre · Wheelie Wrecker · *Victory Lap*
   - [x] 3D models (`Docs/weapons/speedway.png`), abilities with their effects and animations (`Docs/animations/speedway_abilities_fx.mp4`), swing effects (sparks and tyre smoke; fire on the Mythic; Victory Lap's confetti, chequered flag and Revvington's eyes), sounds
-  - [ ] You: run the uploader and paste me the IDs, then play-test the pack
+  - [x] You: run the uploader and paste me the IDs (done) - then play-test the pack
 - [ ] **Jungle (Kongo):** Chest Pound Fists · Jungle Fang · Vine Scythe · Barrel Daggers · Barrel Hammer · *Kong's Crown*
 - [ ] **Canvas (Scribble):** Eraser Hammer · Pencil Sword · Ink Fists · Doodle Katana · Copy-Paste Scythe · *Delete Key*
 
