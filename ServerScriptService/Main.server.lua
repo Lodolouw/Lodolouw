@@ -207,6 +207,14 @@ task.delay(3, function()
 	pcall(lightenShadows) -- (and whatever the builders finished a moment later)
 end)
 
+-- Arena copies: each floor's arena becomes its first copy, and a clean
+-- snapshot is kept so every player (or party) going up can have one of their
+-- own (SpireService asks for them). Before the bosses, so every boss knows
+-- its arena's id. (The Dunes' sand is Terrain: its builder pours it again for
+-- each copy.)
+local ArenaPool = load("ArenaPool", 3)
+start("ArenaPool", ArenaPool and ArenaPool.Start, { DuneArena = DunesBuilder })
+
 local BossService = load("BossService")
 if CombatService then
 	start("BossService", BossService and BossService.Start, CombatService, PlayerService) -- the bosses themselves (after the arenas exist)

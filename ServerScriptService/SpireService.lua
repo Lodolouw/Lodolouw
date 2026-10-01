@@ -10,8 +10,10 @@
 	  * the fog gate in the arena (or the Leave button) brings you back to the
 	    Spire's doors - and so does dying in there
 
-	Only floor 1's arena (Gloomgut's Hollow) exists so far, and there is no boss
-	fight in it yet - this is just the arena and the way in and out.
+	Every trip up gets an arena of its own: ArenaPool hands you (and your
+	party) a copy of that floor's arena with its own boss, so players
+	grinding the same floor never share a fight. The player's SpireArena
+	attribute says which copy (SpireFloor still says which floor).
 ]]
 
 local Players = game:GetService("Players")
@@ -19,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local ArenaPool = require(script.Parent:WaitForChild("ArenaPool"))
 
 local SpireService = {}
 
@@ -26,12 +29,15 @@ local remotes = {}
 local lastTravel = {} -- [player] = os.clock() of the last trip, to stop spamming
 local TRAVEL_COOLDOWN = 1.5
 
--- Is the boss of this floor awake and fighting? (You can't walk out on a
--- fight: you win it, or it wins.)
+-- Is the boss of the arena you're in awake and fighting? (You can't walk out
+-- on a fight: you win it, or it wins.) Your own arena copy's boss only.
 local FIGHTING = { Waking = true, Fighting = true, Transition = true }
-local function fightOn(floorId)
+local function fightOn(player)
+	local floorId = player:GetAttribute("SpireFloor")
+	local arenaId = player:GetAttribute("SpireArena")
 	for _, boss in ipairs(CollectionService:GetTagged("Boss")) do
-		if boss:GetAttribute("Floor") == floorId and FIGHTING[boss:GetAttribute("State")] then
+		if boss:GetAttribute("Floor") == floorId and FIGHTING[boss:GetAttribute("State")]
+			and (arenaId == nil or boss:GetAttribute("ArenaId") == nil or boss:GetAttribute("ArenaId") == arenaId) then
 			return true
 		end
 	end
@@ -61,11 +67,10 @@ local function floorInfo(id)
 	return nil
 end
 
--- Where each floor's arena drops you off (only floor 1 exists for now)
-local function arenaSpawnFor(floorId)
+-- Where an arena (a copy of a floor's) drops you off
+local function arenaSpawnIn(arena)
 	for _, anchor in ipairs(CollectionService:GetTagged("ArenaSpawn")) do
-		local arena = anchor:FindFirstAncestorWhichIsA("Model")
-		if arena and (arena:GetAttribute("Floor") or 1) == floorId then
+		if arena and anchor:IsDescendantOf(arena) then
 			return anchor.CFrame
 		end
 	end
@@ -178,20 +183,10 @@ end
 -- Getting an arena ready BEFORE you go in, so nothing is still loading when
 -- you arrive. (Only matters if the place uses streaming - Workspace >
 -- StreamingEnabled - otherwise everything is always loaded anyway.) Only ONE
--- arena is kept loaded for you at a time: the next floor you'd fight as you
--- open the Spire menu, the one you pick as you go in - and it's let go again
--- when you're back in the lobby. (Every arena used to stay loaded for you
--- for good once you'd opened the menu: some 14,000 parts on your screen.)
+-- arena is kept loaded for you at a time: the copy you'd most likely get as
+-- you open the Spire menu, the one you're given as you go in - and it's let
+-- go again when you're back in the lobby.
 local warmed = {} -- [player] = the arena model kept loaded for them
-local function arenaModel(floorId)
-	for _, anchor in ipairs(CollectionService:GetTagged("ArenaSpawn")) do
-		local arena = anchor:FindFirstAncestorWhichIsA("Model")
-		if arena and (arena:GetAttribute("Floor") or 1) == floorId then
-			return arena
-		end
-	end
-	return nil
-end
 
 local function coolArena(player)
 	local arena = warmed[player]
@@ -204,8 +199,7 @@ local function coolArena(player)
 end
 
 -- (wait: block until it's streamed in round where you'll stand)
-local function warmArena(player, floorId, wait)
-	local arena = arenaModel(floorId)
+local function warmArena(player, arena, wait)
 	if not arena then
 		return
 	end
@@ -220,7 +214,7 @@ local function warmArena(player, floorId, wait)
 			end
 		end)
 	end
-	local dest = arenaSpawnFor(floorId)
+	local dest = arenaSpawnIn(arena)
 	if dest then
 		local function stream()
 			pcall(function()
@@ -240,8 +234,11 @@ local function openMenu(player)
 	if not root then
 		return
 	end
-	-- (the next floor you'd fight: most likely the one you'll pick)
-	warmArena(player, math.max(1, (player:GetAttribute("SpireCleared") or 0) + 1), false)
+	-- (the next floor you'd fight: most likely the one you'll pick - and the
+	-- copy of it you'd get, kept for you a minute)
+	local nextFloor = math.max(1, (player:GetAttribute("SpireCleared") or 0) + 1)
+	local ok, arena = pcall(ArenaPool.Prepare, nextFloor, player)
+	warmArena(player, ok and arena or nil, false)
 	remotes.SpireEvent:FireClient(player, "OpenMenu")
 end
 
@@ -280,23 +277,44 @@ local function travel(player, action, floorId)
 		if (root.Position - doorPart.Position).Magnitude > Config.Spire.EnterRange then
 			return false, "Stand at the Spire's doors to enter."
 		end
-		local dest = arenaSpawnFor(floor.id)
+		-- an arena of your own (with your party: SpireService.PartyFor)
+		local group = SpireService.PartyFor and SpireService.PartyFor(player, floor.id) or { player }
+		local arena = ArenaPool.Acquire(floor.id, group)
+		local dest = arena and arenaSpawnIn(arena)
 		if not dest then
-			return false, "That arena isn't built yet."
+			ArenaPool.Leave(player)
+			return false, arena and "That arena isn't built yet." or "Every arena is busy - try again in a moment."
 		end
 		lastTravel[player] = now
-		warmArena(player, floor.id, true) -- (often already done when the menu opened)
-		if not moveCharacter(player, char, dest) then
+		local id = arena:GetAttribute("ArenaId")
+		for _, p in ipairs(group) do
+			local pRoot, pChar = rootOf(p)
+			if pRoot then
+				if p ~= player then
+					lastTravel[p] = now
+				end
+				warmArena(p, arena, p == player) -- (often already done when the menu opened)
+				if moveCharacter(p, pChar, dest) then
+					-- which copy first: screens react to SpireFloor changing
+					p:SetAttribute("SpireArena", id)
+					p:SetAttribute("SpireFloor", floor.id)
+					remotes.SpireEvent:FireClient(p, "Arrived", floor.area, floor.boss)
+				else
+					ArenaPool.Leave(p)
+				end
+			else
+				ArenaPool.Leave(p)
+			end
+		end
+		if player:GetAttribute("SpireFloor") ~= floor.id then
 			return false, "You can't travel right now."
 		end
-		player:SetAttribute("SpireFloor", floor.id)
-		remotes.SpireEvent:FireClient(player, "Arrived", floor.area, floor.boss)
 		return true
 	elseif action == "leave" then
 		if not player:GetAttribute("SpireFloor") then
 			return false, "You're not in the Spire."
 		end
-		if fightOn(player:GetAttribute("SpireFloor")) then
+		if fightOn(player) then
 			return false, "You can't leave in the middle of a fight!"
 		end
 		local back = firstTagged("SpireReturn")
@@ -308,6 +326,8 @@ local function travel(player, action, floorId)
 			return false, "You can't travel right now."
 		end
 		player:SetAttribute("SpireFloor", nil)
+		player:SetAttribute("SpireArena", nil)
+		ArenaPool.Leave(player)
 		coolArena(player)
 		-- out of the arena: patched up, back to full health
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -335,7 +355,7 @@ local function hookExit(prompt)
 	hooked[prompt] = true
 	prompt.Triggered:Connect(function(player)
 		local floorId = player:GetAttribute("SpireFloor")
-		if floorId and fightOn(floorId) then
+		if floorId and fightOn(player) then
 			remotes.SpireEvent:FireClient(player, "Message", "You can't leave in the middle of a fight!")
 		elseif floorId then
 			remotes.SpireEvent:FireClient(player, "ConfirmLeave")
@@ -393,6 +413,8 @@ function SpireService.Start()
 		end)
 		player.CharacterAdded:Connect(function(char)
 			player:SetAttribute("SpireFloor", nil)
+			player:SetAttribute("SpireArena", nil)
+			ArenaPool.Leave(player)
 			coolArena(player) -- (back in the lobby: the arena can go)
 			if not player:GetAttribute("DiedInSpire") then
 				return
@@ -424,6 +446,7 @@ function SpireService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		lastTravel[player] = nil
 		warmed[player] = nil
+		ArenaPool.Leave(player)
 	end)
 end
 

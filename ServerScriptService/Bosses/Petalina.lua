@@ -58,8 +58,10 @@ local now, flat, flatDistance, unitOr, rootOf, fightersIn
 local setAction, setSlot, waitUntil, valid, hitArea, recovery, targetPosition, knockbackFrom
 local stepMovement, stepWaves
 local CombatService, PLAYER_RADIUS, STAND_HEIGHT
+local K -- the whole kit (for its arena-copy helpers)
 
 function Boss.init(kit)
+	K = kit
 	now, flat, flatDistance, unitOr, rootOf, fightersIn = kit.now, kit.flat, kit.flatDistance, kit.unitOr, kit.rootOf, kit.fightersIn
 	setAction, setSlot, waitUntil, valid = kit.setAction, kit.setSlot, kit.waitUntil, kit.valid
 	hitArea, recovery, targetPosition, knockbackFrom = kit.hitArea, kit.recovery, kit.targetPosition, kit.knockbackFrom
@@ -140,13 +142,7 @@ end
 ----------------------------------------------------------------------
 local function propFolder(E)
 	if not (E.folder and E.folder.Parent) then
-		local f = Workspace:FindFirstChild("PetalinaProps")
-		if not f then
-			f = Instance.new("Folder")
-			f.Name = "PetalinaProps"
-			f.Parent = Workspace
-		end
-		E.folder = f
+		E.folder = K.propFolder(E, "PetalinaProps") -- (one per arena copy)
 	end
 	return E.folder
 end

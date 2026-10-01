@@ -1523,9 +1523,50 @@ local function buildBounds()
 	CollectionService:AddTag(home, "BossHome")
 end
 
+-- clears the space for the dunes (moved by `offset`): in pieces - one giant
+-- clear can fail, and any sand already saved in the place would then stay,
+-- burying the whole arena
+local function clearSand(t, offset)
+	for x = -300, 300, 120 do
+		for z = -300, 300, 120 do
+			local ok = pcall(function()
+				t:FillBlock(CFrame.new(at(x, 70, z) + offset), V3(120, 220, 120), Mat.Air)
+			end)
+			if not ok then
+				warn("[DunesBuilder] couldn't clear the old sand at " .. tostring(at(x, 0, z) + offset))
+			end
+		end
+	end
+end
+
 ----------------------------------------------------------------------
 -- Public
 ----------------------------------------------------------------------
+
+-- The dunes again for a copy of the arena moved by `offset` (ArenaPool): a
+-- model's clone doesn't bring Terrain with it, so the same sand balls are
+-- poured at the new spot. (Only after Build: it replays Build's record.)
+function DunesBuilder.PaintTerrain(offset)
+	local t = Workspace:FindFirstChildOfClass("Terrain")
+	if not t then
+		return
+	end
+	clearSand(t, offset)
+	for _, d in ipairs(dunes) do
+		pcall(function()
+			t:FillBall(d[1] + offset, d[2] - 2, Mat.Sand)
+		end)
+	end
+end
+
+-- and gone again when that copy is taken down
+function DunesBuilder.ClearTerrain(offset)
+	local t = Workspace:FindFirstChildOfClass("Terrain")
+	if t then
+		clearSand(t, offset)
+	end
+end
+
 function DunesBuilder.Build()
 	local old = Workspace:FindFirstChild("DuneArena")
 	if old then
@@ -1549,18 +1590,7 @@ function DunesBuilder.Build()
 		terrain = Workspace.Terrain
 	end)
 	if terrain then
-		-- (in pieces: one giant clear can fail, and any sand already saved in
-		-- the place would then stay - burying the whole arena)
-		for x = -300, 300, 120 do
-			for z = -300, 300, 120 do
-				local ok = pcall(function()
-					terrain:FillBlock(CFrame.new(at(x, 70, z)), V3(120, 220, 120), Mat.Air)
-				end)
-				if not ok then
-					warn("[DunesBuilder] couldn't clear the old sand at " .. tostring(at(x, 0, z)))
-				end
-			end
-		end
+		clearSand(terrain, V3(0, 0, 0))
 		pcall(function()
 			terrain:SetMaterialColor(Mat.Sand, SAND)
 		end)

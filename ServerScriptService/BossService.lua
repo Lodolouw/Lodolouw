@@ -30,6 +30,14 @@
 	To add a boss: copy Bosses/_Template.lua (and ReplicatedStorage/BossBodies/
 	_Template.lua for its body), give it a Config.Bosses entry and an arena.
 
+	ONE FIGHT PER ARENA COPY. Everyone going up a floor gets a copy of its
+	arena of their own (ArenaPool), and every copy has its own encounter here:
+	built when the copy appears (its "BossHome" part), taken down when it goes.
+	Who's in a fight is who's in that copy (the player's SpireArena attribute
+	matches the copy's ArenaId) - the targets, the hits, the health it wakes
+	with for a party, the reset when they're gone, the rewards. With no copies
+	in play (no ArenaPool: the tests) it's one fight per floor, as it was.
+
 	Attributes on the boss model, for BossClient:
 	    State, Phase, Health, MaxHealth, Moving
 	    Action, ActionId, ActionStart (server time), ActA/ActB/ActC (positions),
@@ -49,7 +57,9 @@ local BossService = {}
 local CombatService = nil
 local PlayerService = nil
 local BossEvent = nil
-local encounters = {} -- [floorId] = encounter
+local encounters = {} -- [BossHome part] = encounter (one per arena copy)
+local primary = {} -- [floorId] = the encounter in the floor's first arena
+local running = {} -- every encounter, in the order built (each frame steps them in this order)
 
 local STAND_HEIGHT = 3 -- a standing character's root is about this far off the floor
 local PLAYER_RADIUS = 1.5 -- how wide a character is, for hits
@@ -126,26 +136,85 @@ local function floorInfo(floorId)
 	return nil
 end
 
--- the players fighting on this floor right now, alive
+-- Is this player in this encounter's arena copy? (No copy given - no
+-- ArenaPool, as in the tests - means the floor's first arena.)
+local function inArena(E, p)
+	local id = p:GetAttribute("SpireArena")
+	if id == nil or E.arenaId == nil then
+		return primary[E.floor] == E
+	end
+	return id == E.arenaId
+end
+
+-- the players fighting in this arena right now, alive
 local function fightersIn(E)
 	local list = {}
 	for _, p in ipairs(CombatService.PlayersInArena(E.floor)) do
-		if CombatService.IsFighting(p) and rootOf(p) then
+		if inArena(E, p) and CombatService.IsFighting(p) and rootOf(p) then
 			list[#list + 1] = p
 		end
 	end
 	return list
 end
 
--- everyone standing in this floor's arena, alive or not
+-- everyone standing in this arena, alive or not
 local function presentIn(E)
 	local list = {}
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p:GetAttribute("SpireFloor") == E.floor then
+		if p:GetAttribute("SpireFloor") == E.floor and inArena(E, p) then
 			list[#list + 1] = p
 		end
 	end
 	return list
+end
+
+-- The arena model a part belongs to (the top-level model in Workspace).
+local function arenaRoot(inst)
+	local a = inst
+	while a and a.Parent and a.Parent ~= Workspace do
+		a = a.Parent
+	end
+	return (a and a.Parent == Workspace) and a or nil
+end
+
+-- Is this part of the world built in this encounter's arena copy? (For a
+-- boss looking up its arena's pillars, rocks, thrones: never another copy's.)
+local function inArenaModel(E, inst)
+	return E.arena == nil or (inst ~= nil and inst:IsDescendantOf(E.arena))
+end
+
+-- This encounter's arena model, if it carries `attr` - or, failing that, the
+-- last model on its floor that does (the old way, before copies).
+local function arenaWith(E, attr)
+	if E.arena and E.arena:GetAttribute(attr) ~= nil then
+		return E.arena
+	end
+	local found = nil
+	for _, c in ipairs(Workspace:GetChildren()) do
+		if c:IsA("Model") and c:GetAttribute("Floor") == E.floor and c:GetAttribute(attr) ~= nil and not c:GetAttribute("Boss") then
+			found = c
+		end
+	end
+	return found
+end
+
+-- A folder in Workspace for this encounter's props (TuberProps...): one per
+-- arena copy (its ArenaId on it, for the screens), made the first time it's
+-- asked for, and taken away with the encounter.
+local function propFolder(E, name)
+	E.folders = E.folders or {}
+	local f = E.folders[name]
+	if f and f.Parent then
+		return f
+	end
+	f = Instance.new("Folder")
+	f.Name = name
+	if E.arenaId then
+		f:SetAttribute("ArenaId", E.arenaId)
+	end
+	f.Parent = Workspace
+	E.folders[name] = f
+	return f
 end
 
 ----------------------------------------------------------------------
@@ -214,10 +283,10 @@ end
 -- (An arena marks its stone platforms with the "DunePlatform" tag. None
 -- does at the moment - a floor with none is unaffected.)
 ----------------------------------------------------------------------
-local function findStones(floorId)
+local function findStones(floorId, arena)
 	local list = {}
 	for _, pm in ipairs(CollectionService:GetTagged("DunePlatform")) do
-		if pm:GetAttribute("Floor") == floorId then
+		if pm:GetAttribute("Floor") == floorId and (arena == nil or pm:IsDescendantOf(arena)) then
 			local slab = pm:FindFirstChild("PlatformSlab")
 			local center = slab and slab.Position
 			if not center then
@@ -752,7 +821,14 @@ local function build(floorId, homePart)
 	if not boss then
 		return nil -- (no file for it in Bosses: warned once, and the other bosses carry on)
 	end
-	local old = Workspace:FindFirstChild("Boss_" .. def.Short)
+	-- which arena copy: its id names the boss of every copy after the first
+	local arena = arenaRoot(homePart)
+	local arenaId = arena and arena:GetAttribute("ArenaId")
+	local name = "Boss_" .. def.Short
+	if arenaId and primary[floorId] then
+		name = name .. "_" .. arenaId
+	end
+	local old = Workspace:FindFirstChild(name)
 	if old then
 		old:Destroy()
 	end
@@ -762,7 +838,7 @@ local function build(floorId, homePart)
 	local height = def.Size * 0.85
 
 	local model = Instance.new("Model")
-	model.Name = "Boss_" .. def.Short
+	model.Name = name
 	pcall(function()
 		model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent -- every client always has it
 	end)
@@ -788,6 +864,9 @@ local function build(floorId, homePart)
 	model:SetAttribute("MaxHealth", 1)
 	model:SetAttribute("Phase", 1)
 	model:SetAttribute("Moving", false)
+	if arenaId then
+		model:SetAttribute("ArenaId", arenaId) -- (which copy's boss this is: see ReplicatedStorage/Arenas)
+	end
 
 	local onHit = Instance.new("BindableEvent")
 	onHit.Name = "OnHit"
@@ -814,11 +893,16 @@ local function build(floorId, homePart)
 		participants = {},
 		nextWatch = 0,
 		rng = Random.new(),
-		stones = findStones(floorId),
+		arena = arena, -- the arena copy it lives in
+		arenaId = arenaId,
+		stones = findStones(floorId, arena),
 		boss = boss, -- its own file: its attacks, and the hooks it adds (see Bosses/)
 	}
 	E.pos = E.home
 	E.facing = E.homeFacing
+	if not primary[floorId] then
+		primary[floorId] = E
+	end
 	place(E)
 	model.Parent = Workspace
 	CollectionService:AddTag(model, "Boss")
@@ -874,6 +958,12 @@ local function makeKit()
 		floorInfo = floorInfo,
 		fightersIn = fightersIn,
 		presentIn = presentIn,
+		-- its own arena copy: is a player in it, is a part of the world in
+		-- it, the arena model, a folder for its props
+		inArena = inArena,
+		inArenaModel = inArenaModel,
+		arenaWith = arenaWith,
+		propFolder = propFolder,
 		-- publishing what it's doing, for every screen
 		setState = setState,
 		setAction = setAction,
@@ -932,16 +1022,53 @@ function BossService.Start(combatService, playerService)
 	BossEvent.Parent = folder
 	folder.Parent = ReplicatedStorage
 
-	-- LobbyBuilder marks where each boss lives with a "BossHome" part
-	for _, homePart in ipairs(CollectionService:GetTagged("BossHome")) do
+	-- Every arena marks where its boss lives with a "BossHome" part: one
+	-- encounter each - and one more whenever an arena copy appears
+	-- (ArenaPool), taken down again when it goes
+	local function add(homePart)
 		local floorId = homePart:GetAttribute("Floor")
-		if floorId and Config.Bosses[floorId] and not encounters[floorId] then
-			encounters[floorId] = build(floorId, homePart)
+		if floorId and Config.Bosses[floorId] and not encounters[homePart] then
+			local E = build(floorId, homePart)
+			encounters[homePart] = E
+			if E then
+				table.insert(running, E)
+			end
 		end
 	end
+	for _, homePart in ipairs(CollectionService:GetTagged("BossHome")) do
+		add(homePart)
+	end
+	CollectionService:GetInstanceAddedSignal("BossHome"):Connect(add)
+	CollectionService:GetInstanceRemovedSignal("BossHome"):Connect(function(homePart)
+		local E = encounters[homePart]
+		if not E then
+			return
+		end
+		encounters[homePart] = nil
+		local i = table.find(running, E)
+		if i then
+			table.remove(running, i)
+		end
+		E.token = E.token + 1 -- (every attack still running stops)
+		if E.boss.onDestroy then
+			pcall(E.boss.onDestroy, E) -- (the boss's own tidying: see its file)
+		end
+		for _, f in pairs(E.folders or {}) do
+			f:Destroy()
+		end
+		makeTarget(E, false)
+		E.state = "Gone"
+		E.model:Destroy()
+		if primary[E.floor] == E then
+			primary[E.floor] = nil
+		end
+	end)
 
 	RunService.Heartbeat:Connect(function(dt)
-		for _, E in pairs(encounters) do
+		for _, E in ipairs(table.clone(running)) do
+			if E.state == "Gone" then
+				continue -- (taken down by something earlier this frame)
+			end
 			if E.boss.step then
 				-- a boss with its own every-frame step (Tuber). Protected: if it
 				-- ever errors, the other bosses and the rest of the frame carry on
@@ -964,9 +1091,18 @@ function BossService.Start(combatService, playerService)
 	end)
 end
 
--- For tests and tools: the live encounter on a floor.
+-- For tests and tools: the live encounter in a floor's first arena, and the
+-- one in an arena copy (by its ArenaId).
 function BossService.Encounter(floorId)
-	return encounters[floorId]
+	return primary[floorId]
+end
+function BossService.EncounterIn(arenaId)
+	for _, E in ipairs(running) do
+		if E.arenaId == arenaId then
+			return E
+		end
+	end
+	return nil
 end
 
 -- For tests: each boss's attacks by name (its short name in Config), so a

@@ -58,6 +58,7 @@ local now, flat, flatDistance, unitOr, rootOf, fightersIn
 local setAction, setSlot, waitUntil, valid, hitArea, recovery, targetPosition, healthShare, knockbackFrom
 local pickTarget, breakShell, stepMovement
 local CombatService, PLAYER_RADIUS, STAND_HEIGHT
+local K -- the whole kit (for its arena-copy helpers)
 
 local live = {} -- [E] = true: every Kaze fight there is (your missed punches feed them)
 local whiffHooked = false
@@ -150,7 +151,7 @@ end
 local function findPillars(E)
 	local list = {}
 	for _, pm in ipairs(CollectionService:GetTagged("DojoPillar")) do
-		if pm:GetAttribute("Floor") == E.floor then
+		if pm:GetAttribute("Floor") == E.floor and K.inArenaModel(E, pm) then -- (his own arena copy's)
 			local core = pm:FindFirstChild("PillarCore") or pm.PrimaryPart
 			if core then
 				local c = core.Position
@@ -1078,7 +1079,7 @@ local function onWhiff(player, position)
 		return
 	end
 	for E in pairs(live) do
-		if E.state == "Fighting" and player:GetAttribute("SpireFloor") == E.floor
+		if E.state == "Fighting" and player:GetAttribute("SpireFloor") == E.floor and K.inArena(E, player)
 			and flatDistance(position, E.pos) <= E.def.Ki.WhiffRange then
 			gainKi(E, E.def.Ki.Whiff)
 			E.model:SetAttribute("WhiffAt", now())
@@ -1104,6 +1105,7 @@ end
 -- Hooks (see BossService: they run at these moments)
 ----------------------------------------------------------------------
 function Boss.init(kit)
+	K = kit
 	now, flat, flatDistance, unitOr, rootOf, fightersIn = kit.now, kit.flat, kit.flatDistance, kit.unitOr, kit.rootOf, kit.fightersIn
 	setAction, setSlot, waitUntil, valid = kit.setAction, kit.setSlot, kit.waitUntil, kit.valid
 	hitArea, recovery, targetPosition, healthShare, knockbackFrom = kit.hitArea, kit.recovery, kit.targetPosition, kit.healthShare, kit.knockbackFrom
@@ -1116,16 +1118,16 @@ function Boss.init(kit)
 	end
 end
 
+-- Taken down (his arena copy is gone): no longer fed by missed punches
+function Boss.onDestroy(E)
+	live[E] = nil
+end
+
 -- Built: the pillars found, his meter empty, and CombatService told where
 -- his body really is (high in a Rising Dragon he's out of your reach)
 function Boss.onBuild(E)
 	E.pillars = findPillars(E)
-	local arena = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == E.floor and child:GetAttribute("Half") then
-			arena = child
-		end
-	end
+	local arena = K.arenaWith(E, "Half") -- (his own arena copy)
 	E.half = arena and arena:GetAttribute("Half") or 62
 	E.ki, E.kiShown = 0, nil
 	publishKi(E)

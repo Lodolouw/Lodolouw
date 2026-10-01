@@ -777,6 +777,9 @@ Imt.__newindex = function(self, k, v)
 		props.Parent = v
 		if v then
 			table.insert(rawget(v, "__children"), self)
+			if M.enterGame then
+				M.enterGame(self, v)
+			end
 			fireSignal(v, "ChildAdded", self)
 			local a = v
 			while a do
@@ -948,6 +951,9 @@ function methods.Destroy(self)
 	end
 	self.Parent = nil
 	rawset(self, "__destroyed", true)
+	if M.untagAll then
+		M.untagAll(self)
+	end
 	if M.onDestroy then
 		M.onDestroy(self)
 	end
@@ -1018,6 +1024,17 @@ function methods.Clone(self)
 		end
 		for k, v in pairs(rawget(o, "__attrs")) do
 			rawget(n, "__attrs")[k] = v
+		end
+		-- (its tags come along, as in Roblox - registered once the copy is in
+		-- the game: see enterGame)
+		local carried = M.tagsOf and M.tagsOf(o) or {}
+		for _, tag in ipairs(rawget(o, "__cloneTags") or {}) do
+			if not table.find(carried, tag) then
+				table.insert(carried, tag) -- (a copy of a copy that isn't in the game yet)
+			end
+		end
+		if #carried > 0 then
+			rawset(n, "__cloneTags", carried)
 		end
 		for _, c in ipairs(rawget(o, "__children")) do
 			local cc = copy(c)
@@ -1268,6 +1285,46 @@ function CollectionService:GetTagged(tag)
 		return (tagOrder[a] and tagOrder[a][tag] or 0) < (tagOrder[b] and tagOrder[b][tag] or 0)
 	end)
 	return out
+end
+-- the tags an instance has (for Clone)
+function M.tagsOf(inst)
+	local list = {}
+	for tag, set in pairs(tags) do
+		if set[inst] then
+			table.insert(list, tag)
+		end
+	end
+	table.sort(list)
+	return list
+end
+-- a clone's carried tags register when it (or an ancestor) is put in the game
+function M.enterGame(inst, parent)
+	local a = parent
+	while a and a ~= game do
+		a = rawget(a, "__props").Parent
+	end
+	if a ~= game then
+		return
+	end
+	local function walk(o)
+		local carried = rawget(o, "__cloneTags")
+		if carried then
+			rawset(o, "__cloneTags", nil)
+			for _, tag in ipairs(carried) do
+				CollectionService:AddTag(o, tag)
+			end
+		end
+		for _, c in ipairs(rawget(o, "__children")) do
+			walk(c)
+		end
+	end
+	walk(inst)
+end
+-- a destroyed instance leaves its tags (their InstanceRemoved signals fire)
+function M.untagAll(inst)
+	for _, tag in ipairs(M.tagsOf(inst)) do
+		CollectionService:RemoveTag(inst, tag)
+	end
 end
 function CollectionService:GetInstanceAddedSignal(tag)
 	tagAdded[tag] = tagAdded[tag] or Signal.new()

@@ -52,6 +52,7 @@ local now, flat, flatDistance, unitOr, rootOf, fightersIn
 local setAction, setSlot, waitUntil, valid, recovery, targetPosition, healthShare, knockbackFrom
 local pickTarget, breakShell, place, stepWaves, stepPuddles
 local CombatService, PLAYER_RADIUS, STAND_HEIGHT
+local K -- the whole kit (for its arena-copy helpers)
 
 ----------------------------------------------------------------------
 -- Little helpers
@@ -825,6 +826,7 @@ end
 -- Hooks (see BossService: they run at these moments)
 ----------------------------------------------------------------------
 function Boss.init(kit)
+	K = kit
 	now, flat, flatDistance, unitOr, rootOf, fightersIn = kit.now, kit.flat, kit.flatDistance, kit.unitOr, kit.rootOf, kit.fightersIn
 	setAction, setSlot, waitUntil, valid = kit.setAction, kit.setSlot, kit.waitUntil, kit.valid
 	recovery, targetPosition, healthShare, knockbackFrom = kit.recovery, kit.targetPosition, kit.healthShare, kit.knockbackFrom
@@ -835,12 +837,7 @@ end
 -- Built: the track's shape found, parked on the start line, and
 -- CombatService told his real shape (a box, not a ball)
 function Boss.onBuild(E)
-	local arena = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == E.floor and child:GetAttribute("Spine") then
-			arena = child
-		end
-	end
+	local arena = K.arenaWith(E, "Spine") -- (his own arena copy)
 	E.center = arena and arena:GetAttribute("Center") or E.home
 	E.center = Vector3.new(E.center.X, E.floorY, E.center.Z)
 	E.spine = arena and arena:GetAttribute("Spine") or 70

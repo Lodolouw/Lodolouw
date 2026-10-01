@@ -81,8 +81,10 @@ local now, flat, flatDistance, unitOr, rootOf, fightersIn
 local setState, setAction, setSlot, place, waitUntil, valid, hitArea, recovery, targetPosition, knockbackFrom
 local pickTarget, healthShare, breakShell, stepMovement
 local CombatService, PLAYER_RADIUS, STAND_HEIGHT
+local K -- the whole kit (for its arena-copy helpers)
 
 function Boss.init(kit)
+	K = kit
 	now, flat, flatDistance, unitOr, rootOf, fightersIn = kit.now, kit.flat, kit.flatDistance, kit.unitOr, kit.rootOf, kit.fightersIn
 	setState, setAction, setSlot, place = kit.setState, kit.setAction, kit.setSlot, kit.place
 	waitUntil, valid, hitArea, recovery = kit.waitUntil, kit.valid, kit.hitArea, kit.recovery
@@ -211,13 +213,7 @@ end
 ----------------------------------------------------------------------
 local function propFolder(E)
 	if not (E.folder and E.folder.Parent) then
-		local f = Workspace:FindFirstChild("ScribbleProps")
-		if not f then
-			f = Instance.new("Folder")
-			f.Name = "ScribbleProps"
-			f.Parent = Workspace
-		end
-		E.folder = f
+		E.folder = K.propFolder(E, "ScribbleProps") -- (one per arena copy)
 	end
 	return E.folder
 end

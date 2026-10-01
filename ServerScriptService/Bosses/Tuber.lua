@@ -66,6 +66,7 @@ local now, flat, flatDistance, unitOr, rootOf, fightersIn
 local setAction, setSlot, waitUntil, valid, hitArea, targetPosition, healthShare, knockbackFrom
 local pickTarget, breakShell, stepMovement, stepWaves, stepPuddles, place
 local CombatService, PLAYER_RADIUS, STAND_HEIGHT
+local K -- the whole kit (for its arena-copy helpers)
 
 local STACK = 3.2 -- how tall each of little Tuber's three segments is
 local WALL_BLOCK = 2.2 -- (half a wall segment: how close a ball or needle gets to one)
@@ -192,7 +193,7 @@ end
 local function findRocks(E)
 	local list = {}
 	for _, rm in ipairs(CollectionService:GetTagged("DesertRock")) do
-		if rm:GetAttribute("Floor") == E.floor then
+		if rm:GetAttribute("Floor") == E.floor and K.inArenaModel(E, rm) then -- (his own arena copy's)
 			local core = rm:FindFirstChild("RockCore") or rm.PrimaryPart
 			if core then
 				table.insert(list, {
@@ -432,10 +433,7 @@ end
 -- "Gone" when the fight resets) and EndAt when; it's removed a moment later.
 local function propFolder(E)
 	if not (E.folder and E.folder.Parent) then
-		local f = Instance.new("Folder")
-		f.Name = "TuberProps"
-		f.Parent = Workspace
-		E.folder = f
+		E.folder = K.propFolder(E, "TuberProps") -- (one per arena copy)
 	end
 	return E.folder
 end
@@ -1817,6 +1815,7 @@ end
 -- Hooks (see BossService: they run at these moments)
 ----------------------------------------------------------------------
 function Boss.init(kit)
+	K = kit
 	now, flat, flatDistance, unitOr, rootOf, fightersIn = kit.now, kit.flat, kit.flatDistance, kit.unitOr, kit.rootOf, kit.fightersIn
 	setAction, setSlot, waitUntil, valid = kit.setAction, kit.setSlot, kit.waitUntil, kit.valid
 	hitArea, targetPosition, healthShare, knockbackFrom = kit.hitArea, kit.targetPosition, kit.healthShare, kit.knockbackFrom
@@ -1843,21 +1842,12 @@ end
 -- Built: the arena found (DunesBuilder's model: its middle, its edge, its
 -- rocks), and CombatService told where his body really is
 function Boss.onBuild(E)
-	local arena = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == E.floor and child:GetAttribute("FightRadius") then
-			arena = child
-		end
-	end
+	local arena = K.arenaWith(E, "FightRadius") -- (his own arena copy)
 	local c = arena and arena:GetAttribute("Center")
 	E.center = typeof(c) == "Vector3" and atFloor(E, c) or E.home
 	E.fightR = (arena and arena:GetAttribute("FightRadius")) or 150
 	E.edgeR = E.fightR - 6 -- (where rolling balls bounce off the rim)
 	E.rocks = findRocks(E)
-	local old = Workspace:FindFirstChild("TuberProps")
-	if old then
-		old:Destroy()
-	end
 	E.propList, E.propId = {}, 0
 	E.shots, E.drops = {}, {}
 	propFolder(E)

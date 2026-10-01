@@ -56,6 +56,7 @@ local now, flat, flatDistance, unitOr, rootOf, fightersIn
 local setAction, setSlot, waitUntil, valid, recovery, targetPosition, healthShare, knockbackFrom
 local pickTarget, breakShell, place, hitArea
 local CombatService, PLAYER_RADIUS, STAND_HEIGHT
+local K -- the whole kit (for its arena-copy helpers)
 
 local FORMS = { "Cube", "Ship", "Ufo", "Wave" }
 local PATTERN_SLOTS = 12 -- (the newest patterns, round and round these attributes)
@@ -978,6 +979,7 @@ end
 -- Hooks (see BossService: they run at these moments)
 ----------------------------------------------------------------------
 function Boss.init(kit)
+	K = kit
 	now, flat, flatDistance, unitOr, rootOf, fightersIn = kit.now, kit.flat, kit.flatDistance, kit.unitOr, kit.rootOf, kit.fightersIn
 	setAction, setSlot, waitUntil, valid = kit.setAction, kit.setSlot, kit.waitUntil, kit.valid
 	recovery, targetPosition, healthShare, knockbackFrom = kit.recovery, kit.targetPosition, kit.healthShare, kit.knockbackFrom
@@ -996,12 +998,7 @@ end
 -- Built: the grid found (GridBuilder's model), the pads and the runway, and
 -- CombatService told his real shape (a box round whatever form he's in)
 function Boss.onBuild(E)
-	local arena = nil
-	for _, child in ipairs(Workspace:GetChildren()) do
-		if child:IsA("Model") and child:GetAttribute("Floor") == E.floor and child:GetAttribute("Tiles") then
-			arena = child
-		end
-	end
+	local arena = K.arenaWith(E, "Tiles") -- (his own arena copy)
 	local center = arena and arena:GetAttribute("Center") or E.home
 	E.grid = BeatGrid.grid(Vector3.new(center.X, E.floorY, center.Z), arena and arena:GetAttribute("Tiles") or 15, arena and arena:GetAttribute("TileSize") or 8)
 	E.ceiling = arena and arena:GetAttribute("Ceiling") or E.def.Ceiling
