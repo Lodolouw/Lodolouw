@@ -170,7 +170,7 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   him move by move, then a camel, a meerkat, a vulture and a lizard close up).
   (`render_snaps.py` reads a picture's own field of view from an 8th number on
   its SNAP line, if there is one.)
-- `test_gridlock_music.luau` - Gridlock's song: round 1 his theme, round 2 the harder version, and one not uploaded yet falls back (Round2Music -> Music -> FallbackMusic); the songs are exactly 64 bars at his Bpm
+- `test_gridlock_music.luau` - Gridlock's song: round 1 his theme, round 2 the harder version, and one not uploaded yet falls back (Round2Music -> Music -> FallbackMusic); the songs are exactly 96 bars at his Bpm
 - `test_gridlock.luau` - GRIDLOCK (floor 6) on the real Final Beat
   (GridBuilder) with the real BossService, his own brain and the shared
   sums in ReplicatedStorage/BeatGrid (and, with `client` at the end, the

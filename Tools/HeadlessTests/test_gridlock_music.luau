@@ -1,7 +1,7 @@
 -- Gridlock's song: round 1 plays his theme, round 2 (after GRAVITY FLIP!)
 -- the harder version of it, and one that isn't uploaded yet falls back to
 -- the next in line (Round2Music -> Music -> FallbackMusic). Both his songs
--- are exactly 64 bars at his Bpm, so BossClient can swap them at the same spot.
+-- are exactly 96 bars at his Bpm, so BossClient can swap them at the same spot.
 --   luau test_gridlock_music.luau
 local M = require("./rbxmock")
 local S = require("./sources")
@@ -21,7 +21,7 @@ local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
 local Body = mount.require(mount.module("ReplicatedStorage/BossBodies/Gridlock.lua"))
 local def = Config.Bosses[6]
 check(def.Short == "Gridlock" and def.Bpm == 128, "floor 6 is Gridlock, at 128 beats a minute")
-check(math.abs(64 * 4 * 60 / def.Bpm - 120) < 1e-9, "64 bars at his Bpm is exactly 120 s (the songs' length)")
+check(math.abs(96 * 4 * 60 / def.Bpm - 180) < 1e-9, "96 bars at his Bpm is exactly 180 s (the songs' length)")
 
 -- the sounds that are "in SoundService"
 local have = {}

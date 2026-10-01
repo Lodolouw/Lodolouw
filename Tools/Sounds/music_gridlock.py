@@ -1,36 +1,39 @@
-"""GRIDLOCK'S SONG, made from code: an original chiptune for floor 6, "The
-Final Beat" - 128 beats a minute, so it fits his fight beat for beat
-(Config.Bosses[6].Bpm). Everything he does lands on a beat, and the song
-starts the moment he wakes up (BossClient starts it where the level is),
-so the tiles, his hops and the music all hit together.
+"""GRIDLOCK'S SONG, made from code: an original chiptune boss theme for floor
+6, "The Final Beat" - in the spirit of the great RPG final-boss themes (a
+heroic minor-key march, 8-bit brass, a running bass, pounding drums, a key
+change for the last stand) with a tune of its own. 128 beats a minute, so it
+fits his fight beat for beat (Config.Bosses[6].Bpm): the song starts the
+moment he wakes up (BossClient starts it where the level is), so the tiles,
+his hops and the music hit together.
 
-It is exactly 64 bars long (120.000 s) and loops with no seam: notes and
-echoes ringing past the end carry on at the start, so a long fight never
-hears a join. In E minor, in stereo.
+It is exactly 96 bars long (180.000 s) and loops with no seam: notes and
+echoes ringing past the end carry on at the start. D minor, in stereo.
 
-    bars  1-4   LEVEL START   the crash as "ATTEMPT 1" comes up, the beat in
-    bars  5-20  A             the main tune (twice: the second time with an
-                              echo and a harmony)
-    bars 21-28  B             higher and brighter
-    bars 29-32  BREAKDOWN     the drums drop out, a taste of the drop's tune,
-                              then the build (a snare roll and a riser)
-    bars 33-48  THE DROP      the heaviest part: pumping bass, chord stabs,
-                              the hook in octaves
-    bars 49-56  C             the soaring part over a fast counter-tune
-    bars 57-64  TURNAROUND    the hook answers itself, then a build that
-                              runs straight back into bar 1
+    bars  1-4   THE HITS      ominous orchestra hits as "ATTEMPT 1" comes up
+    bars  5-20  THEME         the heroic main tune over a rock beat
+    bars 21-28  MARCH         half-time, low brass, triplet arpeggios
+    bars 29-32  GLITCH        the theme starts... stutters, tape-stops dead,
+                              and REBOOTS
+    bars 33-48  THEME, FULL   harmony, octaves, echoes, double kicks
+    bars 49-56  MUSIC BOX     everything drops away: the tune on a bell, slow;
+                              then a heartbeat and the build
+    bars 57-72  THE CHASE     fast runs, a brass line over them, call and
+                              answer with the bass, the band in unison
+    bars 73-76  STOP          stabs and silence... a fake-out stop... then
+    bars 77-92  LAST STAND    the theme a key HIGHER (E minor), everything on
+    bars 93-96  TURNAROUND    falling back down into bar 1's hits
 
 Two versions: "Gridlock Theme" (round 1) and "Gridlock Theme Flip" (round 2,
-after GRAVITY FLIP!): the same song, bar for bar, played harder - 16th hats
-all the way, a higher, doubled arpeggio, rolling bass in the drop, extra
-kicks and a sparkle on top. Both are the same length, so when round 2 starts
-the game swaps one for the other at the same spot and the beat never slips.
+after GRAVITY FLIP!): the same song, bar for bar, played harder - double
+kicks, 32nd-note arpeggios, harmony from the start, a sparkle on top. Both
+are the same length, so the game swaps one for the other at the same spot
+and the beat never slips.
 
     python3 music_gridlock.py           -> out/bosses/Gridlock_Theme.ogg and
                                            Gridlock_Theme_Flip.ogg (and .wav)
     python3 music_gridlock.py --demo    ...and Docs/music/gridlock_theme.mp3:
-                                           round 1 once, then into round 2 at
-                                           the drop (to listen to)
+                                           round 1, then round 2 from THE
+                                           CHASE, then the loop seam
 
 Tools/Upload/upload_assets.bat uploads out/bosses/*.ogg; SoundLoader puts
 them in SoundService as "Gridlock Theme" and "Gridlock Theme Flip", which is
@@ -54,118 +57,148 @@ BPM = 128
 BEAT = 60 / BPM
 STEP = BEAT / 4  # a 16th
 BAR = BEAT * 4
-BARS = 64
-N = int(round(BARS * BAR * RATE))  # 5,292,000 samples: exactly 120 s
+BARS = 96
+N = int(round(BARS * BAR * RATE))  # 7,938,000 samples: exactly 180 s
 
 # ----------------------------------------------------------------------
-# the harmony: one chord a bar
+# notes and chords
 # ----------------------------------------------------------------------
-TONES = {  # (the arpeggio's notes)
-    'Em': [64, 67, 71, 76], 'C': [60, 64, 67, 72], 'G': [62, 67, 71, 74],
-    'D': [62, 66, 69, 74], 'B': [63, 66, 71, 75], 'Am': [60, 64, 69, 72],
-}
-BASS = {'Em': 40, 'C': 36, 'G': 43, 'D': 38, 'B': 35, 'Am': 45}
-STAB = {  # (the drop's chord stabs, a little lower)
-    'Em': [59, 64, 67, 71], 'C': [60, 64, 67, 72], 'G': [59, 62, 67, 71],
-    'D': [57, 62, 66, 69], 'B': [59, 63, 66, 71], 'Am': [57, 60, 64, 69],
-}
+PC = {'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6,
+      'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11}
+NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
+QUALITY = {'': [0, 4, 7], 'm': [0, 3, 7], '7': [0, 4, 7, 10], 'm7': [0, 3, 7, 10]}
 
-INTRO = ['Em', 'C', 'G', 'D']
-A_CH = ['Em', 'C', 'G', 'D', 'Em', 'C', 'G', 'B']
-B_CH = ['C', 'D', 'Em', 'Em', 'C', 'D', 'B', 'B']
-BRK_CH = ['Em', 'C', 'D', 'B']
-DROP_CH = ['Em', 'C', 'G', 'D', 'Em', 'C', 'D', 'B']
-TURN_CH = ['Em', 'C', 'G', 'D', 'Em', 'C', 'D', 'B']
 
-# the plan, bar by bar: (section, chord, bar within its section)
-PLAN = ([('intro', c, i) for i, c in enumerate(INTRO)]
-        + [('A', c, i) for i, c in enumerate(A_CH * 2)]
-        + [('B', c, i) for i, c in enumerate(B_CH)]
-        + [('brk', c, i) for i, c in enumerate(BRK_CH)]
-        + [('drop', c, i) for i, c in enumerate(DROP_CH * 2)]
-        + [('C', c, i) for i, c in enumerate(A_CH)]
-        + [('turn', c, i) for i, c in enumerate(TURN_CH)])
-assert len(PLAN) == BARS
+def note(s):
+    """'C#5' -> 73"""
+    name, octave = (s[:2], s[2:]) if len(s) > 2 and s[1] in '#b' else (s[:1], s[1:])
+    return 12 * (int(octave) + 1) + PC[name]
 
-# ----------------------------------------------------------------------
-# the tunes: (midi note or None for a rest, length in 16ths), 16 a bar
-# ----------------------------------------------------------------------
-E4, Fs4, G4, A4, B4 = 64, 66, 67, 69, 71
-C5, D5, Ds5, E5, Fs5, G5, A5, B5 = 72, 74, 75, 76, 78, 79, 81, 83
-C6, D6, Ds6, E6 = 84, 86, 87, 88
 
-MEL_A = [  # the main tune: that 3-3-2 push
-    [(E5, 3), (B4, 3), (E5, 2), (Fs5, 2), (G5, 4), (Fs5, 2)],
-    [(E5, 3), (C5, 3), (E5, 2), (G5, 4), (E5, 2), (D5, 2)],
-    [(D5, 3), (B4, 3), (D5, 2), (G5, 2), (Fs5, 2), (G5, 2), (A5, 2)],
-    [(Fs5, 6), (A5, 2), (D5, 4), (Fs5, 4)],
-    [(E5, 3), (B4, 3), (E5, 2), (Fs5, 2), (G5, 4), (A5, 2)],
-    [(B5, 3), (A5, 3), (G5, 2), (E5, 4), (G5, 2), (A5, 2)],
-    [(B5, 4), (A5, 2), (G5, 2), (Fs5, 4), (D5, 4)],
-    [(Ds5, 6), (Fs5, 2), (B5, 8)],
-]
-MEL_B = [  # higher and brighter
-    [(G5, 4), (E5, 4), (G5, 4), (C6, 4)],
-    [(A5, 4), (Fs5, 4), (A5, 4), (D6, 4)],
-    [(B5, 6), (A5, 2), (G5, 4), (Fs5, 4)],
-    [(E5, 8), (B4, 4), (E5, 4)],
-    [(G5, 4), (E5, 4), (G5, 4), (C6, 4)],
-    [(D6, 4), (C6, 4), (B5, 4), (A5, 4)],
-    [(B5, 6), (A5, 2), (Fs5, 4), (Ds5, 4)],
-    [(Fs5, 8), (B5, 8)],
-]
-MEL_DROP = [  # THE HOOK: chopped, in octaves
-    [(E5, 2), (E5, 1), (G5, 1), (B5, 2), (A5, 2), (G5, 2), (E5, 2), (D5, 2), (E5, 2)],
-    [(E5, 2), (E5, 1), (G5, 1), (C6, 2), (B5, 2), (G5, 2), (E5, 2), (G5, 2), (A5, 2)],
-    [(B5, 2), (B5, 1), (A5, 1), (G5, 2), (D5, 2), (G5, 2), (B5, 2), (D6, 2), (B5, 2)],
-    [(A5, 4), (Fs5, 2), (D5, 2), (Fs5, 2), (A5, 2), (D6, 4)],
-    [(E5, 2), (E5, 1), (G5, 1), (B5, 2), (A5, 2), (G5, 2), (E5, 2), (D5, 2), (E5, 2)],
-    [(E5, 2), (E5, 1), (G5, 1), (C6, 2), (B5, 2), (G5, 2), (E5, 2), (G5, 2), (A5, 2)],
-    [(A5, 2), (A5, 1), (B5, 1), (A5, 2), (Fs5, 2), (D5, 2), (Fs5, 2), (A5, 2), (D6, 2)],
-    [(Ds6, 4), (B5, 2), (Fs5, 2), (Ds5, 2), (Fs5, 2), (B5, 4)],
-]
-MEL_C = [  # soaring
-    [(E5, 4), (G5, 4), (B5, 6), (A5, 2)],
-    [(G5, 4), (E5, 4), (C6, 6), (B5, 2)],
-    [(B5, 4), (G5, 4), (D6, 6), (C6, 2)],
-    [(A5, 8), (Fs5, 4), (A5, 4)],
-    [(B5, 4), (G5, 4), (E6, 6), (D6, 2)],
-    [(C6, 4), (B5, 4), (G5, 4), (E5, 4)],
-    [(D6, 4), (B5, 4), (G5, 4), (B5, 4)],
-    [(Ds6, 8), (B5, 4), (Fs5, 4)],
-]
-MEL_TURN = [  # the hook calls, the tune answers
-    MEL_DROP[0][:6] + [(None, 6)],
-    [(None, 8), (G5, 2), (A5, 2), (B5, 4)],
-    MEL_DROP[2][:6] + [(None, 6)],
-    [(None, 8), (Fs5, 2), (A5, 2), (D6, 4)],
-    MEL_DROP[0],
-    MEL_DROP[1],
-    [(A5, 4), (B5, 4), (D6, 4), (Fs5, 4)],
-    [(B5, 12), (None, 4)],
-]
-INTRO_RUN = [(None, 8), (D5, 1), (E5, 1), (Fs5, 1), (A5, 1), (B5, 1), (D6, 1), (Ds6, 2)]
+def tune(text):
+    """'A4:2 D5:2 r:4' -> [(57, 2), (62, 2), (None, 4)] (lengths in 16ths)"""
+    out = []
+    for tok in text.split():
+        n, d = tok.split(':')
+        out.append((None if n == 'r' else note(n), float(d)))
+    return out
 
-SCALE = [4, 6, 7, 9, 11, 0, 2]  # E natural minor (D# borrowed for the B chord)
+
+def split_chord(name):
+    root = name[:2] if len(name) > 1 and name[1] in '#b' else name[:1]
+    return PC[root], name[len(root):]
+
+
+def chord_pcs(name):
+    root, q = split_chord(name)
+    return [(root + i) % 12 for i in QUALITY[q]]
+
+
+def chord_notes(name, lo, count):
+    """the chord's notes from `lo` upward, `count` of them"""
+    pcs = chord_pcs(name)
+    out, m = [], lo
+    while len(out) < count:
+        if m % 12 in pcs:
+            out.append(m)
+        m += 1
+    return out
+
+
+def bass_root(name):
+    return 36 + split_chord(name)[0]  # C2..B2
+
+
+def transpose(name, k):
+    root, q = split_chord(name)
+    return NAMES[(root + k) % 12] + q
 
 
 def harmony(m, chord):
-    """the highest note of the chord at least a third under the tune's note
-    (so the harmony always sits in the chord)"""
-    pcs = {t % 12 for t in STAB[chord]}
+    """the highest note of the chord at least a third under the tune's note"""
+    pcs = chord_pcs(chord)
     for k in range(3, 13):
         if (m - k) % 12 in pcs:
             return m - k
     return m - 12
 
 
-def third_below(m):
-    pc, octv = m % 12, m // 12
-    if pc == 3:  # D# -> B
-        return m - 4
-    i = SCALE.index(pc) if pc in SCALE else 0
-    j = i - 2
-    return m - ((pc - SCALE[j % 7]) % 12)
+def with_pos(mel):
+    pos = 0.0
+    for m, d in mel:
+        yield m, d, pos
+        pos += d
+
+
+# ----------------------------------------------------------------------
+# the tunes (all original)
+# ----------------------------------------------------------------------
+THEME_CH = ['Dm', 'Bb', 'C', 'A', 'Dm', 'F', 'Gm', 'A', 'Bb', 'C', 'Dm', 'A7', 'Bb', 'Gm', 'A7', 'Dm']
+THEME = [tune(t) for t in [
+    # the call: up the chord to a held note, then the same a step higher
+    'A4:2 D5:2 F5:2 A5:6 G5:2 F5:2',
+    'Bb5:3 A5:3 F5:2 D5:4 C5:2 D5:2',
+    'E5:2 G5:2 C6:6 Bb5:2 A5:2 G5:2',
+    'A5:6 G5:1 F5:1 E5:4 C#5:4',
+    'A4:2 D5:2 F5:2 A5:6 G5:2 A5:2',
+    'C6:3 A5:3 F5:2 C6:4 D6:2 C6:2',
+    'Bb5:2 A5:2 G5:2 F5:2 D5:4 G5:4',
+    'A5:10 E5:2 F5:2 G5:2',
+    # the answer: falling from the top, climbing to the cadence
+    'D6:3 C6:3 Bb5:2 F5:4 Bb5:4',
+    'C6:3 Bb5:3 A5:2 E5:4 C6:4',
+    'D6:4 A5:2 F5:2 D5:4 F5:2 A5:2',
+    'G5:2 F5:2 E5:2 C#5:2 E5:4 A5:4',
+    'D6:3 C6:3 Bb5:2 F5:4 G5:2 A5:2',
+    'Bb5:3 A5:3 G5:2 D5:4 G5:4',
+    'E5:2 F5:2 G5:2 A5:2 C#6:4 E6:4',
+    'D6:12 r:4',
+]]
+MARCH_CH = ['Dm', 'Dm', 'Bb', 'Bb', 'Gm', 'Gm', 'A', 'A']
+MARCH = [tune(t) for t in [
+    'D4:6 E4:2 F4:4 A4:4', 'D5:6 C5:2 A4:4 F4:4', 'F4:6 G4:2 Bb4:4 D5:4', 'F5:6 D5:2 Bb4:4 F4:4',
+    'G4:6 A4:2 Bb4:4 D5:4', 'G5:6 F5:2 D5:4 Bb4:4', 'C#5:8 E5:8', 'A5:16',
+]]
+INTRO_CH = ['Dm', 'Bb', 'C', 'A']
+INTRO = [tune(t) for t in ['D4:16', 'F4:8 D4:8', 'E4:6 G4:10', 'A4:4 r:8 E4:1 F4:1 G4:1 G#4:1']]
+INTRO_HITS = [[0], [0], [0, 6], [0, 4, 8]]
+CALM_CH = ['Dm', 'Dm', 'Bb', 'Bb', 'C', 'C', 'A', 'A']
+CHASE_CH = ['Dm', 'C', 'Bb', 'A'] * 4
+RUNS = [tune(t) for t in [
+    'D5:1 F5:1 A5:1 D6:1 C6:1 A5:1 F5:1 A5:1 D6:1 A5:1 F5:1 D5:1 F5:2 A5:2',
+    'C5:1 E5:1 G5:1 C6:1 Bb5:1 G5:1 E5:1 G5:1 C6:1 G5:1 E5:1 C5:1 E5:2 G5:2',
+    'Bb4:1 D5:1 F5:1 Bb5:1 A5:1 F5:1 D5:1 F5:1 Bb5:1 F5:1 D5:1 Bb4:1 D5:2 F5:2',
+    'A4:1 C#5:1 E5:1 A5:1 G5:1 E5:1 C#5:1 E5:1 A5:4 C#6:4',
+]]
+CHASE_BRASS = [tune(t) for t in ['D6:16', 'E6:8 C6:8', 'D6:8 Bb5:8', 'C#6:8 E6:8']]
+CHASE_CALL = [tune(t) for t in [
+    'D6:2 C6:1 A5:1 F5:4 r:8', 'C6:2 Bb5:1 G5:1 E5:4 r:8', 'Bb5:2 A5:1 F5:1 D5:4 r:8',
+    'A5:2 G5:1 E5:1 C#5:4 E5:2 G5:2 A5:2 C#6:2',
+]]
+CHASE_UNISON = [tune(t) for t in [
+    'D6:2 C6:2 Bb5:2 A5:2 G5:2 F5:2 E5:2 D5:2', 'E5:2 F5:2 G5:2 A5:2 Bb5:2 C6:2 D6:2 E6:2',
+    'F6:8 D6:4 Bb5:4', 'A5:4 C#6:4 E6:8',
+]]
+STOP_CH = ['Bb', 'C', 'D', 'B7']
+STOP_HITS = [[0, 3, 6, 10, 12], [0, 3, 6, 10, 12], [0, 3, 6], [0]]
+OUTRO_CH = ['Em', 'C', 'Bb', 'A']
+OUTRO = [tune(t) for t in ['E6:8 D6:4 B5:4', 'C6:8 G5:4 E5:4', 'F5:8 D5:4 Bb4:4', 'A4:4 C#5:4 E5:4 G5:2 A5:2']]
+
+# the plan, bar by bar: (section, chord, bar within its section)
+PLAN = ([('intro', c, i) for i, c in enumerate(INTRO_CH)]
+        + [('theme', c, i) for i, c in enumerate(THEME_CH)]
+        + [('march', c, i) for i, c in enumerate(MARCH_CH)]
+        + [('glitch', c, i) for i, c in enumerate(THEME_CH[:4])]
+        + [('power', c, i) for i, c in enumerate(THEME_CH)]
+        + [('calm', c, i) for i, c in enumerate(CALM_CH)]
+        + [('chase', c, i) for i, c in enumerate(CHASE_CH)]
+        + [('stop', c, i) for i, c in enumerate(STOP_CH)]
+        + [('final', transpose(c, 2), i) for i, c in enumerate(THEME_CH)]
+        + [('outro', c, i) for i, c in enumerate(OUTRO_CH)])
+assert len(PLAN) == BARS
+START = {}
+for _b, (_s, _c, _i) in enumerate(PLAN):
+    START.setdefault(_s, _b)
 
 
 # ----------------------------------------------------------------------
@@ -173,6 +206,10 @@ def third_below(m):
 # ----------------------------------------------------------------------
 def n_of(seconds):
     return int(round(seconds * RATE))
+
+
+def midi(m):
+    return 440.0 * 2 ** ((m - 69) / 12)
 
 
 def _blep(t, dt):
@@ -197,88 +234,114 @@ def pulse(freq, n, duty=0.5):
 
 
 def tri_steps(freq, n):
-    """the NES triangle: 16 steps (warm and a little buzzy)"""
+    """the NES triangle: 16 steps (warm, a little buzzy)"""
     ph = np.cumsum(np.full(n, freq / RATE)) % 1.0
     return np.round((4 * np.abs(ph - 0.5) - 1) * 7.5) / 7.5
 
 
-def midi(m):
-    return 440.0 * 2 ** ((m - 69) / 12)
+def brass(m, steps, legato=0.96):
+    """the 8-bit brass lead: two pulses, a scoop up into each note, a
+    vibrato creeping into the long ones"""
+    n = n_of(steps * STEP * legato)
+    t = np.arange(n) / RATE
+    f = np.full(n, midi(m)) * 2 ** ((-0.8 * np.exp(-t / 0.03)) / 12)
+    if steps >= 3:
+        f *= 1 + 0.0075 * np.sin(2 * np.pi * 5.7 * t) * np.clip((t - 0.18) / 0.2, 0, 1)
+    x = 0.62 * pulse(f, n, 0.5) + 0.38 * pulse(f * 1.004, n, 0.25)
+    return x * A.adsr(n, 0.01, 0.22, 0.8, 0.04)
 
 
-def lead(m, steps, duty=0.25, bright=1.0):
+def lead2(m, steps):
+    """the harmony / counter voice: a thinner pulse"""
     n = n_of(steps * STEP * 0.94)
     t = np.arange(n) / RATE
-    f = np.full(n, midi(m))
-    if steps >= 4:  # a vibrato creeping into the long ones
-        f *= 1 + 0.006 * np.sin(2 * np.pi * 5.8 * t) * np.clip((t - 0.16) / 0.14, 0, 1)
-    f *= 2 ** ((-0.35 * np.exp(-t / 0.02)) / 12)  # (a tiny scoop up into each note)
-    x = pulse(f, n, duty) + 0.3 * bright * pulse(f * 1.0035, n, 0.125)
-    return x * A.adsr(n, 0.004, 0.14, 0.72, 0.03)
+    f = np.full(n, midi(m)) * (1 + 0.005 * np.sin(2 * np.pi * 5.4 * t) * np.clip((t - 0.2) / 0.2, 0, 1))
+    return pulse(f, n, 0.25) * A.adsr(n, 0.008, 0.2, 0.7, 0.03)
 
 
-def arp_note(m, duty=0.125, length=0.85):
+def chip(m, length, duty=0.125):
+    """a short arpeggio blip"""
+    n = n_of(length)
+    return pulse(midi(m), n, duty) * A.adsr(n, 0.002, 0.04, 0.35, 0.01)
+
+
+def runner(m, steps):
+    """the chase's fast runs: bright, punchy blips"""
+    return chip(m, steps * STEP * 0.9, 0.25) * 1.6
+
+
+def bass(m, steps, sustain=0.75):
+    n = n_of(steps * STEP * 0.9)
+    x = tri_steps(midi(m), n) + 0.38 * pulse(midi(m), n, 0.5)
+    return x * A.adsr(n, 0.003, 0.1, sustain, 0.012)
+
+
+def stab(chord_name, lo=55, length=2.0, spread=1.0):
+    """a band stab: the chord, short"""
     n = n_of(STEP * length)
-    return pulse(midi(m), n, duty) * A.adsr(n, 0.002, 0.05, 0.35, 0.012)
-
-
-def bass_note(m, steps, punch=True):
-    n = n_of(steps * STEP * 0.88)
-    sub = tri_steps(midi(m), n)
-    top = pulse(midi(m), n, 0.5) * 0.35
-    e = A.adsr(n, 0.003, 0.12 if punch else 0.3, 0.75, 0.015)
-    return (sub + top) * e
-
-
-def pad(chord, seconds, attack=0.25):
-    n = n_of(seconds)
     x = np.zeros(n)
-    for m in chord:
-        for d in (0.997, 1.003):
-            x += pulse(midi(m) * d, n, 0.5)
+    for m in chord_notes(chord_name, lo, 4):
+        x += 0.6 * pulse(midi(m) * spread, n, 0.5) + 0.4 * pulse(midi(m) * spread * 1.003, n, 0.25)
+    return x * A.adsr(n, 0.004, 0.12, 0.55, 0.03) / 4
+
+
+def tom(f, vol=1.0):
+    s = 0.24
+    n = n_of(s)
     t = np.arange(n) / RATE
-    e = np.clip(t / attack, 0, 1) * np.clip((seconds - t) / 0.15, 0, 1)
-    return x * e / (2 * len(chord))
+    fr = f * (1.6 * np.exp(-t / 0.03) + 1)
+    x = np.sin(2 * np.pi * np.cumsum(fr) / RATE) * np.exp(-t / 0.09)
+    x += A.shape(A.noise(n), hi=2500)[:n] * np.exp(-t / 0.02) * 0.3
+    return np.tanh(1.4 * x) * vol
 
 
-def stab(chord, spread):
-    """a chord stab, one ear a hair sharp of the other"""
-    n = n_of(STEP * 1.6)
-    x = np.zeros(n)
-    for m in chord:
-        x += pulse(midi(m) * spread, n, 0.5)
-    return x * A.adsr(n, 0.002, 0.08, 0.25, 0.03) / len(chord)
-
-
-def heavy_kick(vol=1.0):
+def kick(vol=1.0):
     k = A.kick(1.0)
-    b = A.boom(120, 40, 0.28, 0.6)
-    n = max(len(k), len(b))
-    x = np.zeros(n)
+    b = A.boom(130, 45, 0.2, 0.45)
+    x = np.zeros(max(len(k), len(b)))
     x[:len(k)] += k
     x[:len(b)] += b
-    return np.tanh(1.3 * x) * vol
+    return np.tanh(1.4 * x) * vol
 
 
-def clap(vol=1.0):
-    """a snare with a clap's flams on it"""
-    s = A.snare(1.0, 0.16)
-    x = np.zeros(len(s) + n_of(0.03))
-    for i, g in enumerate((0.5, 0.6, 1.0)):
-        o = n_of(0.01 * i)
-        x[o:o + len(s)] += s * g
-    return x * vol / 1.6
+def snare(vol=1.0, s=0.15):
+    return A.snare(vol, s)
+
+
+def big_hit(chord_name, vol=1.0):
+    """an orchestra hit: the chord wide and low, a timpani, a boom"""
+    s = 0.9
+    n = n_of(s)
+    t = np.arange(n) / RATE
+    x = np.zeros(n)
+    for m in chord_notes(chord_name, 50, 5):
+        x += 0.55 * pulse(midi(m), n, 0.5) + 0.45 * pulse(midi(m) * 1.004, n, 0.25)
+    x = A.shape(x / 5 * np.exp(-t / 0.22) * np.clip(t / 0.003, 0, 1), hi=3200)[:n]
+    for y in (A.timpani(midi(bass_root(chord_name)), 0.9, 0.9), A.boom(95, 32, 0.9, 0.6)):
+        k = min(n, len(y))
+        x[:k] += y[:k]
+    return x * vol
+
+
+def reboot(vol=1.0):
+    """the level rebooting: a fast climbing 8-bit arpeggio"""
+    out = np.zeros(n_of(BEAT * 1.05))
+    seq = [50, 53, 57, 62, 65, 69, 74, 77, 81, 86, 89, 93]
+    for k, m in enumerate(seq):
+        y = chip(m, BEAT / 12 * 0.9, 0.25)
+        i = n_of(k * BEAT / 12)
+        out[i:i + len(y)] += y[:len(out) - i]
+    return out * vol
 
 
 def riser(seconds, vol=1.0):
-    """noise opening up and a tone climbing: the build"""
     n = n_of(seconds)
     t = np.arange(n) / RATE
     u = t / seconds
-    nz = A.sweep_lp(A.noise(n), 400 * (40 ** u)) * (u ** 1.5)
-    tone = pulse(midi(52) * (2 ** (2 * u)), n, 0.25) * 0.25 * u ** 2
+    nz = A.sweep_lp(A.noise(n), 300 * (45 ** u)) * (u ** 1.6)
+    tone = pulse(midi(50) * (2 ** (2 * u)), n, 0.25) * 0.22 * u ** 2
     x = (nz * 0.8 + tone) * vol
-    f = n_of(0.012)  # (cut off clean, not with a click)
+    f = n_of(0.012)
     x[-f:] *= np.linspace(1, 0, f)
     return x
 
@@ -297,184 +360,286 @@ class Song:
             b = self.bus[name] = np.zeros(N)
         A.place(b, x, step * STEP, loop=True)
 
+    def melody(self, name, mel, s0, vol, voice=brass, harm_chord=None, octave=False, echo=False):
+        for m, d, pos in with_pos(mel):
+            if m is None:
+                continue
+            x = voice(m, d)
+            self.put(name, x * vol, s0 + pos)
+            if octave:
+                self.put(name, lead2(m - 12, d) * vol * 0.45, s0 + pos)
+            if harm_chord:
+                self.put('harm', lead2(harmony(m, harm_chord), d) * vol * 0.42, s0 + pos)
+            if echo:
+                self.put('echo', x * vol * 0.28, s0 + pos + 3)
 
-def sec_bar(bar):
-    return bar * 16
+
+def drums(S, sec, i, s0, flip):
+    """the beat for one bar"""
+    def k(st, v=0.7):
+        S.put('kick', kick(v), s0 + st)
+
+    def sn(st, v=0.42, s=0.15):
+        S.put('snare', snare(v, s), s0 + st)
+
+    def hat(st, v=0.05, s=0.03):
+        if v > 0:
+            S.put('hats', A.hat(v, s), s0 + st)
+
+    def crash(st=0, v=0.2):
+        S.put('cym', A.crash(v, 1.8), s0 + st)
+
+    def fill():
+        for j, f in enumerate((220, 180, 140, 105)):
+            S.put('toms', tom(f, 0.45), s0 + 12 + j)
+
+    if sec in ('theme', 'glitch', 'power', 'final', 'outro'):
+        big = sec in ('power', 'final')
+        for st in (0, 6, 8):  # the rock beat: 1, the and of 2, 3
+            k(st, 0.72 if big else 0.66)
+        if flip or big:
+            k(10, 0.45)
+        sn(4)
+        sn(12)
+        for st in range(16):
+            hat(st, (0.06 if st % 2 == 0 else 0.035) if (big or flip) else (0.05 if st % 2 == 0 else 0.0))
+        S.put('hats', A.hat(0.08, 0.12), s0 + 14)  # (an open hat)
+        if i % 4 == 3:
+            if big or flip:
+                for st in (12, 13, 14, 15):
+                    k(st, 0.5)  # double kicks
+            fill()
+        if i % 8 == 0:
+            crash()
+        if sec == 'outro' and i == 3:
+            for j in range(8):
+                sn(8 + j, 0.2 + 0.03 * j, 0.08)
+    elif sec == 'march':
+        k(0, 0.7)
+        k(10, 0.5)
+        sn(8, 0.48)  # half time: the snare on 3
+        for st in (13, 14, 15):
+            sn(st, 0.08, 0.06)  # (ghost notes)
+        for st in range(0, 16, 1 if flip else 2):
+            hat(st, 0.045)
+        if flip:
+            k(6, 0.45)
+        if i in (0, 4):
+            crash(0, 0.16)
+        if i == 7:
+            for j in range(16):
+                sn(j, 0.1 + 0.02 * j, 0.06)
+    elif sec == 'calm':
+        if i >= 6:  # a heartbeat, then the build
+            for st in (0, 2, 8, 10):
+                k(st, 0.5 if st % 8 == 0 else 0.35)
+            if i == 7:
+                for j in range(8):
+                    sn(j, 0.12 + 0.02 * j, 0.07)
+                for j in range(16):
+                    sn(8 + j * 0.5, 0.25 + 0.012 * j, 0.05)
+    elif sec == 'chase':
+        for st in range(0, 16, 1 if flip else 2):
+            k(st, 0.62 if st % 4 == 0 else 0.45)
+        sn(4, 0.45)
+        sn(12, 0.45)
+        for st in range(16):
+            hat(st, 0.055 if st % 2 == 0 else 0.04)
+        if i % 4 == 0:
+            crash()
+        if i % 4 == 3:
+            fill()
+    elif sec == 'stop':
+        for st in STOP_HITS[i]:
+            k(st, 0.75)
+            sn(st, 0.35)
+        if i == 0:
+            crash()
+        if i == 2:
+            for j, f in enumerate((250, 220, 190, 160, 140, 120, 100, 90)):
+                S.put('toms', tom(f, 0.5), s0 + 8 + j)
+        if i == 3:
+            for j in range(4):
+                sn(12 + j, 0.3 + 0.06 * j, 0.07)
+    elif sec == 'intro':
+        if flip:
+            for st in range(0, 16, 2):
+                k(st, 0.3)
+        if i == 3:
+            for j in range(8):
+                sn(8 + j * 0.5, 0.12 + 0.03 * j, 0.05)
+            for j in range(8):
+                sn(12 + j * 0.5, 0.36 + 0.02 * j, 0.05)
 
 
 def render(flip=False):
     S = Song()
-    pump_beats = []  # beats the bass and chords duck under the kick (a pump)
+    pump_beats = []
     for bar, (sec, ch, i) in enumerate(PLAN):
-        s0 = sec_bar(bar)
-        tones = TONES[ch]
-        root = BASS[ch]
-        heavy = sec in ('drop', 'turn')
-        second = (sec in ('A', 'drop')) and i >= 8  # the second time round
+        s0 = bar * 16
+        drums(S, sec, i, s0, flip)
+        root = bass_root(ch)
+        tones = chord_notes(ch, 62, 4)
 
-        # ---- drums ------------------------------------------------------
-        if sec != 'brk':
-            for beat in range(4):
-                S.put('kick', heavy_kick(0.62) if heavy else A.kick(0.52), s0 + beat * 4)
-                pump_beats.append(s0 + beat * 4)
-            if flip and heavy:
-                S.put('kick', A.kick(0.35), s0 + 14)  # (the and of 4)
-            if not (sec == 'intro' and i == 0):
-                for st in (4, 12):
-                    S.put('snare', clap(0.42) if heavy else A.snare(0.34), s0 + st)
-            if flip or heavy or second or sec == 'C':
-                for st in range(16):
-                    if st % 4 != 2:
-                        S.put('hats', A.hat(0.05 if st % 2 else 0.035), s0 + st)
-            for st in (2, 6, 10, 14):
-                S.put('hats', A.hat(0.1, 0.07), s0 + st)
-            if flip and sec in ('A', 'B', 'C'):
-                S.put('snare', A.snare(0.09, 0.07), s0 + 7)  # (a ghost note)
-        else:
-            # the breakdown: hats only, then the build (a snare roll speeding up)
-            for st in range(0, 16, 2):
-                S.put('hats', A.hat(0.05, 0.05), s0 + st)
-            if i == 2:
-                for st in range(0, 16, 2):
-                    S.put('snare', A.snare(0.07 + 0.01 * st, 0.08), s0 + st)
+        # ---- the hits -------------------------------------------------------
+        if sec == 'intro':
+            for st in INTRO_HITS[i]:
+                S.put('hit', big_hit(ch, 0.42 if st == 0 else 0.3), s0 + st)
+                if st == 0:
+                    S.put('cym', A.crash(0.22, 2.0), s0)
+            for j in range(32):  # a low tremolo growling under it
+                S.put('bass', bass(root, 0.5, 0.9) * (0.18 + 0.004 * j + 0.04 * i), s0 + j * 0.5)
+            S.melody('lead', INTRO[i], s0, 0.16)
+            continue
+        if sec == 'stop':
+            for st in STOP_HITS[i]:
+                S.put('hit', stab(ch, 55, 2) * 0.5, s0 + st)
+                S.put('bass', bass(root, 2) * 0.8, s0 + st)
+                S.put('lead', brass(chord_notes(ch, 74, 1)[0], 2) * 0.2, s0 + st)
             if i == 3:
-                for st in range(0, 8):
-                    S.put('snare', A.snare(0.22 + 0.02 * st, 0.07), s0 + st)
-                for k in range(12):  # 32nds
-                    S.put('snare', A.snare(0.3 + 0.012 * k, 0.05), s0 + 8 + k * 0.5)
-                S.put('fx', riser(BAR * 2 - STEP * 2, 0.32), s0 - 16)
-        # the turnaround's build back into bar 1
-        if sec == 'turn' and i == 7:
-            for st in range(0, 8, 2):
-                S.put('snare', A.snare(0.2, 0.07), s0 + st)
-            for k in range(14):
-                S.put('snare', A.snare(0.24 + 0.012 * k, 0.05), s0 + 8 + k * 0.5)
-            S.put('fx', riser(BAR, 0.26), s0)
-        if sec == 'intro' and i == 3:
-            for k, st in enumerate((10, 12, 13, 14, 15)):
-                S.put('snare', A.snare(0.22 + 0.04 * k, 0.07), s0 + st)
-        # crashes where things begin
-        if i in (0, 8) and sec in ('intro', 'A', 'B', 'drop', 'C', 'turn') or (sec == 'drop' and i % 4 == 0):
-            S.put('cym', A.crash(0.2 if heavy or sec == 'intro' else 0.14, 1.6), s0)
-        if (sec == 'intro' and i == 0) or (sec == 'drop' and i == 0):
-            S.put('kick', A.boom(90, 30, 1.0, 0.5), s0)  # (the big one)
+                S.put('hit', big_hit(ch, 0.4), s0)
+                S.melody('lead', tune('r:12 B4:1 D#5:1 F#5:1 A5:1'), s0, 0.18)
+                for j, m in enumerate((47, 51, 54, 57)):
+                    S.put('bass', bass(m, 1) * 0.85, s0 + 12 + j)
+            continue
 
-        # ---- bass ---------------------------------------------------------
-        if sec == 'brk':
-            S.put('bass', bass_note(root, 16 if i < 3 else 8, punch=False) * (0.45 + 0.1 * i), s0)
-        elif heavy and flip:
-            for st in range(16):  # rolling 16ths
-                m = root + (12 if st % 2 else 0)
-                S.put('bass', bass_note(m, 1) * 0.8, s0 + st)
-        elif heavy:
-            for st in range(0, 16, 2):
-                m = root + (12 if st % 4 == 2 else 0)
-                S.put('bass', bass_note(m, 2) * 0.9, s0 + st)
-        else:
-            for st in range(0, 16, 2):
-                m = root + (12 if (st // 2) % 2 else 0)
-                S.put('bass', bass_note(m, 2) * 0.85, s0 + st)
+        # ---- bass -----------------------------------------------------------
+        if sec in ('theme', 'glitch', 'power', 'final', 'outro'):
+            # running octaves in 16ths, walking to the next bar on the last beat
+            nxt = bass_root(PLAN[(bar + 1) % BARS][1])
+            for st in range(16):
+                base = root if st < 12 else int(round(root + (nxt - root) * (st - 11) / 5))
+                S.put('bass', bass(base + (12 if st % 2 else 0), 1) * 0.62, s0 + st)
+            pump_beats += [s0, s0 + 8]
+        elif sec == 'march':
+            for st, m in ((0, root), (8, root + 7), (12, root + 12)):
+                S.put('bass', bass(m, 8 if st == 0 else 4, 0.85) * 0.78, s0 + st)
+        elif sec == 'calm':
+            if i % 2 == 0:
+                S.put('bass', bass(root, 32, 0.9) * 0.4, s0)
+        elif sec == 'chase':
+            if 8 <= i < 12:  # the bass answers the call: up the scale
+                for st in range(8):
+                    S.put('bass', bass(root + (12 if st % 2 else 0), 1) * 0.6, s0 + st)
+                scale = [0, 2, 3, 5, 7, 8, 10, 12] if 'm' in ch else [0, 2, 4, 5, 7, 9, 10, 12]
+                for j, d in enumerate(scale):
+                    S.put('bass', bass(root + 12 + d, 1) * 0.75, s0 + 8 + j)
+            else:
+                for st in range(16):  # a gallop
+                    m = root + (12 if st % 4 in (1, 2) else 0) + (7 if st % 8 == 6 else 0)
+                    S.put('bass', bass(m, 1) * 0.62, s0 + st)
+            pump_beats += [s0, s0 + 4, s0 + 8, s0 + 12]
 
-        # ---- arpeggio -------------------------------------------------------
-        up = 12 if flip and sec in ('A', 'C', 'drop', 'turn') else 0
-        if sec == 'brk':
-            order = [0, 1, 2, 3, 2, 1, 2, 3] * 2
-            lift = 12 * (i // 2)
-            for st, k in enumerate(order):
-                S.put('arpL' if st % 2 == 0 else 'arpR', arp_note(tones[k] + lift, 0.25) * 0.05, s0 + st)
-        elif sec != 'B' or flip:
-            order = [0, 1, 2, 3, 2, 3, 1, 2, 0, 1, 2, 3, 2, 3, 1, 3] if sec in ('C', 'drop') else [0, 1, 2, 3] * 4
-            for st, k in enumerate(order):
-                v = 0.06 if sec != 'C' else 0.075
-                S.put('arpL' if st % 2 == 0 else 'arpR', arp_note(tones[k] + up) * v, s0 + st)
-                if flip and sec in ('drop', 'C'):
-                    S.put('spark', arp_note(tones[(k + 2) % 4] + 24, 0.125, 0.5) * 0.02, s0 + st)
-        else:
-            # B: a slower, wider pattern (8ths) so the tune can sing
-            for st, k in enumerate([0, 2, 1, 3, 0, 2, 1, 3]):
-                S.put('arpL' if st % 2 == 0 else 'arpR', arp_note(tones[k] + 12, 0.25, 1.6) * 0.05, s0 + st * 2)
+        # ---- arpeggios --------------------------------------------------------
+        if sec in ('theme', 'glitch', 'power', 'final', 'outro'):
+            if flip or sec in ('power', 'final'):  # 32nds: the shimmer
+                for j in range(32):
+                    m = tones[[0, 1, 2, 3, 2, 1][j % 6]] + 12
+                    S.put('arpL' if j % 2 == 0 else 'arpR', chip(m, STEP * 0.45) * 0.045, s0 + j * 0.5)
+            else:
+                for st, kk in enumerate([0, 1, 2, 3, 2, 1, 0, 1] * 2):
+                    S.put('arpL' if st % 2 == 0 else 'arpR', chip(tones[kk], STEP * 0.85) * 0.055, s0 + st)
+        elif sec == 'march':
+            for beat in range(4):  # triplets
+                for j in range(3):
+                    m = tones[(beat + j) % 4]
+                    S.put('arpL' if j % 2 == 0 else 'arpR', chip(m, BEAT / 3 * 0.85, 0.25) * 0.05,
+                          s0 + beat * 4 + j * 4 / 3)
+        elif sec == 'calm':
+            for st in range(0, 16, 4):  # a slow bell arpeggio
+                S.put('bell', A.bell(midi(tones[(st // 4) % 4] + 12), 1.2, 0.05), s0 + st)
+            if i % 2 == 0:
+                S.put('pad', A.choir(chord_notes(ch, 55, 4), BAR * 2 * 0.98, 0.1), s0)
+        elif sec == 'chase':
+            up = 24 if flip else 12
+            for j in range(16):
+                S.put('arpL' if j % 2 == 0 else 'arpR', chip(tones[j % 4] + up, STEP * 0.5) * 0.03, s0 + j)
+        if flip and sec in ('power', 'final', 'chase'):
+            for j in range(16):
+                S.put('spark', chip(tones[(j * 3) % 4] + 24, STEP * 0.4) * 0.018, s0 + j + 0.5)
 
-        # ---- chords ---------------------------------------------------------
-        if sec == 'brk' or sec == 'B':
-            S.put('pad', pad(STAB[ch], BAR * 0.98, 0.3 if sec == 'brk' else 0.05) * (0.13 if sec == 'brk' else 0.12), s0)
-        if heavy:
-            for st in (2, 6, 10, 14):  # stabs on the off-beats
-                S.put('stabL', stab(STAB[ch], 0.996) * 0.15, s0 + st)
-                S.put('stabR', stab(STAB[ch], 1.004) * 0.15, s0 + st)
-        if sec == 'intro' and i == 0:
-            S.put('pad', pad(STAB[ch], BEAT * 2, 0.005) * 0.3, s0)  # (the hit)
+        # ---- chords -------------------------------------------------------------
+        if sec in ('power', 'final', 'chase'):
+            for st in (2, 6, 10, 14):
+                S.put('stabL', stab(ch, 55, 1.5, 0.997) * 0.12, s0 + st)
+                S.put('stabR', stab(ch, 55, 1.5, 1.003) * 0.12, s0 + st)
+        if sec == 'march' and i % 2 == 0:
+            S.put('pad', A.choir(chord_notes(ch, 50, 4), BAR * 2 * 0.98, 0.07), s0)
 
-        # ---- the tune -------------------------------------------------------
-        mel, vol, duty, echo, harm, octave = None, 0.2, 0.25, flip, False, False
-        if sec == 'A':
-            mel = MEL_A[i % 8]
-            echo = echo or second
-            harm = second
-        elif sec == 'B':
-            mel, duty = MEL_B[i], 0.5
-            vol = 0.17
-            echo = True
-        elif sec == 'brk' and i < 2:
-            mel, vol, duty = MEL_DROP[i], 0.09, 0.5  # (a taste of the drop)
-        elif sec == 'drop':
-            mel = MEL_DROP[i % 8]
-            octave = True
-            harm = second
-            echo = echo or second
-        elif sec == 'C':
-            mel, vol = MEL_C[i], 0.19
-            echo = True
-        elif sec == 'turn':
-            mel = MEL_TURN[i]
-            octave = i in (0, 2, 4, 5)
-        elif sec == 'intro' and i == 3:
-            mel, vol = INTRO_RUN, 0.15
-        if mel:
-            pos = 0
-            for m, d in mel:
-                if m is not None:
-                    note = lead(m, d, duty)
-                    S.put('lead', note * vol, s0 + pos)
-                    if octave:
-                        S.put('lead', lead(m - 12, d, 0.5, 0.0) * vol * 0.55, s0 + pos)
-                    if harm:
-                        S.put('harm', lead(harmony(m, ch), d, 0.5, 0.0) * vol * 0.4, s0 + pos)
-                    if echo:
-                        S.put('echo', note * vol * 0.3, s0 + pos + 3)
-                pos += d
+        # ---- the tunes ------------------------------------------------------------
+        if sec == 'theme':
+            S.melody('lead', THEME[i], s0, 0.2, harm_chord=ch if (flip and i >= 8) else None, echo=flip)
+        elif sec == 'glitch':
+            S.melody('lead', THEME[i], s0, 0.2, octave=True)
+        elif sec == 'power':
+            S.melody('lead', THEME[i], s0, 0.21, harm_chord=ch, octave=True, echo=True)
+        elif sec == 'final':
+            mel = [(None if m is None else m + 2, d) for m, d in THEME[i]]
+            S.melody('lead', mel, s0, 0.22, harm_chord=ch, octave=True, echo=True)
+        elif sec == 'march':
+            S.melody('lead', MARCH[i], s0, 0.19)
+            if flip:
+                S.melody('lead', MARCH[i], s0, 0.07, lead2)
+        elif sec == 'calm':
+            # the theme on a bell, half speed: one bar of the tune every two bars
+            if i % 2 == 0:
+                for m, d, pos in with_pos(THEME[i // 2]):
+                    if m is not None:
+                        S.put('bell', A.bell(midi(m), max(0.8, d * 2 * STEP * 1.5), 0.14), s0 + pos * 2)
+            if i == 6:
+                S.put('fx', riser(BAR * 2, 0.3), s0)
+        elif sec == 'chase':
+            q = i // 4
+            if q == 0:
+                S.melody('lead', RUNS[i % 4], s0, 0.15, runner)
+            elif q == 1:
+                S.melody('lead', RUNS[i % 4], s0, 0.1, runner)
+                S.melody('lead', CHASE_BRASS[i % 4], s0, 0.2, harm_chord=ch)
+            elif q == 2:
+                S.melody('lead', CHASE_CALL[i % 4], s0, 0.22, octave=True, echo=True)
+            else:
+                S.melody('lead', CHASE_UNISON[i % 4], s0, 0.22, octave=True)
+                for m, d, pos in with_pos(CHASE_UNISON[i % 4]):
+                    if m is not None:
+                        S.put('bass', bass(m - 36, d) * 0.5, s0 + pos)  # (the bass in unison too)
+        elif sec == 'outro':
+            S.melody('lead', OUTRO[i], s0, 0.21, octave=True, echo=True)
 
-    # ---- the pump: chords and bass duck under each kick ---------------------
+        # big hits where big things begin
+        if i == 0 and sec in ('power', 'final', 'chase'):
+            S.put('hit', big_hit(ch, 0.35 if sec != 'chase' else 0.3), s0)
+
+    return mix(S, pump_beats, flip)
+
+
+def mix(S, pump_beats, flip):
+    # the pump: the stabs and arpeggios duck a little under the downbeats
     pump = np.ones(N)
-    dur = n_of(0.24)
-    curve = 1 - 0.55 * (1 - np.linspace(0, 1, dur)) ** 2
+    dur = n_of(0.2)
+    curve = 1 - 0.35 * (1 - np.linspace(0, 1, dur)) ** 2
     for st in pump_beats:
         i0 = n_of(st * STEP) % N
         k = min(dur, N - i0)
         pump[i0:i0 + k] = np.minimum(pump[i0:i0 + k], curve[:k])
-        if k < dur:
-            pump[:dur - k] = np.minimum(pump[:dur - k], curve[k:])
-    for name in ('bass', 'stabL', 'stabR', 'pad', 'arpL', 'arpR'):
+    for name in ('stabL', 'stabR', 'arpL', 'arpR'):
         if name in S.bus:
-            S.bus[name] *= pump if name != 'bass' else (0.4 + 0.6 * pump)
+            S.bus[name] *= pump
 
-    # ---- the mix ------------------------------------------------------------
-    B = S.bus
-    get = lambda k: B.get(k, np.zeros(N))  # noqa: E731
-    lead_b = A.shape(get('lead'), hi=6500 if not flip else 7500, loop=True)
-    harm_b = A.shape(get('harm'), hi=5000, loop=True)
-    echo_b = A.shape(get('echo'), hi=3500, loop=True)
-    arpL = A.shape(get('arpL'), hi=5500, loop=True)
-    arpR = A.shape(get('arpR'), hi=5500, loop=True)
+    def get(k):
+        return S.bus.get(k, np.zeros(N))
+
+    lead = A.shape(get('lead'), hi=7000 if flip else 6200, loop=True)
+    harm = A.shape(get('harm'), hi=4800, loop=True)
+    echo = A.shape(get('echo'), hi=3200, loop=True)
+    arpL = A.shape(get('arpL'), hi=6000, loop=True)
+    arpR = A.shape(get('arpR'), hi=6000, loop=True)
     spark = A.shape(get('spark'), hi=9000, loop=True)
-    bass = A.shape(get('bass'), hi=1400, lo=28, loop=True)
-    pad_b = A.shape(get('pad'), hi=3000, loop=True)
-    stabL = A.shape(get('stabL'), hi=4000, loop=True)
-    stabR = A.shape(get('stabR'), hi=4000, loop=True)
+    bass_b = A.shape(get('bass'), hi=1500, lo=30, loop=True)
+    pad, bell, hit, cym, snare_b, toms, fx = (get(k) for k in ('pad', 'bell', 'hit', 'cym', 'snare', 'toms', 'fx'))
+    stabL = A.shape(get('stabL'), hi=4200, loop=True)
+    stabR = A.shape(get('stabR'), hi=4200, loop=True)
     hats = A.shape(get('hats'), hi=11000, loop=True)
-    cym = get('cym')
-    kick_b = A.shape(get('kick'), lo=25, loop=True)
-    snare_b = get('snare')
-    fx = get('fx')
+    kick_b = A.shape(get('kick'), lo=28, loop=True)
 
     def pan(x, p):
         a = (p + 1) * np.pi / 4
@@ -482,23 +647,74 @@ def render(flip=False):
 
     L = np.zeros(N)
     R = np.zeros(N)
-    for x, p in ((lead_b, 0), (harm_b, -0.25), (echo_b, 0.45), (arpL, -0.45), (arpR, 0.45), (spark, 0.2),
-                 (bass, 0), (pad_b, 0), (stabL, -0.6), (stabR, 0.6), (hats, 0.15), (cym, -0.1),
-                 (kick_b, 0), (snare_b, 0.05), (fx, 0)):
+    for x, p in ((lead, 0), (harm, -0.3), (echo, 0.45), (arpL, -0.5), (arpR, 0.5), (spark, 0.25),
+                 (bass_b, 0), (pad, 0), (bell, -0.15), (stabL, -0.6), (stabR, 0.6), (hit, 0),
+                 (hats, 0.2), (cym, -0.15), (kick_b, 0), (snare_b, 0.05), (toms, -0.1), (fx, 0)):
         l, r = pan(x, p)
         L += l
         R += r
-    # a room round the tune, the arpeggio and the chords (a different one each ear)
-    send = lead_b * 0.6 + harm_b + arpL + arpR + pad_b + stabL + stabR + snare_b * 0.4
-    L += room(send, 1.4, 11) * 0.22
-    R += room(send, 1.4, 12) * 0.22
-    # master: a soft limit (warm, loud enough, no clipping)
+    # a hall round the tune, the arpeggios, the chords and the hits (a different one each ear)
+    send = lead * 0.5 + harm + arpL + arpR + pad + bell * 1.5 + stabL + stabR + snare_b * 0.4 + hit * 0.5
+    L += room(send, 1.6, 11) * 0.24
+    R += room(send, 1.6, 12) * 0.24
+
+    L, R = glitch(L, R)
+    # master: a soft limit (warm, loud, never clipping)
     peak = max(np.max(np.abs(L)), np.max(np.abs(R)))
     L, R = L / peak, R / peak
-    L = np.tanh(L * 1.5) / np.tanh(1.5)
-    R = np.tanh(R * 1.5) / np.tanh(1.5)
+    L = np.tanh(L * 1.6) / np.tanh(1.6)
+    R = np.tanh(R * 1.6) / np.tanh(1.6)
     g = 0.9 / max(np.max(np.abs(L)), np.max(np.abs(R)))
     return L * g, R * g
+
+
+def _i(step):
+    return n_of(step * STEP)
+
+
+def glitch(L, R):
+    """THE GLITCH (bars 29-32): the theme starts, stutters (each repeat
+    shorter and higher), crunches, tape-stops dead... and reboots"""
+    g0 = START['glitch'] * 16
+    bar3, bar4 = g0 + 32, g0 + 48
+    fade = n_of(0.002)
+    out = []
+    for x in (L, R):
+        y = x.copy()
+        idx = np.arange(len(x))
+
+        def slice_to(dst, src, length, rate=1.0):
+            n = _i(length)
+            sl = np.interp(_i(src) + np.arange(n) * rate, idx, x)
+            sl[:fade] *= np.linspace(0, 1, fade)
+            sl[-fade:] *= np.linspace(1, 0, fade)
+            y[_i(dst):_i(dst) + n] = sl
+
+        for r in range(2):  # beat 2: the first 8th, twice
+            slice_to(bar3 + 4 + 2 * r, bar3, 2)
+        for r in range(4):  # beat 3: the first 16th, four times
+            slice_to(bar3 + 8 + r, bar3, 1)
+        for r in range(8):  # beat 4: 32nds, climbing in pitch
+            slice_to(bar3 + 12 + r * 0.5, bar3, 0.5, 1 + r * 0.12)
+        a, b = _i(bar3 + 8), _i(bar3 + 16)  # the crunch: fewer bits, held samples
+        held = np.repeat(y[a:b][::6], 6)[:b - a]
+        y[a:b] = np.round(held * 10) / 10
+        # the last bar: the tape stops over two beats, then silence
+        a, n = _i(bar4), _i(8)
+        k = np.arange(n)
+        sl = np.interp(a + k - k * k / (2 * n), idx, x) * np.linspace(1, 0.2, n)
+        sl[-fade * 4:] *= np.linspace(1, 0, fade * 4)
+        y[a:a + n] = sl
+        y[a + n:_i(bar4 + 16)] = 0
+        out.append(y)
+    L, R = out
+    # ...and the reboot, with a snare flam into the slam
+    adds = [(reboot(0.3), bar4 + 12)] + [(snare(0.3 + 0.08 * j, 0.06), bar4 + 12 + j) for j in range(4)]
+    for sound, st in adds:
+        i = _i(st)
+        for x in (L, R):
+            x[i:i + len(sound)] += sound[:len(x) - i]
+    return L, R
 
 
 def room(x, seconds, seed):
@@ -514,40 +730,37 @@ def room(x, seconds, seed):
     return np.fft.irfft(np.fft.rfft(x) * np.fft.rfft(k), len(x))
 
 
-def save(name, L, R):
-    os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, name.replace(' ', '_'))
-    st = np.empty(2 * N)
+def write_wav(path, L, R):
+    st = np.empty(2 * len(L))
     st[0::2], st[1::2] = L, R
-    with wave.open(path + '.wav', 'wb') as w:
+    with wave.open(path, 'wb') as w:
         w.setnchannels(2)
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes((np.clip(st, -1, 1) * 32767).astype(np.int16).tobytes())
+
+
+def save(name, L, R):
+    os.makedirs(OUT, exist_ok=True)
+    path = os.path.join(OUT, name.replace(' ', '_'))
+    write_wav(path + '.wav', L, R)
     import imageio_ffmpeg
     subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-y', '-loglevel', 'error', '-i', path + '.wav',
                     '-c:a', 'libvorbis', '-q:a', '6', path + '.ogg'], check=True)
     print('saved', path + '.ogg', f'({N / RATE:.3f} s)')
-    return path
 
 
 def demo(r1, r2):
-    """round 1 from the top, and at the second drop's start (bar 41) a swap to
-    round 2 at the same spot, as the game does - then round 2 to the end and
-    round 1's first 8 bars again (the loop seam)"""
-    swap = n_of(40 * BAR)
-    one = np.concatenate([r1[0][:swap], r2[0][swap:], r1[0][:n_of(8 * BAR)]])
-    two = np.concatenate([r1[1][:swap], r2[1][swap:], r1[1][:n_of(8 * BAR)]])
+    """round 1 from the top, a swap to round 2 at THE CHASE (as the game swaps
+    at the same spot), round 2 to the end, then round 1's first 8 bars again"""
+    swap = n_of(START['chase'] * BAR)
+    tail = n_of(8 * BAR)
+    L = np.concatenate([r1[0][:swap], r2[0][swap:], r1[0][:tail]])
+    R = np.concatenate([r1[1][:swap], r2[1][swap:], r1[1][:tail]])
     out_dir = os.path.join(ROOT, 'Docs', 'music')
     os.makedirs(out_dir, exist_ok=True)
     tmp = os.path.join(out_dir, '_demo.wav')
-    st = np.empty(2 * len(one))
-    st[0::2], st[1::2] = one, two
-    with wave.open(tmp, 'wb') as w:
-        w.setnchannels(2)
-        w.setsampwidth(2)
-        w.setframerate(RATE)
-        w.writeframes((np.clip(st, -1, 1) * 32767).astype(np.int16).tobytes())
+    write_wav(tmp, L, R)
     import imageio_ffmpeg
     mp3 = os.path.join(out_dir, 'gridlock_theme.mp3')
     subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-y', '-loglevel', 'error', '-i', tmp,

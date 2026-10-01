@@ -2064,7 +2064,7 @@ Config.Bosses = {
 		Reward = { Power = 4, FirstClear = 10 },
 
 		-- the fight's music: his own song (Tools/Sounds/music_gridlock.py - 128
-		-- beats a minute, 64 bars, so it fits Bpm above beat for beat), and in
+		-- beats a minute, 96 bars, so it fits Bpm above beat for beat), and in
 		-- round 2 the same song played harder. Until they're uploaded,
 		-- FallbackMusic plays (a song of your own: set Bpm to its tempo).
 		Music = "Gridlock Theme",
