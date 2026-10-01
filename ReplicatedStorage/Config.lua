@@ -2070,8 +2070,8 @@ Config.Bosses = {
 		Music = "Gridlock Theme",
 		Round2Music = "Gridlock Theme Flip",
 		FallbackMusic = "Gridlock Song",
-		MusicVolume = 1.5, -- (his songs are mixed softer than most: turned up to match)
-		Round2MusicVolume = 1.5,
+		MusicVolume = 1.2, -- (his songs are mixed softer than most: turned up to match)
+		Round2MusicVolume = 1.2,
 		VictorySound = "Victory Is Ours (a) Sting",
 		Weather = "Clear",
 
