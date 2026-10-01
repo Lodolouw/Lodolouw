@@ -517,6 +517,18 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   hide others' effects (another player's ability effects really stop being
   drawn, yours still are), the tickets' switches - each saved. `-a snaps` for
   `render_gui.py` (`Docs/new_gui_bag_settings.png`).
+- `test_spire_menu.luau` - THE SPIRE MENU (SpireClient) in the see-through
+  menus, with a pretend server: walking up to the doors opens it on the
+  floor you're up to (walking away closes it; closed by hand it waits until
+  you step out and back); a card for the ground floor and every floor
+  (BEATEN, LV, a lock); the picked floor big (boss, area, the whole blurb,
+  RECOMMENDED / YOU, READY); a beaten floor can be fought again; LOCKED
+  ("Beat ... first", ENTER does nothing); ENTER (SpireTravel "enter");
+  TOO LOW + TRAIN FIRST and the ground floor's TRAIN ("colosseum", its +XP
+  and what it trains you for); a refusal as a toast; LEADER PICKS in someone
+  else's party, "your party of N" when you lead; and in the arena LEAVE
+  ARENA and the "Leave?" check (STAY / LEAVE: "leave", the fog gate's
+  ConfirmLeave). `-a snaps` for `render_gui.py` (`Docs/spire_menu.png`).
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /

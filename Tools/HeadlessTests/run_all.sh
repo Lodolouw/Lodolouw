@@ -70,6 +70,10 @@ run test_shop_menu.luau
 # the Bag (weapons, the [F] ability, equip) and the Settings (sound, shadows,
 # low graphics, others' effects, camera shake)
 run test_bag_settings.luau
+# the Spire menu in the new look: walking up opens it, the floors as cards,
+# the picked one big (ENTER, LOCKED, TOO LOW + TRAIN FIRST, the ground
+# floor's TRAIN, LEADER PICKS in a party), and the arena's LEAVE / "Leave?"
+run test_spire_menu.luau
 # RetroWorld's detail: with low graphics the moving detail holds still where it
 # belongs (nothing piled up on the fountain) and the flyers are put away; an
 # arena that unloads and comes back isn't dressed a second time on top

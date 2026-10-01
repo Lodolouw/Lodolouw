@@ -2,13 +2,14 @@
 	SpireClient  (LocalScript, parent: StarterPlayer > StarterPlayerScripts, name: "SpireClient")
 
 	The Spire's menus and travel effects:
-	  * the Spire menu (opened by the "Enter" prompt at the Spire's doors):
-	    pick a floor, see its boss, the recommended level and your level,
-	    then ENTER
+	  * the Spire menu (walk up to the Spire's doors): one of the
+	    see-through menus (ReplicatedStorage/Menus), like the Bag and the
+	    Index - the floors as cards, and the one you pick, big: its boss,
+	    the recommended level and yours, then ENTER
 	  * a fade to black while you travel, then a big area title card as you
 	    arrive ("GLOOMGUT'S HOLLOW")
 	  * a Leave button while you're in an arena, and a "Leave?" check when you
-	    touch the fog gate
+	    touch the fog gate (both in the new look: WindowKit)
 	  * THE GROUND FLOOR, at the top of the list: the Colosseum, the Spire's
 	    training grounds (TRAIN takes you down into it from the doors). It
 	    trains you for your next floor - below that floor's level, it pays
@@ -27,6 +28,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Arenas = require(ReplicatedStorage:WaitForChild("Arenas"))
+local K = require(ReplicatedStorage:WaitForChild("WindowKit"))
+local Menus = require(ReplicatedStorage:WaitForChild("Menus"))
+local KC = K.COLORS
 local SpireRemotes = ReplicatedStorage:WaitForChild("SpireRemotes")
 local SpireEvent = SpireRemotes:WaitForChild("SpireEvent")
 local SpireTravel = SpireRemotes:WaitForChild("SpireTravel")
@@ -37,18 +41,9 @@ local playerGui = player:WaitForChild("PlayerGui")
 local RGB = Color3.fromRGB
 local SERIF = Enum.Font.Garamond
 local BOLD = Enum.Font.FredokaOne
-local C = {
-	bg = RGB(14, 12, 20),
-	panel = RGB(24, 20, 32),
-	row = RGB(38, 32, 50),
-	rowHover = RGB(52, 44, 68),
-	rim = RGB(120, 100, 150),
+local C = { -- (the area title card's colours)
 	gold = RGB(230, 200, 130),
 	pale = RGB(225, 220, 235),
-	dim = RGB(150, 140, 165),
-	red = RGB(235, 90, 90),
-	green = RGB(120, 230, 110),
-	glow = RGB(90, 150, 255),
 }
 
 ----------------------------------------------------------------------
@@ -69,16 +64,15 @@ local function create(className, props, children)
 	end
 	return inst
 end
-local function corner(r)
-	return create("UICorner", { CornerRadius = UDim.new(0, r) })
-end
-local function stroke(thickness, color, transparency)
-	return create("UIStroke", {
-		Thickness = thickness,
-		Color = color or RGB(0, 0, 0),
-		Transparency = transparency or 0,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-	})
+local function new(class, props, parent)
+	local i = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		i[k] = v
+	end
+	if parent then
+		i.Parent = parent
+	end
+	return i
 end
 local function textStroke(thickness)
 	return create("UIStroke", { Thickness = thickness, Color = RGB(0, 0, 0), Transparency = 0.2 })
@@ -145,35 +139,10 @@ local fader = create("Frame", {
 	Parent = gui,
 })
 
--- short message line (for "you can't travel right now" etc.)
-local message = label({
-	Name = "Message",
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 120),
-	Size = UDim2.fromOffset(700, 36),
-	Text = "",
-	TextSize = 26,
-	TextColor3 = C.red,
-	TextTransparency = 1,
-	ZIndex = 60,
-	Parent = root,
-}, {})
-local messageStroke = textStroke(2.5)
-messageStroke.Transparency = 1
-messageStroke.Parent = message
-local messageToken = 0
+-- a short message ("you can't travel right now" etc.): a toast at the top
+-- of the screen, like every other menu's
 local function showMessage(text)
-	messageToken = messageToken + 1
-	local token = messageToken
-	message.Text = text
-	message.TextTransparency = 0
-	messageStroke.Transparency = 0.2 -- the outline doesn't fade with the text on its own
-	task.delay(2.4, function()
-		if token == messageToken then
-			tween(message, 0.5, { TextTransparency = 1 })
-			tween(messageStroke, 0.5, { Transparency = 1 })
-		end
-	end)
+	Menus.toast(text, "bad")
 end
 
 ----------------------------------------------------------------------
@@ -307,191 +276,25 @@ local function travel(action, floorId)
 end
 
 ----------------------------------------------------------------------
--- The Spire menu
+-- The Spire menu: one of the see-through menus (ReplicatedStorage/Menus),
+-- like the Bag and the Index. The floors as cards - the ground floor (the
+-- Colosseum) and floors 1 to 10 - and the one picked, big: its boss, its
+-- area, what it's like, the level it wants and yours, and ENTER.
 ----------------------------------------------------------------------
-local menu = create("Frame", {
-	Name = "SpireMenu",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(780, 470),
-	BackgroundColor3 = C.panel,
-	BackgroundTransparency = 0.05,
-	Visible = false,
-	ZIndex = 50,
-	Parent = root,
-}, {
-	corner(14),
-	stroke(3, C.rim, 0.2),
-	create("UIGradient", {
-		Color = ColorSequence.new(RGB(40, 32, 54), RGB(16, 14, 22)),
-		Rotation = 90,
-	}),
-})
-local menuTitle = label({
-	Position = UDim2.fromOffset(0, 14),
-	Size = UDim2.new(1, 0, 0, 56),
-	Font = SERIF,
-	Text = "THE SPIRE",
-	TextSize = 54,
-	TextColor3 = C.gold,
-	ZIndex = 51,
-	Parent = menu,
-})
-textStroke(2).Parent = menuTitle
-label({
-	Position = UDim2.fromOffset(0, 68),
-	Size = UDim2.new(1, 0, 0, 24),
-	Font = SERIF,
-	Text = "Choose a floor. Each one holds a boss.",
-	TextSize = 22,
-	TextColor3 = C.dim,
-	ZIndex = 51,
-	Parent = menu,
-})
-local closeBtn = create("TextButton", {
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -12, 0, 12),
-	Size = UDim2.fromOffset(44, 44),
-	BackgroundColor3 = C.row,
-	Text = "X",
-	Font = BOLD,
-	TextSize = 26,
-	TextColor3 = C.pale,
-	AutoButtonColor = true,
-	ZIndex = 52,
-	Parent = menu,
-}, { corner(10), stroke(2, C.rim, 0.4) })
-
--- floor list on the left (it scrolls: there are more floors than fit)
-local list = create("ScrollingFrame", {
-	Position = UDim2.fromOffset(24, 108),
-	Size = UDim2.fromOffset(250, 338),
-	BackgroundTransparency = 1,
-	BorderSizePixel = 0,
-	ScrollBarThickness = 6,
-	ScrollBarImageColor3 = C.rim,
-	ScrollingDirection = Enum.ScrollingDirection.Y,
-	CanvasSize = UDim2.new(0, 0, 0, 0),
-	AutomaticCanvasSize = Enum.AutomaticSize.Y,
-	ZIndex = 51,
-	Parent = menu,
-}, {
-	create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
-	create("UIPadding", { PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 2) }),
-})
-
--- details on the right
-local detail = create("Frame", {
-	Position = UDim2.fromOffset(296, 108),
-	Size = UDim2.fromOffset(460, 338),
-	BackgroundColor3 = C.bg,
-	BackgroundTransparency = 0.2,
-	ZIndex = 51,
-	Parent = menu,
-}, { corner(12), stroke(2, C.rim, 0.5) })
-local dFloor = label({
-	Position = UDim2.fromOffset(20, 14),
-	Size = UDim2.new(1, -40, 0, 24),
-	Font = SERIF,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "FLOOR 1",
-	TextSize = 22,
-	TextColor3 = C.dim,
-	ZIndex = 52,
-	Parent = detail,
-})
-local dBoss = label({
-	Position = UDim2.fromOffset(20, 40),
-	Size = UDim2.new(1, -40, 0, 64),
-	Font = SERIF,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "",
-	TextSize = 34,
-	ZIndex = 52,
-	Parent = detail,
-})
-textStroke(1.5).Parent = dBoss
-local dArea = label({
-	Position = UDim2.fromOffset(20, 104),
-	Size = UDim2.new(1, -40, 0, 24),
-	Font = SERIF,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Text = "",
-	TextSize = 22,
-	TextColor3 = C.gold,
-	ZIndex = 52,
-	Parent = detail,
-})
-local dBlurb = label({
-	Position = UDim2.fromOffset(20, 136),
-	Size = UDim2.new(1, -40, 0, 80),
-	Font = SERIF,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextYAlignment = Enum.TextYAlignment.Top,
-	Text = "",
-	TextSize = 21,
-	TextColor3 = C.dim,
-	ZIndex = 52,
-	Parent = detail,
-})
-local dLevel = label({
-	Position = UDim2.fromOffset(20, 222),
-	Size = UDim2.new(1, -40, 0, 26),
-	TextXAlignment = Enum.TextXAlignment.Left,
-	RichText = true,
-	Text = "",
-	TextSize = 22,
-	ZIndex = 52,
-	Parent = detail,
-})
-textStroke(2).Parent = dLevel
-local enterBtn = create("TextButton", {
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -16),
-	Size = UDim2.fromOffset(300, 58),
-	BackgroundColor3 = RGB(70, 40, 100),
-	Text = "ENTER",
-	Font = SERIF,
-	TextSize = 36,
-	TextColor3 = C.pale,
-	AutoButtonColor = true,
-	ZIndex = 53,
-	Parent = detail,
-}, {
-	corner(12),
-	stroke(3, C.gold, 0.2),
-	create("UIGradient", { Color = ColorSequence.new(RGB(120, 80, 170), RGB(60, 30, 90)), Rotation = 90 }),
-})
-
--- (under-levelled for a floor: TRAIN FIRST beside ENTER - the Colosseum)
-local trainBtn = create("TextButton", {
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 110, 1, -16),
-	Size = UDim2.fromOffset(200, 58),
-	BackgroundColor3 = RGB(150, 120, 70),
-	Text = "TRAIN FIRST",
-	Font = SERIF,
-	TextSize = 28,
-	TextColor3 = C.pale,
-	AutoButtonColor = true,
-	Visible = false,
-	ZIndex = 53,
-	Parent = detail,
-}, {
-	corner(12),
-	stroke(3, C.gold, 0.2),
-	create("UIGradient", { Color = ColorSequence.new(RGB(214, 178, 112), RGB(120, 88, 48)), Rotation = 90 }),
-})
-
-local SAND = RGB(234, 212, 170)
 local selected = 1 -- (0: the ground floor, the Colosseum)
-local floorButtons = {}
-local colButton = nil
 
 local function myLevel()
 	local ls = player:FindFirstChild("leaderstats")
 	local lv = ls and ls:FindFirstChild("Level")
-	return lv and lv.Value or 1
+	if lv then
+		return lv.Value
+	end
+	local s = Menus.state
+	return (s and Config.levelFromPower) and Config.levelFromPower(tonumber(s.Power) or 0) or 1
+end
+
+local function clearedUpTo()
+	return player:GetAttribute("SpireCleared") or 0
 end
 
 -- A floor opens once the boss on the floor below it is beaten (every open
@@ -501,230 +304,287 @@ local function lockedBy(f)
 	if not (Config.Spire.RequirePrevious and f.id > 1) or RunService:IsStudio() or player:GetAttribute("Dev") == true then
 		return nil
 	end
-	if (player:GetAttribute("SpireCleared") or 0) >= f.id - 1 then
+	if clearedUpTo() >= f.id - 1 then
 		return nil
 	end
 	local below = Config.Spire.Floors[f.id - 1]
 	return below and below.boss and string.match(below.boss, "^[^,]+") or "the floor below"
 end
 
--- the ground floor: the Colosseum, training you for your next floor
-local function renderColosseum(lv)
-	local cleared = player:GetAttribute("SpireCleared") or 0
-	local bonus, nextF = Config.colosseumCatchUp(lv, cleared)
-	dFloor.Text = "GROUND FLOOR"
-	dBoss.Text = "The Colosseum"
-	dBoss.TextColor3 = SAND
-	dArea.Text = "The training grounds"
-	dBlurb.Text = "Waves of dummies, always your level, and the Straw King every 5th wave. Train here for the floor above - below its level, every win pays more XP."
-	if nextF then
-		local pct = math.floor(bonus * 100 + 0.5)
-		local boss = string.match(nextF.boss or "", "^[^,]+") or nextF.boss
-		dLevel.Text = string.format('Next: %s (Lv. %d)    You: Lv. %d', boss, nextF.level, lv)
-			.. (pct > 0 and ('    <font color="#78e66e">+' .. pct .. "% XP</font>") or '    <font color="#ebc86e">READY</font>')
-	else
-		dLevel.Text = string.format("You: Lv. %d", lv)
-	end
-	enterBtn.Active = true
-	enterBtn.AutoButtonColor = true
-	enterBtn.Text = "TRAIN"
-	enterBtn.TextTransparency = 0
-	enterBtn.Size = UDim2.fromOffset(300, 58)
-	enterBtn.Position = UDim2.new(0.5, 0, 1, -16)
-	trainBtn.Visible = false
+local function shortName(f)
+	return string.match(f.boss or "", "^([^,]+)") or f.boss or "?"
 end
 
-local function renderDetail()
-	local lvNow = myLevel()
-	if colButton then
-		colButton.BackgroundColor3 = (selected == 0) and C.rowHover or C.row
-		colButton:FindFirstChildOfClass("UIStroke").Transparency = (selected == 0) and 0 or 0.6
+-- what a floor is to you: "sealed", "locked" (and by whom), "beaten",
+-- "low" (not beaten, and you're under its level) or "ready"
+local function floorState(f)
+	if not f.open then
+		return "sealed"
 	end
-	if selected == 0 then
-		renderColosseum(lvNow)
-		for _, b in ipairs(floorButtons) do
-			b.BackgroundColor3 = C.row
-			b:FindFirstChildOfClass("UIStroke").Transparency = 0.6
-		end
-		return
-	end
-	local f = Config.Spire.Floors[selected]
-	if not f then
-		return
-	end
-	dFloor.Text = "FLOOR " .. f.id
-	dBoss.Text = f.open and f.boss or "Sealed"
-	dBoss.TextColor3 = f.open and f.color or C.dim
-	dArea.Text = f.open and f.area or ""
-	dBlurb.Text = f.blurb
-	local lv = myLevel()
-	local color = lv >= f.level and "#78e66e" or "#eb5a5a"
-	dLevel.Text = string.format('Recommended: Lv. %d    You: <font color="%s">Lv. %d</font>', f.level, color, lv)
-	if f.id <= (player:GetAttribute("SpireCleared") or 0) then
-		dLevel.Text = dLevel.Text .. '    <font color="#ebc86e">DEFEATED</font>'
-	end
-	local lock = f.open and lockedBy(f)
+	local lock = lockedBy(f)
 	if lock then
-		dLevel.Text = string.format('<font color="#eb5a5a">Defeat %s first</font>    Recommended: Lv. %d', lock, f.level)
+		return "locked", lock
 	end
-	local canEnter = f.open and not lock
-	enterBtn.Active = canEnter
-	enterBtn.AutoButtonColor = canEnter
-	enterBtn.Text = canEnter and "ENTER" or (lock and "LOCKED" or "SEALED")
-	enterBtn.TextTransparency = canEnter and 0 or 0.5
-	-- under-levelled (and not beaten yet): train first, in the Colosseum
-	local under = canEnter and lv < f.level and f.id > (player:GetAttribute("SpireCleared") or 0)
-	trainBtn.Visible = under
-	if under then
-		dLevel.Text = dLevel.Text .. '    <font color="#eb5a5a">Too low!</font>'
-		enterBtn.Size = UDim2.fromOffset(200, 58)
-		enterBtn.Position = UDim2.new(0.5, -110, 1, -16)
-	else
-		enterBtn.Size = UDim2.fromOffset(300, 58)
-		enterBtn.Position = UDim2.new(0.5, 0, 1, -16)
+	if f.id <= clearedUpTo() then
+		return "beaten"
 	end
-	for i, b in ipairs(floorButtons) do
-		b.BackgroundColor3 = (i == selected) and C.rowHover or C.row
-		b:FindFirstChildOfClass("UIStroke").Transparency = (i == selected) and 0 or 0.6
+	if myLevel() < f.level then
+		return "low"
 	end
+	return "ready"
 end
+local STATE_CHIP = {
+	sealed = { "SEALED", KC.Slate },
+	locked = { "LOCKED", KC.Slate },
+	beaten = { "BEATEN", KC.Green },
+	low = { "TOO LOW", KC.Red },
+	ready = { "READY", KC.Pink },
+}
 
-do
-	-- the ground floor (first in the list)
-	local b = create("TextButton", {
-		Name = "Colosseum",
-		LayoutOrder = 0,
-		Size = UDim2.new(1, 0, 0, 72),
-		BackgroundColor3 = C.row,
-		Text = "",
-		AutoButtonColor = true,
-		ZIndex = 52,
-		Parent = list,
-	}, { corner(10), stroke(2, SAND, 0.6) })
-	label({
-		Position = UDim2.fromOffset(14, 8),
-		Size = UDim2.new(1, -28, 0, 24),
-		Font = SERIF,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "Ground floor",
-		TextSize = 24,
-		TextColor3 = C.pale,
-		ZIndex = 53,
-		Parent = b,
-	})
-	label({
-		Position = UDim2.fromOffset(14, 36),
-		Size = UDim2.new(1, -28, 0, 28),
-		Font = SERIF,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "The Colosseum (training)",
-		TextSize = 20,
-		TextColor3 = SAND,
-		ZIndex = 53,
-		Parent = b,
-	})
-	b.Activated:Connect(function()
-		selected = 0
-		renderDetail()
-	end)
-	colButton = b
-end
-
-for i, f in ipairs(Config.Spire.Floors) do
-	local b = create("TextButton", {
-		LayoutOrder = i,
-		Size = UDim2.new(1, 0, 0, 72),
-		BackgroundColor3 = C.row,
-		Text = "",
-		AutoButtonColor = true,
-		ZIndex = 52,
-		Parent = list,
-	}, { corner(10), stroke(2, f.open and f.color or C.rim, 0.6) })
-	label({
-		Position = UDim2.fromOffset(14, 8),
-		Size = UDim2.new(1, -28, 0, 24),
-		Font = SERIF,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = (f.open and "" or "🔒  ") .. "Floor " .. f.id,
-		TextSize = 24,
-		TextColor3 = f.open and C.pale or C.dim,
-		ZIndex = 53,
-		Parent = b,
-	})
-	label({
-		Position = UDim2.fromOffset(14, 36),
-		Size = UDim2.new(1, -28, 0, 28),
-		Font = SERIF,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		TextWrapped = false,
-		Text = f.open and f.area or "Sealed",
-		TextSize = 20,
-		TextColor3 = f.open and f.color or C.dim,
-		ZIndex = 53,
-		Parent = b,
-	})
-	-- "DEFEATED" once you've killed this floor's boss (PlayerService keeps the
-	-- highest floor you've cleared on the SpireCleared attribute)
-	label({
-		Name = "Defeated",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -14, 0, 10),
-		Size = UDim2.fromOffset(110, 20),
-		Font = SERIF,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Text = "DEFEATED",
-		TextSize = 17,
-		TextColor3 = Color3.fromRGB(235, 200, 110),
-		Visible = false,
-		ZIndex = 53,
-		Parent = b,
-	})
-	b.Activated:Connect(function()
-		selected = i
-		renderDetail()
-	end)
-	floorButtons[i] = b
-end
-
-local function renderCleared()
-	local cleared = player:GetAttribute("SpireCleared") or 0
-	for i, b in ipairs(floorButtons) do
-		local tag = b:FindFirstChild("Defeated")
-		if tag then
-			tag.Visible = Config.Spire.Floors[i].id <= cleared
+-- who picks the floor: nil (you're on your own), or your party
+local function partyInfo()
+	local lead = player:GetAttribute("PartyLeader")
+	if not lead then
+		return nil
+	end
+	local n, leaderName = 0, nil
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p:GetAttribute("PartyLeader") == lead then
+			n += 1
+			if p.UserId == lead then
+				leaderName = p.Name
+			end
 		end
 	end
+	return { leading = lead == player.UserId, count = n, leader = leaderName or "your leader" }
 end
-renderCleared()
-player:GetAttributeChangedSignal("SpireCleared"):Connect(function()
-	renderCleared()
-	renderDetail() -- beating a boss unlocks the next floor
-end)
+
+local trainNow -- (below)
+
+-- words on a card, white with an ink edge
+local function words(parent, name, text, size, x, y, w, h, props)
+	local l = K.big(parent, {
+		Name = name,
+		Text = text,
+		TextScaled = false,
+		TextSize = size,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Position = UDim2.fromOffset(x, y),
+		Size = UDim2.new(1, w, 0, h),
+		ZIndex = 9,
+		Edge = size >= 30 and 3 or 2,
+	})
+	for k, v in pairs(props or {}) do
+		l[k] = v
+	end
+	return l
+end
+
+-- THE PICKED FLOOR, big (in `holder`, w x h)
+local function drawDetail(holder, w, h, api)
+	local f = selected > 0 and Config.Spire.Floors[selected] or nil
+	local state, lock = "ready", nil
+	if f then
+		state, lock = floorState(f)
+	end
+	local open = f == nil or (state ~= "sealed" and state ~= "locked")
+	local face = K.card(holder, { Name = "Detail", Size = UDim2.fromOffset(w, h), ZIndex = 7 }, f and (open and f.color or KC.Slate) or KC.Orange)
+	K.shine(face, 0.12).ZIndex = 8
+	local party = partyInfo()
+	local y = 18
+	if not f then
+		-- the ground floor: the Colosseum, training you for your next floor
+		local bonus, nextF = Config.colosseumCatchUp(myLevel(), clearedUpTo())
+		local pct = math.floor(bonus * 100 + 0.5)
+		K.chip(face, "GROUND FLOOR", KC.Ink, { Name = "FloorChip", Position = UDim2.fromOffset(20, y), ZIndex = 9 })
+		K.chip(face, pct > 0 and ("+" .. pct .. "% XP") or "TRAINING", pct > 0 and KC.Green or KC.Blue, { Name = "State", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, y), ZIndex = 9 })
+		words(face, "BossName", "The Colosseum", 46, 20, y + 42, -40, 56)
+		words(face, "Area", "The training grounds", 26, 20, y + 100, -40, 32, { TextColor3 = KC.Yellow })
+		words(face, "Blurb", "Waves of dummies, always your level, and the Straw King every 5th wave. Train here for the floor above: below its level, every win pays more XP.", 20, 20, y + 140, -40, 76)
+		local row = y + 226
+		if nextF then
+			local c = K.chip(face, "TRAINING FOR: " .. string.upper(shortName(nextF)) .. " LV " .. nextF.level, KC.Ink, { Name = "TrainingFor", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
+			K.chip(face, "YOU LV " .. myLevel(), myLevel() >= nextF.level and KC.Green or KC.Red, { Name = "You", Position = UDim2.new(0, 20 + c.Size.X.Offset + 10, 0, row), ZIndex = 9 })
+		else
+			K.chip(face, "YOU LV " .. myLevel(), KC.Green, { Name = "You", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
+		end
+		if party then
+			words(face, "Party", "Parties don't go in together yet: you go in on your own.", 18, 20, row + 44, -40, 26)
+		end
+		local b = api.button(face, "TRAIN", KC.Green, { Name = "Train", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
+		b.Activated:Connect(function()
+			task.spawn(trainNow)
+		end)
+		return face
+	end
+	K.chip(face, "FLOOR " .. f.id, KC.Ink, { Name = "FloorChip", Position = UDim2.fromOffset(20, y), ZIndex = 9 })
+	local sc = STATE_CHIP[state]
+	K.chip(face, sc[1], sc[2], { Name = "State", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, y), ZIndex = 9 })
+	local name = words(face, "BossName", open and f.boss or "Sealed", 46, 20, y + 42, -40, 104, { TextScaled = true })
+	new("UITextSizeConstraint", { MaxTextSize = 46, MinTextSize = 22 }, name)
+	words(face, "Area", open and (f.area or "") or "", 26, 20, y + 150, -40, 32, { TextColor3 = KC.Yellow })
+	-- the level it wants, and yours (under the blurb)
+	local row = math.min(h - 150, y + 188 + 120)
+	words(face, "Blurb", f.blurb or "", 21, 20, y + 188, -40, row - (y + 188) - 10)
+	local lv = myLevel()
+	local rec = K.chip(face, "RECOMMENDED LV " .. f.level, KC.Ink, { Name = "Recommended", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
+	K.chip(face, "YOU LV " .. lv, lv >= f.level and KC.Green or KC.Red, { Name = "You", Position = UDim2.new(0, 20 + rec.Size.X.Offset + 10, 0, row), ZIndex = 9 })
+	-- and what's in the way, or who's coming
+	local note = nil
+	if state == "locked" then
+		note = "Beat " .. tostring(lock) .. " first."
+	elseif state == "sealed" then
+		note = "This floor isn't open yet."
+	elseif party and not party.leading then
+		note = party.leader .. " (your party's leader) picks the floor."
+	elseif party then
+		note = "Your party of " .. party.count .. " comes with you."
+	elseif state == "low" then
+		note = "Too low! Train in the Colosseum first: it pays extra XP."
+	end
+	if note then
+		words(face, "Note", note, 18, 20, row + 38, -40, 26)
+	end
+	-- the buttons
+	local canGo = open and not (party and not party.leading)
+	local label = canGo and "ENTER" or (state == "locked" and "LOCKED" or (state == "sealed" and "SEALED" or "LEADER PICKS"))
+	local enter = api.button(face, label, canGo and KC.Green or KC.Off, { Name = "Enter", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
+	enter.Active = canGo
+	enter.Activated:Connect(function()
+		if not canGo then
+			return
+		end
+		Menus.close()
+		task.spawn(travel, "enter", f.id)
+	end)
+	if state == "low" then
+		local train = api.button(face, "TRAIN FIRST", KC.Gold, { Name = "TrainFirst", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -276, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
+		train.Activated:Connect(function()
+			task.spawn(trainNow)
+		end)
+	end
+	return face
+end
+
+-- THE FLOORS, as cards (the ground floor first): tap one to look at it
+local CARD_W, CARD_H, CARD_GAP = 196, 128, 12
+local function drawCards(holder, across, api)
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(CARD_W, CARD_H), CellPadding = UDim2.fromOffset(CARD_GAP, CARD_GAP), SortOrder = Enum.SortOrder.LayoutOrder }, holder)
+	local function card(id, top, name, sub, color, chip, chipColor, locked)
+		local face = K.card(holder, { Name = id == 0 and "GroundFloor" or ("Floor" .. id), LayoutOrder = id, ZIndex = 7 }, color)
+		local bar = new("Frame", { Name = "Bar", BackgroundColor3 = KC.Ink, BackgroundTransparency = 0.35, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 8 }, face)
+		K.label(bar, { Text = top, Font = K.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = KC.White, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -44, 1, 0), ZIndex = 9 })
+		if locked then
+			K.icon(bar, "Lock", { Name = "Lock", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -4, 0.5, 0), Size = UDim2.fromOffset(24, 24), ZIndex = 9 })
+		end
+		K.big(face, { Name = "Boss", Text = name, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 36), Size = UDim2.new(1, -20, 0, 30), ZIndex = 9 })
+		K.big(face, { Name = "Area", Text = sub, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 68), Size = UDim2.new(1, -20, 0, 18), ZIndex = 9, Edge = 2 })
+		if chip then
+			K.chip(face, chip, chipColor, { Name = "State", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 10, 1, -8), ZIndex = 9 })
+		end
+		if selected == id then
+			-- (the one picked: a thick yellow edge)
+			local edge = face:FindFirstChildOfClass("UIStroke")
+			if edge then
+				edge.Color = KC.Yellow
+				edge.Thickness = 5
+			end
+			face:SetAttribute("Picked", true)
+		end
+		local tap = new("TextButton", { Name = "Tap", Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 12 }, face)
+		tap.Activated:Connect(function()
+			if selected ~= id then
+				selected = id
+				Menus.redraw()
+			end
+		end)
+	end
+	local bonus = Config.colosseumCatchUp(myLevel(), clearedUpTo())
+	local pct = math.floor(bonus * 100 + 0.5)
+	card(0, "GROUND FLOOR", "The Colosseum", "Training", KC.Orange, pct > 0 and ("+" .. pct .. "% XP") or "TRAIN", pct > 0 and KC.Green or KC.Blue, false)
+	for _, f in ipairs(Config.Spire.Floors) do
+		local state = floorState(f)
+		local reach = state ~= "sealed" and state ~= "locked"
+		local chip, chipColor = nil, nil
+		if state == "beaten" then
+			chip, chipColor = "BEATEN", KC.Green
+		elseif reach then
+			chip, chipColor = "LV " .. f.level, state == "low" and KC.Red or KC.Pink
+		else
+			chip, chipColor = "LV " .. f.level, KC.Slate
+		end
+		card(f.id, "FLOOR " .. f.id, f.open and shortName(f) or "Sealed", f.open and (f.area or "") or "", reach and f.color or KC.Well, chip, chipColor, not reach)
+	end
+end
+
+Menus.define("Spire", {
+	Title = "The Spire",
+	Color = KC.Pink,
+	Tabs = { { Key = "Floors", Label = "Floors", Icon = "Spire" } },
+	render = function(page, tab, api)
+		local beaten = math.min(clearedUpTo(), #Config.Spire.Floors)
+		api.section("Choose a floor", beaten .. " / " .. #Config.Spire.Floors .. " beaten")
+		local count = #Config.Spire.Floors + 1
+		local across = 3
+		local cardsW = across * CARD_W + (across - 1) * CARD_GAP
+		local rows = math.ceil(count / across)
+		local cardsH = rows * CARD_H + (rows - 1) * CARD_GAP
+		if api.width >= cardsW + 24 + 520 then
+			-- wide: the cards on the left, the picked floor on the right
+			local block = api.block(cardsH + 10)
+			local cards = new("Frame", { Name = "Floors", BackgroundTransparency = 1, Size = UDim2.fromOffset(cardsW, cardsH), ZIndex = 6 }, block)
+			drawCards(cards, across, api)
+			local side = new("Frame", { Name = "Picked", BackgroundTransparency = 1, Position = UDim2.fromOffset(cardsW + 24, 0), Size = UDim2.fromOffset(math.min(760, api.width - cardsW - 24 - 6), cardsH), ZIndex = 6 }, block)
+			drawDetail(side, side.Size.X.Offset, cardsH, api)
+		else
+			-- narrow: the picked floor on top, the cards under it
+			local block = api.block(470)
+			drawDetail(block, math.min(760, api.width - 6), 460, api)
+			across = math.max(1, math.floor((api.width + CARD_GAP) / (CARD_W + CARD_GAP)))
+			rows = math.ceil(count / across)
+			local cards = api.block(rows * (CARD_H + CARD_GAP))
+			cards.Name = "Floors"
+			drawCards(cards, across, api)
+		end
+	end,
+})
+
+-- (it follows what you've beaten, your party and your level while it's open)
+local function redrawSpire()
+	if Menus.current() == "Spire" then
+		Menus.redraw()
+	end
+end
+player:GetAttributeChangedSignal("SpireCleared"):Connect(redrawSpire)
+local function watchParty(p)
+	p:GetAttributeChangedSignal("PartyLeader"):Connect(redrawSpire)
+end
+for _, p in ipairs(Players:GetPlayers()) do
+	watchParty(p)
+end
+Players.PlayerAdded:Connect(watchParty)
 
 local function openMenu()
 	if travelling then
 		return
 	end
-	-- (it opens on the floor you're up to: the one after the last you've beaten,
-	-- scrolled into view)
-	local upTo = math.clamp((player:GetAttribute("SpireCleared") or 0) + 1, 1, #Config.Spire.Floors)
+	-- (it opens on the floor you're up to: the one after the last you've beaten)
+	local upTo = math.clamp(clearedUpTo() + 1, 1, #Config.Spire.Floors)
 	while upTo > 1 and not Config.Spire.Floors[upTo].open do
 		upTo = upTo - 1
 	end
 	selected = upTo
-	list.CanvasPosition = Vector2.new(0, math.max(0, (selected - 1) * 82)) -- (the ground floor is above floor 1)
-	renderDetail()
-	menu.Visible = true
-	menu.Size = UDim2.fromOffset(740, 440)
-	tween(menu, 0.18, { Size = UDim2.fromOffset(780, 470) }, Enum.EasingStyle.Back)
+	Menus.open("Spire")
 end
 local function closeMenu()
-	menu.Visible = false
+	if Menus.current() == "Spire" then
+		Menus.close()
+	end
 end
-closeBtn.Activated:Connect(closeMenu)
 -- into the Colosseum (its own quick fade takes you there: LobbyActivities)
-local function trainNow()
+trainNow = function()
 	closeMenu()
 	if travelling then
 		return
@@ -738,61 +598,59 @@ local function trainNow()
 		showMessage(ok and (reason or "You can't go in right now.") or "Something went wrong.")
 	end
 end
-trainBtn.Activated:Connect(function()
-	task.spawn(trainNow)
-end)
-enterBtn.Activated:Connect(function()
-	if selected == 0 then
-		task.spawn(trainNow)
-		return
-	end
-	local f = Config.Spire.Floors[selected]
-	if not (f and f.open) or lockedBy(f) then
-		return
-	end
-	closeMenu()
-	task.spawn(travel, "enter", f.id)
-end)
 
 ----------------------------------------------------------------------
--- In the arena: a Leave button, and a check at the fog gate
+-- In the arena: a Leave button, and a check at the fog gate (in the new
+-- look: its own screen, which RetroUI leaves alone)
 ----------------------------------------------------------------------
-local confirm = create("Frame", {
+local oldWindows = playerGui:FindFirstChild("SpireWindows")
+if oldWindows then
+	oldWindows:Destroy()
+end
+local winGui = create("ScreenGui", {
+	Name = "SpireWindows",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = true,
+	DisplayOrder = 21,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	Parent = playerGui,
+})
+winGui:SetAttribute("RetroSkip", true)
+local winRoot = create("Frame", { Name = "Root", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = winGui })
+local winScale = create("UIScale", { Parent = winRoot })
+local function fitWindows()
+	winScale.Scale = uiScale.Scale
+	winRoot.Size = root.Size
+end
+fitWindows()
+uiScale:GetPropertyChangedSignal("Scale"):Connect(fitWindows)
+
+local confirm, confirmHolder = K.card(winRoot, {
 	Name = "ConfirmLeave",
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(460, 200),
-	BackgroundColor3 = C.panel,
+	Size = UDim2.fromOffset(520, 240),
 	Visible = false,
 	ZIndex = 55,
-	Parent = root,
-}, { corner(14), stroke(3, C.rim, 0.2) })
-local confirmText = label({
-	Position = UDim2.fromOffset(20, 24),
-	Size = UDim2.new(1, -40, 0, 70),
-	Font = SERIF,
+}, KC.Paper)
+local confirmBar = new("Frame", { Name = "Bar", BackgroundColor3 = KC.Pink, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 46), ZIndex = 57 }, confirm)
+new("Frame", { BackgroundColor3 = KC.Ink, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 3), ZIndex = 57 }, confirmBar)
+K.label(confirmBar, { Name = "Title", Text = "LEAVE THE ARENA?", Font = K.TITLE_FONT, TextScaled = false, TextSize = 18, TextColor3 = KC.White, TextStrokeTransparency = 0, Size = UDim2.fromScale(1, 1), ZIndex = 58 })
+local confirmText = K.label(confirm, {
+	Name = "Words",
+	Position = UDim2.fromOffset(24, 62),
+	Size = UDim2.new(1, -48, 0, 70),
 	Text = "Leave the arena and return to the Spire's doors?",
-	TextSize = 28,
-	ZIndex = 56,
-	Parent = confirm,
+	TextScaled = false,
+	TextSize = 24,
+	TextWrapped = true,
+	ZIndex = 58,
 })
-local function dialogButton(text, x, color)
-	return create("TextButton", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(x, 0, 1, -20),
-		Size = UDim2.fromOffset(170, 52),
-		BackgroundColor3 = color,
-		Text = text,
-		Font = SERIF,
-		TextSize = 28,
-		TextColor3 = C.pale,
-		AutoButtonColor = true,
-		ZIndex = 56,
-		Parent = confirm,
-	}, { corner(10), stroke(2, C.gold, 0.4) })
+local yesBtn = K.button(confirm, "LEAVE", KC.Red, { Name = "Leave", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0.5, 10, 1, -22), Size = UDim2.fromOffset(200, 56), ZIndex = 59 })
+local noBtn = K.button(confirm, "STAY", KC.Slate, { Name = "Stay", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(0.5, -10, 1, -22), Size = UDim2.fromOffset(200, 56), ZIndex = 59 })
+local function showConfirm(on)
+	confirmHolder.Visible = on
 end
-local yesBtn = dialogButton("Leave", 0.28, RGB(90, 40, 60))
-local noBtn = dialogButton("Stay", 0.72, C.row)
 
 -- (the boss of your arena is awake: you can't walk out on a fight - your own
 -- copy of the floor's arena: ReplicatedStorage/Arenas)
@@ -817,39 +675,31 @@ local function askLeave()
 	end
 	local f = Config.Spire.Floors[player:GetAttribute("SpireFloor")]
 	confirmText.Text = "Leave " .. (f and f.area or "the arena") .. " and return to the Spire's doors?"
-	confirm.Visible = true
+	showConfirm(true)
 end
 yesBtn.Activated:Connect(function()
-	confirm.Visible = false
+	showConfirm(false)
 	task.spawn(travel, "leave")
 end)
 noBtn.Activated:Connect(function()
-	confirm.Visible = false
+	showConfirm(false)
 end)
 
-local leaveBtn = create("TextButton", {
+local leaveBtn = K.button(winRoot, "LEAVE ARENA", KC.Slate, {
 	Name = "LeaveArena",
 	AnchorPoint = Vector2.new(0.5, 0),
 	Position = UDim2.new(0.5, 0, 0, 118),
-	Size = UDim2.fromOffset(210, 44),
-	BackgroundColor3 = C.panel,
-	BackgroundTransparency = 0.15,
-	Text = "Leave Arena",
-	Font = SERIF,
-	TextSize = 24,
-	TextColor3 = C.pale,
-	AutoButtonColor = true,
+	Size = UDim2.fromOffset(230, 48),
 	Visible = false,
 	ZIndex = 40,
-	Parent = root,
-}, { corner(10), stroke(2, C.rim, 0.3) })
+})
 leaveBtn.Activated:Connect(askLeave)
 
 local function onFloorChanged()
 	local inArena = player:GetAttribute("SpireFloor") ~= nil
 	leaveBtn.Visible = inArena
 	if not inArena then
-		confirm.Visible = false
+		showConfirm(false)
 	end
 end
 player:GetAttributeChangedSignal("SpireFloor"):Connect(onFloorChanged)
@@ -877,12 +727,12 @@ SpireEvent.OnClientEvent:Connect(function(kind, a, b)
 	end
 end)
 
--- Escape / B closes the menu or the dialog
+-- Escape / B closes the "Leave?" check (Esc closes the menu itself: Menus)
 UserInputService.InputBegan:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.ButtonB then
-		if confirm.Visible then
-			confirm.Visible = false
-		elseif menu.Visible then
+		if confirmHolder.Visible then
+			showConfirm(false)
+		elseif input.KeyCode == Enum.KeyCode.ButtonB then
 			closeMenu()
 		end
 	end
@@ -928,9 +778,9 @@ local function inside(zone, pos, margin)
 end
 local function isShown(kind)
 	if kind == "Menu" then
-		return menu.Visible
+		return Menus.current() == "Spire"
 	end
-	return confirm.Visible
+	return confirmHolder.Visible
 end
 
 local activeKind = nil -- what walking in opened
@@ -970,10 +820,10 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 	else
-		if activeKind == "Menu" and menu.Visible then
+		if activeKind == "Menu" and isShown("Menu") then
 			closeMenu()
-		elseif activeKind == "Leave" and confirm.Visible then
-			confirm.Visible = false
+		elseif activeKind == "Leave" and confirmHolder.Visible then
+			showConfirm(false)
 		end
 		activeKind = nil
 		dismissedKind = nil
