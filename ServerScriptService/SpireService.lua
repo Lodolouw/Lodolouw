@@ -264,8 +264,9 @@ local function travel(player, action, floorId, tierId)
 		local tier = Config.spireTier(tierId)
 		-- the floor below has to be beaten first, on the same tier - and a
 		-- harder tier opens once the one before it is beaten to the top (not
-		-- for a dev - Studio, or the game's owner - so you can test any floor)
-		if not Config.isDev(player) then
+		-- for a dev - Studio, or the game's owner - when Config.Spire.DevSkip
+		-- is on, so you can test any floor)
+		if not (Config.Spire.DevSkip and Config.isDev(player)) then
 			local cleared = Config.spireCleared(player)
 			if not Config.spireTierOpen(cleared, tier.id) then
 				local _, i = Config.spireTier(tier.id)

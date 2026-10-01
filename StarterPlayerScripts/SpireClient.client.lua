@@ -309,10 +309,13 @@ end
 
 -- A floor opens once the boss on the floor below it is beaten - on the same
 -- tier, and a harder tier only once the one before it is beaten to the top
--- (every open floor is free to enter in Studio, so you can test). Returns
+-- (devs can enter any open floor when Config.Spire.DevSkip is on). Returns
 -- what you still have to beat, or nil if you can go in.
+local function devSkip()
+	return Config.Spire.DevSkip == true and (RunService:IsStudio() or player:GetAttribute("Dev") == true)
+end
 local function lockedBy(f)
-	if RunService:IsStudio() or player:GetAttribute("Dev") == true then
+	if devSkip() then
 		return nil
 	end
 	local cleared = Config.spireCleared(player)
@@ -472,6 +475,9 @@ local function drawDetail(holder, w, h, api)
 	local label = canGo and "ENTER" or (state == "locked" and "LOCKED" or (state == "sealed" and "SEALED" or "LEADER PICKS"))
 	local enter = api.button(face, label, canGo and KC.Green or KC.Off, { Name = "Enter", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
 	enter.Active = canGo
+	if state == "locked" then
+		K.icon(face, "Lock", { Name = "Lock", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -270, 1, -20), Size = UDim2.fromOffset(62, 62), ZIndex = 10 })
+	end
 	enter.Activated:Connect(function()
 		if not canGo then
 			return
@@ -497,7 +503,9 @@ local function drawCards(holder, across, api)
 		local bar = new("Frame", { Name = "Bar", BackgroundColor3 = KC.Ink, BackgroundTransparency = 0.35, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 8 }, face)
 		K.label(bar, { Text = top, Font = K.TITLE_FONT, TextScaled = false, TextSize = 13, TextColor3 = KC.White, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -44, 1, 0), ZIndex = 9 })
 		if locked then
-			K.icon(bar, "Lock", { Name = "Lock", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -4, 0.5, 0), Size = UDim2.fromOffset(24, 24), ZIndex = 9 })
+			-- locked: the card dimmed, a big padlock over it
+			new("Frame", { Name = "Dim", BackgroundColor3 = KC.Ink, BackgroundTransparency = 0.45, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 10 }, face)
+			K.icon(face, "Lock", { Name = "Lock", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 4), Size = UDim2.fromOffset(56, 56), ZIndex = 11 })
 		end
 		K.big(face, { Name = "Boss", Text = name, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 36), Size = UDim2.new(1, -20, 0, 30), ZIndex = 9 })
 		K.big(face, { Name = "Area", Text = sub, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(10, 68), Size = UDim2.new(1, -20, 0, 18), ZIndex = 9, Edge = 2 })
@@ -557,7 +565,7 @@ Menus.define("Spire", {
 			api.section("Choose a floor", beaten .. " / " .. #Config.Spire.Floors .. " beaten")
 		else
 			api.section(t.name .. " · Lv " .. Config.spireLevel(1, t.id) .. "-" .. Config.spireLevel(#Config.Spire.Floors, t.id), beaten .. " / " .. #Config.Spire.Floors .. " beaten")
-			local open = Config.spireTierOpen(Config.spireCleared(player), t.id) or RunService:IsStudio() or player:GetAttribute("Dev") == true
+			local open = Config.spireTierOpen(Config.spireCleared(player), t.id) or devSkip()
 			local _, i = Config.spireTier(t.id)
 			local before = Config.Spire.Tiers[i - 1]
 			api.words((t.blurb or "") .. (open and "" or ("  Beat the whole Spire on " .. before.name .. " to open it.")), 30, open and KC.White or KC.Yellow)

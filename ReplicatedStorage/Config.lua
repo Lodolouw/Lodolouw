@@ -548,8 +548,10 @@ end
 Config.Spire = {
 	EnterRange = 38, -- how close to the Spire's doors you must be to enter
 	-- each floor opens once you've beaten the boss on the floor below it
-	-- (in Studio every open floor is free to enter, so you can test them)
+	-- (on the same tier), for everyone - Studio and devs too
 	RequirePrevious = true,
+	-- true = devs (Studio, the game's owner) can enter any floor, to test them
+	DevSkip = false,
 	Floors = {
 		{
 			id = 1,
