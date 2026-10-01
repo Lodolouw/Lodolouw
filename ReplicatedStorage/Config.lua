@@ -44,6 +44,11 @@ Config.StationTurn = {
 -- it is as you go in (a pop-up at the door) or on the CLEARED screen for the
 -- next run: Normal, Hard or Nightmare.
 Config.Colosseum = {
+	-- THE SPIRE'S TRAINING GROUNDS: the Colosseum trains you for your next
+	-- floor. While you're below its recommended level, everything in here pays
+	-- PerLevel more XP for each level you're short (coins stay the same), up
+	-- to Max more (1 = double). (Config.colosseumCatchUp)
+	CatchUp = { PerLevel = 0.15, Max = 1 },
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 82, -- how far out dummies can go: right up to the foot of the stands, so nowhere is safe
 	-- the mini colosseum in the lobby (where the training field was), and its little door
@@ -290,6 +295,26 @@ function Config.colosseumUnlocked(col, id)
 end
 
 -- The rewards for a player of this level (kill = one dummy, quest = the whole quest)
+-- The floor you're training for (the next one you haven't beaten, that's
+-- open), and how much more XP the Colosseum pays you for being below its
+-- level (0.45 = +45%). cleared = the highest floor you've beaten.
+function Config.nextSpireFloor(cleared)
+	for _, f in ipairs(Config.Spire and Config.Spire.Floors or {}) do
+		if f.open and f.id > (cleared or 0) then
+			return f
+		end
+	end
+	return nil
+end
+function Config.colosseumCatchUp(level, cleared)
+	local CU = Config.Colosseum.CatchUp
+	local f = Config.nextSpireFloor(cleared)
+	if not (CU and f) then
+		return 0, f
+	end
+	return math.clamp((f.level - level) * CU.PerLevel, 0, CU.Max), f
+end
+
 function Config.colosseumRewards(level)
 	local C = Config.Colosseum
 	local gap = math.max(1, Config.powerForLevel(level + 1) - Config.powerForLevel(level))

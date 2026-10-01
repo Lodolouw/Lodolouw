@@ -21,16 +21,23 @@ local workspace = M.workspace
 local configModule = Instance.new("ModuleScript")
 configModule.Name = "Config"
 configModule.Parent = M.services.ReplicatedStorage
-local Config
+-- (which arena copy a boss is in: BossIntro asks)
+local arenasModule = Instance.new("ModuleScript")
+arenasModule.Name = "Arenas"
+arenasModule.Parent = M.services.ReplicatedStorage
+local Config, Arenas
 local env = M.env({
 	require = function(mod)
 		if mod == configModule then
 			return Config
+		elseif mod == arenasModule then
+			return Arenas
 		end
 		error("require of unknown module " .. tostring(mod))
 	end,
 })
 Config = M.load(S.Config, "Config", env)()
+Arenas = M.load(S.files["ReplicatedStorage/Arenas.lua"], "Arenas", env)()
 local def = Config.Bosses[9]
 
 -- the screen's player, and a camera looking at the boss from 40 studs away

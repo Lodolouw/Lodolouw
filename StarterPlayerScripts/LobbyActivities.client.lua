@@ -550,6 +550,32 @@ label(box, "Reward:", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 110), GREY,
 local xpLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 128), GREEN, Enum.TextXAlignment.Left)
 local coinLabel = label(box, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 148), GOLD, Enum.TextXAlignment.Left)
 
+-- TRAINING: the Colosseum is the Spire's training grounds - the floor you're
+-- training for, your level against its, and the extra XP while you're below
+-- it (under the quest)
+local trainBox = Instance.new("Frame")
+trainBox.Name = "TrainTab"
+trainBox.BackgroundColor3 = RGB(12, 10, 20)
+trainBox.BackgroundTransparency = 0.1
+trainBox.BorderSizePixel = 0
+trainBox.AnchorPoint = Vector2.new(1, 0)
+trainBox.Position = UDim2.new(1, -16, 0.42, 96)
+trainBox.Size = UDim2.fromOffset(270, 86)
+trainBox.Visible = false
+trainBox.Parent = tracker
+local trainEdge = Instance.new("UIStroke")
+trainEdge.Color = RGB(255, 255, 255)
+trainEdge.Thickness = 3
+trainEdge.Parent = trainBox
+local trainHead = Instance.new("Frame")
+trainHead.BackgroundColor3 = RGB(44, 232, 245)
+trainHead.BorderSizePixel = 0
+trainHead.Size = UDim2.new(1, 0, 0, 26)
+trainHead.Parent = trainBox
+label(trainHead, "TRAINING FOR", UDim2.new(1, -16, 1, -6), UDim2.fromOffset(8, 3), RGB(24, 20, 37), Enum.TextXAlignment.Left)
+local trainBoss = label(trainBox, "", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 32), RGB(255, 255, 255), Enum.TextXAlignment.Left)
+local trainLevel = label(trainBox, "", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 58), GREEN, Enum.TextXAlignment.Left)
+
 local waveBox = Instance.new("Frame")
 waveBox.BackgroundColor3 = RGB(12, 10, 20)
 waveBox.BackgroundTransparency = 0.1
@@ -695,6 +721,20 @@ local function renderTracker(st)
 	end
 	xpLabel.Text = Config.format(st.questPower or 0) .. " XP"
 	coinLabel.Text = Config.format(st.questCoins or 0) .. " coins"
+	-- training for the next floor
+	local tr = type(st.train) == "table" and st.train or nil
+	trainBox.Visible = tr ~= nil
+	if tr then
+		trainBoss.Text = tostring(tr.boss) .. "  (Lv " .. tostring(tr.level) .. ")"
+		local bonus = math.floor((tr.bonus or 0) * 100 + 0.5)
+		if bonus > 0 then
+			trainLevel.Text = "You: Lv " .. tostring(tr.you) .. "   +" .. bonus .. "% XP"
+			trainLevel.TextColor3 = GREEN
+		else
+			trainLevel.Text = "You: Lv " .. tostring(tr.you) .. "   Ready!"
+			trainLevel.TextColor3 = GOLD
+		end
+	end
 end
 
 local function syncTracker()

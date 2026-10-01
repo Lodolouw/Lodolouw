@@ -63,6 +63,13 @@
 	    opens once you've cleared a Normal run, Nightmare once you've cleared
 	    a Hard one. A run keeps the difficulty it started on.
 
+	THE SPIRE'S TRAINING GROUNDS: the Colosseum is the Spire's ground floor
+	too - it's at the top of the Spire menu (SpireService takes you in from
+	the Spire's doors: EnterFromSpire), and it trains you for your next floor.
+	While you're below that floor's recommended level, every kill, quest and
+	clear pays more XP for each level you're short (Config.colosseumCatchUp:
+	up to double). Your screen shows what you're training for.
+
 	All the numbers are in Config.Colosseum (the King's in Config.Colosseum.King).
 ]]
 
@@ -158,6 +165,15 @@ local function playerLevel(player)
 	return Config.levelFromPower(d and d.Power or 0)
 end
 
+-- TRAINING: the floor you're training for, and the extra XP for being
+-- below its level (0.45 = +45%)
+local function training(player)
+	return Config.colosseumCatchUp(playerLevel(player), player:GetAttribute("SpireCleared") or 0)
+end
+local function trained(player, power)
+	return math.max(1, math.floor(power * (1 + training(player))))
+end
+
 -- RUNS: the King's wave ends a run (unless Config says the waves go on)
 local function runLength()
 	local K = C.King
@@ -190,6 +206,20 @@ local function streakBonus(n)
 	return math.min(ST.Max, math.floor(n / ST.Every) * ST.Bonus)
 end
 
+local function trainInfo(player)
+	local bonus, f = training(player)
+	if not f then
+		return nil
+	end
+	return {
+		floor = f.id,
+		boss = string.match(f.boss or "", "^[^,]+") or f.boss,
+		level = f.level,
+		you = playerLevel(player),
+		bonus = bonus,
+	}
+end
+
 -- the state the player's screen shows (wave, quest progress, what it pays)
 local function pushState(player, s)
 	local rewards = Config.colosseumRewards(playerLevel(player))
@@ -211,8 +241,11 @@ local function pushState(player, s)
 		pick = pickedDifficulty(player).id, -- (the next run's, if it's been changed)
 		quest = s.questWaves,
 		goal = C.QuestWaves or 5,
-		questPower = math.max(1, math.floor(rewards.questPower * pay)),
+		questPower = trained(player, math.max(1, math.floor(rewards.questPower * pay))),
 		questCoins = math.max(1, math.floor(rewards.questCoins * pay)),
+		-- what you're training for: the next floor's boss and level, yours,
+		-- and the extra XP while you're below it
+		train = trainInfo(player),
 	})
 end
 
@@ -1619,7 +1652,7 @@ function ColosseumService.OnKill(s, model, e)
 	-- streak adds its bonus on top; and a harder difficulty multiplies it all)
 	s.streak = (s.streak or 0) + 1
 	local mult = ((e and e.reward) or 1) * (1 + streakBonus(s.streak)) * ((s.diff and s.diff.reward) or 1)
-	local killPower = math.max(1, math.floor(rewards.killPower * mult))
+	local killPower = trained(player, math.max(1, math.floor(rewards.killPower * mult)))
 	local killCoins = math.max(1, math.floor(rewards.killCoins * mult))
 	PlayerService.AddPower(player, killPower)
 	PlayerService.AddCoins(player, killCoins)
@@ -1708,7 +1741,7 @@ function ColosseumService.FinishRun(s)
 		info.unlocked = rec.unlocked -- (a harder difficulty this clear opened)
 		if rec.firstToday then
 			local rewards = Config.colosseumRewards(playerLevel(player))
-			local bp = math.max(1, math.floor(rewards.clearPower * pay))
+			local bp = trained(player, math.max(1, math.floor(rewards.clearPower * pay)))
 			local bc = math.max(1, math.floor(rewards.clearCoins * pay))
 			PlayerService.AddPower(player, bp)
 			PlayerService.AddCoins(player, bc)
@@ -1723,7 +1756,7 @@ end
 function ColosseumService.PayQuest(s)
 	local rewards = Config.colosseumRewards(playerLevel(s.player))
 	local pay = (s.diff and s.diff.reward) or 1
-	local qp = math.max(1, math.floor(rewards.questPower * pay))
+	local qp = trained(s.player, math.max(1, math.floor(rewards.questPower * pay)))
 	local qc = math.max(1, math.floor(rewards.questCoins * pay))
 	PlayerService.AddPower(s.player, qp)
 	PlayerService.AddCoins(s.player, qc)
@@ -1790,7 +1823,9 @@ end
 
 -- Can the player go in right now? (Beside the little door, not already in
 -- or on the way, not up the Spire.) Returns true, or false and why not.
-local function canEnter(player)
+-- (fromSpire: coming from the Spire's doors, its menu - SpireService checked
+-- you're there - instead of the little door)
+local function canEnter(player, fromSpire)
 	if sessions[player] then
 		return false, "You're already in the Colosseum!"
 	end
@@ -1804,14 +1839,14 @@ local function canEnter(player)
 	if not (root and CollectionService:GetTagged("ColosseumSpawn")[1]) then
 		return false, "Not ready yet."
 	end
-	if (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
+	if not fromSpire and (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
 		return false, "Walk up to the Colosseum's door first."
 	end
 	return true
 end
 
-local function enter(player)
-	if not canEnter(player) then
+local function enter(player, fromSpire)
+	if not canEnter(player, fromSpire) then
 		return
 	end
 	local root, _, char = rootOf(player)
@@ -1825,7 +1860,8 @@ local function enter(player)
 	pcall(function()
 		player:RequestStreamAroundAsync(spawnAt.Position, 3)
 	end)
-	local doorGround = door and groundBelow(door.Position, char) or root.Position
+	-- (from the Spire you go down where you stand, at its doors)
+	local doorGround = (not fromSpire and door) and groundBelow(door.Position, char) or groundBelow(root.Position, char)
 	local inside = groundBelow(spawnAt.Position, char)
 	allowMove(player, inside, pipeTime() + 5) -- (their own screen makes this jump)
 	send(player, "PipeIn", doorGround, spawnAt.CFrame, inside)
@@ -2058,6 +2094,17 @@ function ColosseumService.Start(combatService, playerService)
 			end
 		end
 	end)
+end
+
+-- In from the Spire menu (its ground floor): SpireService has checked you're
+-- at the Spire's doors. Returns true, or false and why not.
+function ColosseumService.EnterFromSpire(player)
+	local ok, why = canEnter(player, true)
+	if not ok then
+		return false, why
+	end
+	task.spawn(enter, player, true)
+	return true
 end
 
 -- (for the headless tests: the hit reactions, on dummies they place themselves)

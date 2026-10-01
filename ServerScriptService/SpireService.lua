@@ -316,6 +316,22 @@ local function travel(player, action, floorId)
 			return false, "You can't travel right now."
 		end
 		return true
+	elseif action == "colosseum" then
+		-- the Spire's ground floor: the Colosseum, the training grounds
+		-- (ColosseumService takes you in: SpireService.EnterColosseum)
+		if not SpireService.EnterColosseum then
+			return false, "The Colosseum isn't open."
+		end
+		if player:GetAttribute("SpireFloor") then
+			return false, "Not from here!"
+		end
+		local entrance = firstTagged("SpireEntrance")
+		local doorPart = entrance and entrance.Parent
+		if not (doorPart and doorPart:IsA("BasePart")) or (root.Position - doorPart.Position).Magnitude > Config.Spire.EnterRange then
+			return false, "Stand at the Spire's doors to enter."
+		end
+		lastTravel[player] = now
+		return SpireService.EnterColosseum(player)
 	elseif action == "leave" then
 		if not player:GetAttribute("SpireFloor") then
 			return false, "You're not in the Spire."

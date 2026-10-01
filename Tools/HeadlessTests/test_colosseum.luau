@@ -91,7 +91,7 @@ anchor("ColosseumReturn", C.GatePosition + Vector3.new(0, 3, 5), "ColosseumRetur
 local exitDoor = anchor("ExitDoor", C.Center + Vector3.new(0, 3, -75), "ColosseumExit")
 
 -- the player
-local LEVEL = (SCENARIO == "cursed") and 55 or 40 -- (Cursed Dummies join at 50)
+local LEVEL = (SCENARIO == "cursed") and 55 or (SCENARIO == "train") and 6 or 40 -- (Cursed Dummies join at 50; "train": well below floor 1's level)
 local player = Instance.new("Player")
 player.Name = "Tester"
 player.UserId = 1001
@@ -258,6 +258,9 @@ M.onFireClient = function(remote, p, kind, a, b, c, d)
 		assert(type(d) == "table" and M.typeof(d.from) == "Vector3" and not M.isNaNv(d.from), "a kill needs where its rewards fly from")
 		assert(type(d.worth) == "number" and d.worth > 0 and d.worth == d.worth, "a kill needs its worth")
 		stats.kills = (stats.kills or 0) + 1
+		if not stats.firstKill then
+			stats.firstKill = { xp = a, worth = d.worth }
+		end
 		if d.king then
 			stats.kingWorth = d.worth
 		end
@@ -436,6 +439,16 @@ M.task.spawn(function()
 		root.CFrame = at
 		M.task.wait(1)
 		assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "nobody went in")
+	end
+	if SCENARIO == "train" then
+		-- in from the Spire menu (its ground floor), far from the little door
+		root.CFrame = CFrame.new(C.GatePosition + Vector3.new(200, 3, -300))
+		local ok, msg = Colosseum.EnterFromSpire(player)
+		assert(ok, "the Spire menu's TRAIN should send you in: " .. tostring(msg))
+		M.task.wait(1)
+		assert(stats.events.PipeIn, "you go down (the pipe) from the Spire too")
+		assert(not Colosseum.EnterFromSpire(player), "and not twice")
+		return
 	end
 	local ok, msg = actions.ColosseumEnter(player, nil, ENTER_PICK)
 	assert(ok, "ENTER should send you in: " .. tostring(msg))
@@ -1120,6 +1133,21 @@ if SCENARIO == "full" or SCENARIO == "hard" or SCENARIO == "nightmare" then
 	assert(stats.kingReward[1] >= base and stats.kingReward[1] <= math.floor(base * (1 + C.Streak.Max)) + 1,
 		"king reward " .. stats.kingReward[1] .. " should be " .. base .. " plus at most the streak bonus")
 	assert(stats.lastClear.bonusPower == math.max(1, math.floor(rewards.clearPower * D.reward)), "the first clear of the day pays a bonus (x the difficulty)")
+end
+-- THE TRAINING GROUNDS: well below the next floor's level, every kill pays
+-- more XP (Config.colosseumCatchUp), and the screen says what you're
+-- training for
+if SCENARIO == "train" then
+	local bonus, f = Config.colosseumCatchUp(LEVEL, 0)
+	assert(f and f.id == 1 and bonus > 0, "a level-" .. LEVEL .. " player trains for floor 1 with a bonus")
+	local tr = lastState and lastState.train
+	assert(tr and tr.floor == 1 and tr.level == f.level and tr.you == LEVEL and math.abs(tr.bonus - bonus) < 1e-6,
+		"the Colosseum's screen says what you're training for")
+	local fk = assert(stats.firstKill, "a dummy should have been beaten")
+	local base = math.max(1, math.floor(rewards.killPower * fk.worth))
+	local want = math.max(1, math.floor(base * (1 + bonus)))
+	assert(fk.xp == want, string.format("the first kill should pay %d XP with the training bonus (+%d%%), paid %s", want, math.floor(bonus * 100), tostring(fk.xp)))
+	print(string.format("training for floor %d (Lv %d) at Lv %d: +%d%% XP - a kill paid %d instead of %d", f.id, f.level, LEVEL, math.floor(bonus * 100 + 0.5), fk.xp, base))
 end
 if SCENARIO == "nextrun" then
 	assert(stats.picks and stats.picks.waitDone, "the next-run checks should have run")

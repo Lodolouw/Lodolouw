@@ -238,6 +238,11 @@ local ColosseumService = load("ColosseumService", 3)
 if CombatService and PlayerService then
 	start("ColosseumService", ColosseumService and ColosseumService.Start, CombatService, PlayerService)
 end
+-- (and it's the Spire's ground floor too: the training grounds, at the top
+-- of the Spire menu)
+if SpireService and ColosseumService and ColosseumService.EnterFromSpire then
+	SpireService.EnterColosseum = ColosseumService.EnterFromSpire
+end
 
 -- The intro: a brand-new player's first fight, Oozlet, by the fountain (needs
 -- combat and player data; started last, so nothing else ever waits on it)

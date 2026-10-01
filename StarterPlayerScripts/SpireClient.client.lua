@@ -9,6 +9,11 @@
 	    arrive ("GLOOMGUT'S HOLLOW")
 	  * a Leave button while you're in an arena, and a "Leave?" check when you
 	    touch the fog gate
+	  * THE GROUND FLOOR, at the top of the list: the Colosseum, the Spire's
+	    training grounds (TRAIN takes you down into it from the doors). It
+	    trains you for your next floor - below that floor's level, it pays
+	    extra XP - and a floor you're under-levelled for offers TRAIN FIRST
+	    beside ENTER.
 
 	The server (SpireService) decides whether you may travel and moves you.
 ]]
@@ -458,8 +463,30 @@ local enterBtn = create("TextButton", {
 	create("UIGradient", { Color = ColorSequence.new(RGB(120, 80, 170), RGB(60, 30, 90)), Rotation = 90 }),
 })
 
-local selected = 1
+-- (under-levelled for a floor: TRAIN FIRST beside ENTER - the Colosseum)
+local trainBtn = create("TextButton", {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 110, 1, -16),
+	Size = UDim2.fromOffset(200, 58),
+	BackgroundColor3 = RGB(150, 120, 70),
+	Text = "TRAIN FIRST",
+	Font = SERIF,
+	TextSize = 28,
+	TextColor3 = C.pale,
+	AutoButtonColor = true,
+	Visible = false,
+	ZIndex = 53,
+	Parent = detail,
+}, {
+	corner(12),
+	stroke(3, C.gold, 0.2),
+	create("UIGradient", { Color = ColorSequence.new(RGB(214, 178, 112), RGB(120, 88, 48)), Rotation = 90 }),
+})
+
+local SAND = RGB(234, 212, 170)
+local selected = 1 -- (0: the ground floor, the Colosseum)
 local floorButtons = {}
+local colButton = nil
 
 local function myLevel()
 	local ls = player:FindFirstChild("leaderstats")
@@ -481,7 +508,46 @@ local function lockedBy(f)
 	return below and below.boss and string.match(below.boss, "^[^,]+") or "the floor below"
 end
 
+-- the ground floor: the Colosseum, training you for your next floor
+local function renderColosseum(lv)
+	local cleared = player:GetAttribute("SpireCleared") or 0
+	local bonus, nextF = Config.colosseumCatchUp(lv, cleared)
+	dFloor.Text = "GROUND FLOOR"
+	dBoss.Text = "The Colosseum"
+	dBoss.TextColor3 = SAND
+	dArea.Text = "The training grounds"
+	dBlurb.Text = "Waves of dummies, always your level, and the Straw King every 5th wave. Train here for the floor above - below its level, every win pays more XP."
+	if nextF then
+		local pct = math.floor(bonus * 100 + 0.5)
+		local boss = string.match(nextF.boss or "", "^[^,]+") or nextF.boss
+		dLevel.Text = string.format('Next: %s (Lv. %d)    You: Lv. %d', boss, nextF.level, lv)
+			.. (pct > 0 and ('    <font color="#78e66e">+' .. pct .. "% XP</font>") or '    <font color="#ebc86e">READY</font>')
+	else
+		dLevel.Text = string.format("You: Lv. %d", lv)
+	end
+	enterBtn.Active = true
+	enterBtn.AutoButtonColor = true
+	enterBtn.Text = "TRAIN"
+	enterBtn.TextTransparency = 0
+	enterBtn.Size = UDim2.fromOffset(300, 58)
+	enterBtn.Position = UDim2.new(0.5, 0, 1, -16)
+	trainBtn.Visible = false
+end
+
 local function renderDetail()
+	local lvNow = myLevel()
+	if colButton then
+		colButton.BackgroundColor3 = (selected == 0) and C.rowHover or C.row
+		colButton:FindFirstChildOfClass("UIStroke").Transparency = (selected == 0) and 0 or 0.6
+	end
+	if selected == 0 then
+		renderColosseum(lvNow)
+		for _, b in ipairs(floorButtons) do
+			b.BackgroundColor3 = C.row
+			b:FindFirstChildOfClass("UIStroke").Transparency = 0.6
+		end
+		return
+	end
 	local f = Config.Spire.Floors[selected]
 	if not f then
 		return
@@ -506,10 +572,62 @@ local function renderDetail()
 	enterBtn.AutoButtonColor = canEnter
 	enterBtn.Text = canEnter and "ENTER" or (lock and "LOCKED" or "SEALED")
 	enterBtn.TextTransparency = canEnter and 0 or 0.5
+	-- under-levelled (and not beaten yet): train first, in the Colosseum
+	local under = canEnter and lv < f.level and f.id > (player:GetAttribute("SpireCleared") or 0)
+	trainBtn.Visible = under
+	if under then
+		dLevel.Text = dLevel.Text .. '    <font color="#eb5a5a">Too low!</font>'
+		enterBtn.Size = UDim2.fromOffset(200, 58)
+		enterBtn.Position = UDim2.new(0.5, -110, 1, -16)
+	else
+		enterBtn.Size = UDim2.fromOffset(300, 58)
+		enterBtn.Position = UDim2.new(0.5, 0, 1, -16)
+	end
 	for i, b in ipairs(floorButtons) do
 		b.BackgroundColor3 = (i == selected) and C.rowHover or C.row
 		b:FindFirstChildOfClass("UIStroke").Transparency = (i == selected) and 0 or 0.6
 	end
+end
+
+do
+	-- the ground floor (first in the list)
+	local b = create("TextButton", {
+		Name = "Colosseum",
+		LayoutOrder = 0,
+		Size = UDim2.new(1, 0, 0, 72),
+		BackgroundColor3 = C.row,
+		Text = "",
+		AutoButtonColor = true,
+		ZIndex = 52,
+		Parent = list,
+	}, { corner(10), stroke(2, SAND, 0.6) })
+	label({
+		Position = UDim2.fromOffset(14, 8),
+		Size = UDim2.new(1, -28, 0, 24),
+		Font = SERIF,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "Ground floor",
+		TextSize = 24,
+		TextColor3 = C.pale,
+		ZIndex = 53,
+		Parent = b,
+	})
+	label({
+		Position = UDim2.fromOffset(14, 36),
+		Size = UDim2.new(1, -28, 0, 28),
+		Font = SERIF,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "The Colosseum (training)",
+		TextSize = 20,
+		TextColor3 = SAND,
+		ZIndex = 53,
+		Parent = b,
+	})
+	b.Activated:Connect(function()
+		selected = 0
+		renderDetail()
+	end)
+	colButton = b
 end
 
 for i, f in ipairs(Config.Spire.Floors) do
@@ -595,7 +713,7 @@ local function openMenu()
 		upTo = upTo - 1
 	end
 	selected = upTo
-	list.CanvasPosition = Vector2.new(0, math.max(0, (selected - 2) * 82))
+	list.CanvasPosition = Vector2.new(0, math.max(0, (selected - 1) * 82)) -- (the ground floor is above floor 1)
 	renderDetail()
 	menu.Visible = true
 	menu.Size = UDim2.fromOffset(740, 440)
@@ -605,7 +723,29 @@ local function closeMenu()
 	menu.Visible = false
 end
 closeBtn.Activated:Connect(closeMenu)
+-- down into the Colosseum (no fade: you shrink into the ground on your way)
+local function trainNow()
+	closeMenu()
+	if travelling then
+		return
+	end
+	travelling = true
+	local ok, success, reason = pcall(function()
+		return SpireTravel:InvokeServer("colosseum")
+	end)
+	travelling = false
+	if not (ok and success) then
+		showMessage(ok and (reason or "You can't go in right now.") or "Something went wrong.")
+	end
+end
+trainBtn.Activated:Connect(function()
+	task.spawn(trainNow)
+end)
 enterBtn.Activated:Connect(function()
+	if selected == 0 then
+		task.spawn(trainNow)
+		return
+	end
 	local f = Config.Spire.Floors[selected]
 	if not (f and f.open) or lockedBy(f) then
 		return

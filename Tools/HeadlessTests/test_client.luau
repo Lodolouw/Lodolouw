@@ -17,16 +17,23 @@ local task = M.task
 local configModule = Instance.new("ModuleScript")
 configModule.Name = "Config"
 configModule.Parent = ReplicatedStorage
-local Config
+-- (which arena copy a boss is in: BossIntro asks)
+local arenasModule = Instance.new("ModuleScript")
+arenasModule.Name = "Arenas"
+arenasModule.Parent = ReplicatedStorage
+local Config, Arenas
 local env = M.env({
 	require = function(mod)
 		if mod == configModule then
 			return Config
+		elseif mod == arenasModule then
+			return Arenas
 		end
 		error("require of unknown module " .. tostring(mod))
 	end,
 })
 Config = M.load(S.Config, "Config", env)()
+Arenas = M.load(S.files["ReplicatedStorage/Arenas.lua"], "Arenas", env)()
 local K = Config.Colosseum.King
 
 -- the local player
