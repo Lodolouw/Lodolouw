@@ -182,9 +182,12 @@ Moves.VictoryLap = { -- Victory Lap: GO! a blur for 6 s - every roll hits - then
 ----------------------------------------------------------------------
 -- 7. JUNGLE (Kongo)
 ----------------------------------------------------------------------
-Moves.ChestPoundFists = { -- Roar: pound your chest and roar - more damage for 4 s
+Moves.ChestPoundFists = { -- Roar: pound your chest left-right-left and roar - more damage for 4 s
 	Time = 0.8, Style = "Rage",
-	Steps = { { At = 0.4, Fx = "Roar", Shake = 0.6 } },
+	Steps = {
+		{ At = 0.05, Fx = "Pound" },
+		{ At = 0.4, Fx = "Roar", Shake = 0.6 },
+	},
 }
 Moves.JungleFang = { -- Fang: a red fang flash - your hits heal you for 5 s
 	Time = 0.5, Style = "Blood",
@@ -253,7 +256,7 @@ Moves.CopyPasteScythe = { -- Copy-Paste: two ink copies of you copy your sweeps 
 	Time = 0.7, Style = "Doodle",
 	Steps = { { At = 0.15, Fx = "Copy", Buff = { Special = "Clones", Time = 5 } } },
 }
-Moves.DeleteKey = { -- DELETE: the screen glitches, a DELETE box lands on them - and they shatter
+Moves.DeleteKey = { -- DELETE: the screen glitches, a giant DEL key falls on them - and they shatter
 	Time = 1.2, Style = "Glitch",
 	Steps = {
 		{ At = 0, Pick = "T", Range = 30, Ahead = 8, Fx = "Glitch" },

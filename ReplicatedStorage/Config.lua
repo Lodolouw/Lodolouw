@@ -3099,7 +3099,7 @@ do
 		{ "CopyPasteScythe", "Copy-Paste Scythe", "Scythe",
 			standIn("Copy-Paste", "Mythic", RGB(90, 160, 255), "2 ink clones copy your sweeps for 5 s") },
 		{ "DeleteKey", "Delete Key", "Daggers",
-			standIn("DELETE", "Secret", RGB(255, 60, 60), "the screen glitches, a DELETE box appears on the target: huge damage, everything round it shatters") },
+			standIn("DELETE", "Secret", RGB(255, 60, 60), "the screen glitches and a giant DEL key falls on the target: huge damage, everything round it shatters") },
 	})
 end
 

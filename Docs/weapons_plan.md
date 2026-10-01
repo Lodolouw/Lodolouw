@@ -132,7 +132,7 @@ packs x 6) and 16 event weapons (8 event bosses x 2). 78 in all.
 | Epic | Ink Fists | Fists | ground slam with an ink splash |
 | Legendary | Doodle Katana | Katana | dash-slash that leaves a doodle clone; it repeats the slash 1 s later |
 | Mythic | Copy-Paste Scythe | Scythe | 2 ink clones copy your sweeps for 5 s |
-| Secret | Delete Key | Daggers | the screen glitches, a DELETE box appears on the target: huge damage, everything round it shatters |
+| Secret | Delete Key | Daggers | the screen glitches and a giant DEL key falls on the target: huge damage, everything round it shatters |
 
 ### 10. Throne pack (King Gavelgrunt)
 | Rarity | Weapon | Type | Ability |

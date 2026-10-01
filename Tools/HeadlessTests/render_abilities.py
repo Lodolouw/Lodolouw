@@ -44,6 +44,12 @@ NAMES = {
     'TyreScythe': ('Tyre Scythe', 'Burnout'), 'NitroKatana': ('Nitro Katana', 'Nitro'),
     'PistonPunchers': ('Piston Punchers', 'Piston Dash'), 'PitStopSabre': ('Pit Stop Sabre', 'Skid Spin'),
     'WheelieWrecker': ('Wheelie Wrecker', 'Wheelie'), 'VictoryLap': ('Victory Lap', 'Victory Lap'),
+    'ChestPoundFists': ('Chest Pound Fists', 'Roar'), 'JungleFang': ('Jungle Fang', 'Fang'),
+    'VineScythe': ('Vine Scythe', 'Vine Swing'), 'BarrelDaggers': ('Barrel Daggers', 'Barrel Roll'),
+    'BarrelHammer': ('Barrel Hammer', 'Barrel Toss'), 'KongsCrown': ("Kong's Crown", 'Sky Fist'),
+    'EraserHammer': ('Eraser Hammer', 'Erase'), 'PencilSword': ('Pencil Sword', 'Sharpen'),
+    'InkFists': ('Ink Fists', 'Ink Splash'), 'DoodleKatana': ('Doodle Katana', 'Doodle Clone'),
+    'CopyPasteScythe': ('Copy-Paste Scythe', 'Copy-Paste'), 'DeleteKey': ('Delete Key', 'DELETE'),
 }
 TIERS = [('COMMON', (235, 235, 240)), ('RARE', (0, 153, 219)), ('EPIC', (170, 100, 255)),
          ('LEGENDARY', (254, 174, 52)), ('MYTHIC', (255, 0, 68)), ('SECRET', (255, 255, 255))]

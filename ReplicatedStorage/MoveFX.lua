@@ -491,15 +491,17 @@ local function weld(root, part)
 	part.Anchored = false
 end
 
--- a model of parts moved as one (anchored root, the rest welded to it)
-local function prop(build)
+-- a model of parts moved as one (anchored root, the rest welded to it), built
+-- at `at` (where it first shows; default the world's origin)
+local function prop(build, at)
 	local model = Instance.new("Model")
 	model.Name = "MoveProp"
-	local root = newPart(V3(0.2, 0.2, 0.2), CFrame.new(), WHITE, Enum.Material.SmoothPlastic, 1)
+	local base = at or CFrame.new()
+	local root = newPart(V3(0.2, 0.2, 0.2), base, WHITE, Enum.Material.SmoothPlastic, 1)
 	root.Parent = model
 	model.PrimaryPart = root
 	local function add(size, offset, color, material, transparency, shape)
-		local p = newPart(size, offset, color, material, transparency, shape)
+		local p = newPart(size, base * offset, color, material, transparency, shape)
 		p.Parent = model
 		weld(root, p)
 		return p
@@ -510,7 +512,7 @@ local function prop(build)
 end
 
 -- a wooden barrel lying on its side (its axis along X, so it rolls forward along Z)
-local function barrelProp(scale, golden)
+local function barrelProp(scale, golden, at)
 	return prop(function(add)
 		local wood, dark = golden and RGB(254, 174, 52) or RGB(184, 111, 80), golden and RGB(190, 120, 30) or RGB(115, 62, 57)
 		local band = golden and RGB(254, 231, 97) or RGB(58, 68, 102)
@@ -522,7 +524,7 @@ local function barrelProp(scale, golden)
 		for _, x in ipairs({ -1.2, 1.2 }) do
 			add(V3(0.12 * s, 1.9 * s, 1.9 * s), CFrame.new(x * s, 0, 0), dark, Enum.Material.SmoothPlastic, 0, Enum.PartType.Cylinder)
 		end
-	end)
+	end, at)
 end
 
 -- a slime glob (a ball of goo with a bright heart)
@@ -618,7 +620,7 @@ local function jawHalf(style, upper)
 end
 
 -- a giant ape fist (knuckles down), a gold cuff with a banana medallion
-local function fistProp()
+local function fistProp(at)
 	return prop(function(add)
 		local fur, skin, gold = RGB(70, 68, 82), RGB(165, 160, 172), RGB(254, 174, 52)
 		add(V3(9, 7, 7), CFrame.new(0, 0, 0), fur)
@@ -629,7 +631,7 @@ local function fistProp()
 		add(V3(9.6, 2.4, 7.6), CFrame.new(0, 3.8, 0), gold, Enum.Material.Neon)
 		add(V3(2.2, 2.2, 0.6), CFrame.new(0, 3.8, -3.95), RGB(254, 231, 97), Enum.Material.Neon)
 		add(V3(7, 10, 6), CFrame.new(0, 9, 0), fur)
-	end)
+	end, at)
 end
 
 -- a falling star of gold
@@ -1451,67 +1453,235 @@ R.VictoryLap = {
 }
 
 -- 7. JUNGLE -----------------------------------------------------------
+-- (each sound a list: its own, then what plays till it's uploaded)
+local J_THUMP = { "Chest Thump", "Kongo Chest Pound", "Punch 4" }
+local J_ROAR = { "Ape Roar", "Kongo Roar", "Boss Wail", "Gridlock Stun" }
+local J_FANG = { "Fang Snap", "Flytrap Chomp", "Punch 1" }
+local J_CREAK = { "Vine Creak", "Vine Burst", "Portal Whoosh" }
+local J_SWEEP = { "Leaf Sweep", "Whirlwind", "Cube Slam" }
+local J_CURL = { "Barrel Curl", "Barrel Throw", "Punch 4" }
+local J_RUMBLE = { "Barrel Rumble", "Kongo Roll", "Wave Zoom" }
+local J_BURST = { "Barrel Burst", "Barrel Break", "Cube Slam" }
+local J_BAT = { "Barrel Bat", "Barrel Throw", "Cube Slam", "Hammer Hit" }
+local J_BLAST = { "Barrel Blast", "TNT Boom", "Bomb Drop", "UFO Burst", "Boss Slam" }
+local J_CALL = { "Crown Call", "Royal Trumpet", "Kongo Hoot", "Orb Land", "Level Complete" }
+local J_SKY = { "Sky Whoosh", "Meteor Fall", "Portal Whoosh", "Wave Zoom" }
+local J_SMASH = { "Fist Smash", "Kongo Giant Punch", "Giant Stomp", "Bomb Drop", "Boss Slam" }
+local LEAVES = { RGB(99, 199, 77), RGB(170, 226, 96), RGB(38, 92, 66) }
+local KONGO_FACE = RGB(165, 160, 172)
+
+-- jungle leaves: flat green flakes flung out and up, fluttering down
+local function leaves(at, count, o)
+	o = o or {}
+	for _ = 1, count do
+		local start = at + V3(rnd:NextNumber(-1, 1), rnd:NextNumber(-0.5, 0.5), rnd:NextNumber(-1, 1)) * (o.spread or 1)
+		local p = newPart(V3(0.8, 0.08, 0.5), CFrame.new(start) * CFrame.Angles(rnd:NextNumber(0, 6), rnd:NextNumber(0, 6), 0),
+			LEAVES[rnd:NextInteger(1, #LEAVES)])
+		local a = rnd:NextNumber(0, math.pi * 2)
+		local out = V3(math.cos(a), 0, math.sin(a)) * rnd:NextNumber(o.out and o.out[1] or 2, o.out and o.out[2] or 6)
+		local up = rnd:NextNumber(o.up and o.up[1] or 1, o.up and o.up[2] or 4)
+		local time = rnd:NextNumber(0.9, 1.4) * (o.time or 1)
+		local top = CFrame.new(start + out * 0.6 + V3(0, up, 0)) * CFrame.Angles(rnd:NextNumber(0, 6), rnd:NextNumber(0, 6), 0)
+		tween(p, time * 0.35, { CFrame = top })
+		task.delay(time * 0.35, function()
+			if p.Parent then
+				tween(p, time * 0.65, { CFrame = (top + out * 0.4 - V3(0, up + 1.5, 0)) * CFrame.Angles(2, 1, 2), Transparency = 1 }, Enum.EasingStyle.Sine)
+			end
+		end)
+		gone(p, time + 0.05)
+	end
+end
+MoveFX.leaves = leaves
+
+-- throw any part (a stave, a lid) with gravity, tumbling, skidding to a stop
+-- on the floor, fading out at the end of its life
+local function toss(p, vel, spin, life, floorY)
+	local t0 = os.clock()
+	local pos, turn = p.Position, p.CFrame - p.Position
+	local conn
+	conn = RunService.Heartbeat:Connect(function(dt)
+		local age = os.clock() - t0
+		if age > life or not p.Parent then
+			conn:Disconnect()
+			p:Destroy()
+			return
+		end
+		vel = vel - V3(0, 45 * dt, 0)
+		pos = pos + vel * dt
+		if floorY and pos.Y < floorY + 0.25 then
+			pos = V3(pos.X, floorY + 0.25, pos.Z)
+			vel = V3(vel.X * 0.55, math.abs(vel.Y) * 0.3, vel.Z * 0.55)
+			spin = spin * 0.5
+		end
+		turn = turn * CFrame.Angles(spin.X * dt, spin.Y * dt, spin.Z * dt)
+		p.CFrame = CFrame.new(pos) * turn
+		if age > life * 0.7 then
+			p.Transparency = (age - life * 0.7) / (life * 0.3)
+		end
+	end)
+end
+
+-- a barrel bursting apart (lying across the way you face): its staves flung
+-- out all round, its two lids spinning off sideways, splinters and a cloud
+-- of sawdust (golden: a gold one)
+local function barrelBurst(ctx, at, scale, golden)
+	local wood = golden and RGB(254, 174, 52) or RGB(184, 111, 80)
+	local dark = golden and RGB(190, 120, 30) or RGB(115, 62, 57)
+	local band = golden and RGB(254, 231, 97) or RGB(58, 68, 102)
+	local mat = golden and Enum.Material.Neon or Enum.Material.WoodPlanks
+	local floorY = floorAt(at)
+	local side, fwd = ctx.frame.RightVector, ctx.frame.LookVector
+	for i = 1, 10 do
+		local a = i / 10 * math.pi * 2
+		local out = V3(0, math.cos(a), 0) + fwd * math.sin(a)
+		local pos = at + out * 1.1 * scale
+		local stave = newPart(V3(0.65, 0.18, 2.3) * scale, CFrame.lookAt(pos, pos + side), i % 3 == 0 and dark or wood, mat)
+		toss(stave, out * rnd:NextNumber(9, 15) + V3(0, rnd:NextNumber(6, 12), 0) + side * rnd:NextNumber(-3, 3),
+			V3(rnd:NextNumber(-9, 9), rnd:NextNumber(-3, 3), rnd:NextNumber(-9, 9)), 1.3, floorY)
+	end
+	for _, k in ipairs({ -1, 1 }) do
+		local lid = newPart(V3(0.2, 2, 2) * scale, CFrame.new(at + side * (k * 1.2 * scale)) * (ctx.frame - ctx.frame.Position), band,
+			Enum.Material.SmoothPlastic, 0, Enum.PartType.Cylinder)
+		toss(lid, side * (k * 10) + V3(0, 12, 0), V3(rnd:NextNumber(-6, 6), 0, rnd:NextNumber(-12, 12)), 1.4, floorY)
+	end
+	bits({ at = at, colors = { wood, dark }, count = 18, speed = { 6, 14 }, up = { 6, 14 }, size = 0.35, life = 0.8, floor = floorY, material = mat })
+	puffs(at, RGB(228, 204, 166), 6, 2, 1.5, 0.7, 2)
+	ring(V3(at.X, floorY, at.Z), wood, 5 * scale, 0.3, { size = 0.6 })
+end
+
 R.ChestPoundFists = {
+	Pound = function(ctx)
+		local s = ctx.style
+		-- left, right, left like a gorilla: each pound a thump off your chest -
+		-- a pulse of red air bursting out of it, a puff of grey fur dust, a
+		-- little ring of rage
+		for i = 0, 2 do
+			task.delay(i * 0.11, function()
+				local root = ctx.char and ctx.char:FindFirstChild("HumanoidRootPart")
+				local cf = (root and root.CFrame or ctx.frame) * CFrame.new(i == 1 and 0.5 or -0.5, 0.6, -0.8)
+				local pulse = newPart(V3(0.2, 0.8, 0.8), cf * CFrame.Angles(0, rad(90), 0), i == 1 and s.Light or s.Main, Enum.Material.Neon, 0.2,
+					Enum.PartType.Cylinder)
+				tween(pulse, 0.22, { Size = V3(0.1, 3.2, 3.2), Transparency = 1, CFrame = cf * CFrame.new(0, 0, -0.8) * CFrame.Angles(0, rad(90), 0) })
+				gone(pulse, 0.25)
+				puffs(cf.Position, KONGO_FACE, 3, 1, 0.8, 0.4, 0.5)
+				ring(cf.Position, s.Light, 3.5, 0.22, { size = 0.45, count = 14, y = cf.Position.Y })
+			end)
+		end
+		sfx(J_THUMP, ctx.frame.Position)
+	end,
 	Roar = function(ctx)
 		local s = ctx.style
+		local face = ctx.frame - ctx.frame.Position
+		local mouth = ctx.frame * V3(0, 1.6, -0.8)
+		-- the roar: shock rings racing out over the floor, rings of air
+		-- blasting out of your mouth, leaves torn off and whirled away, and
+		-- you flare angry red
 		for i = 0, 2 do
 			task.delay(i * 0.1, function()
 				ring(ctx.feet, i == 1 and s.Light or s.Main, 9 + i * 2, 0.45, { size = 0.9, rise = 2 })
 			end)
 		end
-		bits({ at = chest(ctx, 0.5) + V3(0, 1, 0), colors = { RGB(99, 199, 77), RGB(38, 92, 66) }, count = 14, speed = { 6, 12 }, up = { 6, 12 },
-			size = 0.5, life = 1.1, gravity = 18 })
+		for i = 1, 4 do
+			task.delay(i * 0.06, function()
+				local p = newPart(V3(0.3, 2, 2), CFrame.new(mouth) * face * CFrame.new(0, 0, -i * 1.1) * CFrame.Angles(0, rad(90), 0),
+					i % 2 == 0 and s.Light or s.Main, Enum.Material.Neon, 0.45, Enum.PartType.Cylinder)
+				tween(p, 0.3, { Size = V3(0.1, 4 + i * 1.5, 4 + i * 1.5), Transparency = 1 })
+				gone(p, 0.35)
+			end)
+		end
+		leaves(ctx.frame.Position + V3(0, 3, 0), 16, { out = { 6, 12 }, up = { 2, 5 }, spread = 2.5 })
+		afterimage(ctx.char, s.Main, 0.5, 0.4)
 		pop(ctx.frame.Position + V3(0, 5, 0), "ROAR!", s.Main, 8, 0.9)
 		light(chest(ctx, 0.3), s.Main, 16, 0.5)
-		sfx({ "Boss Wail", "Gridlock Stun" }, ctx.frame.Position)
+		sfx(J_ROAR, ctx.frame.Position)
 	end,
 }
 R.JungleFang = {
 	Fang = function(ctx)
 		local s = ctx.style
-		local at = chest(ctx, 1.5)
-		for _, side in ipairs({ -1, 1 }) do
-			local p = newPart(V3(0.6, 3.2, 0.6), CFrame.new(at + V3(side * 0.8, 0.6, 0)) * CFrame.Angles(0, 0, rad(side * 12)), WHITE, Enum.Material.Neon, 0)
-			tween(p, 0.35, { CFrame = p.CFrame - V3(0, 1.2, 0), Transparency = 1 }, Enum.EasingStyle.Back)
-			gone(p, 0.4)
+		local at = chest(ctx, 2) + V3(0, 0.5, 0)
+		local face = CFrame.new(at) * (ctx.frame - ctx.frame.Position)
+		-- a pair of jaws snaps shut in front of you - white fangs top and
+		-- bottom biting together - a spray of red, and you glow with the hunger
+		local function snap(p, from, to)
+			p.CFrame = from
+			tween(p, 0.08, { CFrame = to }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			task.delay(0.2, function()
+				if p.Parent then
+					tween(p, 0.2, { Transparency = 1 })
+				end
+			end)
+			gone(p, 0.42)
 		end
-		bits({ at = at, colors = { s.Main, s.Glow }, count = 8, speed = { 3, 7 }, up = { 2, 6 }, size = 0.35, life = 0.6, material = Enum.Material.Neon })
-		light(at, s.Glow, 10, 0.3)
-		sfx({ "Punch 1" }, at, 1.4)
+		for _, jaw in ipairs({ 1, -1 }) do
+			for i = -1, 1 do
+				local h = i == 0 and 1.0 or 1.6 -- (the long fangs at the sides)
+				local y = jaw * (1.7 - h / 2)
+				snap(newPart(V3(0.45, h, 0.45), face, WHITE, Enum.Material.Neon, 0), face * CFrame.new(i * 0.8, y + jaw * 1.1, 0), face * CFrame.new(i * 0.8, y, 0))
+			end
+			-- (the gum they're set in)
+			snap(newPart(V3(2.4, 0.35, 0.6), face, s.Main, Enum.Material.Neon, 0.15), face * CFrame.new(0, jaw * 2.95, 0.05), face * CFrame.new(0, jaw * 1.85, 0.05))
+		end
+		task.delay(0.08, function()
+			bits({ at = at, colors = { s.Main, s.Glow }, count = 12, speed = { 4, 9 }, up = { 2, 7 }, size = 0.35, life = 0.6, material = Enum.Material.Neon })
+			light(at, s.Glow, 12, 0.35)
+		end)
+		afterimage(ctx.char, s.Glow, 0.4, 0.55)
+		sfx(J_FANG, at)
 	end,
 }
 R.VineScythe = {
 	Vine = function(ctx)
-		local s = ctx.style
-		local arm = ctx.char and ctx.char:FindFirstChild("Right Arm")
-		local anchorP, top = anchorAt((ctx.frame * CFrame.new(0, 16, -6)))
-		local hand = Instance.new("Attachment")
-		hand.Position = V3(0, -1, 0)
-		hand.Parent = arm or anchorP
-		local vine = beam(top, hand, RGB(62, 137, 72), 0.45)
+		-- a vine drops from a branch high up ahead; you grab it with your free
+		-- hand and swing forward on it, shaking leaves loose and trailing more
+		-- behind you; branch and vine are gone as you let go
+		local hand = ctx.char and (ctx.char:FindFirstChild("Left Arm") or ctx.char:FindFirstChild("Right Arm"))
+		local anchorP, top = anchorAt(ctx.frame * CFrame.new(0, 16, -6))
+		local grip = Instance.new("Attachment")
+		grip.Position = V3(0, -1, 0)
+		grip.Parent = hand or anchorP
+		local vine = beam(top, grip, RGB(62, 137, 72), 0.45)
 		vine.CurveSize0, vine.CurveSize1 = 1.5, -1.5
-		for i = 1, 6 do
-			local leaf = newPart(V3(0.7, 0.1, 0.5), anchorP.CFrame * CFrame.new(rnd:NextNumber(-2, 2), -rnd:NextNumber(0, 8), rnd:NextNumber(-2, 2)),
-				i % 2 == 0 and RGB(99, 199, 77) or RGB(38, 92, 66))
-			tween(leaf, 1.2, { CFrame = (leaf.CFrame - V3(0, 6, 0)) * CFrame.Angles(0, 3, 1), Transparency = 1 })
-			gone(leaf, 1.25)
+		local branch = { newPart(V3(8, 0.7, 0.7), anchorP.CFrame * CFrame.new(0, 0.4, 0), RGB(115, 62, 57), Enum.Material.WoodPlanks) }
+		for i = 1, 8 do
+			branch[#branch + 1] = newPart(V3(1.8, 0.3, 1.2), anchorP.CFrame * CFrame.new(rnd:NextNumber(-3.5, 3.5), rnd:NextNumber(0.4, 1.4), rnd:NextNumber(-1.2, 1.2))
+				* CFrame.Angles(rnd:NextNumber(-0.4, 0.4), rnd:NextNumber(0, 6), rnd:NextNumber(-0.4, 0.4)), LEAVES[(i - 1) % #LEAVES + 1])
 		end
-		task.delay(0.6, function()
-			hand:Destroy()
-			anchorP:Destroy()
+		leaves(anchorP.Position, 6, { out = { 1, 3 }, up = { 0, 1 }, spread = 2, time = 1.4 })
+		local t0 = os.clock()
+		task.spawn(function()
+			while os.clock() - t0 < 0.55 do
+				local root = ctx.char and ctx.char:FindFirstChild("HumanoidRootPart")
+				if not root then
+					break
+				end
+				leaves(root.Position, 1, { out = { 0.5, 1.5 }, up = { 0, 1 }, spread = 0.6 })
+				task.wait(0.06)
+			end
 		end)
-		sfx(WHOOSH, ctx.frame.Position, 0.85)
+		task.delay(0.6, function()
+			grip:Destroy()
+			anchorP:Destroy()
+			for _, p in ipairs(branch) do
+				tween(p, 0.3, { Transparency = 1 })
+				gone(p, 0.35)
+			end
+		end)
+		sfx(J_CREAK, ctx.frame.Position)
 	end,
 	Sweep = function(ctx)
 		local s = ctx.style
 		sweep(ctx.frame * CFrame.new(0, -0.5, 0), 11, -80, 80, s.Main, 0.35, { width = 2.2, color2 = s.Light })
-		bits({ at = ahead(ctx, 4) + V3(0, 1, 0), colors = { RGB(99, 199, 77), RGB(38, 92, 66), RGB(254, 231, 97) }, count = 16, speed = { 8, 16 },
-			up = { 6, 12 }, size = 0.5, life = 1, gravity = 20 })
+		-- a whirl of leaves flung off all along the arc
+		for i = -4, 4 do
+			leaves(ctx.frame * V3(0, 0.5, 0) + (ctx.frame * CFrame.Angles(0, rad(i * 20), 0)).LookVector * 8, 2, { out = { 2, 5 }, up = { 1, 3 }, spread = 0.8 })
+		end
 		ring(ahead(ctx, 3), s.Main, 8, 0.35, { size = 0.6 })
-		sfx(SLAM, ctx.frame.Position, 1.1)
+		sfx(J_SWEEP, ctx.frame.Position)
 	end,
 }
--- a barrel rolling along the floor from you (the server's own path: Moves' Shot)
+-- a barrel rolling along the floor from you (the server's own path: Moves'
+-- Shot), bursting apart where it stops - in a ball of fire if it's a Burst one
 local function rollBarrels(ctx, scale, golden)
 	local s = ctx.style
 	local shot = ctx.step.Shot
@@ -1520,69 +1690,190 @@ local function rollBarrels(ctx, scale, golden)
 		local angle = ((i - 1) - (n - 1) / 2) * (shot.Spread or 0)
 		local dirv = (ctx.frame * CFrame.Angles(0, rad(angle), 0)).LookVector
 		local start = V3(ctx.frame.Position.X, ctx.feet.Y + 1.1 * scale, ctx.frame.Position.Z) + dirv * 1.5
-		local model, root = barrelProp(scale, golden)
-		local time = shot.Range / shot.Speed
 		local look = CFrame.lookAt(start, start + dirv)
+		local model, root = barrelProp(scale, golden, look)
+		local time = shot.Range / shot.Speed
 		fly(model, root, time, function(u)
 			local p = start + dirv * shot.Range * u
 			if rnd:NextNumber() < 0.3 then
 				puffs(V3(p.X, ctx.feet.Y + 0.4, p.Z), s.Light, 1, 1, 0.6, 0.4, 0.4)
 			end
-			return CFrame.new(p) * (look - look.Position) * CFrame.Angles(-u * shot.Range / (1.1 * scale), 0, 0) * CFrame.Angles(0, rad(90), 0)
+			-- (its axis across the way it rolls, turned as far as it's gone)
+			return CFrame.new(p) * (look - look.Position) * CFrame.Angles(-u * shot.Range / (1.1 * scale), 0, 0)
 		end, function(pos)
-			bits({ at = pos, colors = { s.Main, s.Dark, RGB(58, 68, 102) }, count = 16, speed = { 6, 14 }, up = { 6, 14 }, size = 0.6, life = 0.9,
-				floor = ctx.feet.Y, material = Enum.Material.WoodPlanks })
+			barrelBurst(ctx, pos, scale, golden)
 			if shot.Burst then
-				slam(ctx, onFloor(pos), shot.Burst.Radius, { RGB(247, 118, 34), RGB(254, 231, 97), s.Main }, { bits = 14, sound = BOOM })
-				puffs(pos + V3(0, 1, 0), RGB(80, 80, 90), 5, 2.4, 3, 0.9, 2)
+				-- KA-BOOM: a ball of fire, black smoke, the blast
+				local big = shot.Burst.Radius * 1.4
+				local fire = newPart(V3(2, 2, 2), CFrame.new(pos), RGB(247, 118, 34), Enum.Material.Neon, 0, Enum.PartType.Ball)
+				local core = newPart(V3(1.2, 1.2, 1.2), CFrame.new(pos), RGB(254, 231, 97), Enum.Material.Neon, 0, Enum.PartType.Ball)
+				tween(fire, 0.35, { Size = V3(big, big, big), Transparency = 1 })
+				tween(core, 0.25, { Size = V3(big, big, big) * 0.6, Transparency = 1 })
+				gone(fire, 0.4)
+				gone(core, 0.3)
+				slam(ctx, onFloor(pos), shot.Burst.Radius, { RGB(247, 118, 34), RGB(254, 231, 97), s.Main }, { bits = 14, sound = J_BLAST })
+				puffs(pos + V3(0, 1, 0), RGB(80, 80, 90), 6, 2.4, 3.5, 1, 2)
+				if i == 1 then
+					pop(pos + V3(0, 5, 0), "KA-BOOM!", RGB(254, 174, 52), 8, 0.8)
+				end
 			else
-				sfx({ "Punch 4" }, pos)
+				sfx(J_BURST, pos)
 			end
 		end)
 	end
+	sfx(J_RUMBLE, ctx.frame.Position, 1, 0.7)
 end
 R.BarrelDaggers = {
-	Bowl = function(ctx)
-		rollBarrels(ctx, 1, false)
-		sfx(WHOOSH, ctx.frame.Position, 0.8)
+	Barrel = function(ctx)
+		local s = ctx.style
+		-- Barrel Roll: a barrel claps shut round you (you're curled up inside)
+		-- and rolls along with you, kicking up dust and chips, till it bursts
+		local scale = 2.5
+		local r = 1.1 * scale
+		local model, root = barrelProp(scale, false, CFrame.new(V3(ctx.frame.Position.X, ctx.feet.Y + r, ctx.frame.Position.Z)) * (ctx.frame - ctx.frame.Position))
+		ctx.data.barrel = model
+		local rolled, last = 0, nil
+		local t0 = os.clock()
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local hrp = ctx.char and ctx.char:FindFirstChild("HumanoidRootPart")
+			if os.clock() - t0 > 0.75 or not hrp or not model.Parent then
+				conn:Disconnect()
+				model:Destroy()
+				return
+			end
+			local look = hrp.CFrame.LookVector
+			local f = V3(look.X, 0, look.Z).Magnitude > 0.01 and V3(look.X, 0, look.Z).Unit or V3(0, 0, -1)
+			local pos = V3(hrp.Position.X, floorAt(hrp.Position) + r, hrp.Position.Z)
+			if last then
+				rolled += (pos - last).Magnitude
+			end
+			last = pos
+			-- (its axis across you, turned as far as it's rolled)
+			root.CFrame = CFrame.lookAt(pos, pos + f) * CFrame.Angles(-rolled / r, 0, 0)
+			if rnd:NextNumber() < 0.4 then
+				puffs(pos - f * r + V3(0, 0.4 - r, 0), s.Light, 1, 1.2, 0.8, 0.45, 0.5)
+			end
+			if rnd:NextNumber() < 0.25 then
+				bits({ at = pos + V3(0, 0.3 - r, 0), colors = { s.Main, s.Dark }, count = 1, speed = { 2, 5 }, up = { 3, 6 }, size = 0.3, life = 0.5,
+					material = Enum.Material.WoodPlanks, dir = -f, spread = 0.8 })
+			end
+		end)
+		ring(ctx.feet, s.Light, 4, 0.25, { size = 0.5, count = 14 })
+		sfx(J_CURL, ctx.frame.Position)
+		task.delay(0.06, function()
+			sfx(J_RUMBLE, ctx.frame.Position)
+		end)
+	end,
+	Burst = function(ctx)
+		local s = ctx.style
+		local model = ctx.data.barrel
+		local at = model and model.PrimaryPart and model.PrimaryPart.Position or ctx.frame.Position
+		if model then
+			model:Destroy()
+			ctx.data.barrel = nil
+		end
+		-- and it bursts apart round you: staves, lids, splinters, sawdust
+		barrelBurst(ctx, at, 2.5, false)
+		local floorY = floorAt(at)
+		slam(ctx, V3(at.X, floorY, at.Z), 6, { s.Light, s.Main, s.Glow }, { bits = 10, material = Enum.Material.WoodPlanks, sound = J_BURST,
+			dust = RGB(228, 204, 166) })
+		pop(at + V3(0, 5, 0), "CRASH!", s.Glow, 7, 0.7)
 	end,
 }
 R.BarrelHammer = {
 	Bat = function(ctx)
+		local s = ctx.style
 		local golden = ctx.player and (ctx.player:GetAttribute("Mastery") or 1) >= 100
+		-- BONK: two barrels batted away, rolling off, each bursting in a ball
+		-- of fire
 		rollBarrels(ctx, golden and 1.8 or 1.3, golden)
-		ring(ahead(ctx, 1.5), ctx.style.Light, 4, 0.25, { size = 0.5, count = 14 })
-		sfx(SLAM, ctx.frame.Position, 1.2)
+		local at = ahead(ctx, 1.8) + V3(0, 1.5, 0)
+		ring(ahead(ctx, 1.5), s.Light, 4, 0.25, { size = 0.5, count = 14 })
+		bits({ at = at, colors = { s.Main, s.Light, s.Dark }, count = 10, speed = { 6, 12 }, up = { 3, 8 }, size = 0.35, life = 0.6,
+			material = Enum.Material.WoodPlanks, dir = ctx.frame.LookVector, spread = 0.9 })
+		glint(ctx, at, WHITE, { 0, 90, 45, -45 }, 3, 0.2)
+		pop(at + V3(0, 3, 0), "BONK!", s.Glow, 7, 0.6)
+		sfx(J_BAT, at)
 	end,
 }
 R.KongsCrown = {
 	Call = function(ctx)
 		local s = ctx.style
+		-- calling Kongo: a pillar of gold, jungle drums booming out in rings,
+		-- and a ring of gold closing in on the spot his fist will land
 		column(ctx.feet, s.Light, 22, 2, 0.6)
-		light(ctx.frame.Position, s.Light, 16, 0.6)
+		for i = 0, 2 do
+			task.delay(i * 0.13, function()
+				ring(ctx.feet, i % 2 == 0 and s.Main or s.Light, 6 + i * 2, 0.35, { size = 0.7 })
+				light(ctx.frame.Position + V3(0, 2, 0), s.Light, 12, 0.15)
+			end)
+		end
+		if ctx.point then
+			ring(onFloor(ctx.point), s.Light, 1, 0.6, { size = 0.6, r0 = 12, count = 24 })
+		end
 		pop(ctx.frame.Position + V3(0, 5, 0), "KONG!", s.Light, 8, 0.8)
-		sfx(MAGIC, ctx.frame.Position, 0.7)
+		light(ctx.frame.Position, s.Light, 16, 0.6)
+		sfx(J_CALL, ctx.frame.Position)
 	end,
 	SkyFist = function(ctx)
 		local s = ctx.style
 		local target = onFloor(ctx.point or ahead(ctx, 10))
-		-- its shadow grows on the floor as it falls out of the sky
-		local shadow = newPart(V3(0.1, 2, 2), CFrame.new(target + V3(0, 0.08, 0)) * CFrame.Angles(0, 0, rad(90)), INK, Enum.Material.SmoothPlastic, 0.6, Enum.PartType.Cylinder)
+		-- its shadow grows on the floor as it falls out of the sky, streaking;
+		-- it lands on the hit (0.75 s), stays planted a moment, then Kongo
+		-- pulls it back up
+		local shadow = newPart(V3(0.1, 2, 2), CFrame.new(target + V3(0, 0.08, 0)) * CFrame.Angles(0, 0, rad(90)), INK, Enum.Material.SmoothPlastic, 0.6,
+			Enum.PartType.Cylinder)
 		tween(shadow, 0.75, { Size = V3(0.1, 22, 22), Transparency = 0.35 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		gone(shadow, 1)
-		local model, root = fistProp()
-		fly(model, root, 0.75, function(u)
-			return CFrame.new(target + V3(0, 60 - 55.5 * (u * u), 0)) * CFrame.Angles(0, rad(25), 0)
+		local model, root = fistProp(CFrame.new(target + V3(0, 60, 0)) * CFrame.Angles(0, rad(25), 0))
+		local t0 = os.clock()
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local t = os.clock() - t0
+			if t > 1.5 or not root.Parent then
+				conn:Disconnect()
+				model:Destroy()
+				return
+			end
+			local u = math.clamp(t / 0.75, 0, 1)
+			local y = 60 - 55.5 * (u * u)
+			if t > 1.05 then
+				y = 4.5 + ((t - 1.05) / 0.45) ^ 2 * 50
+			end
+			root.CFrame = CFrame.new(target + V3(0, y, 0)) * CFrame.Angles(0, rad(25), 0)
+			if u < 1 and rnd:NextNumber() < 0.8 then
+				local p = newPart(V3(0.4, 6, 0.4), CFrame.new(target + V3(rnd:NextNumber(-4, 4), y + 9, rnd:NextNumber(-4, 4))),
+					rnd:NextNumber() < 0.5 and s.Light or WHITE, Enum.Material.Neon, 0.2)
+				tween(p, 0.25, { Size = V3(0.1, 9, 0.1), Transparency = 1 })
+				gone(p, 0.3)
+			end
 		end)
-		sfx(WHOOSH, target, 0.5)
+		sfx(J_SKY, target)
 	end,
 	Impact = function(ctx)
 		local s = ctx.style
 		local at = onFloor(ctx.point or ahead(ctx, 10))
-		slam(ctx, at, 12, { s.Light, s.Main, RGB(165, 160, 172) }, { bits = 30, size = 0.9, material = Enum.Material.Slate, sound = BOOM, dust = RGB(170, 160, 150) })
-		-- rocks thrown up round the crater
+		slam(ctx, at, 12, { s.Light, s.Main, KONGO_FACE }, { bits = 30, size = 0.9, material = Enum.Material.Slate, sound = J_SMASH,
+			dust = RGB(170, 160, 150) })
+		-- rocks thrown up round the crater, cracks splitting the floor out
+		-- from it, and the whole jungle shaken: leaves raining down
 		bits({ at = at + V3(0, 1, 0), colors = { RGB(120, 118, 110), RGB(84, 82, 78) }, count = 14, speed = { 6, 14 }, up = { 12, 22 }, size = 1.2,
 			life = 1.2, floor = at.Y, material = Enum.Material.Slate, bounce = true })
+		for i = 1, 9 do
+			local a = i / 9 * math.pi * 2 + rnd:NextNumber(-0.2, 0.2)
+			local len = rnd:NextNumber(5, 10)
+			local d = V3(math.cos(a), 0, math.sin(a))
+			local crack = newPart(V3(0.5, 0.08, len), CFrame.lookAt(at + d * (3 + len / 2) + V3(0, 0.06, 0), at + d * (3 + len) + V3(0, 0.06, 0)), INK,
+				Enum.Material.SmoothPlastic, 0.1)
+			task.delay(1.2, function()
+				tween(crack, 0.6, { Transparency = 1 })
+			end)
+			gone(crack, 1.85)
+		end
+		task.delay(0.15, function()
+			leaves(at + V3(0, 12, 0), 18, { out = { 1, 4 }, up = { 0, 1 }, spread = 8, time = 1.5 })
+		end)
 		pop(at + V3(0, 8, 0), "SMASH!", s.Light, 10, 1)
 		if nearMe(at, 40) then
 			screenFlash(WHITE, 0.25, 0.25)
@@ -1591,6 +1882,20 @@ R.KongsCrown = {
 }
 
 -- 9. CANVAS -----------------------------------------------------------
+-- (each sound a list: its own, then what plays till it's uploaded)
+local C_SQUEAK = { "Eraser Squeak", "Eraser Rub", "Punch 2" }
+local C_POOF = { "Erase Poof", "Undo Rewind", "Punch 3" }
+local C_SHARPEN = { "Pencil Sharpen", "Pencil Scratch", "Punch 2" }
+local C_SPLOSH = { "Ink Splosh", "Paint Splash", "Cube Slam" }
+local C_DOODLE = { "Doodle Pop", "Paper Crumple", "Portal Whoosh" }
+local C_SCRIBBLE = { "Scribble Slash", "Pencil Scratch", "Portal Whoosh" }
+local C_REDRAW = { "Redraw Swish", "Undo Rewind", "Portal Whoosh" }
+local C_COPY = { "Copy Click", "Mouse Click", "Orb Land" }
+local C_PASTE = { "Paste Pop", "Copy Paste", "Orb Land" }
+local C_BUZZ = { "Glitch Buzz", "Delete Warning", "Lag Glitch", "Gridlock Stun", "Portal Whoosh" }
+local C_SHATTER = { "Delete Shatter", "Gridlock Shatter", "Cube Slam" }
+local CYAN = RGB(44, 232, 245)
+
 -- ink splats: flat squares of ink scattered over the floor, fading
 local function splats(at, color, radius, count, time)
 	local y = floorAt(at) + 0.06
@@ -1606,6 +1911,61 @@ local function splats(at, color, radius, count, time)
 	end
 end
 MoveFX.splats = splats
+-- a scribble: a zigzag of pencil strokes from a to b, each corner pushed
+-- `across` one way then the other, fading
+local function scribble(a, b, color, across, time)
+	local n = math.max(4, math.floor((b - a).Magnitude / 1.2))
+	local prev = a
+	for i = 1, n do
+		local p = a:Lerp(b, i / n) + across * (i % 2 == 0 and 1 or -1)
+		streak(prev, p, color, 0.16, time, { thick = 0.16, material = Enum.Material.SmoothPlastic, transparency = 0 })
+		prev = p
+	end
+end
+-- a selection box drawn in marching ants: every edge dashed in two colours
+-- that swap as the ants march (square to the world, like wireBox)
+local function antsBox(at, size, a, b, time)
+	local model = Instance.new("Model")
+	model.Parent = fxFolder()
+	local h = size / 2
+	local dashes = {}
+	local function edge(p0, p1)
+		local d = p1 - p0
+		local n = math.max(2, math.floor(d.Magnitude / 0.8))
+		for i = 1, n do
+			local len = d.Magnitude / n
+			local dash = newPart(V3(d.X ~= 0 and len or 0.22, d.Y ~= 0 and len or 0.22, d.Z ~= 0 and len or 0.22), CFrame.new(p0:Lerp(p1, (i - 0.5) / n)),
+				#dashes % 2 == 0 and a or b, Enum.Material.Neon, 0)
+			dash.Parent = model
+			table.insert(dashes, dash)
+		end
+	end
+	for _, y in ipairs({ -h.Y, h.Y }) do
+		for _, z in ipairs({ -h.Z, h.Z }) do
+			edge(at + V3(-h.X, y, z), at + V3(h.X, y, z))
+		end
+		for _, x in ipairs({ -h.X, h.X }) do
+			edge(at + V3(x, y, -h.Z), at + V3(x, y, h.Z))
+		end
+	end
+	for _, x in ipairs({ -h.X, h.X }) do
+		for _, z in ipairs({ -h.Z, h.Z }) do
+			edge(at + V3(x, -h.Y, z), at + V3(x, h.Y, z))
+		end
+	end
+	task.spawn(function()
+		local flip = false
+		while model.Parent do
+			flip = not flip
+			for k, dash in ipairs(dashes) do
+				dash.Color = ((k % 2 == 0) ~= flip) and a or b
+			end
+			task.wait(0.1)
+		end
+	end)
+	gone(model, time)
+	return model
+end
 -- a doodle of a character: white, outlined in ink (a Highlight), at a spot
 local function doodle(char, color, outline, time)
 	if not char then
@@ -1631,50 +1991,119 @@ local function doodle(char, color, outline, time)
 	gone(model, time)
 	return model
 end
+-- a giant DEL key off a keyboard: a dark keycap, DEL on top in white pixels
+-- (read from behind it, the way it faces)
+local DEL = { "XX. XXX X..", "X.X X.. X..", "X.X XX. X..", "X.X X.. X..", "XX. XXX XXX" }
+local function keyProp(at)
+	return prop(function(add)
+		add(V3(7, 2.2, 7), CFrame.new(), RGB(38, 43, 68))
+		add(V3(6, 0.8, 6), CFrame.new(0, 1.4, 0), RGB(58, 68, 102))
+		for row, line in ipairs(DEL) do
+			for col = 1, #line do
+				if string.sub(line, col, col) == "X" then
+					add(V3(0.42, 0.2, 0.42), CFrame.new((col - 6) * 0.45, 1.9, (row - 3) * 0.45), WHITE, Enum.Material.Neon)
+				end
+			end
+		end
+	end, at)
+end
 R.EraserHammer = {
 	Rub = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, 2.5) + V3(0, 1.5, 0)
-		puffs(at, s.Light, 8, 1.2, 1.2, 0.7, 1.2)
-		bits({ at = at, colors = { s.Main, s.Light }, count = 10, speed = { 2, 6 }, up = { 2, 6 }, size = 0.35, life = 0.8, gravity = 25 })
-		sfx({ "Punch 2" }, at, 1.5, 0.6)
+		-- rubbing out a mistake: white strokes scrubbed back and forth in the
+		-- air, crumbs of pink rubber, and a sparkle - your next hit erases
+		for i = 0, 3 do
+			task.delay(i * 0.06, function()
+				local side = i % 2 == 0 and 1 or -1
+				streak(ctx.frame * V3(-side * 1.8, 0.8 + i * 0.45, -2.6), ctx.frame * V3(side * 1.8, 1.1 + i * 0.45, -2.6), WHITE, 0.12, 0.5, { thick = 0.7 })
+			end)
+		end
+		puffs(at, s.Light, 6, 1, 1, 0.6, 1)
+		bits({ at = at, colors = { s.Main, s.Light, s.Dark }, count = 14, speed = { 2, 6 }, up = { 2, 6 }, size = 0.3, life = 0.9, gravity = 25,
+			floor = ctx.feet.Y })
+		task.delay(0.25, function()
+			glint(ctx, ctx.frame * V3(0.6, 2.2, -1.8), WHITE, { 0, 90, 45, -45 }, 2.4, 0.3)
+		end)
+		sfx(C_SQUEAK, at)
 	end,
 }
 R.PencilSword = {
 	Sharpen = function(ctx)
 		local s = ctx.style
 		local at = chest(ctx, 1.2) + V3(0, 1, 0)
-		-- pencil shavings: curls of wood and yellow paint
-		bits({ at = at, colors = { RGB(228, 166, 114), RGB(254, 174, 52), RGB(90, 90, 100) }, count = 14, speed = { 4, 9 }, up = { 4, 9 }, size = 0.4,
+		-- sharpened: pencil shavings curl out in a spiral (wood with a frill
+		-- of yellow paint), a puff of graphite, and the new point glints
+		for i = 1, 12 do
+			task.delay(i * 0.02, function()
+				local turn = CFrame.new(at) * CFrame.Angles(0, i * 0.9, 0)
+				local p = newPart(V3(0.6, 0.06, 0.4), turn * CFrame.new(0, 0, -0.6), i % 3 == 0 and RGB(254, 174, 52) or RGB(228, 166, 114))
+				tween(p, 0.6, { CFrame = turn * CFrame.new(0, -0.6, -2.6) * CFrame.Angles(2, 3, 1), Transparency = 1 })
+				gone(p, 0.65)
+			end)
+		end
+		bits({ at = at, colors = { RGB(228, 166, 114), RGB(254, 174, 52), RGB(90, 90, 100) }, count = 10, speed = { 4, 9 }, up = { 4, 9 }, size = 0.35,
 			life = 0.9, gravity = 30, floor = ctx.feet.Y })
+		puffs(at, RGB(120, 120, 130), 3, 0.8, 0.8, 0.5, 0.5)
+		task.delay(0.15, function()
+			glint(ctx, ctx.frame * V3(0.4, 1.9, -3.2), s.Light, { 0, 90, 45, -45 }, 2.6, 0.3)
+		end)
 		ring(ctx.feet, s.Light, 6, 0.3, { size = 0.5 })
-		sfx({ "Punch 2" }, at, 1.8, 0.6)
+		sfx(C_SHARPEN, at)
 	end,
 }
 R.InkFists = {
 	Splash = function(ctx)
 		local s = ctx.style
 		local at = ahead(ctx, stepAhead(ctx))
-		slam(ctx, at, 10, { s.Light, s.Main, s.Dark }, { bits = 20, dust = RGB(200, 200, 215) })
+		slam(ctx, at, 10, { s.Light, s.Main, s.Dark }, { bits = 20, dust = RGB(200, 200, 215), sound = C_SPLOSH })
+		-- a crown of ink splashing up round your fists and raining back down
+		for i = 1, 14 do
+			local a = i / 14 * math.pi * 2
+			local d = V3(math.cos(a), 0, math.sin(a))
+			local top = at + d * 3.4 + V3(0, 2.5 + i % 3, 0)
+			local p = newPart(V3(0.7, 0.7, 0.7), CFrame.new(at + d * 1.5 + V3(0, 0.4, 0)), i % 2 == 0 and s.Light or s.Dark, Enum.Material.SmoothPlastic, 0,
+				Enum.PartType.Ball)
+			tween(p, 0.22, { CFrame = CFrame.new(top), Size = V3(0.6, 1.5, 0.6) })
+			task.delay(0.22, function()
+				if p.Parent then
+					tween(p, 0.28, { CFrame = CFrame.new(V3(top.X, at.Y + 0.2, top.Z) + d * 1.2), Size = V3(0.9, 0.3, 0.9) }, Enum.EasingStyle.Quad,
+						Enum.EasingDirection.In)
+				end
+			end)
+			gone(p, 0.52)
+		end
 		splats(at, s.Main, 9, 22, 3)
 		splats(at, s.Light, 7, 8, 2.4)
+		task.delay(0.5, function()
+			splats(at, s.Light, 5.5, 10, 2)
+		end)
 		pop(at + V3(0, 5, 0), "SPLOSH!", s.Light, 7, 0.8)
 	end,
 }
 R.DoodleKatana = {
 	Doodle = function(ctx)
 		local s = ctx.style
+		-- a doodle of you is sketched where you stand (white, inked round),
+		-- pencil scribbles down both sides of it
 		ctx.data.doodle = doodle(ctx.char, WHITE, INK, 1.6)
+		local right = ctx.frame.RightVector
+		for _, side in ipairs({ -1.6, 1.6 }) do
+			scribble(ctx.frame * V3(side, -2.6, 0), ctx.frame * V3(side, 2.2, 0), s.Light, right * 0.3, 0.5)
+		end
 		pop(ctx.frame.Position + V3(0, 4, 0), "DOODLE!", s.Light, 6, 0.7)
-		sfx({ "Portal Whoosh" }, ctx.frame.Position, 1.4)
+		sfx(C_DOODLE, ctx.frame.Position)
 	end,
 	Slash = function(ctx)
 		local s = ctx.style
 		local a = ctx.marks.Start or ctx.frame.Position
 		local b = ctx.frame.Position
-		streak(V3(a.X, ctx.feet.Y + 2.5, a.Z), V3(b.X, ctx.feet.Y + 2.5, b.Z), s.Light, 1, 0.4)
-		streak(V3(a.X, ctx.feet.Y + 2.5, a.Z), V3(b.X, ctx.feet.Y + 2.5, b.Z), INK, 0.3, 0.5)
-		sfx(WHOOSH, b, 1.3)
+		local y = ctx.feet.Y + 2.5
+		streak(V3(a.X, y, a.Z), V3(b.X, y, b.Z), s.Light, 1, 0.4)
+		streak(V3(a.X, y, a.Z), V3(b.X, y, b.Z), INK, 0.3, 0.5)
+		-- and a scribble of pencil all along the cut
+		scribble(V3(a.X, y, a.Z), V3(b.X, y, b.Z), INK, V3(0, 0.45, 0), 0.6)
+		sfx(C_SCRIBBLE, b)
 	end,
 	Redraw = function(ctx)
 		local s = ctx.style
@@ -1705,64 +2134,76 @@ R.DoodleKatana = {
 				end
 			end)
 		end
-		streak(V3(a.X, ctx.feet.Y + 2.5, a.Z), V3(b.X, ctx.feet.Y + 2.5, b.Z), s.Light, 1.4, 0.45)
+		local y = ctx.feet.Y + 2.5
+		streak(V3(a.X, y, a.Z), V3(b.X, y, b.Z), s.Light, 1.4, 0.45)
+		scribble(V3(a.X, y, a.Z), V3(b.X, y, b.Z), s.Light, V3(0, 0.5, 0), 0.6)
 		for i = 1, 6 do
-			local u = i / 6
-			local p = a:Lerp(b, u)
-			bits({ at = V3(p.X, ctx.feet.Y + 2.5, p.Z), colors = { s.Light, INK }, count = 3, speed = { 2, 5 }, up = { 2, 5 }, size = 0.3, life = 0.5 })
+			local p = a:Lerp(b, i / 6)
+			bits({ at = V3(p.X, y, p.Z), colors = { s.Light, INK }, count = 3, speed = { 2, 5 }, up = { 2, 5 }, size = 0.3, life = 0.5 })
 		end
-		sfx(WHOOSH, b, 1.5)
+		sfx(C_REDRAW, b)
 	end,
 }
 R.CopyPasteScythe = {
 	Copy = function(ctx)
 		local s = ctx.style
 		local at = ctx.frame.Position
-		wireBox(at, V3(4.5, 6, 4.5), s.Light, 0.6)
+		local char = ctx.char
+		-- CTRL+C: you're selected (marching ants round you) and copied...
+		antsBox(at, V3(4.5, 6, 4.5), WHITE, s.Light, 0.6)
 		pop(at + V3(0, 4.5, 0), "CTRL+C", s.Light, 6, 0.7)
+		sfx(C_COPY, at)
+		-- ... CTRL+V: two ink copies of you pop out in a burst of pixels, one
+		-- each side, doing what you do for 5 s, then blink out
 		task.delay(0.35, function()
 			pop(at + V3(0, 4.5, 0), "CTRL+V", s.Light, 6, 0.7)
-		end)
-		sfx(MAGIC, at, 1.5)
-		-- two ink copies of you, one each side, doing what you do for 5 s
-		local char = ctx.char
-		if not char then
-			return
-		end
-		local copies = {}
-		for _, side in ipairs({ -5, 5 }) do
-			local m = Instance.new("Model")
-			for _, name in ipairs(BODY) do
-				local part = char:FindFirstChild(name)
-				if part and part:IsA("BasePart") then
-					local p = newPart(part.Size, part.CFrame, s.Light, Enum.Material.Neon, 0.55)
-					p.Name = name
-					p.Parent = m
-				end
-			end
-			m.Parent = fxFolder()
-			copies[#copies + 1] = { m = m, side = side }
-		end
-		local t0 = os.clock()
-		local conn
-		conn = RunService.Heartbeat:Connect(function()
-			local root = char:FindFirstChild("HumanoidRootPart")
-			if os.clock() - t0 > 5.2 or not root then
-				conn:Disconnect()
-				for _, c in ipairs(copies) do
-					c.m:Destroy()
-				end
+			sfx(C_PASTE, at)
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if not root then
 				return
 			end
-			for _, c in ipairs(copies) do
-				local shift = root.CFrame.RightVector * c.side
-				for _, p in ipairs(c.m:GetChildren()) do
-					local src = char:FindFirstChild(p.Name)
-					if src then
-						p.CFrame = src.CFrame + shift
+			local copies = {}
+			for _, side in ipairs({ -5, 5 }) do
+				local m = Instance.new("Model")
+				for _, name in ipairs(BODY) do
+					local part = char:FindFirstChild(name)
+					if part and part:IsA("BasePart") then
+						local p = newPart(part.Size, part.CFrame + root.CFrame.RightVector * side, s.Light, Enum.Material.Neon, 0.55)
+						p.Name = name
+						p.Parent = m
 					end
 				end
+				m.Parent = fxFolder()
+				copies[#copies + 1] = { m = m, side = side }
+				bits({ at = root.Position + root.CFrame.RightVector * side, colors = { s.Light, WHITE, CYAN }, count = 10, speed = { 3, 8 }, up = { 3, 8 },
+					size = 0.4, life = 0.5, material = Enum.Material.Neon })
 			end
+			local t0 = os.clock()
+			local conn
+			conn = RunService.Heartbeat:Connect(function()
+				local r = char:FindFirstChild("HumanoidRootPart")
+				if os.clock() - t0 > 4.85 or not r then
+					conn:Disconnect()
+					for _, c in ipairs(copies) do
+						local torso = c.m:FindFirstChild("Torso")
+						if torso then
+							bits({ at = torso.Position, colors = { s.Light, WHITE, CYAN }, count = 8, speed = { 2, 6 }, up = { 2, 6 }, size = 0.35, life = 0.4,
+								material = Enum.Material.Neon })
+						end
+						c.m:Destroy()
+					end
+					return
+				end
+				for _, c in ipairs(copies) do
+					local shift = r.CFrame.RightVector * c.side
+					for _, p in ipairs(c.m:GetChildren()) do
+						local src = char:FindFirstChild(p.Name)
+						if src then
+							p.CFrame = src.CFrame + shift
+						end
+					end
+				end
+			end)
 		end)
 	end,
 }
@@ -1770,8 +2211,30 @@ R.DeleteKey = {
 	Glitch = function(ctx)
 		local s = ctx.style
 		local at = ctx.point and onFloor(ctx.point) or ahead(ctx, 8)
-		wireBox(at + V3(0, 3.5, 0), V3(8, 7, 8), s.Main, 0.8)
+		-- they're selected (a box of red-and-white marching ants), DELETE? -
+		-- and a giant DEL key falls out of the sky onto them, glitching as it
+		-- comes (it lands on the hit)
+		antsBox(at + V3(0, 3.5, 0), V3(8, 7, 8), s.Main, WHITE, 0.8)
 		pop(at + V3(0, 8.5, 0), "DELETE?", s.Main, 9, 0.8)
+		local face = ctx.frame - ctx.frame.Position
+		local model, root = keyProp(CFrame.new(at + V3(0, 59.1, 0)) * face)
+		ctx.data.key = model
+		-- (it lands just before the hit, 0.7 s into the move - timed from the
+		-- move's start, as this step only comes once the server's picked the
+		-- spot - falling the last 0.4 s, jittering; the hit clicks it down)
+		local landAt = (ctx.started or os.clock()) + 0.7
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local now = os.clock()
+			if now > landAt + 0.7 or not root.Parent then
+				conn:Disconnect()
+				model:Destroy()
+				return
+			end
+			local u = ctx.data.keyDown and 1 or math.clamp(1 - (landAt - now) / 0.4, 0, 1)
+			local jitter = (u > 0 and u < 1) and V3(rnd:NextNumber(-0.4, 0.4), 0, rnd:NextNumber(-0.4, 0.4)) or V3(0, 0, 0)
+			root.CFrame = CFrame.new(at + V3(0, 1.1 + 58 * (1 - u * u) - (ctx.data.keyDown and 0.6 or 0), 0) + jitter) * face
+		end)
 		if ctx.own or nearMe(at, 35) then
 			-- the screen glitches: bars of colour flicker across it
 			local me = Players.LocalPlayer
@@ -1791,7 +2254,7 @@ R.DeleteKey = {
 						for _ = 1, 5 do
 							local f = Instance.new("Frame")
 							f.BorderSizePixel = 0
-							f.BackgroundColor3 = ({ s.Main, RGB(44, 232, 245), WHITE, INK })[rnd:NextInteger(1, 4)]
+							f.BackgroundColor3 = ({ s.Main, CYAN, WHITE, INK })[rnd:NextInteger(1, 4)]
 							f.BackgroundTransparency = rnd:NextNumber(0.35, 0.7)
 							f.Size = UDim2.new(1, 0, rnd:NextNumber(0.01, 0.06), 0)
 							f.Position = UDim2.new(rnd:NextNumber(-0.05, 0.05), 0, rnd:NextNumber(0, 1), 0)
@@ -1803,15 +2266,34 @@ R.DeleteKey = {
 				end)
 			end
 		end
-		sfx({ "Gridlock Stun", "Portal Whoosh" }, at)
+		sfx(C_BUZZ, at)
 	end,
 	Delete = function(ctx)
 		local s = ctx.style
 		local at = ctx.point and onFloor(ctx.point) or ahead(ctx, 8)
-		slam(ctx, at, 8, { s.Main, WHITE, INK }, { bits = 10, sound = SHATTER })
-		-- everything round it shatters into pixels
-		bits({ at = at + V3(0, 3, 0), colors = { s.Main, WHITE, RGB(44, 232, 245), INK }, count = 36, speed = { 8, 20 }, up = { 4, 18 }, size = 0.55,
+		-- the key clicks down and everything round it shatters into pixels -
+		-- the key too - a ring of red and cyan glitch bars racing out
+		local model = ctx.data.key
+		if model and model.Parent then
+			ctx.data.keyDown = true
+			task.delay(0.08, function()
+				model:Destroy()
+				bits({ at = at + V3(0, 1.5, 0), colors = { RGB(38, 43, 68), RGB(58, 68, 102), WHITE }, count = 18, speed = { 6, 14 }, up = { 6, 14 },
+					size = 0.7, life = 1, floor = at.Y })
+			end)
+			ctx.data.key = nil
+		end
+		slam(ctx, at, 8, { s.Main, WHITE, INK }, { bits = 10, sound = C_SHATTER })
+		bits({ at = at + V3(0, 3, 0), colors = { s.Main, WHITE, CYAN, INK }, count = 36, speed = { 8, 20 }, up = { 4, 18 }, size = 0.55,
 			life = 1.1, gravity = 30, material = Enum.Material.Neon })
+		for i = 1, 16 do
+			local a = i / 16 * math.pi * 2
+			local d = V3(math.cos(a), 0, math.sin(a))
+			local bar = newPart(V3(0.3, 0.3, 1.6), CFrame.lookAt(at + d * 2 + V3(0, 0.5, 0), at + d * 3 + V3(0, 0.5, 0)), i % 2 == 0 and s.Main or CYAN,
+				Enum.Material.Neon, 0)
+			tween(bar, 0.35, { CFrame = bar.CFrame + d * 9, Transparency = 1 })
+			gone(bar, 0.4)
+		end
 		pop(at + V3(0, 8, 0), "DELETED", s.Main, 10, 1)
 		if ctx.own or nearMe(at, 35) then
 			screenFlash(s.Main, 0.3, 0.25)
@@ -1838,8 +2320,12 @@ SPECIALS.NextHit = function(ctx)
 		-- erased: a puff of rubber and white squares where the armour was
 		puffs(ctx.point, s.Light, 8, 1.6, 1.5, 0.8, 1.5)
 		bits({ at = ctx.point, colors = { WHITE, s.Main }, count = 16, speed = { 4, 10 }, up = { 4, 10 }, size = 0.5, life = 0.9, material = Enum.Material.Neon })
+		-- (and a white patch where it was rubbed out, shrinking away)
+		local patch = newPart(V3(2.6, 2.6, 0.2), CFrame.new(ctx.point), WHITE, Enum.Material.Neon, 0.2)
+		tween(patch, 0.4, { Size = V3(0.2, 0.2, 0.2), Transparency = 1 })
+		gone(patch, 0.45)
 		pop(ctx.point + V3(0, 3, 0), "ERASED!", s.Main, 7, 0.8)
-		sfx({ "Punch 3" }, ctx.point)
+		sfx(C_POOF, ctx.point)
 	elseif ctx.id == "ShovelHammer" then
 		slam(ctx, at, 6, { s.Main, s.Dark, s.Light }, { bits = 20, material = Enum.Material.Slate, dust = s.Light })
 		pop(ctx.point + V3(0, 3, 0), "DIG!", s.Glow, 6, 0.7)
@@ -1930,7 +2416,7 @@ local function makeCtx(player, inst, step, style)
 	return {
 		player = player, char = char, root = root, frame = frame, feet = onFloor(root.Position),
 		style = style, step = step, own = inst.own, id = inst.id,
-		marks = inst.marks, data = inst.data, point = inst.marks.T,
+		marks = inst.marks, data = inst.data, point = inst.marks.T, started = inst.t0,
 	}
 end
 
@@ -1953,7 +2439,7 @@ function MoveFX.begin(player, id, count, own)
 	if not move then
 		return
 	end
-	local inst = { id = id, count = count, marks = {}, data = {}, own = own }
+	local inst = { id = id, count = count, marks = {}, data = {}, own = own, t0 = os.clock() }
 	live[player] = inst
 	local style = styleOf(move.Style)
 	for _, step in ipairs(move.Steps or {}) do
