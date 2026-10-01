@@ -2,6 +2,8 @@
 	ArenaAmbience  (LocalScript, parent: StarterPlayer > StarterPlayerScripts, name: "ArenaAmbience")
 
 	How a Spire arena looks and sounds on your own screen while you're in it.
+	In every arena the far distance melts into the arena's own sky (THE
+	HORIZON: Config.Spire.Horizon), so you never see the other islands.
 	Each floor in Config.Spire.Floors can have an `ambience` table (the Sunken
 	Dunes and the Glimmer Dig do): walk in and the light shifts to it, and when
 	you leave, the lobby's own look comes back exactly as it was. (The Glimmer
@@ -141,6 +143,23 @@ local function lightGone()
 	savedClock, lobbyAtmo = nil, nil
 end
 
+-- THE HORIZON (Config.Spire.Horizon, or the floor's own ambience.Horizon):
+-- the least air an arena gets, so the far distance - the other islands -
+-- melts into its sky while the arena itself stays clear
+local HORIZON_KEYS = { "Density", "Offset", "Haze" }
+local function horizonFor(amb)
+	local h = (amb and amb.Horizon) or (Config.Spire and Config.Spire.Horizon) or {}
+	if amb and amb.Horizon and Config.Spire and Config.Spire.Horizon then
+		-- (a floor's own Horizon only needs the numbers it changes)
+		local merged = {}
+		for _, key in ipairs(HORIZON_KEYS) do
+			merged[key] = amb.Horizon[key] or Config.Spire.Horizon[key]
+		end
+		h = merged
+	end
+	return h
+end
+
 -- The air and the grade for this frame. `level` = how far into the arena's
 -- look you are (0 = the lobby's, 1 = the arena's); `k` = how hard the storm
 -- is blowing (0 = calm, 1 = its height).
@@ -155,11 +174,15 @@ local function stepLight(amb, level, k)
 	if atmo and lobbyAtmo then
 		local calm = amb and amb.Atmosphere or {}
 		local wild = storm.Atmosphere or {}
+		local horizon = horizonFor(amb)
 		for _, key in ipairs(ATMO_KEYS) do
 			local lobby = lobbyAtmo[key]
 			local here = calm[key]
 			if here == nil then
 				here = lobby
+			end
+			if type(horizon[key]) == "number" then
+				here = math.max(here, horizon[key]) -- (at least the horizon's air)
 			end
 			local there = wild[key]
 			if there == nil then

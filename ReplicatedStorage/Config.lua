@@ -552,6 +552,15 @@ Config.Spire = {
 	RequirePrevious = true,
 	-- true = devs (Studio, the game's owner) can enter any floor, to test them
 	DevSkip = false,
+	-- THE HORIZON: in every arena the far distance melts into that arena's own
+	-- sky (its Atmosphere colour), so the other islands - the lobby, the other
+	-- floors - are never seen, while the arena itself stays crisp. Density is
+	-- how thick the air is (higher hides things nearer), Offset how fully far
+	-- things blend into the sky (1 = completely), Haze a soft glowing band
+	-- along the horizon. These are the least every arena gets; a floor's own
+	-- ambience.Atmosphere can ask for more (the sandstorm does), and a floor
+	-- can set its own with ambience.Horizon = { Density = ..., ... }.
+	Horizon = { Density = 0.46, Offset = 0.92, Haze = 2 },
 	Floors = {
 		{
 			id = 1,
@@ -561,6 +570,19 @@ Config.Spire = {
 			blurb = "A bloated slime king rules the drowned colosseum beneath the Spire. It is slow to anger, and slower to die.",
 			color = Color3.fromRGB(120, 230, 90),
 			open = true,
+			-- a damp, green-grey hollow under the Spire (the acid rain is BossClient's)
+			ambience = {
+				Atmosphere = {
+					Color = Color3.fromRGB(168, 196, 172),
+					Decay = Color3.fromRGB(92, 122, 104),
+					Glare = 0,
+				},
+				Tint = Color3.fromRGB(246, 255, 246),
+				Saturation = 0.04,
+				Contrast = 0.04,
+				Grains = 0, -- (no drifting dust: the rain is enough)
+				Clouds = false,
+			},
 		},
 		{
 			id = 2,
@@ -709,6 +731,7 @@ Config.Spire = {
 			open = true,
 			-- a purple void, neon everywhere, a few sparks drifting past
 			ambience = {
+				Horizon = { Density = 0.5, Offset = 1, Haze = 2.4 }, -- (the void swallows everything past the grid)
 				ClockTime = 19.4,
 				Atmosphere = {
 					Density = 0.34,

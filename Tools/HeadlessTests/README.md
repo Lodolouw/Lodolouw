@@ -170,6 +170,7 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   him move by move, then a camel, a meerkat, a vulture and a lizard close up).
   (`render_snaps.py` reads a picture's own field of view from an 8th number on
   its SNAP line, if there is one.)
+- `test_arena_horizon.luau` - THE HORIZON (ArenaAmbience): in every arena the far distance melts into that arena's own sky (at least `Config.Spire.Horizon`'s Density/Offset/Haze, in its own colour), and the lobby's air comes back exactly when you leave
 - `test_gridlock_music.luau` - Gridlock's song: round 1 his theme, round 2 the harder version, and one not uploaded yet falls back (Round2Music -> Music -> FallbackMusic); the songs are exactly 96 bars at his Bpm
 - `test_gridlock.luau` - GRIDLOCK (floor 6) on the real Final Beat
   (GridBuilder) with the real BossService, his own brain and the shared
