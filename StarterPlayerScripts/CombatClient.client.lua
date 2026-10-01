@@ -451,12 +451,15 @@ end
 
 -- Runs every frame for the length of the roll: undoes any trip that slips
 -- through and levels the body without changing where it is or where it points.
+local braceUntil = 0 -- (the upright brace holds you up until then: see neverTrip)
 local function keepUpright(char, facing)
+	braceUntil = math.huge
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
 		local hum, hrp = charParts()
 		if not hum or not hrp or hrp.Parent ~= char then
 			connection:Disconnect()
+			braceUntil = os.clock() + 0.5
 			return
 		end
 		if isTripped(hum) then
@@ -470,7 +473,16 @@ local function keepUpright(char, facing)
 		end
 		hrp.AssemblyAngularVelocity = Vector3.zero
 	end)
-	return connection
+	-- (stopping it lets the brace go half a second later: you've landed)
+	local handle = { Connected = true }
+	function handle.Disconnect()
+		if handle.Connected then
+			handle.Connected = false
+			connection:Disconnect()
+			braceUntil = os.clock() + 0.5
+		end
+	end
+	return handle
 end
 
 -- The camera takes the hit.
@@ -893,8 +905,11 @@ local function neverTrip(char)
 	-- and an upright brace: a physics constraint on your root that only
 	-- stops you tilting (turning to face anywhere is untouched). It holds you
 	-- up smoothly, from inside the physics - setting the body straight each
-	-- frame instead made it lean and snap back over and over. Always on,
-	-- except while you sit (abilities work in the lobby too).
+	-- frame instead made it lean and snap back over and over. Only on while
+	-- you could tip: in the air, or for a moment after something shoves you
+	-- (a move's dash or hop, a roll, a knock-back: keepUpright marks it) - on
+	-- the ground the controller is left to itself, so it never holds you
+	-- still through an ability's effects. Never while you sit.
 	local hrp = char:WaitForChild("HumanoidRootPart", 10)
 	if hrp then
 		local att = Instance.new("Attachment")
@@ -911,11 +926,18 @@ local function neverTrip(char)
 		brace.MaxTorque = 1e7
 		brace.Responsiveness = 120
 		brace.Parent = hrp
-		local function sync()
-			brace.Enabled = not hum.Sit
-		end
-		sync()
-		hum:GetPropertyChangedSignal("Sit"):Connect(sync)
+		local syncConn
+		syncConn = RunService.Heartbeat:Connect(function()
+			if not brace.Parent then
+				syncConn:Disconnect()
+				return
+			end
+			local airborne = hum.FloorMaterial == Enum.Material.Air
+			local on = not hum.Sit and (airborne or os.clock() < (braceUntil or 0))
+			if brace.Enabled ~= on then
+				brace.Enabled = on
+			end
+		end)
 		-- (the very last word: if you still end up badly on your side - more
 		-- than ~60 degrees - you're stood up once, not fought every frame)
 		local guard
@@ -1528,9 +1550,7 @@ local function tryRoll()
 		rolling = false -- on your feet again: only now can you punch
 	end)
 	task.delay(CC.RollTime, function()
-		if steady.Connected then
-			steady:Disconnect()
-		end
+		steady:Disconnect()
 		if sensor and searchBefore then
 			pcall(function()
 				sensor.SearchDistance = searchBefore

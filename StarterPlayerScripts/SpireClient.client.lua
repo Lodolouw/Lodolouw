@@ -736,15 +736,25 @@ local leaveBtn = K.button(winRoot, "LEAVE ARENA", KC.Slate, {
 })
 leaveBtn.Activated:Connect(askLeave)
 
+-- (shown in the arena only while there's no fight on: it would sit on the
+-- boss's health bar, and you can't leave mid-fight anyway - it comes back
+-- once the boss is beaten or asleep again)
 local function onFloorChanged()
-	local inArena = player:GetAttribute("SpireFloor") ~= nil
-	leaveBtn.Visible = inArena
+	local floorId = player:GetAttribute("SpireFloor")
+	local inArena = floorId ~= nil
+	leaveBtn.Visible = inArena and not fightOn(floorId)
 	if not inArena then
 		showConfirm(false)
 	end
 end
 player:GetAttributeChangedSignal("SpireFloor"):Connect(onFloorChanged)
 onFloorChanged()
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+		onFloorChanged()
+	end
+end)
 
 ----------------------------------------------------------------------
 -- Messages from the server
