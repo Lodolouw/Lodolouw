@@ -311,6 +311,39 @@ click(find("Switch", find("Setting_revives")))
 check(saved and saved.revives == false, "revives off is saved (the server reads it)")
 Menus.close()
 
+-- the Party menu (PartyMenu): you, the others with INVITE, an invite's pop-up
+local partyRemotes = Instance.new("Folder")
+partyRemotes.Name = "PartyRemotes"
+local partyEvent = Instance.new("RemoteEvent")
+partyEvent.Name = "PartyEvent"
+partyEvent.Parent = partyRemotes
+partyRemotes.Parent = ReplicatedStorage
+local sent = {}
+M.onFireServer = function(remote, ...)
+	if remote == partyEvent then
+		table.insert(sent, { ... })
+	end
+end
+mount.runClient("StarterPlayerScripts/PartyMenu.client.lua", me)
+wait(0.2)
+check(Menus.open("Party"), "the party menu opens")
+check(find("Row_Tester") ~= nil, "it lists you")
+local inviteBtn = find("INVITE", find("Row_Other"))
+check(inviteBtn ~= nil, "and the other player, with INVITE")
+click(inviteBtn)
+check(sent[1] and sent[1][1] == "Invite" and sent[1][2] == other, "INVITE asks the server")
+Menus.close()
+partyEvent.OnClientEvent:Fire("Invited", other, 30)
+wait(0.1)
+local pop = playerGui:FindFirstChild("PartyInvite")
+check(pop ~= nil, "an invite pops up")
+click(pop and pop:FindFirstChild("Accept", true))
+check(sent[2] and sent[2][1] == "Accept" and sent[2][2] == other and not playerGui:FindFirstChild("PartyInvite"), "ACCEPT answers it and closes it")
+me:SetAttribute("PartyLeader", 1002)
+other:SetAttribute("PartyLeader", 1002)
+check(Menus.open("Party") and find("LEAVE", find("Row_Tester")) ~= nil, "in a party: LEAVE")
+Menus.close()
+
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))
 end

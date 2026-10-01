@@ -278,7 +278,13 @@ local function travel(player, action, floorId)
 			return false, "Stand at the Spire's doors to enter."
 		end
 		-- an arena of your own (with your party: SpireService.PartyFor)
-		local group = SpireService.PartyFor and SpireService.PartyFor(player, floor.id) or { player }
+		local group, why = { player }, nil
+		if SpireService.PartyFor then
+			group, why = SpireService.PartyFor(player, floor.id)
+			if not group then
+				return false, why or "Your party's leader picks the floor."
+			end
+		end
 		local arena = ArenaPool.Acquire(floor.id, group)
 		local dest = arena and arenaSpawnIn(arena)
 		if not dest then

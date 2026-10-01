@@ -311,6 +311,35 @@ do
 	settings.Activated:Connect(function()
 		Menus.go("Settings")
 	end)
+	-- (and to their left, your party: PartyMenu - a little count while you're in one)
+	local party, partyApi = small("Party", C.Blue, "Friends", "PARTY", -1)
+	party.Activated:Connect(function()
+		Menus.go("Party")
+	end)
+	local function partyLabel()
+		local lead = player:GetAttribute("PartyLeader")
+		local n = 0
+		if lead then
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p:GetAttribute("PartyLeader") == lead then
+					n += 1
+				end
+			end
+		end
+		if partyApi.label then
+			partyApi.label.Text = lead and ("PARTY " .. n .. "/4") or "PARTY"
+		end
+	end
+	local function watchParty(p)
+		p:GetAttributeChangedSignal("PartyLeader"):Connect(partyLabel)
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		watchParty(p)
+	end
+	Players.PlayerAdded:Connect(watchParty)
+	Players.PlayerRemoving:Connect(function()
+		task.defer(partyLabel)
+	end)
 
 	-- today's quest (blue: quests)
 	local face, holder = K.card(root, {

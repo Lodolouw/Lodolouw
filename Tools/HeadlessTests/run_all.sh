@@ -25,6 +25,9 @@ run test_arenas_apart.luau
 # fights, the wins, a party's health, moved runways and pillars, reuse and
 # take-down, and only your own copy's boss drawn on your screen)
 run test_arena_copies.luau
+# parties: invites, a full party, leader-only invites and kicks, leaving and
+# handing over, and the leader taking the whole party into one arena
+run test_party.luau
 run test_boss_template.luau
 # the heart, the potion and the bolt at the bottom of the screen, and the drink
 run test_vitals.luau

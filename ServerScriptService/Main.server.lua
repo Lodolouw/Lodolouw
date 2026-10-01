@@ -112,6 +112,11 @@ start("PlayerService", PlayerService and PlayerService.Start)
 local SpireService = load("SpireService")
 start("SpireService", SpireService and SpireService.Start) -- the Spire menu and travelling to its boss arenas
 
+-- Parties (up to 4): the leader picks the floor and everyone goes into one
+-- arena together (it hands SpireService who goes up with whom)
+local PartyService = load("PartyService", 3)
+start("PartyService", PartyService and PartyService.Start, SpireService)
+
 local CombatService = load("CombatService")
 start("CombatService", CombatService and CombatService.Start, PlayerService) -- stamina, rolling, punching and flasks in the arenas
 
