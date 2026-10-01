@@ -63,6 +63,9 @@ run test_shop_menu.luau
 # the Bag (weapons, the [F] ability, equip) and the Settings (sound, shadows,
 # low graphics, others' effects, camera shake)
 run test_bag_settings.luau
+# low graphics in the lobby: RetroWorld's moving detail holds still where it
+# belongs (nothing left piled up on the fountain) and the flyers are put away
+run test_retroworld_low.luau
 # enemies reacting to hits: the white flash (the dummies' tip and knock-back: test_colosseum react)
 run test_hitflash.luau
 # feet on the floor: never sunk after a reset, never floating after lunges and rolls

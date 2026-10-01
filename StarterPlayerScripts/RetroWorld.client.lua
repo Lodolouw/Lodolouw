@@ -192,6 +192,7 @@ end
 for i = 1, (W.Motes or 36) do
 	local size = (i % 5 == 0) and 0.45 or 0.3
 	local m = { part = ghost(V3(size, size, size), MOTE_COLORS[(i % #MOTE_COLORS) + 1]), phase = math.random() * 10 }
+	m.part.Transparency = 1 -- (hidden until it's first placed round you: until then it sits at 0,0,0, in the fountain)
 	m.part.Parent = moteFolder
 	motes[i] = m
 end
@@ -217,8 +218,10 @@ local function buildStar(at)
 			local ch = string.sub(STAR[y], x, x)
 			if ch ~= "." then
 				local p = ghost(V3(s, s, s), ch == "W" and RGB(255, 255, 255) or RGB(254, 231, 97))
+				local offset = V3((x - 4) * s, (4 - y) * s, 0)
+				p.CFrame = CFrame.new(at + offset) -- (over the spawn from the start, even before it first turns)
 				p.Parent = mine
-				table.insert(cubes, { part = p, offset = V3((x - 4) * s, (4 - y) * s, 0) })
+				table.insert(cubes, { part = p, offset = offset })
 			end
 		end
 	end
@@ -425,6 +428,16 @@ end
 local function spread()
 	return rng:NextNumber() - 0.5
 end
+-- Puts a kind of moving detail where it belongs the moment it's made, by
+-- running its stepper once. Only the steppers ever move these parts, and a
+-- part nobody has moved sits at 0,0,0, which is the fountain in the middle of
+-- the plaza. Without this, whenever the steppers weren't running (Low
+-- graphics holds them still), every cloud, bird and flame piled up there as
+-- one big white block.
+local function settle(stepper)
+	stepper(os.clock(), 0)
+	flushMoves()
+end
 
 local GRASS = { RGB(99, 199, 77), RGB(62, 137, 72), RGB(38, 92, 66) }
 
@@ -540,6 +553,19 @@ local FORGE_STONE = { BackWall = true, SideWallL = true, SideWallR = true, Front
 -- PIXEL FLAMES in place of the old smoky fire: a stack of glowing cubes
 -- that flickers, in the fire's own colours (the blue ones stay blue)
 local flames = {}
+local function stepFlames()
+	for _, f in ipairs(flames) do
+		for _, c in ipairs(f.cubes) do
+			local j = 0.12 * f.s * (c.i / 3)
+			local up = (math.random() < 0.3) and 0.18 * f.s or 0
+			move(c.part, CFrame.new(f.at + V3(math.random(-1, 1) * j, c.h + up, math.random(-1, 1) * j)))
+			if c.i == 5 then
+				c.part.Transparency = math.random() < 0.35 and 1 or 0
+			end
+		end
+	end
+end
+table.insert(steppers, stepFlames)
 local function pixelFlame(fire)
 	local holder = fire.Parent
 	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not fire.Enabled then
@@ -559,35 +585,12 @@ local function pixelFlame(fire)
 		end
 	end)
 	table.insert(flames, f)
+	settle(stepFlames)
 end
-table.insert(steppers, function()
-	for _, f in ipairs(flames) do
-		for _, c in ipairs(f.cubes) do
-			local j = 0.12 * f.s * (c.i / 3)
-			local up = (math.random() < 0.3) and 0.18 * f.s or 0
-			move(c.part, CFrame.new(f.at + V3(math.random(-1, 1) * j, c.h + up, math.random(-1, 1) * j)))
-			if c.i == 5 then
-				c.part.Transparency = math.random() < 0.35 and 1 or 0
-			end
-		end
-	end
-end)
 
 -- PIXEL SMOKE: grey cubes that puff out, grow and fade as they rise
 local smokes = {}
-local function pixelSmoke(sm)
-	local holder = sm.Parent
-	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not sm.Enabled then
-		return
-	end
-	sm.Enabled = false
-	local puff = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), bits = {} }
-	for i = 1, 5 do
-		puff.bits[i] = { part = block(V3(1, 1, 1), snap(sm.Color), nil, 0.3), t = i / 5, dx = spread() }
-	end
-	table.insert(smokes, puff)
-end
-table.insert(steppers, function(_, step)
+local function stepSmoke(_, step)
 	for _, puff in ipairs(smokes) do
 		for _, b in ipairs(puff.bits) do
 			b.t = b.t + step / 4
@@ -600,20 +603,25 @@ table.insert(steppers, function(_, step)
 			move(b.part, CFrame.new(puff.at + V3(b.dx * 2 + b.t * 3, b.t * 12, b.dx)))
 		end
 	end
-end)
+end
+table.insert(steppers, stepSmoke)
+local function pixelSmoke(sm)
+	local holder = sm.Parent
+	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not sm.Enabled then
+		return
+	end
+	sm.Enabled = false
+	local puff = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), bits = {} }
+	for i = 1, 5 do
+		puff.bits[i] = { part = block(V3(1, 1, 1), snap(sm.Color), nil, 0.3), t = i / 5, dx = spread() }
+	end
+	table.insert(smokes, puff)
+	settle(stepSmoke)
+end
 
 -- RISING SPARKS: little glowing cubes floating up from a spot and fading
 local risers = {}
-local function sparks(center, radius, fromY, toY, colors, count, size)
-	for i = 1, count do
-		table.insert(risers, {
-			part = block(V3(size, size, size), colors[(i % #colors) + 1], Enum.Material.Neon),
-			center = center, radius = radius, fromY = fromY, toY = toY,
-			t = rng:NextNumber(), speed = 0.25 + rng:NextNumber() * 0.25, off = V3(spread(), 0, spread()) * 2 * radius,
-		})
-	end
-end
-table.insert(steppers, function(_, step)
+local function stepSparks(_, step)
 	for _, r in ipairs(risers) do
 		r.t = r.t + step * r.speed
 		if r.t > 1 then
@@ -623,7 +631,18 @@ table.insert(steppers, function(_, step)
 		r.part.Transparency = r.t > 0.7 and (r.t - 0.7) / 0.3 or 0
 		move(r.part, CFrame.new(r.center + r.off + V3(0, r.fromY + (r.toY - r.fromY) * r.t, 0)))
 	end
-end)
+end
+table.insert(steppers, stepSparks)
+local function sparks(center, radius, fromY, toY, colors, count, size)
+	for i = 1, count do
+		table.insert(risers, {
+			part = block(V3(size, size, size), colors[(i % #colors) + 1], Enum.Material.Neon),
+			center = center, radius = radius, fromY = fromY, toY = toY,
+			t = rng:NextNumber(), speed = 0.25 + rng:NextNumber() * 0.25, off = V3(spread(), 0, spread()) * 2 * radius,
+		})
+	end
+	settle(stepSparks)
+end
 
 -- GRASS AND FLOWERS: little pixel tufts across the lawns
 local PETALS = { RGB(246, 117, 122), RGB(254, 231, 97), RGB(255, 255, 255), RGB(44, 232, 245), RGB(181, 80, 136) }
@@ -657,6 +676,16 @@ end
 
 -- VOXEL CLOUDS drifting slowly round the island
 local clouds = {}
+local function stepClouds(now)
+	for _, cl in ipairs(clouds) do
+		local a = cl.ang + now * cl.speed
+		local frame = CFrame.new(cl.center + V3(math.cos(a) * cl.r, cl.y, math.sin(a) * cl.r)) * CFrame.Angles(0, -a, 0)
+		for _, c in ipairs(cl.cubes) do
+			move(c.part, frame * CFrame.new(c.off))
+		end
+	end
+end
+table.insert(steppers, stepClouds)
 local function makeClouds(center)
 	for _ = 1, (D.Clouds or 14) do
 		local cl = { center = center, ang = rng:NextNumber() * math.pi * 2, r = 170 + rng:NextNumber() * 200, y = 85 + rng:NextNumber() * 70, speed = 0.006 + rng:NextNumber() * 0.01, cubes = {} }
@@ -669,16 +698,20 @@ local function makeClouds(center)
 		end
 		table.insert(clouds, cl)
 	end
+	settle(stepClouds)
 end
-table.insert(steppers, function(now)
-	for _, cl in ipairs(clouds) do
-		local a = cl.ang + now * cl.speed
-		local frame = CFrame.new(cl.center + V3(math.cos(a) * cl.r, cl.y, math.sin(a) * cl.r)) * CFrame.Angles(0, -a, 0)
-		for _, c in ipairs(cl.cubes) do
-			move(c.part, frame * CFrame.new(c.off))
-		end
-	end
-end)
+
+-- THE FLYERS (the breeze, the birds and the gulls) have a folder of their
+-- own. They only look right moving, so while Low graphics holds the detail
+-- still they're put away rather than left hanging in mid-air.
+local flyers = Instance.new("Folder")
+flyers.Name = "Flyers"
+flyers.Parent = detail
+local function flyer(size, color, transparency)
+	local p = block(size, color, nil, transparency)
+	p.Parent = flyers
+	return p
+end
 
 -- THE BREEZE: faint white wind streaks and the odd leaf drifting slowly
 -- past you, the same way the palms sway (only in the lobby, near you)
@@ -695,7 +728,8 @@ end
 for i = 1, (D.Breeze or 22) do
 	local leaf = i % 5 == 0
 	table.insert(breeze, {
-		part = leaf and block(V3(0.4, 0.15, 0.4), GRASS[rng:NextInteger(1, #GRASS)]) or block(V3(0.12, 0.12, 2.2 + rng:NextNumber() * 1.5), RGB(255, 255, 255)),
+		-- (hidden until its first gust is placed)
+		part = leaf and flyer(V3(0.4, 0.15, 0.4), GRASS[rng:NextInteger(1, #GRASS)], 1) or flyer(V3(0.12, 0.12, 2.2 + rng:NextNumber() * 1.5), RGB(255, 255, 255), 1),
 		leaf = leaf,
 		life = rng:NextNumber() * 5,
 		span = 0,
@@ -732,41 +766,7 @@ end)
 
 -- BIRDS: little flocks flapping round over the castle in V-formations
 local flocks = {}
-local function makeBirds(center)
-	for f = 1, (D.Birds or 3) do
-		local flock = { center = center, r = 60 + f * 28, y = 58 + f * 12, speed = ((f % 2 == 0) and -1 or 1) * (0.1 + f * 0.02), phase = f * 2.1, members = {} }
-		for b = 1, 5 do
-			local rank = math.ceil((b - 1) / 2)
-			table.insert(flock.members, {
-				body = block(V3(0.9, 0.6, 1.6), RGB(38, 43, 68)),
-				w1 = block(V3(1.8, 0.2, 0.9), RGB(58, 68, 102)),
-				w2 = block(V3(1.8, 0.2, 0.9), RGB(58, 68, 102)),
-				slot = V3(((b % 2 == 0) and 1 or -1) * rank * 3, 0, rank * 3),
-				flap = rng:NextInteger(0, 3),
-			})
-		end
-		table.insert(flocks, flock)
-	end
-end
--- SEAGULLS: a few white gulls gliding in pairs and threes round the coast,
--- low over the beaches (the same flapping birds, just white and grey)
-local function makeGulls(center)
-	for f = 1, (D.Gulls or 5) do
-		local flock = { center = center, r = 285 + f * 22, y = -4 + (f % 3) * 5, speed = ((f % 2 == 0) and -1 or 1) * (0.035 + f * 0.006), phase = f * 1.3, members = {} }
-		for b = 1, 2 + (f % 2) do
-			local rank = math.ceil((b - 1) / 2)
-			table.insert(flock.members, {
-				body = block(V3(0.9, 0.6, 1.6), RGB(255, 255, 255)),
-				w1 = block(V3(2.2, 0.2, 0.9), RGB(192, 203, 220)),
-				w2 = block(V3(2.2, 0.2, 0.9), RGB(192, 203, 220)),
-				slot = V3(((b % 2 == 0) and 1 or -1) * rank * 5, rank * 1.5, rank * 4),
-				flap = rng:NextInteger(0, 3),
-			})
-		end
-		table.insert(flocks, flock)
-	end
-end
-table.insert(steppers, function(now)
+local function stepFlocks(now)
 	for i, fl in ipairs(flocks) do
 		local a = fl.phase + now * fl.speed
 		local pos = fl.center + V3(math.cos(a) * fl.r, fl.y + math.sin(now * 0.5 + i) * 3, math.sin(a) * fl.r)
@@ -780,7 +780,44 @@ table.insert(steppers, function(now)
 			move(m.w2, cf * CFrame.new(1.2, 0, 0) * CFrame.Angles(0, 0, up))
 		end
 	end
-end)
+end
+table.insert(steppers, stepFlocks)
+local function makeBirds(center)
+	for f = 1, (D.Birds or 3) do
+		local flock = { center = center, r = 60 + f * 28, y = 58 + f * 12, speed = ((f % 2 == 0) and -1 or 1) * (0.1 + f * 0.02), phase = f * 2.1, members = {} }
+		for b = 1, 5 do
+			local rank = math.ceil((b - 1) / 2)
+			table.insert(flock.members, {
+				body = flyer(V3(0.9, 0.6, 1.6), RGB(38, 43, 68)),
+				w1 = flyer(V3(1.8, 0.2, 0.9), RGB(58, 68, 102)),
+				w2 = flyer(V3(1.8, 0.2, 0.9), RGB(58, 68, 102)),
+				slot = V3(((b % 2 == 0) and 1 or -1) * rank * 3, 0, rank * 3),
+				flap = rng:NextInteger(0, 3),
+			})
+		end
+		table.insert(flocks, flock)
+	end
+	settle(stepFlocks)
+end
+-- SEAGULLS: a few white gulls gliding in pairs and threes round the coast,
+-- low over the beaches (the same flapping birds, just white and grey)
+local function makeGulls(center)
+	for f = 1, (D.Gulls or 5) do
+		local flock = { center = center, r = 285 + f * 22, y = -4 + (f % 3) * 5, speed = ((f % 2 == 0) and -1 or 1) * (0.035 + f * 0.006), phase = f * 1.3, members = {} }
+		for b = 1, 2 + (f % 2) do
+			local rank = math.ceil((b - 1) / 2)
+			table.insert(flock.members, {
+				body = flyer(V3(0.9, 0.6, 1.6), RGB(255, 255, 255)),
+				w1 = flyer(V3(2.2, 0.2, 0.9), RGB(192, 203, 220)),
+				w2 = flyer(V3(2.2, 0.2, 0.9), RGB(192, 203, 220)),
+				slot = V3(((b % 2 == 0) and 1 or -1) * rank * 5, rank * 1.5, rank * 4),
+				flap = rng:NextInteger(0, 3),
+			})
+		end
+		table.insert(flocks, flock)
+	end
+	settle(stepFlocks)
+end
 
 -- THE SPIRE'S BEACON: a pillar of light shooting up into the sky out of the
 -- blue flame in the middle of the Spire's crown, with runes turning round it
@@ -788,6 +825,20 @@ end)
 -- anywhere. (It used to start from whichever part reached highest - a spike
 -- on the RIM of the crown - so it rose off to one side of the top.)
 local beacon = nil
+local function stepBeacon(now)
+	if not beacon then
+		return
+	end
+	local pulse = math.floor(now * 3) % 2 == 0
+	beacon.core.Transparency = pulse and 0.4 or 0.5
+	local turn = math.floor(now * 6) * (math.pi / 24)
+	for i, r in ipairs(beacon.runes) do
+		local a = turn + i / #beacon.runes * math.pi * 2
+		local bob = math.floor(math.sin(now * 2 + i) * 2 + 0.5) * 0.3
+		move(r, CFrame.new(beacon.runeAt + V3(math.cos(a) * 9, bob, math.sin(a) * 9)) * CFrame.Angles(0, -a, math.pi / 4))
+	end
+end
+table.insert(steppers, stepBeacon)
 -- how high a part really reaches: the highest of its corners (a part that's
 -- tilted, or turned on its side, reaches higher or lower than its middle
 -- plus half its height)
@@ -844,20 +895,8 @@ local function raiseBeacon(spire)
 	for i = 1, 10 do
 		beacon.runes[i] = block(V3(1.3, 1.3, 1.3), i % 2 == 0 and glowColor or RGB(255, 255, 255), Enum.Material.Neon)
 	end
+	settle(stepBeacon)
 end
-table.insert(steppers, function(now)
-	if not beacon then
-		return
-	end
-	local pulse = math.floor(now * 3) % 2 == 0
-	beacon.core.Transparency = pulse and 0.4 or 0.5
-	local turn = math.floor(now * 6) * (math.pi / 24)
-	for i, r in ipairs(beacon.runes) do
-		local a = turn + i / #beacon.runes * math.pi * 2
-		local bob = math.floor(math.sin(now * 2 + i) * 2 + 0.5) * 0.3
-		move(r, CFrame.new(beacon.runeAt + V3(math.cos(a) * 9, bob, math.sin(a) * 9)) * CFrame.Angles(0, -a, math.pi / 4))
-	end
-end)
 
 -- THE PATHS: cobblestones. The slab turns to dark mortar and rows of
 -- cobbles are laid on it, staggered like real paving, each a little
@@ -1268,11 +1307,16 @@ RunService.RenderStepped:Connect(function(dt)
 	if grade then
 		grade.Enabled = here
 	end
-	-- (Settings > Low graphics: no motes, and the moving detail holds still)
+	-- (Settings > Low graphics: no motes, the moving detail holds still where
+	-- it was put, and the flyers are put away)
 	local low = player:GetAttribute("LowGraphics") == true
 	local moteHome = (here and #motes > 0 and not low) and mine or nil
 	if moteFolder.Parent ~= moteHome then
 		moteFolder.Parent = moteHome
+	end
+	local flyersHome = (not low) and detail or nil
+	if flyers.Parent ~= flyersHome then
+		flyers.Parent = flyersHome
 	end
 	if low then
 		return
