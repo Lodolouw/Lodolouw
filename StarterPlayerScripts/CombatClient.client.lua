@@ -867,6 +867,52 @@ local function neverTrip(char)
 		return
 	end
 	allowTripping(hum, false)
+	-- Your character is driven by Roblox's physics controllers (a
+	-- ControllerManager): on the ground and in the air they only keep you
+	-- upright as hard as they're told - in the air not at all - so an
+	-- ability's hop, leap or shove could land you on your side. Both are told
+	-- to keep you upright, firmly.
+	local function steady(c)
+		if c:IsA("GroundController") or c:IsA("AirController") then
+			pcall(function()
+				c.BalanceRigidityEnabled = true
+				c.BalanceMaxTorque = 1e7
+				c.BalanceSpeed = math.max(c.BalanceSpeed, 100)
+			end)
+			if c:IsA("AirController") then
+				pcall(function()
+					c.MaintainAngularMomentum = false
+				end)
+			end
+		end
+	end
+	for _, d in ipairs(char:GetDescendants()) do
+		steady(d)
+	end
+	char.DescendantAdded:Connect(steady)
+	-- and the last word: tipped over more than ~25 degrees (alive, not riding
+	-- something), you're stood straight back up where you are
+	local hrp = char:WaitForChild("HumanoidRootPart", 10)
+	if hrp then
+		local guard
+		guard = RunService.Heartbeat:Connect(function()
+			if not hrp.Parent or not hum.Parent then
+				guard:Disconnect()
+				return
+			end
+			if hum.Health > 0 and not hum.Sit and hrp.CFrame.UpVector.Y < 0.9 then
+				local look = hrp.CFrame.LookVector
+				local flat = Vector3.new(look.X, 0, look.Z)
+				if flat.Magnitude < 0.05 then
+					local up = hrp.CFrame.UpVector
+					flat = Vector3.new(up.X, 0, up.Z) -- (face-down or on your back: face where your head was)
+				end
+				flat = flat.Magnitude > 0.05 and flat.Unit or Vector3.new(0, 0, -1)
+				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat)
+				hrp.AssemblyAngularVelocity = Vector3.zero
+			end
+		end)
+	end
 	hum.StateChanged:Connect(function(_, new)
 		if (new == Enum.HumanoidStateType.FallingDown or new == Enum.HumanoidStateType.Ragdoll)
 			and hum.Health > 0 then
