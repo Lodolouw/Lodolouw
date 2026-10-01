@@ -58,6 +58,8 @@ def weapons():
             for key, title, kind, rarity in re.findall(r"\(\s*'(\w+)',\s*'([^']+)',\s*'(\w+)',\s*'(\w+)',", text):
                 if kind in TILT and rarity in RARITY:
                     out.append((key, title, kind, rarity, name))
+    # the starter, not in a pack (its picture: out/tiles/IronSword.png, drawn by hand)
+    out.append(('IronSword', 'Iron Sword', 'Sword', 'Common', 'Starter'))
     return out
 
 
