@@ -1151,6 +1151,135 @@ ABILITIES['InkFists'] = ('Fists', shown(Poses('InkFistsAbility', [
 ], hit=0.37, marks=[('Hop', 0.0), ('Land', 0.35), ('Hit', 0.37)]),
     (0.07, 'SPRING'), (0.17, 'FISTS UP'), (0.29, 'COMING DOWN'), (0.35, 'LAND'), (0.37, 'SPLASH'), (0.50, 'SPLASH')))
 
+# DOODLE KATANA - Doodle Clone: a quick-draw stance - crouched, the right hand
+# on the hilt at the left hip, the blade still "sheathed" behind it, the
+# left hand on the sheath - and a low glide through the dash (0.1 to 0.35)
+# with it still sheathed; then the draw: one flash straight across to the
+# right (0.37, the cut, its edge leading), and he freezes low with the blade
+# flung out behind him and the free hand up - then back to the guard
+DRAW_U, DRAW_W = unit((0.0, 0.06, -1.0)), unit((1.0, 0.0, 0.10))  # (the cut: level, round to the right)
+
+
+def drawing(phi, delta, lean, legs, left, look=AHEAD, sheathed=False):
+    """the katana in the right hand phi degrees round a level cut to the right
+    (0: straight ahead, the cut; -150: still sheathed at the left hip), its
+    edge leading (or up, as it's worn, while `sheathed`) - the arm `delta`
+    degrees ahead of it round the cut and swinging a little below it (a
+    cocked wrist: the two never line up). One hand; both feet on the floor"""
+    def at(a):
+        a = math.radians(a)
+        return math.cos(a) * DRAW_U + math.sin(a) * DRAW_W
+    d = unit(at(phi + delta) + np.array([0.0, -0.45, 0.0]))
+    root = (lean, 0, 8 + 0.25 * phi)
+    return dict(key(root, level(root, legs), (d, at(phi), (0.0, 1.0, 0.0) if sheathed else at(phi + 90)), left,
+                    look=look), grip=0.0)
+
+
+GLIDE = ((-0.30, -1, -0.75), (0.32, -1, 0.70))  # (a long low glide)
+ABILITIES['DoodleKatana'] = ('Katana', shown(Poses('DoodleKatanaAbility', [
+    (0.00, dict(wt.K_IDLE, grip=0.0), 'linear'),
+    (0.08, drawing(-150, 62, 20, 'crouch', (0.25, -0.90, -0.25), sheathed=True), 'inout'),
+    (0.10, drawing(-152, 63, 24, GLIDE, (0.25, -0.90, -0.22), sheathed=True), 'inout'),
+    (0.33, drawing(-156, 64, 30, GLIDE, (0.28, -0.90, -0.20), sheathed=True), 'hold'),
+    (0.37, drawing(10, -4, 14, 'lunge', (-0.40, -0.85, 0.30)), 'in2'),
+    (0.45, drawing(118, -12, 10, 'deep', (-0.20, 0.10, -0.98)), 'out2'),
+    (0.52, drawing(126, -12, 14, 'deep', (-0.15, 0.25, -0.96), look=(0, -0.05, -1)), 'out'),
+    (0.68, drawing(128, -12, 15, 'deep', (-0.15, 0.27, -0.95), look=(0, -0.05, -1)), 'hold'),
+    (0.80, dict(wt.K_IDLE, grip=0.0), 'inout'),
+], two=(-0.75, -0.3), hit=0.37, marks=[('Doodle', 0.0), ('Dash', 0.1), ('Cut', 0.33), ('Stop', 0.35), ('Hit', 0.37),
+                                      ('Through', 0.45)]),
+    (0.08, 'QUICK DRAW'), (0.22, 'DASH'), (0.37, 'CUT'), (0.45, 'THROUGH'), (0.52, 'FREEZE'), (0.68, 'FREEZE')))
+
+# COPY-PASTE SCYTHE - Copy-Paste: "select" - the free hand points out to the
+# left, then flicks across to the right, the head following, as the scythe
+# comes up - then COPY (0.15): it's spun once right round overhead in one
+# hand, flat like a helicopter's blade (the ink copies appear either side of
+# him), brought down and planted upright beside him, chest out, chin up,
+# fist on the hip; and back to the stance
+
+
+def overhead(a, lean=-6, left=(-0.85, 0.15, -0.10), look=(0, 0.25, -1)):
+    """the scythe spun round flat over the head in the right hand, its pole
+    a degrees round to the left from pointing out to the right, the blade
+    leading; the arm leaning out after it"""
+    b = yawed((1.0, 0.0, 0.0), a)
+    root = (lean, 0, -6)
+    return key(root, 'wide', (unit(np.array([0.15, 1.0, 0.0]) + 0.28 * b), b, round_left(b)), left, look=look)
+
+
+def proud(lean, look):
+    """planted: the scythe stood upright out at his side, the free fist on his
+    hip, chest out"""
+    return key((lean, 0, -10), 'wide', held((0.50, -0.82, -0.20), (0.05, 1.0, -0.10), (0.0, -0.1, -1.0)),
+               (-0.50, -0.85, 0.18), look=look, lfwd=(0.25, -0.05, -1.0))
+
+
+ABILITIES['CopyPasteScythe'] = ('Scythe', shown(Poses('CopyPasteScytheAbility', [
+    (0.00, wt.S_IDLE, 'linear'),
+    (0.05, key((2, 0, 4), 'wide', held((0.50, -0.55, -0.67), (0.15, 0.97, -0.20), (0.0, -0.2, -1.0)), (-0.95, 0.20, -0.25),
+               look=(-0.75, 0.05, -0.65)), 'out'),
+    (0.10, key((0, 0, -16), 'wide', held((0.90, 0.30, -0.30), (0.20, 0.50, -0.85), (-1.0, 0.0, 0.0)), (0.72, 0.15, -0.68),
+               look=(0.70, 0.05, -0.70)), 'out'),
+    # (in and out of the spin the pole points ahead, square to the arm's
+    # swing, so the two never cross)
+    (0.15, overhead(90), 'inout'),
+    (0.2125, overhead(180), 'linear'),
+    (0.275, overhead(270), 'linear'),
+    (0.3375, overhead(360), 'linear'),
+    (0.40, overhead(450, look=AHEAD), 'linear'),
+    (0.44, key((-7, 0, -8), 'wide', held((0.95, 0.15, -0.25), (0.10, 0.70, -0.70), (-0.70, 0.0, -0.70)),
+               (-0.65, -0.55, 0.05), look=AHEAD), 'out'),
+    (0.50, proud(-8, (0, 0.25, -1)), 'out'),
+    (0.60, proud(-10, (0.05, 0.3, -1)), 'hold'),
+    (0.70, wt.S_IDLE, 'inout'),
+], hit=0.15, marks=[('Copy', 0.15)]),
+    (0.05, 'SELECT LEFT'), (0.10, 'SELECT RIGHT'), (0.15, 'COPY'), (0.2125, 'SPIN'), (0.3375, 'SPIN'), (0.50, 'PROUD')))
+
+# DELETE KEY - DELETE: he lags like a frozen computer - snapping from one
+# stuck pose to the next and holding each (a T-pose, a twisted frame, the
+# T-pose again, a crouch); then both daggers go up high, and come down
+# together, stabbing like pressing a giant key (0.72, DELETE), held hard
+# down on it, and he recovers
+F = 1 / 30  # (one frame: the glitches snap in one and hold on whole frames)
+
+
+def glitch(root, legs, right, b, left, look, hop=0.0):
+    """a stuck frame: the right dagger along b"""
+    b = unit(b)
+    e = np.cross(b, (1.0, 0.0, 0.0))
+    return key(root, legs, (unit(right), b, unit(e) if np.linalg.norm(e) > 0.2 else (0.0, 1.0, 0.0)), left, look=look,
+               hop=hop)
+
+
+T_POSE = glitch((0, 0, 0), 'square', (1.0, 0.0, -0.05), (0.0, 0.1, -1.0), (-1.0, 0.0, -0.05), (0.30, 0.12, -1))
+TWISTED = glitch((6, 12, 35), 'pivot', (0.30, 0.80, -0.50), (0.20, 0.30, -0.93), (-0.40, -0.70, 0.60), (-0.45, -0.30, -1))
+STUTTER = glitch((-5, -10, -8), 'square', (0.95, 0.25, -0.10), (0.0, 0.25, -1.0), (-0.95, -0.20, -0.10), (-0.20, 0.25, -1),
+                 hop=0.08)
+HUNCHED = glitch((30, 0, -10), 'crouch', (0.20, -0.50, -0.85), (0.0, -0.60, 0.80), (-0.20, -0.50, -0.85), DOWN)
+KEY_DOWN = level((35, 0, 0), ((-0.50, -1, -0.40), (0.50, -1, 0.35)))
+ABILITIES['DeleteKey'] = ('Daggers', shown(Poses('DeleteKeyAbility', [
+    (0.00, wt.D_IDLE, 'linear'),
+    (1 * F, T_POSE, 'linear'),
+    (4 * F, T_POSE, 'linear'),
+    (5 * F, TWISTED, 'linear'),
+    (8 * F, TWISTED, 'linear'),
+    (9 * F, STUTTER, 'linear'),
+    (11 * F, STUTTER, 'linear'),
+    (12 * F, HUNCHED, 'linear'),
+    (14 * F, HUNCHED, 'linear'),
+    # (the right dagger held point-down like an ice pick, and both strike down
+    # a little inwards, meeting on the key)
+    (0.58, glitch((-10, 0, -4), 'square', (0.30, 0.90, -0.30), (0.10, -0.30, -0.95), (-0.30, 0.90, -0.30), (0, 0.3, -1),
+                  hop=0.06), 'out'),
+    (0.66, glitch((-14, 0, -2), 'square', (0.25, 0.95, 0.10), (0.10, -0.40, -0.91), (-0.25, 0.95, 0.10), (0, 0.2, -1),
+                  hop=0.16), 'inout'),
+    (0.72, glitch((34, 0, 0), KEY_DOWN, (0.20, -0.85, -0.48), (-0.50, -0.85, -0.15), (-0.20, -0.85, -0.48), DOWN), 'in2'),
+    (0.80, glitch((37, 0, 0), KEY_DOWN, (0.20, -0.87, -0.45), (-0.50, -0.86, -0.12), (-0.20, -0.87, -0.45), DOWN), 'out'),
+    (0.95, glitch((36, 0, 0), KEY_DOWN, (0.20, -0.86, -0.47), (-0.50, -0.85, -0.14), (-0.20, -0.86, -0.47), DOWN), 'hold'),
+    (1.20, wt.D_IDLE, 'inout'),
+], hit=0.72, marks=[('Glitch', 0.0), ('Hit', 0.72)]),
+    (2 * F, 'LAG: T-POSE'), (6 * F, 'LAG'), (10 * F, 'LAG'), (13 * F, 'LAG'), (0.66, 'UP'), (0.72, 'DELETE')))
+
 
 # which pack each weapon is from (the preview shows a pack at a time)
 PACK = {
