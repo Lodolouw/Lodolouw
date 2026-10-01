@@ -3078,7 +3078,7 @@ do
 		{ "VineScythe", "Vine Scythe", "Scythe",
 			standIn("Vine Swing", "Epic", leaf, "a rope-swing leap forward into a sweeping arc") },
 		{ "BarrelDaggers", "Barrel Daggers", "Daggers",
-			standIn("Barrel Roll", "Legendary", bark, "roll a barrel forward that bowls through enemies") },
+			standIn("Barrel Roll", "Legendary", bark, "curl up inside a barrel and roll right through them - it bursts apart at the end") },
 		{ "BarrelHammer", "Barrel Hammer", "Hammer",
 			standIn("Barrel Toss", "Mythic", bark, "rolls barrels (mastery: bigger, two barrels, exploding, a giant golden barrel)") },
 		{ "KongsCrown", "Kong's Crown", "Sword",

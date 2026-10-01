@@ -198,10 +198,12 @@ Moves.VineScythe = { -- Vine Swing: swing forward on a vine into a sweeping arc
 		{ At = 0.62, Hit = { Shape = "Arc", Radius = 11, Arc = 80, Damage = 1.8, Weight = 3 }, Fx = "Sweep", Shake = 0.8 },
 	},
 }
-Moves.BarrelDaggers = { -- Barrel Roll: roll a barrel forward that bowls through them
-	Time = 0.7, Style = "Wood",
+Moves.BarrelDaggers = { -- Barrel Roll: curl up inside a barrel and roll right through them - it bursts apart at the end
+	Time = 0.8, Style = "Wood",
 	Steps = {
-		{ At = 0.3, Shot = { Count = 1, Speed = 26, Range = 22, Radius = 3.5, Damage = 2.1, Pierce = true, Look = "Barrel" }, Fx = "Bowl" },
+		{ At = 0, Mark = "Start", Fx = "Barrel" },
+		{ At = 0.06, Move = { Kind = "Dash", Distance = 16, Time = 0.46, ToTarget = true, StopShort = 1 } },
+		{ At = 0.52, Hit = { Shape = "Line", From = "Start", Width = 6, Damage = 2.1, Weight = 3 }, Fx = "Burst", Shake = 0.9 },
 	},
 }
 Moves.BarrelHammer = { -- Barrel Toss: bat two barrels forward; they roll and blow up
