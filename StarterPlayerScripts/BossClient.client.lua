@@ -459,6 +459,23 @@ local function playSound(def, key, at, volume)
 		s.PlaybackSpeed = (s.PlaybackSpeed or 1) * (0.92 + math.random() * 0.16)
 	end
 	s.Looped = false
+	-- made to fit its moment (Config.Bosses[n].SoundLength): a longer sound is
+	-- faded out and stopped at that many seconds, a shorter one loops until then
+	local fit = def.SoundLength and tonumber(def.SoundLength[key])
+	if fit then
+		s.Looped = true
+		local fade = math.min(0.15, fit / 4)
+		task.delay(math.max(0, fit - fade), function()
+			if s.Parent then
+				TweenService:Create(s, TweenInfo.new(fade), { Volume = 0 }):Play()
+			end
+		end)
+		task.delay(fit, function()
+			if s.Parent then
+				s:Stop()
+			end
+		end)
+	end
 	s.Parent = game:GetService("SoundService")
 	s:Play()
 	if key == "Splat" or key == "Spit" then
@@ -469,7 +486,7 @@ local function playSound(def, key, at, volume)
 			end
 		end)
 	end
-	task.delay(math.max(tonumber(s.TimeLength) or 0, 1) + 2, function()
+	task.delay(math.max(tonumber(s.TimeLength) or 0, fit or 0, 1) + 2, function()
 		s:Destroy()
 	end)
 end

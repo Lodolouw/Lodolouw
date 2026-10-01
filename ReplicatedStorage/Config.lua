@@ -1920,6 +1920,26 @@ Config.Bosses = {
 			Go = "Start Go", -- GO!
 			Finish = "Checkered Flag", -- FINISH!
 		},
+		-- how long each sound plays, seconds (to fit its moment): a longer one is
+		-- faded out there, a shorter one loops until then. Leave a sound out to
+		-- play it as it is (the backfire's BANG and TURBO! shouldn't repeat).
+		SoundLength = {
+			Wake = 1.2, -- "Ka-VROOM!" just before GO!
+			Rev = 0.9, -- in a move's warning
+			Charge = 1.4, -- down the lane and past you
+			Skid = 1.2,
+			Whip = 0.6,
+			Crash = 1.0,
+			Slam = 0.7,
+			Honk = 0.7,
+			Bump = 0.45,
+			Donut = 2.2, -- the whole donut spin
+			Fire = 1.5,
+			Death = 2.0,
+			Beep = 0.35, -- each start light (about a second apart)
+			Finish = 2.2, -- while FINISH! is up
+			Cheer = 3.0,
+		},
 	},
 
 	[6] = {
