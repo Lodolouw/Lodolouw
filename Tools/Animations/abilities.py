@@ -648,6 +648,312 @@ ABILITIES['VictoryLap'] = ('Daggers', shown(Poses('VictoryLapAbility', [
     (0.50, 'OFF')))
 
 
+# ======================================================================
+# MORE KEY-POSE HELPERS (the Jungle and Canvas packs)
+# ======================================================================
+def leads(b, travel):
+    """a hammer's head or a scythe's blade (their +X) leading the way the
+    weapon travels: the e (front) to hold it by, along b"""
+    return unit(np.cross(-unit(b), unit(travel)))
+
+
+def reach(root, at, side=1):
+    """an arm (the right: side 1, the left: -1) pointed from its shoulder at
+    `at` - studs from the middle of the chest, in the chest's own space (x
+    right, y up, -z forward) - as a direction in the character's space. A
+    straight R6 arm's hand ends up 1.58 studs out along it"""
+    return tuple(chest_rot(root) @ unit(np.asarray(at, float) - (side * 1.0, 0.5, 0.0)))
+
+
+def aloft(p, rise=0.0):
+    """a pose up in the air (a leap or a hop the game carries you through):
+    its hop set so the chest stays where it is when standing (+ rise) however
+    the legs tuck - left alone, the body would drop till a foot touched the
+    floor"""
+    p = dict(p)
+    p['hop'] = rise - anims.dir_transforms(dict(p, hop=0.0))['RootJoint'][2, 3]
+    return p
+
+
+# HEAD OVER HEELS. anims.dir_transforms keeps the head upright in the world
+# (just right for everything else - upside down it would wring the neck right
+# round) and puts the feet on the floor. A pose rolled head over heels
+# (tumbled) carries its head's turn on the neck from before the roll ('neck'),
+# and the lowest part of the whole body goes on the floor (+ hop) instead of
+# the lowest foot. Every other pose comes out exactly as before.
+_plain_transforms = anims.dir_transforms
+BODY = {'Torso': (2, 2, 1), 'Head': (1.25, 1.2, 1.2), 'Right Arm': (1, 2, 1), 'Left Arm': (1, 2, 1),
+        'Right Leg': (1, 2, 1), 'Left Leg': (1, 2, 1)}
+
+
+def body_low(world):
+    """the lowest corner of any part of the body"""
+    return min((world[n] @ np.array([sx * s[0] / 2, sy * s[1] / 2, sz * s[2] / 2, 1.0]))[1]
+               for n, s in BODY.items() for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1))
+
+
+def tumbling_transforms(p):
+    tr = _plain_transforms(p)
+    if 'neck' in p:
+        import r6
+        tr['Neck'] = p['neck']
+        tr['RootJoint'] = r6.cf(0, 0, p.get('hop', 0.0) - body_low(r6.solve(tr))) @ tr['RootJoint']
+    return tr
+
+
+anims.dir_transforms = tumbling_transforms
+
+
+def tumbled(p, roll):
+    """a direction pose with the whole body rolled forward head over heels by
+    `roll` degrees round the left-right axis through the chest (360: a
+    somersault), rigidly - arms, weapons, legs and head all go round with it"""
+    c, s = math.cos(math.radians(roll)), math.sin(math.radians(roll))
+    rot = np.array([[1, 0, 0], [0, c, s], [0, -s, c]])  # (forward: the head goes over towards -z)
+    q = dict(p)
+    q['arm'] = tuple(rot @ np.asarray(v, float) for v in p['arm'])
+    for k in ('larm', 'lfwd', 'look'):
+        if k in q:
+            q[k] = rot @ np.asarray(q[k], float)
+    lean, tilt, turn = p['root']
+    q['root'] = (lean + roll, tilt, turn)  # (the chest: rolled round the same axis, so it's simply leaned further)
+    q['neck'] = _plain_transforms(p)['Neck']
+    return q
+
+
+class Tumble(Poses):
+    """key poses (Poses) that can roll head over heels: a key's `roll` turns
+    the whole body forward round the left-right axis (360 is a somersault),
+    the lowest part of it on the floor - give every key one"""
+
+    def at(self, t):
+        p = Poses.at(self, t)
+        return tumbled(p, p.pop('roll', 0.0))
+
+
+# ======================================================================
+# JUNGLE
+# ======================================================================
+# CHEST POUND FISTS - Roar: planted wide, rearing up, the chest pounded like a
+# gorilla's - left, right, left (0.05, 0.16, 0.27: MoveFX's pulses of air),
+# the other fist cocked out wide each time - then a crouch and both arms
+# thrown out wide, chest out and head back: ROAR (0.4); held, shaking with
+# it, then back to the guard
+APE = ((-0.52, -1, -0.12), (0.52, -1, 0.16))  # (planted wide)
+
+
+def pound(root, hit, look=(0, 0.3, -1), hop=0.0):
+    """rearing up, pounding the chest: the `hit` fist ('L' or 'R') swung in
+    against the middle of it, the other one cocked out wide"""
+    on, off = (0.05, 0.30, -1.25), (2.25, 1.15, -0.45)
+    right = reach(root, on) if hit == 'R' else reach(root, off)
+    left = reach(root, on, -1) if hit == 'L' else reach(root, (-off[0], off[1], off[2]), -1)
+    return gauntlets(root, APE, right, left, look=look, hop=hop)
+
+
+ROAR = ((-0.62, -1, -0.10), (0.62, -1, 0.14))  # (wider, sunk into it)
+
+
+def roar(lean, spread, look=(0, 0.9, -0.42), legs=ROAR, hop=0.0):
+    """both arms thrown out wide and a little back, the chest out and the head
+    thrown back"""
+    root = (lean, 0, -4)
+    return gauntlets(root, legs, (0.85, spread, 0.06), (-0.85, spread, 0.06), look=look, hop=hop)
+
+
+ABILITIES['ChestPoundFists'] = ('Fists', shown(Poses('ChestPoundFistsAbility', [
+    (0.00, wt.F_IDLE, 'linear'),
+    (0.025, gauntlets((-4, 0, -12), 'square', reach((-4, 0, -12), (1.9, 1.0, -0.6)), reach((-4, 0, -12), (-0.4, 0.5, -1.4), -1),
+                      look=(0, 0.2, -1), hop=0.1), 'out'),
+    (0.05, pound((-10, 0, -10), 'L'), 'in2'),
+    (0.16, pound((-11, 0, 4), 'R'), 'in2'),
+    (0.27, pound((-12, 0, -10), 'L'), 'in2'),
+    (0.33, gauntlets((16, 0, -4), APE, (-0.35, -0.62, -0.70), (0.35, -0.62, -0.70), look=(0, -0.3, -1)), 'out'),
+    (0.40, roar(-16, 0.55), 'snap'),
+    (0.47, roar(-18, 0.62, look=(0.06, 0.92, -0.40)), 'inout'),
+    (0.54, roar(-15, 0.52, look=(-0.06, 0.88, -0.45)), 'inout'),
+    (0.60, roar(-16, 0.58), 'inout'),
+    (0.80, wt.F_IDLE, 'inout'),
+], hit=0.4, marks=[('Pound', 0.05), ('Pound', 0.16), ('Pound', 0.27), ('Roar', 0.4)]),
+    (0.05, 'POUND L'), (0.16, 'POUND R'), (0.27, 'POUND L'), (0.33, 'GATHER'), (0.40, 'ROAR'), (0.54, 'ROARING')))
+
+
+# JUNGLE FANG - Fang: down into a predator's crouch, low and coiled, the
+# blade drawn up and standing beside the face like a great fang (0.1, the
+# red fang flash), the free arm hanging like an ape's; a snarl - the head
+# juts, the fang leans in and the free hand claws - and back to the guard
+def fang(lean, b, left, look=(0, 0.2, -1), at=(0.45, 1.35, -0.82), e=None, legs=None, hop=0.0):
+    """crouched low, the katana upright in the right hand by the cheek, its
+    edge to the enemy (one hand: grip 0)"""
+    root = (lean, 0, -12)
+    b = unit(b)
+    legs = legs or level(root, ((-0.55, -1, -0.70), (0.45, -0.8, 0.85)))  # (low, coiled to spring)
+    e = np.cross(b, (1.0, 0.0, 0.0)) if e is None else e
+    return dict(key(root, legs, hands(root, at, b, e), left, look=look, hop=hop), grip=0.0)
+
+
+ABILITIES['JungleFang'] = ('Katana', shown(Poses('JungleFangAbility', [
+    (0.00, dict(wt.K_IDLE, grip=0.0), 'linear'),
+    # (on the way up the edge turns out to the right, so it rolls round to
+    # the front without a flip)
+    (0.05, fang(24, (-0.03, 0.75, -0.66), (-0.10, -0.80, -0.55), look=(0, 0.1, -1), at=(0.40, 1.0, -0.95),
+                e=(1.0, 0.0, 0.0), legs='crouch', hop=0.12), 'out'),
+    (0.10, fang(40, (-0.06, 1.0, -0.20), (0.12, -0.85, -0.50)), 'out'),
+    (0.18, fang(43, (-0.06, 1.0, -0.17), (0.12, -0.88, -0.45)), 'hold'),
+    (0.24, fang(50, (-0.10, 1.0, -0.55), (0.10, -0.50, -0.86), look=(0, 0.1, -1), at=(0.40, 1.30, -0.95)), 'snap'),
+    (0.30, fang(45, (-0.07, 1.0, -0.28), (0.12, -0.78, -0.62)), 'out'),
+    (0.36, fang(44, (-0.07, 1.0, -0.26), (0.12, -0.80, -0.58)), 'hold'),
+    (0.43, fang(22, (-0.03, 0.75, -0.66), (-0.15, -0.80, -0.50), look=(0, 0.05, -1), at=(0.40, 0.95, -0.95),
+                e=(1.0, 0.0, 0.0), legs='crouch', hop=0.1), 'inout'),
+    (0.50, dict(wt.K_IDLE, grip=0.0), 'out'),
+], two=(-0.75, -0.3), hit=0.1, marks=[('Fang', 0.1)]),
+    (0.0, 'STANCE'), (0.10, 'FANG'), (0.18, 'COILED'), (0.24, 'SNARL'), (0.36, 'HOLD'), (0.43, 'BACK')))
+
+# VINE SCYTHE - Vine Swing: the free hand shoots up and grabs the vine, and
+# he swings forward on it through the leap (0.04 to 0.59) like Tarzan -
+# hanging behind it at first, the knees tucking under, then the legs
+# swinging up ahead - the scythe over his shoulder; he lets go, the scythe
+# wound back, and lands wide as it sweeps round in front, low and flat
+# (0.62), and on round behind him to the left; then up it comes to his side
+VINE_LEAP = (0.04, 0.55)  # (Moves: the leap's At and Time)
+
+
+def vine(t):
+    """the free arm reaching for the vine's top (MoveFX: 16 studs up and 6
+    ahead of where he jumped from) as the leap - 6 studs high in its middle -
+    carries him under it and past"""
+    u = min(1.0, max(0.0, (t - VINE_LEAP[0]) / VINE_LEAP[1]))
+    return unit((1.0, 15.5 - 24 * (u - u * u), -(6 - 12 * u)))
+
+
+def swinging(t, lean, legs, arm, rise=0.3, turn=-12, look=AHEAD):
+    """hanging from the vine in the air (one hand on the scythe)"""
+    return dict(aloft(key((lean, 0, turn), legs, arm, vine(t), look=look, yaw=0.0), rise), grip=0.0)
+
+
+def held(d, b, v):
+    """one hand on a scythe: the arm along d, the pole along b, its blade (+X)
+    out towards v"""
+    b = unit(b)
+    return (unit(d), b, unit(np.cross(v, b)))
+
+
+def round_left(b):
+    """a scythe along b sweeping round to the left (anticlockwise from above),
+    its blade leading: the front to hold it by"""
+    return leads(b, np.cross((0.0, 1.0, 0.0), b))
+
+
+def yawed(v, a):
+    """a direction turned round the vertical by a degrees (+: to the left)"""
+    c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]]) @ unit(v)
+
+
+def swept(phi, lean, legs=None, b0=(0.0, -0.22, -0.97), look=DOWN, grip=1.0, left=None, rise=None,
+          at=(0.05, -0.40, -0.80)):
+    """the scythe phi degrees round a low flat sweep to the left (0: straight
+    ahead, the hit; - before it, + after), its blade leading, held in front
+    of the belly (where two straight arms can meet) - the whole body turning
+    a good third of it, the chest a third, the arms the rest. One-handed if `left`
+    (the free arm) is given; `rise`: in the air"""
+    yaw, root = 0.38 * phi, (lean, 0, 4 + 0.34 * phi)
+    b = yawed(b0, phi - yaw)
+    arm = hands(root, at, b, round_left(b))
+    if rise is None:
+        p = key(root, level(root, legs or LANDED), arm, left, look=look, yaw=yaw)
+    else:
+        p = aloft(key(root, legs, arm, left, look=look, yaw=yaw), rise)
+    return dict(p, grip=grip)
+
+
+SHOULDER = held((0.32, -0.88, 0.30), (0.15, 0.70, 0.70), (0.0, 0.7, -0.7))  # (the scythe over the right shoulder)
+LANDED = ((-0.55, -1, -0.45), (0.55, -1, 0.35))
+VINE_GRAB = two_hand(swept(0, 24), (-0.9, -0.3))  # (how the free hand will hold the pole at the hit)
+
+
+def to_grab(left):
+    """the free arm along `left`, its twist already the grab's (carried back
+    along the swing), so it reaches the pole without rolling over"""
+    return dict(larm=unit(left), lfwd=carry(VINE_GRAB['larm'], VINE_GRAB['lfwd'], left))
+ABILITIES['VineScythe'] = ('Scythe', shown(Poses('VineScytheAbility', [
+    (0.00, dict(wt.S_IDLE, grip=0.0, yaw=0.0), 'linear'),
+    (0.06, swinging(0.06, 22, ((-0.10, -1, 0.50), (0.14, -1, 0.62)), SHOULDER, rise=0.12, look=(0, 0.45, -1)), 'out'),
+    (0.18, swinging(0.18, 9, ((-0.16, -1, 0.05), (0.16, -1, 0.15)), SHOULDER, look=(0, 0.2, -1)), 'inout'),
+    (0.31, swinging(0.31, -8, ((-0.24, -0.60, -0.78), (0.24, -0.64, -0.72)), SHOULDER), 'inout'),
+    (0.42, swinging(0.42, -28, ((-0.24, -0.18, -0.96), (0.24, -0.22, -0.95)),
+                    held((0.50, -0.82, 0.25), (0.70, -0.10, 0.70), (0.4, 0.5, -0.75)), turn=-28), 'inout'),
+    # (let go: the scythe wound right back, the free arm flung forward, then
+    # down for balance as he drops - it takes the pole as it comes round in
+    # front: while the pole points off to the right, a hand on it would have
+    # the arm lying along it)
+    (0.48, dict(swept(-125, -4, ((-0.30, -1, -0.40), (0.30, -1, -0.15)), look=AHEAD, grip=0.0, left=(-0.35, 0.45, -0.82),
+                      rise=0.3), **to_grab((-0.35, 0.45, -0.82))), 'inout'),
+    (0.55, dict(swept(-95, 6, ((-0.40, -1, -0.45), (0.40, -1, 0.10)), look=AHEAD, grip=0.0, left=(0.10, -0.45, -0.89),
+                      rise=0.12), **to_grab((0.10, -0.45, -0.89))), 'inout'),
+    (0.59, dict(swept(-42, 16, left=VINE_GRAB['larm']), grip=0.0, lfwd=VINE_GRAB['lfwd']), 'inout'),
+    (0.62, swept(0, 24), 'linear'),
+    (0.67, swept(62, 22), 'out'),
+    (0.72, swept(118, 20), 'out2'),
+    (0.80, swept(130, 16, look=AHEAD), 'out'),
+    # (up it comes, across the chest in one hand, turning back to the front)
+    (0.90, dict(key((6, 0, 8), 'wide', held((0.22, -0.62, -0.75), (-0.55, 0.78, -0.28), (-0.2, -0.1, -1.0)),
+                    (-0.30, -0.95, -0.05), lfwd=(0.3, 0.0, -1.0), yaw=12.0), grip=0.0), 'inout'),
+    (1.00, dict(wt.S_IDLE, grip=0.0, yaw=0.0), 'inout'),
+], two=(-0.9, -0.3), hit=0.62, marks=[('Vine', 0.0), ('Leap', 0.04), ('Land', 0.59), ('Cut', 0.59), ('Hit', 0.62),
+                                    ('Through', 0.72)]),
+    (0.06, 'GRAB THE VINE'), (0.18, 'SWING'), (0.31, 'UNDER IT'), (0.42, 'LEGS UP'), (0.48, 'LET GO'), (0.62, 'SWEEP')))
+
+# BARREL DAGGERS - Barrel Roll: curled up tight in a ball as if inside a
+# barrel - knees up, arms hugging them, the daggers tucked in, chin down -
+# and rolling forward head over heels through the dash (0.06 to 0.52), two
+# full turns; then bursting out of it (0.52, the barrel bursts): arms and
+# daggers flung wide in an X, a little pop up, and down into the stance
+
+
+def chest_pose(root, legs, arm, larm, look, lfwd=None, hop=0.0):
+    """a pose given in the chest's own frame (x right, y up along it, -z out
+    of its front) - legs, arm (d, b, e), the free arm and the look - so it
+    can roll round with the chest as one piece"""
+    rot = chest_rot(root)
+    p = pose(root, tuple(tuple(unit(v)) for v in legs), tuple(rot @ unit(v) for v in arm), rot @ unit(larm),
+             look=rot @ unit(look), hop=hop, lfwd=None if lfwd is None else rot @ unit(lfwd))
+    return p
+
+
+BALL = chest_pose((30, 0, 0), ((-0.28, 0.80, -0.53), (0.28, 0.80, -0.53)),  # (the knees up against the chest,
+                  ((-0.90, -0.10, -0.42), (-1.0, 0.05, 0.10), (0.0, 1.0, -0.5)),  # the arms crossed tight round
+                  (0.90, -0.10, -0.42), (0, -0.45, -0.89), lfwd=(0.0, 1.0, -0.2))  # the shins, the daggers out along
+#                                                                          the roll's axis, the chin tucked in)
+OPENING = chest_pose((8, 0, 0), ((-0.35, -0.75, -0.55), (0.35, -0.75, -0.55)),  # (bursting open: the legs
+                     ((0.85, 0.25, -0.45), (0.35, 0.80, -0.48), (0.0, 0.52, 0.85)),   # coming down, the arms
+                     (-0.85, 0.25, -0.45), (0, 0.1, -1), lfwd=(0.0, 0.52, 0.85))       # flinging out)
+BURST = level((-10, 0, 0), ((-0.62, -1, -0.10), (0.62, -1, 0.10)))  # (legs flung out: an X)
+
+
+def burst(lean, spread, hop=0.0):
+    """burst out of the barrel: arms and daggers flung up wide (the daggers
+    pointing up off the fists), legs wide - an X"""
+    right = unit((0.62, spread, -0.30))
+    return key((lean, 0, 0), BURST, (right, unit((0.25, 0.95, 0.15)), (1.0, -0.25, 0.0)), (-right[0], right[1], right[2]),
+               look=(0, 0.35, -1), lfwd=(0.0, 0.5, 0.86), hop=hop)
+
+
+ABILITIES['BarrelDaggers'] = ('Daggers', shown(Tumble('BarrelDaggersAbility', [
+    (0.00, dict(wt.D_IDLE, roll=0.0), 'linear'),
+    (0.06, dict(BALL, roll=0.0), 'out'),
+    (0.12, dict(BALL, roll=60.0), 'in'),
+    (0.40, dict(BALL, roll=570.0), 'linear'),
+    (0.47, dict(OPENING, roll=680.0), 'linear'),
+    (0.52, dict(burst(-10, 0.72), roll=720.0), 'out'),
+    (0.58, dict(burst(-12, 0.76, hop=0.3), roll=720.0), 'out'),
+    (0.66, dict(key((24, 0, -6), 'crouch', wt.D_IDLE['arm'], (-0.15, -0.70, -0.95), look=AHEAD, lfwd=(0, 1, 0)),
+                roll=720.0), 'in'),
+    (0.80, dict(wt.D_IDLE, roll=720.0), 'inout'),
+], hit=0.52, marks=[('Barrel', 0.0), ('Dash', 0.06), ('Hit', 0.52)]),
+    (0.06, 'CURL UP'), (0.16, 'ROLL'), (0.26, 'ROLL'), (0.36, 'ROLL'), (0.52, 'BURST'), (0.58, 'POP')))
+
+
 # which pack each weapon is from (the preview shows a pack at a time)
 PACK = {
     'GooGloves': 'slime', 'Jellyblade': 'slime', 'GelatinHammer': 'slime',
@@ -656,6 +962,10 @@ PACK = {
     'HonourBlade': 'knight', 'AnchorFists': 'knight', 'NoQuarter': 'knight',
     'TyreScythe': 'speedway', 'NitroKatana': 'speedway', 'PistonPunchers': 'speedway',
     'PitStopSabre': 'speedway', 'WheelieWrecker': 'speedway', 'VictoryLap': 'speedway',
+    'ChestPoundFists': 'jungle', 'JungleFang': 'jungle', 'VineScythe': 'jungle',
+    'BarrelDaggers': 'jungle', 'BarrelHammer': 'jungle', 'KongsCrown': 'jungle',
+    'EraserHammer': 'canvas', 'PencilSword': 'canvas', 'InkFists': 'canvas',
+    'DoodleKatana': 'canvas', 'CopyPasteScythe': 'canvas', 'DeleteKey': 'canvas',
 }
 
 
