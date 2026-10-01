@@ -340,6 +340,79 @@ do
 	step(0.2)
 end
 
+-- gauntlets punch with your own punch animations (no cut to time them by):
+-- each punch opens a window, and the fist that flies forward in it gets its
+-- smear and throws the pack's stuff (Ink Fists: ink) - not the other fist,
+-- not a fist pulled back, not when there's no punch; someone else's punch
+-- (their SwingN changing) the same; and a hit splashes ink
+do
+	local key = "InkFists"
+	local src = fakeModel(key)
+	src.Parent = folder
+	me:SetAttribute("Weapon", key)
+	step(0.3)
+	local h = WeaponFX._held[me]
+	check(h ~= nil and h.punch and h.fists ~= nil and #h.fists == 2, "gauntlets: both fists ready to punch")
+	if h and h.fists and #h.fists == 2 then
+		local right, left = h.fists[1], h.fists[2]
+		local hrp = char.HumanoidRootPart
+		local function lit(f)
+			for _, tr in ipairs(f.trails) do
+				if tr.Enabled then
+					return true
+				end
+			end
+			return false
+		end
+		local function thrown()
+			local n = 0
+			local goo = M.workspace:FindFirstChild("SwingGoo")
+			for _, d in ipairs(goo and goo:GetChildren() or {}) do
+				if d.Name == "Ink" or d.Name == "Paper" or d.Name == "Splat" then
+					n += 1
+				end
+			end
+			return n
+		end
+		-- (a fist moved `dz` studs a frame along your facing, for n frames)
+		local function frames(f, n, dz)
+			for _ = 1, n do
+				f.handle.CFrame = f.handle.CFrame + hrp.CFrame.LookVector * dz
+				step(1 / 60)
+			end
+		end
+		local rest = right.handle.CFrame
+		frames(right, 6, 0.4)
+		check(not lit(right) and thrown() == 0, "gauntlets: a fist moving with no punch throws nothing")
+		right.handle.CFrame = rest
+		step(0.2)
+		WeaponFX.punched(me, 1)
+		frames(right, 2, 0)
+		frames(right, 6, 0.4)
+		check(lit(right) and not lit(left), "gauntlets: the punching fist's smear shows, and only its")
+		check(thrown() > 0, "gauntlets: the punch throws the pack's stuff (" .. thrown() .. ")")
+		frames(right, 5, -0.4)
+		check(not lit(right), "gauntlets: pulling the fist back isn't a punch")
+		step(0.6)
+		check(not lit(right) and not lit(left), "gauntlets: the window closes after the punch")
+		-- someone else's punch: their SwingN changes
+		step(3)
+		me:SetAttribute("SwingN", "99:2")
+		frames(left, 2, 0)
+		frames(left, 6, 0.4)
+		check(lit(left) and not lit(right), "gauntlets: a punch seen through SwingN lights the fist that flies (the left)")
+		step(3)
+		-- a hit: ink splashes off what you hit
+		local before = thrown()
+		WeaponFX.punchMark(hrp.Position + hrp.CFrame.LookVector * 4, false, false, mount.require(mount.module("ReplicatedStorage/Config.lua")).Weapons.List[key])
+		check(thrown() > before, "gauntlets: a hit splashes ink off what you hit")
+		step(3)
+	end
+	src:Destroy()
+	me:SetAttribute("Weapon", nil)
+	step(0.2)
+end
+
 -- its model arriving late: the blocky one first, then the real one
 do
 	local key = "GelatinHammer"

@@ -1081,6 +1081,9 @@ local function tryPunch()
 		local recovery = CB.Recovery[comboSwing] or 1
 		playPunch(comboSwing, recovery)
 		commitToPunch(now, recovery)
+		if swingDef then
+			Weapon.fx.punched(player, comboSwing) -- (gauntlets: the pack's effects off the punching fist)
+		end
 	end
 	punchStep(hrp, comboSwing)
 end
@@ -2027,6 +2030,9 @@ do
 			local _, hrp = charParts()
 			local dir = hrp and typeof(at) == "Vector3" and (at - hrp.Position) or nil
 			Weapon.fx.slashMark(at, dir, heavy, Weapon.fx.isGolden(player), Weapon.current())
+		else
+			-- (but the rarer ones splash their pack's stuff off what you hit)
+			Weapon.fx.punchMark(at, heavy, Weapon.fx.isGolden(player), Weapon.current())
 		end
 		if heavy and kind.ImpactFrames ~= false then
 			impactAt = os.clock()

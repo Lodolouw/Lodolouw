@@ -1862,8 +1862,8 @@ WeaponFX.dressTrails = dressTrails
 -- it starts (Legendary and up), and when it ends the Secret's wave (jelly, a
 -- crack of gold, a chequered flag, a vine, a glitch) and the boss's eyes along
 -- the arc it drew
-local function swingFx(h, on, starting)
-	local fx = h.trails and h.trails.fx
+local function swingFx(h, on, starting, fxOf)
+	local fx = fxOf or (h.trails and h.trails.fx)
 	if not (fx and fx.fling and fx.part and fx.part.Parent) then
 		return
 	end
@@ -2025,6 +2025,38 @@ function WeaponFX.slashMark(position, direction, heavy, golden, def)
 	task.delay(0.8, function()
 		holder:Destroy()
 	end)
+end
+
+-- a gauntlet's hit: it lands like your punches (no blade marks), but from
+-- Epic up the pack's stuff splashes off what you hit (ink, sparks, iron...),
+-- Legendary and up with the theme's hit sound, Mythic and up rings of colour
+function WeaponFX.punchMark(position, heavy, golden, def)
+	local tier = RARITY_TIER[def and def.Rarity or ""] or 1
+	if typeof(position) ~= "Vector3" or tier < 3 then
+		return
+	end
+	local info = def and def.Model and INFO[def.Model]
+	local theme = themeFor(def, golden and GOLD or (info and rgb(info.Glow, GLOW)) or GLOW, golden)
+	if tier >= 4 and theme.hitSound then
+		soundAt(theme.hitSound, position, 0.95 + math.random() * 0.1, heavy and 1 or 0.8)
+	end
+	local fling = FLING[math.min(tier, 6)]
+	for _ = 1, (heavy and 8 or 4) + tier do
+		flingGoo(theme, position, Vector3.new(math.random() * 18 - 9, 7 + math.random() * 9, math.random() * 18 - 9),
+			fling.size * (0.6 + math.random() * 0.5), position.Y - 3)
+	end
+	if tier >= 5 then
+		local cam = workspace.CurrentCamera
+		local look = cam and cam.CFrame and (position - cam.CFrame.Position) or Vector3.new(0, 0, -1)
+		for k = 0, 1 do
+			local ring = fxPart("HitRing", Vector3.new(0.12, 1, 1), CFrame.lookAt(position, position + look) * CFrame.Angles(0, math.rad(90), 0),
+				k == 0 and theme.light or theme.main, 0.2, true, Enum.PartType.Cylinder)
+			local grow = (heavy and 7 or 5) * (1 + k * 0.15)
+			task.delay(k * 0.03, function()
+				fadeAway(ring, 0.3, { Size = Vector3.new(0.05, grow, grow) })
+			end)
+		end
+	end
 end
 
 -- the finisher hitting the floor: a flat ring bursting out and dust
@@ -2425,6 +2457,7 @@ local function hold(plr, char, id, def, tracks)
 		return m, hd, tr, bl
 	end
 	local model, handle, trails, blade = build()
+	local rightTrails = table.clone(trails)
 	local waiting = def.Model ~= nil and INFO[def.Model] ~= nil and voxelSource(def.Model) == nil
 	-- the weapon type's baked animations, if it has them (and no uploaded ones)
 	local kind = W.Types[def.Type]
@@ -2436,8 +2469,13 @@ local function hold(plr, char, id, def, tracks)
 	-- hand; the string's poses swing the left arm for its blows
 	local off = (clips and clips.offhand) or WeaponFX.OFFHAND[def.Type]
 	local leftArm = char:FindFirstChild("Left Arm")
+	-- (gauntlets: each fist's own trails and what it throws, for the punches)
+	local fists = punch and { { trails = rightTrails, fx = rightTrails.fx, handle = handle } } or nil
 	if off and leftArm and BUILDERS[def.Type] then
 		local offModel, offHandle, offTrails = build()
+		if fists then
+			table.insert(fists, { trails = offTrails, fx = offTrails.fx, handle = offHandle })
+		end
 		offHandle.CFrame = leftArm.CFrame * gripAt(off[1], off[2])
 		local w = Instance.new("Weld")
 		w.Name = "OffGrip"
@@ -2511,6 +2549,7 @@ local function hold(plr, char, id, def, tracks)
 		animIds = animsOf(def),
 		clips = clips,
 		punch = punch,
+		fists = fists,
 		tracks = tracks or (plr == Players.LocalPlayer and loadTracks(char, def) or nil),
 		seen = setmetatable({}, { __mode = "k" }), -- the animation tracks we've whooshed for
 	}
@@ -2924,6 +2963,83 @@ local function stepClips(plr, h, dt)
 	end
 end
 
+-- GAUNTLETS punch with your own punch animations, so there's no cut to time
+-- their effects by: each punch (yours the moment you press - WeaponFX.punched
+-- - everyone's when their SwingN changes) opens a window as long as the
+-- punch, and in it whichever fist is flying forward, fast, against your body
+-- is "cutting": its smear shows and it throws the pack's stuff off its
+-- knuckles, like a blade's cut (one fist or both, whatever the animation does)
+local PUNCH_FAST, PUNCH_SLOW, PUNCH_LONGEST = 10, 6, 0.3 -- studs a second to start, to keep going; seconds at most
+local function punchWindow(h, n)
+	local kind = h.def and W.Types[h.def.Type]
+	local s = kind and kind.Swings and kind.Swings[n or 1]
+	h.punchUntil = os.clock() + (s and s.Lock or 0.45) + 0.05
+end
+local ROLL_PRIORITY = nil -- (the dodge roll plays at Action4)
+pcall(function()
+	ROLL_PRIORITY = Enum.AnimationPriority.Action4
+end)
+local function rolling(h)
+	local animator = h.hum and h.hum:FindFirstChildOfClass("Animator")
+	local ok, tracks = pcall(function()
+		return animator:GetPlayingAnimationTracks()
+	end)
+	for _, track in ipairs(ok and type(tracks) == "table" and tracks or {}) do
+		local fine, pri = pcall(function()
+			return track.Priority
+		end)
+		if fine and pri ~= nil and pri == ROLL_PRIORITY and track.IsPlaying ~= false then
+			return true -- (the dodge roll: its arms fly about, but that's no punch)
+		end
+	end
+	return false
+end
+local function stepFists(h, dt)
+	local hrp = h.char:FindFirstChild("HumanoidRootPart")
+	local now = os.clock()
+	local open = hrp ~= nil and (h.punchUntil or 0) > now and h.char:GetAttribute("Drinking") == nil and not rolling(h)
+	local eye = cameraAt()
+	for _, f in ipairs(h.fists) do
+		local on = false
+		if open and f.handle.Parent then
+			local rel = f.handle.Position - hrp.Position
+			if f.last then
+				local v = (rel - f.last) / math.max(dt, 1 / 240)
+				local speed = v.Magnitude
+				-- (forward, or across - a hook - but not pulled back)
+				local forward = v:Dot(hrp.CFrame.LookVector) > -0.2 * speed
+				on = forward and speed > (f.on and PUNCH_SLOW or PUNCH_FAST) and not (f.on and now - f.since > PUNCH_LONGEST)
+			end
+			f.last = rel
+		else
+			f.last = nil
+		end
+		local starting = on and not f.on
+		if starting then
+			f.since = now
+		end
+		f.on = on
+		-- (the smear stays off while the fist's right up at your camera)
+		local show = on and not (eye and (f.handle.Position - eye).Magnitude < NEAR_CAMERA + 2)
+		for _, t in ipairs(f.trails) do
+			if t.Enabled ~= show then
+				t.Enabled = show
+			end
+		end
+		swingFx(h, on, starting, f.fx)
+		local fx = f.fx
+		if starting and fx and fx.fling and fx.part and fx.part.Parent and fx.fling.burst < 5 then
+			-- (a punch is over in a blink: a splash off the knuckles as it goes,
+			-- so even an Epic's punches throw plenty)
+			local tip = (fx.part.CFrame * CFrame.new(fx.tip.Position)).Position
+			for _ = 1, 5 - fx.fling.burst do
+				flingGoo(fx.theme, tip, hrp.CFrame.LookVector * 10 + Vector3.new(math.random() * 8 - 4, 4 + math.random() * 5, math.random() * 8 - 4),
+					fx.fling.size * 1.2, hrp.Position.Y - 3)
+			end
+		end
+	end
+end
+
 local function stepOne(plr, h, dt)
 	-- awakened (mastery 100): the blade turns gold
 	local golden = (plr:GetAttribute("Mastery") or 1) >= (W.MasteryMax or 100)
@@ -2944,10 +3060,18 @@ local function stepOne(plr, h, dt)
 	end
 	if h.punch then
 		-- gauntlets: your punch animations swing the arms and the gauntlets ride
-		-- on your hands (tucked away while you drink)
+		-- on your hands (tucked away while you drink); each punch's effects
 		local wantParent = h.char:GetAttribute("Drinking") == nil and h.char or nil
 		if h.model.Parent ~= wantParent then
 			h.model.Parent = wantParent
+		end
+		local sn = plr:GetAttribute("SwingN")
+		if sn ~= h.swingN then
+			h.swingN = sn
+			punchWindow(h, tail(sn))
+		end
+		if h.fists then
+			stepFists(h, dt)
 		end
 		return
 	end
@@ -3144,6 +3268,15 @@ function WeaponFX.swing(plr, n)
 		-- (not loaded - yet, or at all: the swing made in code)
 		stopSwings(h, 0.08)
 		startSwing(h, n)
+	end
+end
+
+-- your own punch with gauntlets, the moment you press (punch `n` of the
+-- string): its effects come off whichever fist flies (see GAUNTLETS)
+function WeaponFX.punched(plr, n)
+	local h = held[plr]
+	if h and not h.none and h.punch then
+		punchWindow(h, n)
 	end
 end
 
