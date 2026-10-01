@@ -4,11 +4,10 @@
 	Builds the whole starter lobby out of Parts when the server starts:
 	  * toy-brick island, paths, walls, trees, lamps
 	  * the toad's mushroom house (the Upgrade Shop was here), the Arcade (ArcadeBuilder, where the forge was), the Quest Board (where the Sell Shop was)
-	  * the mini Colosseum (its door takes you to the wave arena)
 	  * the castle gate, and the stairs and bridge up to the Spire (the boss floors)
 
 	Coordinates: the island is 240x240 studs centred on (0,0,0), ground top at y = 0.
-	North is -Z. Spawn is by the fountain plaza, the mini Colosseum is to the south-west.
+	North is -Z. Spawn is by the fountain plaza.
 
 	Everything animated is tagged "FX" (see LobbyFX). Prompts are tagged "PanelPrompt"
 	(see PlayerService).
@@ -417,7 +416,7 @@ local function buildGround(parent)
 	-- The floorplan: the fountain plaza in the middle, a wide avenue north
 	-- to the Grand Keep (and through it to the Spire), the road east to the
 	-- forge in the Gear Hall, west to the Pet Sanctuary, south past the
-	-- Sell Shop and the colosseum to the south gate.
+	-- Quest Board to the south gate.
 	-- north: the avenue to the keep, and the floor of the passage through it
 	pathSlab("PathToGate", -9, -74, 9, -17) -- (tucked under the plaza's edge: no grass gaps)
 	curbAlongZ(-74, -23.5, -9.5)
@@ -433,16 +432,14 @@ local function buildGround(parent)
 	pathSlab("PathForgeSide", -88, -58, -72, -8)
 	curbAlongX(-88, -23.5, 8.5)
 	curbAlongX(-71.5, -23.5, -8.5)
-	-- south: past the spawn to the south gate, with branches to the Sell
-	-- Shop and into the colosseum
+	-- south: past the spawn to the south gate, with a branch to the Quest
+	-- Board
 	pathSlab("PathToYard", -8, 17, 8, SOUTH_WALL) -- (right up to the gate's paving)
 	pathSlab("PathEastWest", 8, 38, 44, 52) -- (right up to the Quest Board)
-	pathSlab("PathEastWest", -12, 84, -8, 96)
 	curbAlongZ(23.5, 37.5, 8.5)
 	curbAlongZ(52.5, 93.5, 8.5) -- (a gap where the farm path joins)
 	curbAlongZ(98.5, SOUTH_WALL - 3, 8.5)
-	curbAlongZ(23.5, 83.5, -8.5)
-	curbAlongZ(96.5, SOUTH_WALL - 3, -8.5)
+	curbAlongZ(23.5, SOUTH_WALL - 3, -8.5)
 
 	-- Central plaza rings (outer ring in the same stone as the paths)
 	cylinder(g, "PlazaOuter", 0.6, 46, CFrame.new(0, 0.3, 0), PATH_COLOR, Mat.Cobblestone)
@@ -453,7 +450,7 @@ local function buildGround(parent)
 	-- are joined into long pieces. Where paths meet there's no gap in the
 	-- paving, so no curb - every junction opens up by itself.
 	do
-		local NOCURB = { { 7, 88, 20, 104 }, { -15, 83, -11, 97 }, { 61, -21, 81, -19 } } -- (the farm path and the colosseum bridge leave the south road here, and the Arcade's steps meet its path: no rim)
+		local NOCURB = { { 7, 88, 20, 104 }, { 61, -21, 81, -19 } } -- (the farm path leaves the south road here, and the Arcade's steps meet its path: no rim)
 		local PLAZA_R = 23.2
 		local X0, X1, Z0, Z1 = -118, 118, -112, SOUTH_WALL - 1
 		-- (paved by a path: the plaza's round edge has its own smooth rim)
@@ -4462,7 +4459,8 @@ local function buildCastle(parent)
 	buildGreatHall(m)
 	buildFountain(m)
 	buildPetSanctuary(m)
-	-- (the training field is gone: the Colosseum stands there now)
+	-- (the training field is gone, and so is the little Colosseum that stood
+	-- there after it: the Colosseum is the Spire's ground floor now)
 	buildRiver(m)
 	buildFarm(m)
 	buildPicnic(m)
@@ -5071,7 +5069,7 @@ end
 -- Public
 ----------------------------------------------------------------------
 ----------------------------------------------------------------------
--- The Colosseum (gate in the lobby, arena far away) and the Quest Board
+-- The Colosseum (far from the lobby: the Spire's ground floor) and the Quest Board
 ----------------------------------------------------------------------
 -- The Colosseum's enemies are straw dummies: the same shape as the dummies
 -- on the training pads (post, fat body, head, arms, bullseye), but plain
@@ -5287,15 +5285,14 @@ local Extras = (function()
 	local SAND_DARK = RGB(184, 111, 80)
 	local SAND_LIGHT = RGB(234, 212, 170)
 
-	-- The sand-castle colosseum. The SAME design is built twice: small in the
-	-- lobby (where the training field was) as the way in, and 1.8 times as big
-	-- far away as the real Colosseum you fight in - so inside looks just like
-	-- the little model you shrank into. A round crenellated wall with two
-	-- storeys of arches on a sandy mound, five bucket-shaped towers with flags,
-	-- bunting between them, a moat, stands full of little spectators, and a
-	-- gatehouse with banners, torches and crossed swords.
+	-- The sand-castle colosseum, built far away as the real Colosseum you
+	-- fight in (it was built small in the lobby too, once). A round
+	-- crenellated wall with two storeys of arches on a sandy mound, five
+	-- bucket-shaped towers with flags, bunting between them, a moat, stands
+	-- full of little spectators, and a gatehouse with banners, torches and
+	-- crossed swords.
 	--   origin  where its middle is, at the height of the mound's foot
-	--   s       how big (1 = the lobby model)
+	--   s       how big (1 = the old lobby model's size)
 	--   turn    which way the gate faces (degrees round the vertical)
 	--   inside  true for the real one: the door is on the inside of the gate
 	-- Returns the gatehouse's frame (local +Z = the side the door is on).
@@ -5451,30 +5448,10 @@ local Extras = (function()
 		return base * CFrame.new((D * CFrame.new(0, 0, 3.05)).Position * s) * (D - D.Position), door
 	end
 
-	-- The little one in the lobby: the way in. Walk onto the bridge to its door
-	-- and the difficulty pop-up opens (LobbyActivities); press ENTER and you
-	-- shrink down into it, bit by bit, like going down a pipe (ColosseumService).
-	local function buildColosseumGate(parent)
-		local f = folder(parent, "ColosseumGate")
-		local C = Config.Colosseum
-		local doorCF = sandColosseum(f, C.LobbyModel, 1, C.GateTurn or 90, false)
-		titleSign(f, doorCF * CFrame.new(0, 24, 0), "COLOSSEUM", nil, RGB(254, 174, 52), 300, 110)
-		-- a sand path and a plank bridge over the moat, up to the door
-		part(f, "GatePath", V3(5, 0.4, 14), doorCF * CFrame.new(0, 0.2, 7), RGB(190, 128, 88), Mat.SmoothPlastic)
-		for z = 2.5, 6.5, 1 do
-			part(f, "Plank", V3(6, 0.4, 0.8), doorCF * CFrame.new(0, 0.55, z), (z % 2 == 0.5) and SAND_DARK or RGB(158, 104, 66), Mat.WoodPlanks)
-		end
-		-- (no "press E": step onto the bridge - this invisible box - and the
-		-- difficulty pop-up opens. It only just reaches the road's edge, so
-		-- walking past along the road doesn't open it.)
-		autoZone(f, doorCF * CFrame.new(0, 4, 3.75), V3(8, 8, 6.5), "Activity", "ColosseumEnter")
-		-- the door's spot on the ground (you shrink into it) and where you pop back out
-		local doorSpot = anchorPart(f, "ColosseumDoor", doorCF * CFrame.new(0, 1, 0.35))
-		CollectionService:AddTag(doorSpot, "ColosseumDoor")
-		local back = anchorPart(f, "ColosseumReturn", doorCF * CFrame.new(0, 3, 5) * CFrame.Angles(0, math.pi, 0))
-		CollectionService:AddTag(back, "ColosseumReturn")
-
-		-- the dummy templates ColosseumService copies, one for each kind
+	-- The dummy templates ColosseumService copies, one for each kind. (The
+	-- little Colosseum that stood in the lobby is gone: the way in is the
+	-- Spire's ground floor, in the Spire menu.)
+	local function buildColosseumDummies()
 		for _, t in ipairs((Config.Colosseum and Config.Colosseum.Types) or { { id = "Straw", scale = 1 } }) do
 			local name = (t.id == "Straw") and "ColosseumDummy" or ("ColosseumDummy_" .. t.id)
 			local old = ServerStorage:FindFirstChild(name)
@@ -5573,7 +5550,7 @@ local Extras = (function()
 		CollectionService:AddTag(mark, "QuestMark")
 	end
 
-	return { gate = buildColosseumGate, colosseum = buildColosseum, questBoard = buildQuestBoard }
+	return { dummies = buildColosseumDummies, colosseum = buildColosseum, questBoard = buildQuestBoard }
 end)()
 
 function LobbyBuilder.Build()
@@ -5612,7 +5589,7 @@ function LobbyBuilder.Build()
 			end
 		end },
 		-- (the Prestige Shrine is gone: the plaza is open paving now)
-		{ "Colosseum gate", Extras.gate },
+		{ "Colosseum dummies", Extras.dummies },
 		{ "Colosseum", Extras.colosseum },
 		{ "Quest Board", Extras.questBoard },
 		{ "The Spire", buildSpire },

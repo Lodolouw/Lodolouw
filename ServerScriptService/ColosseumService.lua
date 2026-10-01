@@ -3,12 +3,11 @@
 
 	The Colosseum: a wave arena for farming Power (XP) and coins.
 
-	  * Walk up to the little door of the mini colosseum in the lobby: a
-	    pop-up asks how hard (LobbyActivities). Pick, press ENTER, and you
-	    shrink down into the door, bit by bit, like going down a pipe - and
-	    you're in the Colosseum (far from the lobby), already small enough.
-	    Walk up to its EXIT gate and a "Leave?" check pops up: LEAVE and you
-	    pop out of the little door tiny and grow back. (No "press E"
+	  * The way in is the Spire's ground floor: TRAIN in the Spire menu, at
+	    the Spire's doors. A quick fade to black (on your screen:
+	    LobbyActivities) and you're in the Colosseum, far from the lobby.
+	    Walk up to its EXIT gate and a "Leave?" check pops up: LEAVE, the
+	    same quick fade, and you're back at the Spire's doors. (No "press E"
 	    anywhere: it isn't mobile friendly.) Die in there and you're simply
 	    back in the lobby.
 	  * Inside, dummies drop in wave after wave. They hop after you, and
@@ -54,9 +53,9 @@
 	  * KILL STREAKS: dummies beaten in a row without getting hurt. Every 5
 	    adds 10% to what each kill pays (up to +50%). It carries on from run
 	    to run, and ends the moment you're hurt (or when you leave).
-	  * DIFFICULTY: Normal, Hard or Nightmare, picked in the pop-up at the
-	    door as you go in, or on the CLEARED screen for the next run (it's
-	    saved: PlayerService).
+	  * DIFFICULTY: Normal, Hard or Nightmare, picked on the CLEARED screen
+	    for the next run (it's saved: PlayerService, so you go in on the
+	    one you picked last).
 	    Harder ones mean tougher dummies that hit harder, more of them, a bit
 	    faster - and everything the run pays is multiplied (Hard x2,
 	    Nightmare x3.5). On Nightmare the King is angry from the start. Hard
@@ -124,8 +123,7 @@ local function sfx(s, key, at)
 end
 
 ----------------------------------------------------------------------
--- Going down the pipe: you shrink, bit by bit (8-bit steps), into the
--- mini colosseum's little door, and pop back out growing the same way.
+-- Moving players in and out (a quick fade on their screen)
 ----------------------------------------------------------------------
 local function groundBelow(pos, char)
 	local params = RaycastParams.new()
@@ -1814,18 +1812,16 @@ local function endSession(player)
 	s.enemies = {}
 end
 
-local going = {} -- [player] = true while they're going down the pipe
+local going = {} -- [player] = true while they're on the trip in or out
 
--- how long the trip down the pipe takes on the player's screen
-local function pipeTime()
-	return (C.ShrinkSteps or 8) * 0.07 + 0.4
-end
+-- how long the trip takes on the player's screen (the fade to black and
+-- the move; it fades back in after)
+local TRIP_TIME = 0.6
 
--- Can the player go in right now? (Beside the little door, not already in
--- or on the way, not up the Spire.) Returns true, or false and why not.
--- (fromSpire: coming from the Spire's doors, its menu - SpireService checked
--- you're there - instead of the little door)
-local function canEnter(player, fromSpire)
+-- Can the player go in right now? (Not already in or on the way, not up the
+-- Spire; SpireService has checked they're at the Spire's doors.) Returns
+-- true, or false and why not.
+local function canEnter(player)
 	if sessions[player] then
 		return false, "You're already in the Colosseum!"
 	end
@@ -1839,33 +1835,27 @@ local function canEnter(player, fromSpire)
 	if not (root and CollectionService:GetTagged("ColosseumSpawn")[1]) then
 		return false, "Not ready yet."
 	end
-	if not fromSpire and (flat(root.Position - C.GatePosition)).Magnitude > C.EnterRange + 10 then
-		return false, "Walk up to the Colosseum's door first."
-	end
 	return true
 end
 
-local function enter(player, fromSpire)
-	if not canEnter(player, fromSpire) then
+local function enter(player)
+	if not canEnter(player) then
 		return
 	end
-	local root, _, char = rootOf(player)
+	local _, _, char = rootOf(player)
 	local spawnAt = CollectionService:GetTagged("ColosseumSpawn")[1]
-	local door = CollectionService:GetTagged("ColosseumDoor")[1]
-	-- Your own screen shrinks you into the little door and moves you inside
-	-- (LobbyActivities). It has to be done there: your character is moved by
-	-- your computer, and when the server moves it too, the two fight (that's
-	-- what made the trip glitchy).
+	-- Your own screen fades to black and moves you inside (LobbyActivities).
+	-- It has to be done there: your character is moved by your computer, and
+	-- when the server moves it too, the two fight (that's what made the trip
+	-- glitchy).
 	going[player] = true
 	pcall(function()
 		player:RequestStreamAroundAsync(spawnAt.Position, 3)
 	end)
-	-- (from the Spire you go down where you stand, at its doors)
-	local doorGround = (not fromSpire and door) and groundBelow(door.Position, char) or groundBelow(root.Position, char)
 	local inside = groundBelow(spawnAt.Position, char)
-	allowMove(player, inside, pipeTime() + 5) -- (their own screen makes this jump)
-	send(player, "PipeIn", doorGround, spawnAt.CFrame, inside)
-	task.wait(pipeTime())
+	allowMove(player, inside, TRIP_TIME + 5) -- (their own screen makes this jump)
+	send(player, "GoIn", spawnAt.CFrame, inside)
+	task.wait(TRIP_TIME)
 	going[player] = nil
 	if not rootOf(player) then
 		return
@@ -1946,20 +1936,20 @@ local function leave(player)
 	if hum then
 		hum.Health = hum.MaxHealth
 	end
-	local back = CollectionService:GetTagged("ColosseumReturn")[1]
+	-- back to the Spire's doors, where you came in (the same quick fade)
+	local back = CollectionService:GetTagged("SpireReturn")[1]
 	if not back then
 		return
 	end
-	-- out the way you came in: your screen pops you out of the little door tiny, growing
 	going[player] = true
 	pcall(function()
 		player:RequestStreamAroundAsync(back.Position, 3)
 	end)
 	local _, _, char = rootOf(player)
 	local outside = groundBelow(back.Position, char)
-	allowMove(player, outside, pipeTime() + 5) -- (their own screen makes this jump)
-	send(player, "PipeOut", back.CFrame, outside)
-	task.wait(pipeTime())
+	allowMove(player, outside, TRIP_TIME + 5) -- (their own screen makes this jump)
+	send(player, "GoOut", back.CFrame, outside)
+	task.wait(TRIP_TIME)
 	going[player] = nil
 	task.delay(1.5, function()
 		if not sessions[player] and not player:GetAttribute("Colosseum") then
@@ -1969,9 +1959,8 @@ local function leave(player)
 end
 
 -- Choosing the difficulty for the next run (the CLEARED screen's buttons;
--- the first run's is picked in the pop-up at the door, as you go in). It's
--- saved. A run keeps the difficulty it started on: a new pick mid-run waits
--- for the next one.
+-- a run starts on the one picked last). It's saved. A run keeps the
+-- difficulty it started on: a new pick mid-run waits for the next one.
 local function chooseDifficulty(player, id)
 	local ok, why = PlayerService.SetColosseumPick(player, id)
 	if not ok then
@@ -2004,7 +1993,7 @@ function ColosseumService.Start(combatService, playerService)
 		old:Destroy()
 	end
 	remote = Instance.new("RemoteEvent")
-	-- server -> client: "PipeIn", "PipeOut", "Arrived", "Left", "State", "Wave", "Kill" (what it
+	-- server -> client: "GoIn", "GoOut", "Arrived", "Left", "State", "Wave", "Kill" (what it
 	-- paid, and where its coins and XP fly from), "QuestDone" (without runs), "Sfx",
 	-- for the boss wave "BossWave", "KingFx" (a sound and a shake), "KingRage", "KingDown",
 	-- and for runs and streaks "RunClear", "RunStart" (and its difficulty), "Streak", "StreakLost"
@@ -2016,10 +2005,11 @@ function ColosseumService.Start(combatService, playerService)
 	enemyFolder:ClearAllChildren()
 	enemyFolder.Parent = workspace
 
-	-- Going in and out is asked for with buttons on your screen (there are no
-	-- "press E" prompts: walking up to a door pops its buttons up - see
-	-- LobbyActivities). They go through PlayerService's Action remote, so
-	-- they get its request budget and checks too.
+	-- Going out (and again) is asked for with buttons on your screen (there
+	-- are no "press E" prompts: walking up to the exit gate pops its buttons
+	-- up - see LobbyActivities). They go through PlayerService's Action
+	-- remote, so they get its request budget and checks too. (Going in is
+	-- the Spire menu's: EnterFromSpire.)
 	if PlayerService.AddAction then
 		-- RUN AGAIN, on the CLEARED screen
 		PlayerService.AddAction("ColosseumAgain", function(player)
@@ -2034,25 +2024,6 @@ function ColosseumService.Start(combatService, playerService)
 			end
 			task.spawn(leave, player)
 			return true, "See you soon!"
-		end)
-		-- going in: the ENTER button of the pop-up at the little door, with
-		-- the difficulty picked there (checked: it must be open to you)
-		PlayerService.AddAction("ColosseumEnter", function(player, _, id)
-			local ok, why = canEnter(player)
-			if not ok then
-				return false, why
-			end
-			if id ~= nil then
-				if not PlayerService.SetColosseumPick then
-					return false, "Not ready yet."
-				end
-				local picked, reason = PlayerService.SetColosseumPick(player, id)
-				if not picked then
-					return false, reason or "Not ready yet."
-				end
-			end
-			task.spawn(enter, player)
-			return true, "In you go!"
 		end)
 		-- and the CLEARED screen's difficulty buttons (for the next run)
 		if PlayerService.SetColosseumPick then
@@ -2099,11 +2070,11 @@ end
 -- In from the Spire menu (its ground floor): SpireService has checked you're
 -- at the Spire's doors. Returns true, or false and why not.
 function ColosseumService.EnterFromSpire(player)
-	local ok, why = canEnter(player, true)
+	local ok, why = canEnter(player)
 	if not ok then
 		return false, why
 	end
-	task.spawn(enter, player, true)
+	task.spawn(enter, player)
 	return true
 end
 

@@ -5,10 +5,10 @@
 --   luau test_colosseum.luau -a <scenario> <seed>
 -- scenarios: full (default), leave (walk out mid-King), die (die mid-King),
 -- oldbuilder (no King template), cursed, clearleave, kite, kitejump,
--- hard / nightmare (a whole run on that difficulty, picked in the pop-up at
--- the door), nextrun (a new pick mid-run waits for the next run), locked
--- (going in on a locked difficulty or from too far away, and picks that
--- aren't allowed), react (hits landing on dummies: they tip away from the
+-- hard / nightmare (a whole run on that difficulty, the one picked last
+-- time), nextrun (a new pick mid-run waits for the next run), locked
+-- (picks that aren't allowed, and going in from up the Spire), train (the
+-- training bonus below your next floor's level), react (hits landing on dummies: they tip away from the
 -- blow and wobble back upright, and get knocked back - a finisher sends
 -- them flying, heavier kinds budge less, the King not at all, never past
 -- the wall, and a finisher that kills one throws it before it crumbles)
@@ -85,8 +85,10 @@ local function anchor(name, pos, tag)
 	return p
 end
 local spawnPart = anchor("ColosseumSpawn", C.Center + Vector3.new(0, 3, -60), "ColosseumSpawn")
-anchor("ColosseumDoor", C.GatePosition + Vector3.new(0, 1, 0), "ColosseumDoor")
-anchor("ColosseumReturn", C.GatePosition + Vector3.new(0, 3, 5), "ColosseumReturn")
+-- (the way in is the Spire menu's ground floor; leaving puts you back at
+-- the Spire's doors)
+local SPIRE_DOORS = Vector3.new(0, 0, -110)
+local spireReturn = anchor("SpireReturn", SPIRE_DOORS + Vector3.new(0, 3, 25), "SpireReturn")
 -- (the exit gate is tagged itself: there are no "press E" prompts)
 local exitDoor = anchor("ExitDoor", C.Center + Vector3.new(0, 3, -75), "ColosseumExit")
 
@@ -104,7 +106,7 @@ local function makeCharacter()
 	local root = Instance.new("Part")
 	root.Name = "HumanoidRootPart"
 	root.Size = Vector3.new(2, 2, 1)
-	root.CFrame = CFrame.new(C.GatePosition + Vector3.new(2, 3, 0))
+	root.CFrame = CFrame.new(SPIRE_DOORS + Vector3.new(2, 3, 6))
 	root.Parent = char
 	char.PrimaryPart = root
 	char.Parent = workspace
@@ -186,11 +188,14 @@ local Players2 = {}
 -- (the real PlayerService's run records, pretend: what the difficulty
 -- scenarios have already cleared, and what they've picked)
 local colData = { clears = 0, best = nil, bonusDay = 0, pick = "Normal", wins = {}, bests = {} }
-local ENTER_PICK = "Normal" -- (what the pop-up's ENTER button goes in on)
+local ENTER_PICK = "Normal" -- (what you go in on: the pick saved last time)
 if SCENARIO == "hard" or SCENARIO == "nextrun" then
 	colData.wins.Normal = 1
-	-- (Hard: Normal is still saved from last time; Hard is picked at the door)
-	ENTER_PICK = (SCENARIO == "hard") and "Hard" or "Normal"
+	-- (Hard: picked on the CLEARED screen last time)
+	if SCENARIO == "hard" then
+		colData.pick = "Hard"
+	end
+	ENTER_PICK = colData.pick
 elseif SCENARIO == "nightmare" then
 	colData.wins.Normal, colData.wins.Hard = 1, 1
 	colData.pick = "Nightmare"
@@ -280,12 +285,15 @@ M.onFireClient = function(remote, p, kind, a, b, c, d)
 	elseif kind == "QuestDone" then
 		stats.questDone = (stats.questDone or 0) + 1
 	end
-	if kind == "PipeIn" then
-		-- (the player's screen moves them inside)
+	if kind == "GoIn" then
+		-- (the player's screen fades to black and moves them inside)
+		assert(M.typeof(a) == "CFrame" and M.typeof(b) == "Vector3", "GoIn needs where you face and stand")
 		M.task.delay(0.5, function()
-			root.CFrame = CFrame.new(c + Vector3.new(0, 3, 0))
+			root.CFrame = CFrame.new(b + Vector3.new(0, 3, 0))
 		end)
-	elseif kind == "PipeOut" then
+	elseif kind == "GoOut" then
+		assert(M.typeof(a) == "CFrame" and M.typeof(b) == "Vector3", "GoOut needs where you face and stand")
+		stats.outTo = b
 		M.task.delay(0.5, function()
 			root.CFrame = CFrame.new(b + Vector3.new(0, 3, 0))
 		end)
@@ -416,45 +424,35 @@ enemyFolder.ChildAdded:Connect(function(m)
 	end
 end)
 
--- Going in: walking up to the little door only pops the difficulty menu up
--- on the player's screen - nothing sends them in until its ENTER button asks
--- the server, with the difficulty picked in it.
+-- Going in: only the Spire menu's TRAIN (its ground floor: EnterFromSpire)
+-- sends you in - on the difficulty you picked last. There's no door in the
+-- lobby any more, and no ENTER button of its own.
 M.task.spawn(function()
 	M.task.wait(1)
-	assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "standing at the door mustn't send you in by itself")
-	assert(actions.ColosseumEnter, "the ENTER button's action should be there")
+	assert(not stats.events.GoIn and not player:GetAttribute("Colosseum"), "nothing sends you in by itself")
+	assert(actions.ColosseumEnter == nil, "the lobby door's ENTER is gone")
 	if SCENARIO == "locked" then
-		-- a difficulty that isn't open to you (or isn't one at all): refused, and you stay out
+		-- a difficulty that isn't open to you (or isn't one at all): refused
 		for _, bad in ipairs({ "Nightmare", "Hard", "Bogus", 123, false }) do
-			local ok, msg = actions.ColosseumEnter(player, nil, bad)
-			assert(not ok, "going in on " .. tostring(bad) .. " should be refused")
+			local ok, msg = actions.ColosseumDifficulty(player, nil, bad)
+			assert(not ok, "picking " .. tostring(bad) .. " should be refused")
 			assert(type(msg) == "string" and msg ~= "", "a refusal says why")
 		end
 		assert(colData.pick == "Normal", "a refused pick changes nothing")
-		-- and not from the other side of the lobby
-		local at = root.CFrame
-		root.CFrame = CFrame.new(C.GatePosition + Vector3.new(60, 3, 0))
-		local ok, msg = actions.ColosseumEnter(player, nil, "Normal")
-		assert(not ok and string.find(msg, "door", 1, true), "from far away: walk up to the door first (" .. tostring(msg) .. ")")
-		root.CFrame = at
+		-- and not from up the Spire
+		player:SetAttribute("SpireFloor", 1)
+		local ok = Colosseum.EnterFromSpire(player)
+		assert(not ok, "from up the Spire: refused")
+		player:SetAttribute("SpireFloor", nil)
 		M.task.wait(1)
-		assert(not stats.events.PipeIn and not player:GetAttribute("Colosseum"), "nobody went in")
+		assert(not stats.events.GoIn and not player:GetAttribute("Colosseum"), "nobody went in")
 	end
-	if SCENARIO == "train" then
-		-- in from the Spire menu (its ground floor), far from the little door
-		root.CFrame = CFrame.new(C.GatePosition + Vector3.new(200, 3, -300))
-		local ok, msg = Colosseum.EnterFromSpire(player)
-		assert(ok, "the Spire menu's TRAIN should send you in: " .. tostring(msg))
-		M.task.wait(1)
-		assert(stats.events.PipeIn, "you go down (the pipe) from the Spire too")
-		assert(not Colosseum.EnterFromSpire(player), "and not twice")
-		return
-	end
-	local ok, msg = actions.ColosseumEnter(player, nil, ENTER_PICK)
-	assert(ok, "ENTER should send you in: " .. tostring(msg))
-	assert(colData.pick == ENTER_PICK, "going in saves the pick")
-	local twice = actions.ColosseumEnter(player, nil, ENTER_PICK)
-	assert(not twice, "pressing ENTER twice shouldn't send you in twice")
+	local ok, msg = Colosseum.EnterFromSpire(player)
+	assert(ok, "the Spire menu's TRAIN should send you in: " .. tostring(msg))
+	assert(not Colosseum.EnterFromSpire(player), "and not twice")
+	M.task.wait(1)
+	assert(stats.events.GoIn, "a quick fade takes you in")
+	assert(not stats.events.PipeIn, "no pipe")
 end)
 
 ----------------------------------------------------------------------
@@ -980,8 +978,8 @@ while t < endAt do
 				assert(colData.pick == "Normal", "a refused pick changes nothing")
 				local ok, msg = actions.ColosseumDifficulty(player, nil, "Normal")
 				assert(ok and string.find(msg, "it is", 1, true), "picking the one you're on: " .. tostring(msg))
-				local again = actions.ColosseumEnter(player, nil, "Normal")
-				assert(not again, "ENTER from inside the Colosseum is refused")
+				local again = Colosseum.EnterFromSpire(player)
+				assert(not again, "going in from inside the Colosseum is refused")
 				stats.picks.lockedDone = true
 			end
 		end
@@ -1170,6 +1168,9 @@ end
 if SCENARIO == "leave" or SCENARIO == "die" then
 	assert(left == 0, "everything should be cleared away when you leave or die")
 	assert(not player:GetAttribute("Colosseum"), "should be out of the Colosseum")
+end
+if SCENARIO == "leave" or SCENARIO == "clearleave" then
+	assert(stats.outTo and (stats.outTo - spireReturn.Position).Magnitude < 6, "leaving puts you back at the Spire's doors")
 end
 if SCENARIO == "kite" then
 	assert((stats.moves.Pound or 0) >= 3, "a far-away player should get pounded")

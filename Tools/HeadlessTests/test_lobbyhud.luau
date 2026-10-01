@@ -90,7 +90,7 @@ end
 
 -- a little lobby: the walk-up boxes the trail leads to
 local zones = {}
-for name, spot in pairs({ Spire = { "Spire", "Menu", Vector3.new(0, 4, -120) }, Arcade = { "Activity", "Arcade", Vector3.new(80, 4, 0) }, Quests = { "Activity", "Quests", Vector3.new(-60, 4, 20) }, Colosseum = { "Activity", "ColosseumEnter", Vector3.new(0, 4, 90) } }) do
+for name, spot in pairs({ Spire = { "Spire", "Menu", Vector3.new(0, 4, -120) }, Arcade = { "Activity", "Arcade", Vector3.new(80, 4, 0) }, Quests = { "Activity", "Quests", Vector3.new(-60, 4, 20) } }) do
 	local z = Instance.new("Part")
 	z.Name = "AutoOpenZone"
 	z.Size = Vector3.new(16, 8, 10)
@@ -280,7 +280,7 @@ check(find(find(root, "Quest"), "Meter"):FindFirstChild("Text").Text == "HAND IT
 quests.list[1].claimed = true
 send({ Quests = quests, Power = 0 })
 check(goalText() == "Train in the Colosseum", "too low for floor 1: train (" .. tostring(goalText()) .. ")")
-check(trailPointsTo(zones.Colosseum), "the trail leads to the Colosseum")
+check(trailPointsTo(zones.Spire), "the trail leads to the Spire (the Colosseum is its ground floor)")
 local lv = Config.Spire.Floors[1].level
 send({ Quests = quests, Power = Config.powerForLevel(lv) })
 check(goalText() == "Climb the Spire · Floor 1", "strong enough: the Spire (" .. tostring(goalText()) .. ")")

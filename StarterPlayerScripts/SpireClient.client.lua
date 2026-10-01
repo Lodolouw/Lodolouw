@@ -723,7 +723,7 @@ local function closeMenu()
 	menu.Visible = false
 end
 closeBtn.Activated:Connect(closeMenu)
--- down into the Colosseum (no fade: you shrink into the ground on your way)
+-- into the Colosseum (its own quick fade takes you there: LobbyActivities)
 local function trainNow()
 	closeMenu()
 	if travelling then

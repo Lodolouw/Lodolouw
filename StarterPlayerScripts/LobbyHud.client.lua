@@ -465,7 +465,7 @@ end
 -- WHAT'S NEXT: the goal, and where it is in the lobby
 ----------------------------------------------------------------------
 -- the walk-up box for a place in the lobby (LobbyBuilder / ArcadeBuilder
--- make them): "Spire", "Arcade", "Quests", "ColosseumEnter"
+-- make them): "Spire", "Arcade", "Quests"
 local function zoneFor(place)
 	for _, z in ipairs(CollectionService:GetTagged("AutoOpenZone")) do
 		if z:IsA("BasePart") and z.Parent then
@@ -506,7 +506,8 @@ local function nextGoal(d)
 			if level + 5 >= f.level then
 				return { text = "Climb the Spire · Floor " .. f.id, sub = "Beat " .. short, icon = "Spire", place = "Spire" }
 			end
-			return { text = "Train in the Colosseum", sub = "Reach Lv " .. f.level .. " for Floor " .. f.id .. " (you're Lv " .. level .. ")", icon = "Weapons", place = "ColosseumEnter" }
+			-- (the Colosseum is the Spire's ground floor: the trail leads to the Spire)
+			return { text = "Train in the Colosseum", sub = "Spire ground floor · Lv " .. f.level .. " for Floor " .. f.id .. " (you're Lv " .. level .. ")", icon = "Weapons", place = "Spire" }
 		end
 	end
 	return { text = "Every boss beaten!", sub = "Beat them again for more loot", icon = "Bosses", place = "Spire" }

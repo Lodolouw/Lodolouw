@@ -25,14 +25,14 @@
 	    runs cleared, the quest's reward, the day's first-clear bonus, the
 	    difficulty for the next run, and RUN AGAIN / LEAVE.
 
-	  * DIFFICULTY - walk up to the mini colosseum's little door and a
-	    pop-up asks how hard: Normal, Hard or Nightmare (what each does and
-	    pays, your best time on it, which are still locked). Pick one and
-	    press ENTER to go in. At the arena's EXIT gate a "Leave?" check
-	    pops up the same way.
+	  * GOING IN AND OUT - you go in from the Spire menu's ground floor
+	    (SpireClient): a quick fade to black and you're in, on the
+	    difficulty you picked last (Normal, Hard or Nightmare: picked on the
+	    CLEARED screen). At the arena's EXIT gate a "Leave?" check pops up;
+	    out you go, the same quick fade, back at the Spire's doors.
 
 	  * NO "PRESS E" - it isn't mobile friendly. The Quest Board and the
-	    Colosseum's two doors each have an invisible box in front of them:
+	    Colosseum's exit gate each have an invisible box in front of them:
 	    step in and its menu pops up, step out and it closes.
 
 	The server decides everything (PlayerService / CombatService); this only
@@ -43,6 +43,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -806,17 +807,10 @@ local function confetti()
 	end
 end
 
--- Down the pipe: you shrink, bit by bit (8-bit steps), sliding into the
--- mini colosseum's little door - then you're inside the Colosseum, already
--- small enough for it, so no growing there. Coming out, you pop out of the
--- little door tiny and grow back. Done here, on your own screen, because
--- your character is moved by your computer (the server doing it glitched).
-local CC = Config.Colosseum
-local function scaleTo(char, s)
-	pcall(function()
-		char:ScaleTo(s)
-	end)
-end
+-- Going in and out (from the Spire's ground floor, and back to its doors):
+-- a quick fade to black, and you're there. Done here, on your own screen,
+-- because your character is moved by your computer (the server doing it
+-- glitched).
 -- feet on `ground`, facing `look`
 local function standAt(char, root, ground, look)
 	local box, size = char:GetBoundingBox()
@@ -825,18 +819,9 @@ local function standAt(char, root, ground, look)
 	local f = Vector3.new(look.X, 0, look.Z)
 	root.CFrame = f.Magnitude > 0.01 and CFrame.lookAt(p, p + f) or CFrame.new(p) * root.CFrame.Rotation
 end
-local function groundUnder(pos, char)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { char }
-	params.RespectCanCollide = true
-	local hit = workspace:Raycast(pos + Vector3.new(0, 3, 0), Vector3.new(0, -12, 0), params)
-	return hit and hit.Position or pos
-end
-
 -- A Sound from SoundService, played flat on your screen: the first on the
--- list that's there (capitals and spaces don't matter, so "Mario Pipe" and
--- "mariopipe" are the same). Nothing plays if none of them are there.
+-- list that's there (capitals and spaces don't matter, so "Crowd Cheer" and
+-- "crowdcheer" are the same). Nothing plays if none of them are there.
 local function squashName(name)
 	return string.lower((string.gsub(tostring(name), "%s+", "")))
 end
@@ -855,7 +840,7 @@ local function findNamedSound(names)
 	return nil
 end
 -- Fades a playing sound out and stops it (so a long sound always fits the
--- moment it's for: the pipe, the whirlwind...)
+-- moment it's for: the whirlwind...)
 local function fadeOutSound(snd, after, seconds)
 	if not snd then
 		return
@@ -873,27 +858,7 @@ local function fadeOutSound(snd, after, seconds)
 		snd:Stop()
 	end)
 end
-local function playNamedSound(names, volume)
-	local template = findNamedSound(names)
-	if not template then
-		return nil
-	end
-	local snd = template:Clone()
-	snd.Looped = false
-	snd.Volume = template.Volume * (volume or 1)
-	local effects = game:GetService("SoundService"):FindFirstChild("Effects")
-	if effects and effects:IsA("SoundGroup") then
-		snd.SoundGroup = effects
-	end
-	snd.Parent = game:GetService("SoundService")
-	snd:Play()
-	task.delay(6, function()
-		snd:Destroy()
-	end)
-	return snd
-end
-
--- WARMING UP: the Colosseum's sounds (the pipe, the King's sounds and his
+-- WARMING UP: the Colosseum's sounds (the dummies', the King's sounds and his
 -- music) are loaded a couple of seconds after you join, in the background,
 -- so none of them stalls or plays silent the first time it's needed.
 task.delay(2, function()
@@ -910,7 +875,6 @@ task.delay(2, function()
 			end
 		end
 	end
-	add(Config.Colosseum.PipeSound)
 	for _, def in pairs(Config.Colosseum.Sounds or {}) do
 		add(def.names)
 	end
@@ -947,7 +911,6 @@ task.delay(2, function()
 			print("[Colosseum sounds] " .. label .. ': OK - "' .. snd.Name .. '" (' .. string.format("%.1f", tonumber(snd.TimeLength) or 0) .. "s)")
 		end
 	end
-	report("Pipe", Config.Colosseum.PipeSound)
 	for key, def in pairs(Config.Colosseum.Sounds or {}) do
 		report(key, def.names)
 	end
@@ -961,66 +924,55 @@ task.delay(2, function()
 	end
 end)
 
-local piping = false
-local function pipeIn(doorGround, destCF, destGround)
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root or piping then
-		return
+-- the black screen for the trip (over everything)
+local tripGui = Instance.new("ScreenGui")
+tripGui.Name = "ColosseumTrip"
+tripGui.ResetOnSpawn = false
+tripGui.IgnoreGuiInset = true
+tripGui.DisplayOrder = 50
+tripGui.Enabled = false
+tripGui.Parent = player:WaitForChild("PlayerGui")
+local tripBlack = Instance.new("Frame")
+tripBlack.Name = "Black"
+tripBlack.BackgroundColor3 = RGB(0, 0, 0)
+tripBlack.BackgroundTransparency = 1
+tripBlack.BorderSizePixel = 0
+tripBlack.Size = UDim2.fromScale(1, 1)
+tripBlack.Parent = tripGui
+local function blackTo(transparency, seconds)
+	tripGui.Enabled = true
+	pcall(function()
+		TweenService:Create(tripBlack, TweenInfo.new(seconds, Enum.EasingStyle.Sine), { BackgroundTransparency = transparency }):Play()
+	end)
+	task.wait(seconds)
+	tripBlack.BackgroundTransparency = transparency
+	if transparency >= 1 then
+		tripGui.Enabled = false
 	end
-	piping = true
-	root.Anchored = true
-	local pipeSound = playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound)
-	local from = groundUnder(root.Position, char)
-	local look = doorGround - from
-	local steps = CC.ShrinkSteps or 8
-	for k = 1, steps do
-		if not char.Parent then
-			break
-		end
-		local t = k / steps
-		scaleTo(char, 1 - (1 - (CC.ShrinkTo or 0.3)) * t)
-		standAt(char, root, from:Lerp(doorGround, t), look)
-		task.wait(0.07)
-	end
-	task.wait(0.12)
-	if char.Parent then
-		scaleTo(char, 1)
-		standAt(char, root, destGround, destCF.LookVector)
-		root.AssemblyLinearVelocity = Vector3.zero
-		root.Anchored = false
-	end
-	fadeOutSound(pipeSound, 0, 0.25) -- (the sound ends as you arrive, however long it is)
-	piping = false
 end
 
-local function pipeOut(backCF, backGround)
+-- fade to black, stand on `ground` facing `look`, fade back in
+local tripping = false
+local function trip(ground, look)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root or piping then
+	if not root or tripping then
 		return
 	end
-	piping = true
-	root.Anchored = true
-	local pipeSound = playNamedSound(CC.PipeSound, CC.PipeVolume) -- (the Mario pipe sound, popping out)
-	local steps = CC.ShrinkSteps or 8
-	local small = CC.ShrinkTo or 0.3
-	for k = 0, steps do
-		if not char.Parent then
-			break
-		end
-		scaleTo(char, small + (1 - small) * k / steps)
-		standAt(char, root, backGround, backCF.LookVector)
-		task.wait(0.05)
-	end
+	tripping = true
+	blackTo(0, 0.25)
 	if char.Parent then
-		scaleTo(char, 1)
-		standAt(char, root, backGround, backCF.LookVector)
+		root.Anchored = true
+		standAt(char, root, ground, look)
 		root.AssemblyLinearVelocity = Vector3.zero
-		root.Anchored = false
+		task.wait(0.25) -- (the place loads in behind the black screen)
+		if char.Parent then
+			standAt(char, root, ground, look)
+			root.Anchored = false
+		end
 	end
-	fadeOutSound(pipeSound, 0, 0.25) -- (the sound ends as you arrive, however long it is)
-	piping = false
+	blackTo(1, 0.4)
+	tripping = false
 end
 
 ----------------------------------------------------------------------
@@ -1543,273 +1495,6 @@ do
 	end)
 end
 
--- GOING IN: walk up to the mini colosseum's little door and this pops up. A
--- card for each difficulty: what it does, what it pays, your runs cleared
--- and best time on it, and PICK (or PICKED, or LOCKED with what opens it).
--- The one you went in on last time starts picked. Press ENTER and down the
--- pipe you go, on the one you picked (the server checks it's open to you).
--- It closes with the X, when you walk away from the door, or as you go in.
--- (The walk-up system further down opens and closes it.)
-local DifficultyMenu = {}
-do
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "ColosseumDifficulty"
-	gui.ResetOnSpawn = false
-	gui.Enabled = false
-	gui.DisplayOrder = 7
-	gui.Parent = player:WaitForChild("PlayerGui")
-
-	local panel = Instance.new("Frame")
-	panel.Name = "DifficultyPanel"
-	panel.BackgroundColor3 = RGB(24, 20, 37)
-	panel.BorderSizePixel = 0
-	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromScale(0.64, 0.74)
-	panel.Parent = gui
-	local aspect = Instance.new("UIAspectRatioConstraint")
-	aspect.AspectRatio = 1.55
-	aspect.Parent = panel
-	local edge = Instance.new("UIStroke")
-	edge.Color = RGB(255, 255, 255)
-	edge.Thickness = 4
-	edge.Parent = panel
-
-	local close = Instance.new("TextButton")
-	close.Name = "Close"
-	close.Text = "X"
-	close.Font = FONT
-	close.TextScaled = true
-	close.TextColor3 = RGB(255, 255, 255)
-	close.BackgroundColor3 = RED
-	close.BorderSizePixel = 0
-	close.Size = UDim2.fromScale(0.06, 0.09)
-	close.Position = UDim2.fromScale(0.925, 0.025)
-	close.Parent = panel
-	close.Activated:Connect(function()
-		gui.Enabled = false
-	end)
-
-	label(panel, "CHOOSE DIFFICULTY", UDim2.fromScale(0.8, 0.09), UDim2.fromScale(0.1, 0.03), GOLD)
-	label(panel, "Pick how hard, then press ENTER.", UDim2.fromScale(0.9, 0.045), UDim2.fromScale(0.05, 0.13), GREY)
-	local menuStatus = label(panel, "", UDim2.fromScale(0.9, 0.045), UDim2.fromScale(0.05, 0.94), RGB(255, 255, 255))
-	local statusUntilD = 0
-	local function say(text, color)
-		menuStatus.Text = text
-		menuStatus.TextColor3 = color or RGB(255, 255, 255)
-		statusUntilD = os.clock() + 3.5
-	end
-
-	local selected = nil -- (the card picked in here: ENTER goes in on it)
-	local busy = false -- (waiting for the server's answer to ENTER)
-	local refresh -- (below)
-	local function pick(def)
-		if not Difficulty.unlocked(def.id) then
-			say(Difficulty.lockText(def), RED)
-			return
-		end
-		selected = def.id
-		refresh()
-	end
-
-	local cards = {}
-	local list = Difficulty.list()
-	local gap = 0.025
-	local w = (0.92 - gap * (#list - 1)) / math.max(1, #list)
-	for i, def in ipairs(list) do
-		local card = Instance.new("Frame")
-		card.Name = "Card" .. def.id
-		card.BackgroundColor3 = RGB(24, 20, 37)
-		card.BorderSizePixel = 0
-		card.Size = UDim2.fromScale(w, 0.6)
-		card.Position = UDim2.fromScale(0.04 + (i - 1) * (w + gap), 0.195)
-		card.Parent = panel
-		local ce = Instance.new("UIStroke")
-		ce.Color = def.color -- (coloured: RetroUI leaves it be)
-		ce.Thickness = 3
-		ce.Parent = card
-		-- (the whole card can be clicked, not just its button)
-		local hit = Instance.new("TextButton")
-		hit.Name = "CardButton"
-		hit.Text = ""
-		hit.BackgroundTransparency = 1
-		hit.Size = UDim2.fromScale(1, 1)
-		hit.Parent = card
-		hit.Activated:Connect(function()
-			pick(def)
-		end)
-		local c = { def = def, frame = card, edge = ce }
-		c.name = label(card, def.name, UDim2.fromScale(0.9, 0.12), UDim2.fromScale(0.05, 0.04), def.color)
-		-- 1, 2 or 3 chunky pips: how hard it is
-		for k = 1, i do
-			local pip = Instance.new("Frame")
-			pip.BorderSizePixel = 0
-			pip.BackgroundColor3 = def.color
-			pip.Size = UDim2.fromScale(0.08, 0.045)
-			pip.Position = UDim2.fromScale(0.5 + (k - (i + 1) / 2) * 0.11 - 0.04, 0.18)
-			pip.Parent = card
-		end
-		local lines = Difficulty.describe(def)
-		for k, line in ipairs(lines) do
-			label(card, line, UDim2.fromScale(0.9, 0.07), UDim2.fromScale(0.05, 0.25 + (k - 1) * 0.075), RGB(255, 255, 255))
-		end
-		c.pay = label(card, Difficulty.payText(def), UDim2.fromScale(0.9, 0.1), UDim2.fromScale(0.05, 0.63), GOLD)
-		c.record = label(card, "", UDim2.fromScale(0.9, 0.06), UDim2.fromScale(0.05, 0.735), GREY)
-		local b = Instance.new("TextButton")
-		b.Name = "Pick"
-		b.Font = FONT
-		b.TextScaled = true
-		b.BorderSizePixel = 0
-		b.Size = UDim2.fromScale(0.8, 0.12)
-		b.Position = UDim2.fromScale(0.1, 0.83)
-		b.Parent = card
-		b.Activated:Connect(function()
-			pick(def)
-		end)
-		c.button = b
-		cards[i] = c
-	end
-
-	-- the big ENTER button, in the colour of the one you've picked
-	local enter = Instance.new("TextButton")
-	enter.Name = "Enter"
-	enter.Font = FONT
-	enter.TextScaled = true
-	enter.BorderSizePixel = 0
-	enter.Size = UDim2.fromScale(0.36, 0.11)
-	enter.Position = UDim2.fromScale(0.32, 0.815)
-	enter.Parent = panel
-	local enterEdge = Instance.new("UIStroke")
-	enterEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	enterEdge.Color = RGB(255, 255, 255)
-	enterEdge.Thickness = 3
-	enterEdge.Parent = enter
-	local enterPad = Instance.new("UIPadding")
-	enterPad.PaddingTop = UDim.new(0.16, 0)
-	enterPad.PaddingBottom = UDim.new(0.16, 0)
-	enterPad.Parent = enter
-
-	refresh = function()
-		if not (selected and Difficulty.unlocked(selected)) then
-			selected = Difficulty.picked()
-		end
-		for _, c in ipairs(cards) do
-			local def = c.def
-			local open = Difficulty.unlocked(def.id)
-			local wins, best = Difficulty.record(def.id)
-			if not open then
-				local prev = Difficulty.before(def.id)
-				c.record.Text = "Clear a " .. (prev and prev.name or "") .. " run first"
-				c.button.Text = "LOCKED"
-				c.button.BackgroundColor3 = RGB(38, 43, 68)
-				c.button.TextColor3 = GREY
-				c.button.AutoButtonColor = false
-				c.edge.Color = def.color -- (a coloured edge: RetroUI would turn a grey one white)
-				c.edge.Thickness = 3
-				c.name.TextColor3 = GREY
-			else
-				if (wins or 0) > 0 then
-					c.record.Text = "CLEARED " .. Config.format(wins) .. (best and ("   BEST " .. Difficulty.clock(best)) or "")
-				else
-					c.record.Text = "NOT CLEARED YET"
-				end
-				c.name.TextColor3 = def.color
-				if def.id == selected then
-					-- (the picked card: a thick white edge round it)
-					c.edge.Color = RGB(255, 255, 255)
-					c.edge.Thickness = 5
-					c.button.Text = "PICKED"
-					c.button.BackgroundColor3 = def.color
-					c.button.TextColor3 = RGB(255, 255, 255)
-					c.button.AutoButtonColor = false
-				else
-					c.edge.Color = def.color
-					c.edge.Thickness = 3
-					c.button.Text = "PICK"
-					c.button.BackgroundColor3 = GOLD
-					c.button.TextColor3 = RGB(24, 20, 37)
-					c.button.AutoButtonColor = true
-				end
-			end
-		end
-		local def = Config.colosseumDifficulty(selected)
-		enter.Text = busy and "..." or "ENTER"
-		enter.BackgroundColor3 = def.color
-		enter.TextColor3 = RGB(255, 255, 255)
-		enter.AutoButtonColor = not busy
-	end
-	Difficulty.onChange(function()
-		if gui.Enabled then
-			refresh()
-		end
-	end)
-
-	-- ENTER: the server saves the pick and sends you down the pipe (or says
-	-- why not, and the menu stays open)
-	enter.Activated:Connect(function()
-		if busy then
-			return
-		end
-		local def = Config.colosseumDifficulty(selected)
-		if not Difficulty.unlocked(def.id) then
-			say(Difficulty.lockText(def), RED)
-			return
-		end
-		busy = true
-		refresh()
-		local ok, done, msg = pcall(function()
-			return Remotes.Action:InvokeServer("ColosseumEnter", def.id)
-		end)
-		busy = false
-		if not ok then
-			say("Couldn't reach the server.", RED)
-		elseif done then
-			Difficulty.saved(def.id)
-			gui.Enabled = false
-		else
-			say(tostring(msg or "Not right now!"), RED)
-		end
-		refresh()
-	end)
-
-	-- (true if it opened: not while you're in the Colosseum)
-	function DifficultyMenu.open()
-		if player:GetAttribute("Colosseum") then
-			return false
-		end
-		selected = Difficulty.picked()
-		menuStatus.Text = ""
-		statusUntilD = 0
-		refresh()
-		gui.Enabled = true
-		return true
-	end
-	function DifficultyMenu.close()
-		gui.Enabled = false
-	end
-	function DifficultyMenu.shown()
-		return gui.Enabled
-	end
-	DifficultyMenu.refresh = refresh
-
-	-- (the server's answers fade after a few seconds)
-	task.spawn(function()
-		while true do
-			task.wait(0.3)
-			if statusUntilD > 0 and os.clock() > statusUntilD then
-				statusUntilD = 0
-				menuStatus.Text = ""
-			end
-		end
-	end)
-	-- (and it's gone once you're in)
-	player:GetAttributeChangedSignal("Colosseum"):Connect(function()
-		if player:GetAttribute("Colosseum") then
-			gui.Enabled = false
-		end
-	end)
-end
-
 -- COLOSSEUM CLEARED: the King fell on the last wave of a run. Your time,
 -- your best, how many runs you've cleared, the quest's reward, the day's
 -- first-clear bonus, a harder difficulty if this clear opened it - and a
@@ -2111,12 +1796,12 @@ end
 ----------------------------------------------------------------------
 -- Walk up and it pops up (no "press E": it isn't mobile friendly)
 ----------------------------------------------------------------------
--- The Quest Board and the Colosseum's two doors each have an invisible
+-- The Quest Board and the Colosseum's exit gate each have an invisible
 -- "AutoOpenZone" box in front of them (made by LobbyBuilder; its "Activity"
 -- attribute says which). Step in and its menu pops up; step out and it
 -- closes. Close it yourself and it stays closed until you step out and back
--- in - and so does one you arrive in (popping out of the little door, or
--- appearing after a respawn), so it never pops up the moment you get there.
+-- in - and so does one you arrive in (the trip in or out of the Colosseum,
+-- or appearing after a respawn), so it never pops up the moment you get there.
 -- (The shops and the Spire do the same with their own boxes: Hud, SpireClient.)
 do
 	local ACTIVITIES = {
@@ -2133,7 +1818,6 @@ do
 				return menu.Enabled
 			end,
 		},
-		ColosseumEnter = { open = DifficultyMenu.open, close = DifficultyMenu.close, shown = DifficultyMenu.shown },
 		ColosseumLeave = { open = LeaveCheck.open, close = LeaveCheck.close, shown = LeaveCheck.shown },
 	}
 	local zones = {} -- [box] = its activity
@@ -2175,8 +1859,8 @@ do
 			return
 		end
 		lastLook = now
-		if piping or player:GetAttribute("Intro") then
-			settle = true -- (going down the pipe, or popping out of it; or in the intro's dark)
+		if tripping or player:GetAttribute("Intro") then
+			settle = true -- (on the trip in or out of the Colosseum; or in the intro's dark)
 			closeActive()
 			return
 		end
@@ -2490,10 +2174,10 @@ end
 
 local kingBannerUntil = 0 -- (while "THE STRAW KING FALLS!" is up, WAVE CLEARED waits its turn)
 ReplicatedStorage:WaitForChild("ColosseumEvent", 60).OnClientEvent:Connect(function(kind, a, b, c, d)
-	if kind == "PipeIn" then
-		task.spawn(pipeIn, a, b, c)
-	elseif kind == "PipeOut" then
-		task.spawn(pipeOut, a, b)
+	if kind == "GoIn" and typeof(a) == "CFrame" and typeof(b) == "Vector3" then
+		task.spawn(trip, b, a.LookVector)
+	elseif kind == "GoOut" and typeof(a) == "CFrame" and typeof(b) == "Vector3" then
+		task.spawn(trip, b, a.LookVector)
 	elseif kind == "State" and type(a) == "table" then
 		renderTracker(a)
 	elseif kind == "Arrived" then

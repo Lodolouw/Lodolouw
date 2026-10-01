@@ -33,16 +33,16 @@ Config.StationTurn = {
 ----------------------------------------------------------------------
 -- The Colosseum (a wave arena for farming)
 ----------------------------------------------------------------------
--- Walk through the Colosseum gate (between the fountain and the training
--- field) and you're taken to your own fight in the Colosseum: straw dummies
+-- The Spire's ground floor (TRAIN in the Spire menu, at the Spire's doors)
+-- takes you to your own fight in the Colosseum: straw dummies
 -- hop in wave after wave and try to squash you. Nobody else can see or hit
 -- your dummies, and theirs can't hurt you - everyone farms on their own.
 -- Dummies are always your level, so a fight takes the same few punches
 -- whatever your level; the rewards grow as you do. A quest runs the whole
 -- time: BEAT 5 WAVES (a whole run, the King's wave last) for a big lump of
 -- Power (XP) and coins, and it starts over with the next run. Pick how hard
--- it is as you go in (a pop-up at the door) or on the CLEARED screen for the
--- next run: Normal, Hard or Nightmare.
+-- it is on the CLEARED screen for the next run (it's remembered): Normal,
+-- Hard or Nightmare.
 Config.Colosseum = {
 	-- THE SPIRE'S TRAINING GROUNDS: the Colosseum trains you for your next
 	-- floor. While you're below its recommended level, everything in here pays
@@ -51,19 +51,8 @@ Config.Colosseum = {
 	CatchUp = { PerLevel = 0.15, Max = 1 },
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 82, -- how far out dummies can go: right up to the foot of the stands, so nowhere is safe
-	-- the mini colosseum in the lobby (where the training field was), and its little door
-	-- (it sits beside the south road, and its bridge lands on the little
-	-- paved stub that leaves the road there)
-	LobbyModel = Vector3.new(-60, 0, 90), -- its middle
-	LobbyRadius = 42,
-	GateTurn = 90, -- the gate faces east, onto the south road
-	GatePosition = Vector3.new(-14.6, 0, 90), -- the door (you shrink into it here)
-	ShrinkTo = 0.3, -- how small you get going through the door (like a pipe)
-	ShrinkSteps = 8, -- in this many 8-bit steps
-	-- the Mario pipe sound, going in and popping out: the first Sound on this
-	-- list that's in SoundService (capitals and spaces don't matter)
-	PipeSound = { "Pipe", "Mario Pipe", "Warp Pipe" },
-	PipeVolume = 0.7,
+	-- (the way in is the Spire menu's ground floor, at the Spire's doors: the
+	-- little Colosseum in the lobby is gone)
 
 	-- THE COLOSSEUM'S SOUNDS: names of Sounds in SoundService (the first one on
 	-- each list that's there; capitals and spaces don't matter), and how loud
@@ -93,7 +82,6 @@ Config.Colosseum = {
 	-- the lobby's music steps aside while you're in there)
 	Music = { "Colosseum Song" },
 	MusicVolume = 0.45,
-	EnterRange = 20,
 
 	HitsToKill = 4, -- punches a dummy takes from a player at its level
 	WaveSize = { 3, 7 }, -- dummies in the first wave, and the most in one wave
@@ -236,8 +224,8 @@ Config.Colosseum = {
 	-- x10 = +20%... Getting hurt ends it. It carries on from run to run.
 	Streak = { Every = 5, Bonus = 0.1, Max = 0.5 },
 
-	-- DIFFICULTY: picked in the pop-up at the lobby's little door as you go
-	-- in, or on the CLEARED screen for the next run (it's saved). The first is open to
+	-- DIFFICULTY: picked on the CLEARED screen for the next run (it's saved,
+	-- so you go in on the one you picked last). The first is open to
 	-- everyone; each one after it opens once you've cleared a run on the one
 	-- before it. For each:
 	--   health  dummies (and the King) take this many times the punches

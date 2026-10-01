@@ -1180,7 +1180,7 @@ end
 --   * a SPEED hack: faster, averaged over SPEED_WINDOW seconds, than their
 --     walk speed allows (with room for rolls and being knocked about)
 --   * FLYING: no ground under them for FLY_SECONDS without falling
--- The server's own moves (travelling to the Spire, the Colosseum's pipe,
+-- The server's own moves (travelling to the Spire, the Colosseum's trip in and out,
 -- the sea washing you back) are allowed: whatever moves a player sets
 --   player:SetAttribute("MoveTo", destination)
 --   player:SetAttribute("MoveUntil", workspace:GetServerTimeNow() + seconds)
