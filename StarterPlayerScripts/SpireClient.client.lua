@@ -850,7 +850,9 @@ RunService.Heartbeat:Connect(function()
 	end
 	local here = nil
 	for zone, kind in pairs(zones) do
-		local margin = (kind == activeKind or kind == dismissedKind) and 2 or 0
+		-- (once it's open - or closed by hand - you have to walk clearly away,
+		-- 5 studs past the box, before it counts as leaving: no flicker at the edge)
+		local margin = (kind == activeKind or kind == dismissedKind) and 5 or 0
 		if zone.Parent and inside(zone, hrp.Position, margin) then
 			here = kind
 			break

@@ -3058,6 +3058,10 @@ Config.Weapons = {
 	-- what every player owns from the start (saved with their mastery; the
 	-- Iron Sword moves to an early quest reward later)
 	Starters = { "IronSword" },
+	-- abilities whose uploaded animation is switched off (the move, its hits
+	-- and its effects still happen). Chest Pound Fists and Kong's Crown knock
+	-- you over: off while we find out whether their animations are why.
+	NoAbilityAnim = { ChestPoundFists = true, KongsCrown = true },
 	Test = "IronSword", -- what "DEV: Test Sword" gives you
 	-- what "DEV: Next Sword" goes through, one press at a time (then back to fists)
 	TestList = { "IronSword", "EmberCleaver", "Tidefang", "Voidstar" },

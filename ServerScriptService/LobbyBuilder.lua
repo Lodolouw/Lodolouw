@@ -181,21 +181,49 @@ local function titleSign(parent, cf, title, subtitle, titleColor, width, maxDist
 	local anchor = anchorPart(parent, "SignAnchor", cf)
 	local studsWide = (width or 340) * SIGN_STUDS_PER_PIXEL
 	local bb = billboard(anchor, "Sign", UDim2.fromScale(studsWide, studsWide * 0.35), maxDistance or 85)
-	-- (in the game's look: a black box with a thick white border)
+	-- (in the new GUI's look: a pink plate with an ink edge and a hard
+	-- shadow, the name in big white words with an ink edge - like the menus)
+	local INK = RGB(24, 20, 37)
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.BackgroundColor3 = INK
+	shadow.BackgroundTransparency = 0.25
+	shadow.BorderSizePixel = 0
+	shadow.Position = UDim2.fromScale(0.03, 0.12)
+	shadow.Size = UDim2.fromScale(0.97, 0.88)
+	shadow.ZIndex = 0
+	shadow.Parent = bb
 	local box = Instance.new("Frame")
 	box.Name = "Box"
-	box.BackgroundColor3 = RGB(12, 10, 20)
-	box.BackgroundTransparency = 0.15
-	box.Size = UDim2.fromScale(1, 1)
-	box.ZIndex = 0
+	box.BackgroundColor3 = RGB(255, 63, 164)
+	box.BorderSizePixel = 0
+	box.Size = UDim2.fromScale(0.97, 0.88)
+	box.ZIndex = 1
 	box.Parent = bb
 	local edge = Instance.new("UIStroke")
-	edge.Color = RGB(255, 255, 255)
+	edge.Color = INK
 	edge.Thickness = 3
+	edge.LineJoinMode = Enum.LineJoinMode.Miter
 	edge.Parent = box
 	-- (just the name: the old line of text under it is gone)
 	bb.Size = UDim2.fromScale(studsWide, studsWide * 0.22)
-	billLabel(bb, "Title", title, titleColor, UDim2.fromScale(0.05, 0.1), UDim2.fromScale(0.9, 0.8))
+	local words = Instance.new("TextLabel")
+	words.Name = "Title"
+	words.BackgroundTransparency = 1
+	words.Font = Enum.Font.FredokaOne
+	words.Text = title
+	words.TextColor3 = RGB(255, 255, 255)
+	words.TextScaled = true
+	words.Position = UDim2.fromScale(0.05, 0.1)
+	words.Size = UDim2.fromScale(0.87, 0.68)
+	words.ZIndex = 2
+	words.Parent = box
+	local wordsEdge = Instance.new("UIStroke")
+	wordsEdge.Color = INK
+	wordsEdge.Thickness = 2.5
+	wordsEdge.LineJoinMode = Enum.LineJoinMode.Round
+	wordsEdge.Parent = words
+	bb:SetAttribute("RetroSkip", true) -- (RetroUI leaves the new look alone)
 	return anchor
 end
 
@@ -2012,9 +2040,10 @@ local function buildSpire(parent)
 	enterPrompt.RequiresLineOfSight = false
 	enterPrompt.Parent = entrance
 	CollectionService:AddTag(enterPrompt, "SpireEntrance")
-	-- the whole approach counts: from the doors, over the platform and down the
-	-- steps to the first obelisks
-	autoZone(t, CFrame.new(0, y + 6, (DZ + FZ + 21) / 2), V3(30, 16, (FZ + 21) - DZ), "Spire", "Menu")
+	-- the menu opens on the glowing mat right in front of the doors (it used to
+	-- cover the whole platform and the steps, so it kept popping up and
+	-- closing while you only walked about)
+	autoZone(t, CFrame.new(0, gy + 4, DZ + 6), V3(18, 10, 12), "Spire", "Menu")
 	-- (just outside the menu zone, so the menu doesn't pop straight back up when you return)
 	local back = anchorPart(t, "SpireReturn", CFrame.lookAt(V3(0, y + 3, FZ + 25), V3(0, y + 3, FZ + 40)))
 	CollectionService:AddTag(back, "SpireReturn")

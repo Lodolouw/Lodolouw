@@ -1696,6 +1696,9 @@ do
 	-- a move's animation (uploaded: AssetIds.Animations, by the move's Anim
 	-- or its weapon's id), or nil if it isn't there
 	local function moveTrack(id)
+		if Config.Weapons.NoAbilityAnim and Config.Weapons.NoAbilityAnim[id] then
+			return nil -- (its animation is switched off: Config.Weapons.NoAbilityAnim)
+		end
 		local move = Moves.of(id)
 		local key = move and (move.Anim or id)
 		local aid = key and AssetIds.Animations and AssetIds.Animations[key]
