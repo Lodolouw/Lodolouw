@@ -3,14 +3,22 @@ pack's goo (the swings of the rarer ones, the splats, the Secret's jelly), and
 the Slime abilities. Made from code like the rest (make_sfx.py's building
 blocks: squares, noise, sweeps), a bit rounder and wetter for the goo.
 
-Then the next two packs', the same way (their swings, what the swings throw
-off and hit, and their abilities):
+Then the later packs', the same way (their swings, what the swings throw off
+and hit, and their abilities):
   * the Knight pack (Knight Burrowmore): a heavy shovel's swish and clang,
     dirt clods, gold chimes and coins, a pogo's boing, anchors on chains,
     armour cracking into gold and a meteor
   * the Speedway pack (Speedy Revvington): tyres, sparks, flames, engines
     revving, nitro, pistons, a horn, and the race's start lights and
     finish-line fanfare
+  * the Jungle pack (Kongo): leaves and vines, wooden barrels with iron
+    bands (swung, rolled, burst and blown up), a banana's boing-bonk, ape
+    grunts, a roar and chest thumps, jungle drums, and gold for his crown
+    and the giant fist that falls out of the sky
+  * the Canvas pack (Scribble): a paintbrush, ink splats, an eraser's
+    squeak, a pencil sharpener and scribbles, and the computer he lives in -
+    keys clicking, copy and paste, pixels popping, glitches, and a DELETE
+    that shatters everything
 
     python3 weapon_sfx.py              -> out/weapons/<Name>.ogg (and .wav)
     python3 weapon_sfx.py Knight Goo   ...only the Knight pack's and the ones
@@ -1021,7 +1029,7 @@ def scratch(seconds, rate, vol=1.0, lo=1500, hi=6500):
     ph = np.cumsum(rate * (1 + 0.3 * wob / (np.max(np.abs(wob)) + 1e-9))) / RATE
     paper = band(noise(n), hi=400)
     rasp = band(noise(n), lo, hi) * (1 + 0.6 * paper / (np.max(np.abs(paper)) + 1e-9))
-    return (rasp + grit(seconds, 900, lo, hi * 1.2, 0.4, grain=0.001)) * np.abs(np.sin(np.pi * ph)) ** 0.6 * vol
+    return (rasp + grit(seconds, 900, lo, hi * 1.2, 0.4, grain=0.001)) * np.abs(np.sin(np.pi * ph)) ** 1.5 * vol
 
 
 # ----------------------------------------------------------------------
@@ -1128,6 +1136,7 @@ def vine_whip():
     k = np.arange(n) / n
     lash = swoop(s, 500, 7000, 1.6) * 0.9
     sing = sine(sweep(600, 2400, s)) * k ** 2.6 * 0.12
+    sing[-n_of(0.005):] *= np.linspace(1, 0, n_of(0.005))
     crack = crushed(mix(strike(0.006, 1500, 11000, 1.3), strike(0.035, 700, 6000, 0.45), thump(180, 90, 0.08, 0.25, 2.0)), 16)
     shake = leaves(0.26, 550, 0.5, shape=env(n_of(0.26), 0.004, 0.26, 1.7))
     return master(mix(lash, sing, at(crack * 0.9, s), at(shake, s + 0.008)), hi=10000, drive=1.4)
@@ -1158,11 +1167,11 @@ def ape_roar():
 
 def chest_thump():
     # three quick, hollow chest pounds: thump-thump-THUMP
-    def pound(f, v):
-        chest = metal(f * 2.1, 0.18, ((1, 1.0), (1.62, 0.45), (2.43, 0.2)), 0.8, int(f))
+    def pound(f, v, s=0.18):
+        chest = metal(f * 2.1, s, ((1, 1.0), (1.62, 0.45), (2.43, 0.2)), 0.8, int(f))
         slap = band(noise(n_of(0.035)), 300, 3000) * env(n_of(0.035), 0.0005, 0.035, 3) * 0.7
-        return mix(thump(f, f * 0.6, 0.18, 0.7, 2.4), chest, slap) * v
-    return master(mix(pound(135, 0.75), at(pound(145, 0.8), 0.16), at(pound(128, 1.0), 0.32)), lo=60, drive=1.3)
+        return mix(thump(f, f * 0.6, s, 0.7, 2.4), chest, slap) * v
+    return master(mix(pound(135, 0.75), at(pound(145, 0.8), 0.17), at(pound(128, 1.0, 0.26), 0.34)), lo=60, drive=1.3)
 
 
 def fang_snap():
@@ -1232,9 +1241,9 @@ def barrel_burst():
     splinters = grit(0.35, 500, 1200, 8000, 0.45, grain=0.002, shape=env(n_of(0.35), 0.002, 0.35, 1.8))
     r = S.rng
     staves, tt = [], 0.04
-    for i in range(12):
-        staves.append(at(knock(r.uniform(240, 800), r.uniform(0.06, 0.12), r.uniform(0.4, 0.8) * (1 - i / 14)), tt))
-        tt += r.uniform(0.012, 0.045)
+    for i in range(13):
+        staves.append(at(knock(r.uniform(240, 800), r.uniform(0.06, 0.12), r.uniform(0.4, 0.8) * (1 - i / 15)), tt))
+        tt += r.uniform(0.015, 0.05)
     hoop = mix(at(metal(470, 0.45, HOOP, 0.22, 20), 0.05), at(metal(690, 0.35, HOOP, 0.12, 21), 0.21))
     return master(mix(crash, splinters, *staves, hoop), lo=50, drive=1.4)
 
@@ -1244,7 +1253,7 @@ def barrel_bat():
     bonk = mix(sine(sweep(620, 390, 0.16)) * env(n_of(0.16), 0.001, 0.16, 2.0) * 0.8, metal(400, 0.25, BARREL, 0.7, 22),
                thump(160, 70, 0.2, 0.6, 2.0), strike(0.015, 600, 7000, 0.9))
     blip = chip(np.geomspace(520, 300, n_of(0.1)), 0.1, 0.5, 0.18, d=0.04, s=0.3, r=0.03)
-    return master(mix(crushed(bonk, 22), blip, at(whoosh(0.2, 300, 2400, 0.6, 1.4), 0.07)), drive=1.4)
+    return master(mix(crushed(bonk, 22), blip, at(whoosh(0.28, 300, 2400, 0.6, 1.3), 0.07)), drive=1.4)
 
 
 def barrel_blast():
@@ -1303,7 +1312,7 @@ def fist_smash():
         v = r.uniform(0.5, 1.0) * np.exp(-tt / 0.6)
         rocks.append(at(mix(strike(0.012, 700, 5000, 0.8), thump(r.uniform(170, 320), 80, 0.07, 0.5, 2.0)) * v, tt))
     rubble = grit(0.95, 150, 250, 3000, 1.0, grain=0.008, shape=env(n_of(0.95), 0.02, 0.95, 1.6))
-    return master(mix(hit, rubble, *rocks), lo=55, drive=1.5)
+    return master(mix(hit, rubble, *rocks), lo=55, drive=1.3)
 
 
 # ----------------------------------------------------------------------
@@ -1326,7 +1335,8 @@ def brush_swish():
 def ink_splat():
     # a little wet splat of ink (gentle and short: lots land)
     smack = band(noise(n_of(0.015)), 700, 5000) * env(n_of(0.015), 0.0005, 0.015, 3) * 0.5
-    return master(mix(squelch(0.12, 430, 110, 0.9), smack, at(drip(1100, 0.2), 0.05), at(drip(1500, 0.12), 0.085)), lo=80, hi=9000)
+    return master(mix(squelch(0.15, 430, 100, 0.9), smack, at(drip(1100, 0.2), 0.05), at(drip(1500, 0.12), 0.09), at(drip(1250, 0.07), 0.13)),
+                  lo=80, hi=9000)
 
 
 def ink_thwack():
@@ -1362,10 +1372,10 @@ def paste_hit():
     # and a crunchy copy of the hit landing on it
     knock_ = tri(sweep(220, 85, 0.12)) * env(n_of(0.12), 0.001, 0.12, 3) * 0.6
     slap = crushed(mix(strike(0.025, 800, 9000), knock_, squelch(0.15, 340, 80, 0.6)), 20)
-    bleep = mix(chip(midi(84), 0.05, 0.25, 0.26, d=0.03, s=0.6, r=0.01), at(chip(midi(91), 0.2, 0.25, 0.26, d=0.06, s=0.3, r=0.1), 0.05))
-    echo = band(crushed(hold(slap, 6), 8), hi=6000) * 0.3
-    echo2 = band(crushed(hold(slap, 11), 5), hi=4500) * 0.15
-    return master(mix(slap * 0.85, at(bleep, 0.03), at(echo, 0.1), at(echo2, 0.2)), drive=1.3)
+    bleep = mix(chip(midi(84), 0.05, 0.25, 0.3, d=0.03, s=0.6, r=0.01), at(chip(midi(91), 0.26, 0.25, 0.3, d=0.06, s=0.3, r=0.14), 0.05))
+    echo = band(crushed(hold(slap, 6), 8), hi=6000) * 0.35
+    echo2 = band(crushed(hold(slap, 11), 5), hi=4500) * 0.18
+    return master(mix(slap * 0.6, at(bleep, 0.03), at(echo, 0.11), at(echo2, 0.22)))
 
 
 def glitch_swing():
@@ -1391,7 +1401,7 @@ def glitch_hit():
     again = [at(band(crushed(hold(caught, e), q), hi=9000) * v, t0) for t0, e, q, v in ((0.05, 3, 8, 0.7), (0.078, 6, 6, 0.5), (0.106, 10, 4, 0.35))]
     n = n_of(0.25)
     spit = crushed(hold(noise(n), 12), 4) * gate(n, [(0.0, 0.03), (0.06, 0.08), (0.13, 0.15), (0.2, 0.21)]) * env(n, 0.001, 0.25, 1.2) * 0.25
-    bwoop = chip(np.geomspace(900, 160, n_of(0.18)), 0.18, 0.5, 0.15, d=0.05, s=0.6, r=0.04)
+    bwoop = chip(np.geomspace(900, 140, n_of(0.26)), 0.26, 0.5, 0.15, d=0.06, s=0.5, r=0.06)
     return master(mix(hit, *again, at(spit, 0.14), at(bwoop, 0.04)), drive=1.4)
 
 
@@ -1440,11 +1450,11 @@ def eraser_squeak():
 
 def erase_poof():
     # something rubbed out: a soft poof, a little shimmer as it goes
-    s = 0.32
+    s = 0.36
     n = n_of(s)
     puff = A.sweep_lp(noise(n), np.geomspace(3000, 300, n)) * env(n, 0.012, s, 2.2)
     body = band(noise(n_of(0.15)), 150, 900) * env(n_of(0.15), 0.01, 0.15, 2.0) * 0.5
-    return master(mix(puff, body, glints(0.05, 4, 0.045, 0.12, (103, 100, 98, 96), climb=True)), hi=10000)
+    return master(mix(puff, body, glints(0.05, 6, 0.045, 0.12, (103, 100, 98, 96, 93, 91), climb=True)), hi=10000)
 
 
 def pencil_sharpen():
@@ -1467,15 +1477,15 @@ def ink_splosh():
     spray = band(noise(n_of(0.4)), 500, 6000) * env(n_of(0.4), 0.003, 0.4, 2.4) * 0.5
     slam = crushed(mix(thump(120, 44, 0.5, 0.9, 2.2), strike(0.04, 400, 8000, 0.9)), 22)
     r = S.rng
-    drops = mix(*[at(drip(r.uniform(800, 2000), r.uniform(0.1, 0.3) * (1 - i / 14)), 0.12 + i * 0.03 + r.uniform(0, 0.025)) for i in range(12)])
-    return master(mix(slam * 0.8, squelch(0.38, 300, 48, 1.0), at(squelch(0.18, 560, 150, 0.45), 0.06), at(spray, 0.01), drops), lo=45, drive=1.4)
+    drops = mix(*[at(drip(r.uniform(800, 2000), r.uniform(0.1, 0.3) * (1 - i / 16)), 0.12 + i * 0.033 + r.uniform(0, 0.025)) for i in range(14)])
+    return master(mix(slam * 0.8, squelch(0.45, 300, 48, 1.0), at(squelch(0.18, 560, 150, 0.45), 0.06), at(spray, 0.01), drops), lo=45, drive=1.4)
 
 
 def scribble_slash():
     # the doodle's dash-slash: a pencil scratching furiously back and forth,
     # and the cut through the air
     s = 0.38
-    return master(mix(whoosh(0.3, 700, 6000, 1.0, 1.8), scratch(s, 26, 1.0) * env(n_of(s), 0.01, s, 1.5)))
+    return master(mix(whoosh(0.3, 700, 6000, 0.6, 1.8), scratch(s, 26, 1.0) * env(n_of(s), 0.01, s, 1.5)), drive=1.1)
 
 
 def redraw_swish():
