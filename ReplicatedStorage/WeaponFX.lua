@@ -1649,7 +1649,8 @@ local function kongoEyes(theme, at, floor, centre)
 		local eye = parts[1][1]
 		if eye.Parent then
 			if theme.eyeSound then
-				soundAt(theme.eyeSound, eye.Position, 0.9 + math.random() * 0.2, 0.8)
+				-- (a loud one, and both pops grunt at once: kept down)
+				soundAt(theme.eyeSound, eye.Position, 0.9 + math.random() * 0.2, 0.5)
 			end
 			for _ = 1, 8 do
 				flingGoo(theme, look.Position, Vector3.new(math.random() * 12 - 6, 7 + math.random() * 6, math.random() * 12 - 6), 0.55, floor)
