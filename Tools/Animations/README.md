@@ -110,8 +110,7 @@ Each weapon's ability (F) has its own animation, made the same way as the
 types' swings (posing by direction, swings round a plane) and timed to its
 move in `ReplicatedStorage/Moves`: its big moment lands exactly when the
 move's hit or effect is due, and it lasts the move's `Time`. Change the two
-together. The Slime, Knight and Speedway packs so far; the other packs' come
-with their weapons.
+together. All five launch packs: Slime, Knight, Speedway, Jungle and Canvas.
 
 Slime:
 
@@ -169,18 +168,78 @@ Speedway:
 - Victory Lap, Victory Lap: GO! Both daggers flung up in a V over the head
   (0 s), then down into a sprinter's crouch and off, ready to run.
 
-The Knight and Speedway ones are key poses (`Poses`): the left hand is kept on
-a handle every frame (`hands` puts the right one where two hands can meet: R6
-arms don't bend), a spin turns the whole body round (`yaw`), and the feet stay
-where they're put whatever the chest does (`key`, `level`). Each big moment
-is a marker, so a keyframe lands right on it, and each one ends on a keyframe
-exactly at its move's `Time` (the Slime files are as they were made).
+Jungle:
+
+- Chest Pound Fists, Roar: planted wide, the chest pounded like a gorilla's,
+  left, right, left (0.05, 0.16, 0.27 s), the other fist cocked out wide each
+  time; a crouch, then both arms thrown out wide, chest out, head back (0.4 s,
+  ROAR), held, and a hop back into the guard.
+- Jungle Fang, Fang: down into a predator's crouch with the blade drawn up
+  and standing beside the face like a great fang (0.1 s), the free arm hanging
+  like an ape's; a snarl (the fang leans in, the free hand claws) and back.
+- Vine Scythe, Vine Swing: the free (left) hand shoots up and grabs the vine,
+  and he swings forward on it through the leap (0.04 to 0.59 s) like Tarzan,
+  the arm following the vine's top as he passes under it, knees tucking, then
+  legs up; he lets go, lands wide and sweeps the scythe low and flat round in
+  front (0.62 s) and on round behind him.
+- Barrel Daggers, Barrel Roll: curled up tight in a ball (knees up, arms
+  round the shins, the daggers along the roll's axis) and two forward
+  somersaults through the dash (0.06 to 0.52 s); then bursting out in an X
+  (0.52 s, the barrel bursts), a pop, and down into the stance.
+- Barrel Hammer, Barrel Toss: a batter's stance, the hammer cocked over the
+  right shoulder, a stride and a big level swing through the barrels (0.34 s,
+  the barrel's lid leading), round and up behind the head, then a cocky rest
+  of it on the left shoulder, fist on hip.
+- Kong's Crown, Sky Fist: the sword raised to the sky, calling (0 to 0.15 s),
+  the free fist pumped up beside it in a V as the giant fist appears (0.15 s)
+  and again, held up as it falls, a rear back and the fist slammed down in a
+  huge crouch as it lands (0.9 s); then up, the sword brought round.
+
+Canvas:
+
+- Eraser Hammer, Erase: bent over, the hammer down on the floor in front and
+  its eraser end scrubbing hard from side to side (0.2 s, the rub), then held
+  up in front for a satisfied blow on it.
+- Pencil Sword, Sharpen: stood up before the face, its blade in the free fist
+  like a sharpener, twisted round in it, the hands cranking (0.1 s, the
+  shavings), then a flourish out and down into a lunging point.
+- Ink Fists, Ink Splash: up with the hop, both fists raised overhead, knees
+  tucked, and a double-fist pound into the floor as he lands (0.37 s).
+- Doodle Katana, Doodle Clone: a quick-draw stance (the blade "sheathed"
+  edge-up at the left hip), a low glide through the dash (0.1 to 0.35 s), one
+  flash of a draw-cut across (0.37 s) and a low freeze, the blade flung out.
+- Copy-Paste Scythe, Copy-Paste: the free hand selects left, then right; the
+  scythe is spun once round overhead, flat (0.15 s, the copies appear), then
+  planted upright beside him, chest out, fist on hip.
+- Delete Key, DELETE: he lags like a frozen computer, snapping between stuck
+  poses held on whole frames (a T-pose, a twisted frame, the T-pose again, a
+  hunch), then both daggers up and stabbed down together like pressing a
+  giant key (0.72 s), held hard down.
+
+The Knight, Speedway, Jungle and Canvas ones are key poses (`Poses`): the left
+hand is kept on a handle every frame (`hands` puts the right one where two
+hands can meet: R6 arms don't bend), a spin turns the whole body round
+(`yaw`), and the feet stay where they're put whatever the chest does (`key`,
+`level`). Each big moment is a marker, so a keyframe lands right on it - for
+the Jungle and Canvas ones, every step of the move, the starts and ends of its
+dashes, leaps and hops too - and each one ends on a keyframe exactly at its
+move's `Time` (the Slime files are as they were made). Jungle and Canvas
+added: `aloft` (in the air, the chest kept up while the legs tuck), `reach`
+(an arm aimed at a spot on the chest), `leads` (a head or blade leading the
+way it travels) and `Tumble` (whole-body somersaults, `roll`: the head stays
+on the neck and the lowest part of the body goes on the floor; it's the only
+thing that changes `anims.dir_transforms`, and only for those poses). Things
+that keep two-handed holds and twists from flipping: a weapon never along
+the arm that holds it, a free hand only takes a handle that isn't lying along
+that arm, and an edge carried round with its blade.
 
 ```
 python3 abilities.py                  # -> abilities/<weapon>.rbxmx (one KeyframeSequence each, 30 keyframes a second)
 python3 abilities.py preview          # -> Docs/animations/slime_abilities.mp4 and .png (front and side, full speed and slow)
 python3 abilities.py preview knight   # -> Docs/animations/knight_abilities.mp4 and .png
 python3 abilities.py preview speedway # -> Docs/animations/speedway_abilities.mp4 and .png
+python3 abilities.py preview jungle   # -> Docs/animations/jungle_abilities.mp4 and .png
+python3 abilities.py preview canvas   # -> Docs/animations/canvas_abilities.mp4 and .png
 ```
 
 They're uploaded with the models by `Tools/Upload/upload_assets.bat` (see

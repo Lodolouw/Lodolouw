@@ -7,9 +7,10 @@ lasts the move's Time.
     python3 abilities.py                  -> abilities/<weapon>.rbxmx (one animation each,
                                              for Tools/Upload/upload_assets.bat)
     python3 abilities.py preview [pack]   -> ../../Docs/animations/<pack>_abilities.mp4 and .png
-                                             (slime - the default -, knight or speedway)
+                                             (slime - the default -, knight, speedway, jungle
+                                             or canvas)
 
-The Slime, Knight and Speedway packs so far; the others come with their weapons.
+All five launch packs: Slime, Knight, Speedway, Jungle and Canvas.
 """
 import math
 import os
