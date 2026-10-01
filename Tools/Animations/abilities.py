@@ -953,6 +953,92 @@ ABILITIES['BarrelDaggers'] = ('Daggers', shown(Tumble('BarrelDaggersAbility', [
 ], hit=0.52, marks=[('Barrel', 0.0), ('Dash', 0.06), ('Hit', 0.52)]),
     (0.06, 'CURL UP'), (0.16, 'ROLL'), (0.26, 'ROLL'), (0.36, 'ROLL'), (0.52, 'BURST'), (0.58, 'POP')))
 
+# BARREL HAMMER - Barrel Toss: a batter's stance, the barrel-headed hammer
+# cocked up over the right shoulder, a stride - and a huge level swing round
+# through the two barrels in front (0.34, its lid leading), on round and up
+# over the left shoulder; then a cocky rest of the hammer on the right
+# shoulder, and back to the stance
+
+
+def batter(yaw, turn, lean, at, b, travel, legs, look=AHEAD, hop=0.0, grip=1.0, e=None, left=None, lfwd=None):
+    """the hammer in both hands at `at` (chest space), its head out along b and
+    its face (+X: the barrel's lid) leading the way it's travelling (or its
+    front `e`) - b, travel, e, look and the free arm (`left`: one hand) as in
+    the world, the whole body turned round by yaw"""
+    root = (lean, 0, turn)
+    b_ = yawed(b, -yaw)
+    arm = hands(root, at, b_, leads(b_, yawed(travel, -yaw)) if e is None else yawed(e, -yaw))
+    left = None if left is None else yawed(left, -yaw)
+    lfwd = None if lfwd is None else yawed(lfwd, -yaw)
+    return dict(key(root, level(root, legs), arm, left, look=yawed(look, -yaw), hop=hop, yaw=yaw, lfwd=lfwd), grip=grip)
+
+
+def face_of(p):
+    """a batter() pose's hammer: its handle and front, as in the world"""
+    return yawed(p['arm'][1], p['yaw']), yawed(p['arm'][2], p['yaw'])
+
+
+STANCE = ((-0.36, -1, -0.40), (0.34, -1, 0.28))  # (side-on to it, the weight back)
+STRIDE = ((-0.42, -1, -0.62), (0.36, -1, 0.34))  # (the front foot stepped in)
+WRAP = batter(40, 35, 2, (-0.05, 0.80, -0.95), (-0.25, 0.85, 0.45), (-0.30, 0.30, 0.90), STRIDE)  # (round, up behind)
+REST_B = unit((-0.45, 0.50, 0.74))  # (on the left shoulder, the head behind it)
+REST_E = carry(*face_of(WRAP), REST_B)  # (its face carried on round from the swing, so it doesn't spin)
+
+
+def rest(lean, look, yaw=10.0):
+    """the cocky rest: the hammer on the left shoulder in the right hand, the
+    free fist on the hip"""
+    return batter(yaw, 10, lean, (-0.30, 0.55, -1.0), REST_B, None, 'back', look=look, e=REST_E, grip=0.0,
+                  left=(-0.50, -0.85, 0.18), lfwd=(0.25, -0.05, -1.0))
+
+
+ABILITIES['BarrelHammer'] = ('Hammer', shown(Poses('BarrelHammerAbility', [
+    (0.00, dict(wt.H_IDLE, grip=0.0, yaw=0.0), 'linear'),
+    (0.12, batter(-40, -32, -2, (0.20, 0.85, -1.0), (0.25, 0.80, 0.55), (0.55, -0.80, 0.10), STANCE, hop=0.04), 'out'),
+    (0.22, batter(-46, -38, 0, (0.22, 0.90, -0.95), (0.30, 0.74, 0.60), (0.55, -0.80, 0.10), STRIDE, look=(0.05, -0.05, -1)),
+     'inout'),
+    (0.29, batter(-34, -30, 8, (0.15, 0.20, -1.0), (0.90, 0.05, 0.42), (0.40, 0.0, -0.90), STRIDE), 'in'),
+    (0.34, batter(0, 4, 18, (0.05, -0.35, -0.85), (0.0, -0.16, -0.99), (-1.0, 0.0, 0.0), STRIDE, look=DOWN), 'linear'),
+    (0.40, batter(30, 28, 14, (-0.05, -0.05, -0.92), (-0.92, 0.05, -0.38), (-0.38, 0.0, 0.92), STRIDE), 'out2'),
+    (0.50, WRAP, 'out'),
+    (0.60, rest(-6, (0.15, 0.06, -1)), 'inout'),
+    (0.74, rest(-9, (0.22, 0.12, -1), yaw=8.0), 'hold'),
+    (0.90, dict(wt.H_IDLE, grip=0.0, yaw=0.0), 'inout'),
+], two=(-0.8, -0.3), hit=0.34, marks=[('Cut', 0.29), ('Bat', 0.34), ('Through', 0.42)]),
+    (0.12, 'COCKED'), (0.22, 'STRIDE'), (0.29, 'IN THE SLOT'), (0.34, 'BAT'), (0.50, 'ROUND'), (0.70, 'COCKY')))
+
+# KONG'S CROWN - Sky Fist: a stomp and the sword raised to the sky, head
+# back, calling (0 to 0.15); the free fist pumps up beside it in a V as the
+# giant fist appears (0.15), and again; he holds them up there as it falls,
+# then rears back - and slams the fist down at the ground in a huge crouch
+# as the giant one lands (0.9), the sword swung out behind; then rises
+SKY = ((-0.45, -1, -0.12), (0.45, -1, 0.14))  # (planted wide)
+SLAM = level((58, 0, -10), ((-0.40, -1, -0.80), (0.45, -0.35, 1.0)))  # (down low, nearly kneeling)
+TO_SKY = blade((0.18, 0.80, -0.57), (0.0, 1.0, 0.16))  # (the arm up and forward, the blade straight up)
+
+
+def calling(lean, left, sword=TO_SKY, look=(0, 0.85, -0.55), legs=SKY, hop=0.0):
+    return key((lean, 0, -6), legs, sword, left, look=look, hop=hop)
+
+
+ABILITIES['KongsCrown'] = ('Sword', shown(Poses('KongsCrownAbility', [
+    (0.00, S_IDLE, 'linear'),
+    (0.10, calling(-16, (-0.40, -0.85, 0.25), hop=0.06), 'out'),
+    (0.15, calling(-19, (-0.58, 0.78, -0.22)), 'snap'),
+    (0.24, calling(-10, (-0.88, 0.10, -0.45), look=(0, 0.6, -1)), 'inout'),
+    (0.32, calling(-18, (-0.55, 0.82, -0.15)), 'out'),
+    (0.62, calling(-22, (-0.52, 0.85, -0.08), look=(0, 0.75, -0.65)), 'hold'),
+    (0.80, calling(-24, (-0.25, 0.75, 0.60), sword=blade((0.60, -0.70, 0.38), (0.30, -0.30, 0.90)), look=(0, 0.5, -1),
+                   legs=((-0.35, -1, -0.30), (0.40, -1, 0.25)), hop=0.14), 'inout'),
+    (0.90, key((58, 0, -10), SLAM, blade((0.90, -0.30, 0.20), (0.35, -0.10, 0.93)), (0.18, -0.92, -0.33), look=DOWN), 'in2'),
+    (1.02, key((60, 0, -10), SLAM, blade((0.90, -0.32, 0.18), (0.35, -0.12, 0.93)), (0.18, -0.93, -0.32), look=DOWN), 'out'),
+    # (rising, the sword brought round the outside to the front)
+    (1.16, key((26, 0, -16), 'crouch', blade((0.75, -0.40, -0.50), (0.90, 0.25, -0.35)), (-0.20, -0.90, -0.25), look=AHEAD),
+     'inout'),
+    (1.30, S_IDLE, 'inout'),
+], hit=0.9, marks=[('Call', 0.0), ('SkyFist', 0.15), ('Hit', 0.9)]),
+    (0.10, 'CALL'), (0.15, 'SKY FIST'), (0.24, 'PUMP'), (0.62, 'HOLD IT UP'), (0.80, 'REAR BACK'), (0.90, 'SMASH')))
+
 
 # which pack each weapon is from (the preview shows a pack at a time)
 PACK = {
