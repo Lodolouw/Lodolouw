@@ -312,6 +312,7 @@ return {
 		GooGloves = 89562644011077,
 		HonourBlade = 73843345505035,
 		InkFists = 99908963169331,
+		IronSword = 80255286114312,
 		Jellyblade = 71398958720929,
 		JungleFang = 123820789312219,
 		KongsCrown = 73982804967306,
