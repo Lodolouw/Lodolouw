@@ -237,6 +237,8 @@ return {
 		Giant_Land = 77187510351146,
 		Giant_Stomp = 117877749115093,
 		Giant_Trip = 118597946537861,
+		Gridlock_Theme = 137243091698986,
+		Gridlock_Theme_Flip = 93120823040752,
 		Guard_Jab = 118265507343257,
 		Gulp = 95941208206818,
 		Hammer_Spin = 72885013242684,
