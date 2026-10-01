@@ -890,22 +890,46 @@ local function neverTrip(char)
 		steady(d)
 	end
 	char.DescendantAdded:Connect(steady)
-	-- and the last word: tipped over more than ~25 degrees (alive, not riding
-	-- something), you're stood straight back up where you are
+	-- and an upright brace: a physics constraint on your root that only
+	-- stops you tilting (turning to face anywhere is untouched). It holds you
+	-- up smoothly, from inside the physics - setting the body straight each
+	-- frame instead made it lean and snap back over and over. Always on,
+	-- except while you sit (abilities work in the lobby too).
 	local hrp = char:WaitForChild("HumanoidRootPart", 10)
 	if hrp then
+		local att = Instance.new("Attachment")
+		att.Name = "UprightAttachment"
+		att.Axis = Vector3.new(0, 1, 0)
+		att.SecondaryAxis = Vector3.new(1, 0, 0)
+		att.Parent = hrp
+		local brace = Instance.new("AlignOrientation")
+		brace.Name = "UprightBrace"
+		brace.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		brace.AlignType = Enum.AlignType.PrimaryAxisParallel
+		brace.PrimaryAxis = Vector3.new(0, 1, 0)
+		brace.Attachment0 = att
+		brace.MaxTorque = 1e7
+		brace.Responsiveness = 120
+		brace.Parent = hrp
+		local function sync()
+			brace.Enabled = not hum.Sit
+		end
+		sync()
+		hum:GetPropertyChangedSignal("Sit"):Connect(sync)
+		-- (the very last word: if you still end up badly on your side - more
+		-- than ~60 degrees - you're stood up once, not fought every frame)
 		local guard
 		guard = RunService.Heartbeat:Connect(function()
 			if not hrp.Parent or not hum.Parent then
 				guard:Disconnect()
 				return
 			end
-			if hum.Health > 0 and not hum.Sit and hrp.CFrame.UpVector.Y < 0.9 then
+			if hum.Health > 0 and not hum.Sit and hrp.CFrame.UpVector.Y < 0.5 then
 				local look = hrp.CFrame.LookVector
 				local flat = Vector3.new(look.X, 0, look.Z)
 				if flat.Magnitude < 0.05 then
 					local up = hrp.CFrame.UpVector
-					flat = Vector3.new(up.X, 0, up.Z) -- (face-down or on your back: face where your head was)
+					flat = Vector3.new(up.X, 0, up.Z)
 				end
 				flat = flat.Magnitude > 0.05 and flat.Unit or Vector3.new(0, 0, -1)
 				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat)
