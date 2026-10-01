@@ -451,15 +451,12 @@ end
 
 -- Runs every frame for the length of the roll: undoes any trip that slips
 -- through and levels the body without changing where it is or where it points.
-local braceUntil = 0 -- (the upright brace holds you up until then: see neverTrip)
 local function keepUpright(char, facing)
-	braceUntil = math.huge
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
 		local hum, hrp = charParts()
 		if not hum or not hrp or hrp.Parent ~= char then
 			connection:Disconnect()
-			braceUntil = os.clock() + 0.5
 			return
 		end
 		if isTripped(hum) then
@@ -473,16 +470,7 @@ local function keepUpright(char, facing)
 		end
 		hrp.AssemblyAngularVelocity = Vector3.zero
 	end)
-	-- (stopping it lets the brace go half a second later: you've landed)
-	local handle = { Connected = true }
-	function handle.Disconnect()
-		if handle.Connected then
-			handle.Connected = false
-			connection:Disconnect()
-			braceUntil = os.clock() + 0.5
-		end
-	end
-	return handle
+	return connection
 end
 
 -- The camera takes the hit.
@@ -879,86 +867,6 @@ local function neverTrip(char)
 		return
 	end
 	allowTripping(hum, false)
-	-- Your character is driven by Roblox's physics controllers (a
-	-- ControllerManager): on the ground and in the air they only keep you
-	-- upright as hard as they're told - in the air not at all - so an
-	-- ability's hop, leap or shove could land you on your side. Both are told
-	-- to keep you upright, firmly.
-	local function steady(c)
-		if c:IsA("GroundController") or c:IsA("AirController") then
-			pcall(function()
-				c.BalanceRigidityEnabled = true
-				c.BalanceMaxTorque = 1e7
-				c.BalanceSpeed = math.max(c.BalanceSpeed, 100)
-			end)
-			if c:IsA("AirController") then
-				pcall(function()
-					c.MaintainAngularMomentum = false
-				end)
-			end
-		end
-	end
-	for _, d in ipairs(char:GetDescendants()) do
-		steady(d)
-	end
-	char.DescendantAdded:Connect(steady)
-	-- and an upright brace: a physics constraint on your root that only
-	-- stops you tilting (turning to face anywhere is untouched). It holds you
-	-- up smoothly, from inside the physics - setting the body straight each
-	-- frame instead made it lean and snap back over and over. Only on while
-	-- you could tip: in the air, or for a moment after something shoves you
-	-- (a move's dash or hop, a roll, a knock-back: keepUpright marks it) - on
-	-- the ground the controller is left to itself, so it never holds you
-	-- still through an ability's effects. Never while you sit.
-	local hrp = char:WaitForChild("HumanoidRootPart", 10)
-	if hrp then
-		local att = Instance.new("Attachment")
-		att.Name = "UprightAttachment"
-		att.Axis = Vector3.new(0, 1, 0)
-		att.SecondaryAxis = Vector3.new(1, 0, 0)
-		att.Parent = hrp
-		local brace = Instance.new("AlignOrientation")
-		brace.Name = "UprightBrace"
-		brace.Mode = Enum.OrientationAlignmentMode.OneAttachment
-		brace.AlignType = Enum.AlignType.PrimaryAxisParallel
-		brace.PrimaryAxis = Vector3.new(0, 1, 0)
-		brace.Attachment0 = att
-		brace.MaxTorque = 1e7
-		brace.Responsiveness = 120
-		brace.Parent = hrp
-		local syncConn
-		syncConn = RunService.Heartbeat:Connect(function()
-			if not brace.Parent then
-				syncConn:Disconnect()
-				return
-			end
-			local airborne = hum.FloorMaterial == Enum.Material.Air
-			local on = not hum.Sit and (airborne or os.clock() < (braceUntil or 0))
-			if brace.Enabled ~= on then
-				brace.Enabled = on
-			end
-		end)
-		-- (the very last word: if you still end up badly on your side - more
-		-- than ~60 degrees - you're stood up once, not fought every frame)
-		local guard
-		guard = RunService.Heartbeat:Connect(function()
-			if not hrp.Parent or not hum.Parent then
-				guard:Disconnect()
-				return
-			end
-			if hum.Health > 0 and not hum.Sit and hrp.CFrame.UpVector.Y < 0.5 then
-				local look = hrp.CFrame.LookVector
-				local flat = Vector3.new(look.X, 0, look.Z)
-				if flat.Magnitude < 0.05 then
-					local up = hrp.CFrame.UpVector
-					flat = Vector3.new(up.X, 0, up.Z)
-				end
-				flat = flat.Magnitude > 0.05 and flat.Unit or Vector3.new(0, 0, -1)
-				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat)
-				hrp.AssemblyAngularVelocity = Vector3.zero
-			end
-		end)
-	end
 	hum.StateChanged:Connect(function(_, new)
 		if (new == Enum.HumanoidStateType.FallingDown or new == Enum.HumanoidStateType.Ragdoll)
 			and hum.Health > 0 then
@@ -1550,7 +1458,9 @@ local function tryRoll()
 		rolling = false -- on your feet again: only now can you punch
 	end)
 	task.delay(CC.RollTime, function()
-		steady:Disconnect()
+		if steady.Connected then
+			steady:Disconnect()
+		end
 		if sensor and searchBefore then
 			pcall(function()
 				sensor.SearchDistance = searchBefore
