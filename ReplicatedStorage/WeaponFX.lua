@@ -923,6 +923,13 @@ WeaponFX.buildVoxel = buildVoxel
 --     (Wheelie Wrecker: balls of fire that land and burn); Victory Lap's
 --     confetti, a chequered trail, a chequered flag flying off every cut and
 --     Revvington's big green eyes popping out of it.
+--   Jungle: leaves fluttering down and a banana bouncing now and then
+--     (Barrel Hammer: wood splinters, iron chips and sawdust); Kong's Crown's
+--     gold bananas, a vine lashing out along the arc and Kongo's eyes
+--     glaring out of it.
+--   Canvas: ink drops that splat into blots, scraps of paper (Copy-Paste
+--     Scythe: pixels); Delete Key's glitching pixels, a red-and-cyan trail,
+--     the arc glitching apart and Scribble's doodle eyes popping out of it.
 ----------------------------------------------------------------------
 local RARITY_TIER = { Common = 1, Uncommon = 1, Rare = 2, Epic = 3, Legendary = 4, Mythic = 5, Secret = 6 }
 WeaponFX.RARITY_TIER = RARITY_TIER
@@ -1035,6 +1042,67 @@ local SWING_THEMES = {
 			waveSound = { "Finish Line", "Checkered Flag" }, eyeSound = { "Horn Honk", "Big Honk" },
 		},
 	},
+	-- Kongo's: jungle leaves fluttering off the cut, a banana now and then
+	Jungle = {
+		light = RGBc(170, 226, 96), main = RGBc(99, 199, 77), deep = RGBc(38, 92, 66),
+		bits = { "leaf", "leaf", "leaf", "banana" },
+		blob = { RGBc(99, 199, 77), RGBc(170, 226, 96), RGBc(62, 137, 72) }, blobSee = 0,
+		banana = { RGBc(254, 231, 97), RGBc(254, 214, 70) },
+		swingSound = { "Leaf Swish", "Scythe Swing" }, splatSound = { "Leaf Rustle" },
+		hitSound = { "Bark Thwack", "Hammer Hit" },
+		-- Barrel Hammer: the barrel's splinters, iron chips off its hoops, sawdust
+		Mythic = {
+			light = RGBc(228, 166, 114), main = RGBc(184, 111, 80), deep = RGBc(115, 62, 57),
+			bits = { "splinter", "splinter", "chip", "smoke" },
+			blob = { RGBc(184, 111, 80), RGBc(228, 166, 114), RGBc(115, 62, 57) }, blobSee = 0,
+			chip = { RGBc(58, 68, 102), RGBc(90, 105, 136) }, smoke = { RGBc(228, 204, 166), RGBc(204, 176, 136) },
+			swingSound = { "Barrel Swing", "Hammer Swing" }, splatSound = { "Splinter Crack" },
+			hitSound = { "Barrel Thud", "Barrel Break", "Hammer Hit" },
+		},
+		-- Kong's Crown: gold bananas off every cut, jungle leaves, a vine
+		-- lashing out along the arc and Kongo's eyes glaring out of it
+		Secret = {
+			light = RGBc(254, 231, 97), main = RGBc(254, 174, 52), deep = RGBc(38, 92, 66),
+			bits = { "banana", "banana", "leaf", "glint" },
+			blob = { RGBc(99, 199, 77), RGBc(170, 226, 96) }, blobSee = 0,
+			banana = { RGBc(254, 214, 70), RGBc(254, 174, 52) }, glint = { RGBc(254, 231, 97), RGBc(255, 255, 255) },
+			wave = "vine", eyes = "kongo",
+			swingSound = { "Crown Swing", "Sword Swing" }, splatSound = { "Banana Bounce" },
+			hitSound = { "Gold Thump", "Crown Clang", "Sword Hit" },
+			waveSound = { "Vine Whip", "Bar Whip" }, eyeSound = { "Ape Grunt", "Kongo Hoot" },
+		},
+	},
+	-- Scribble's: drops of blue ink that splat into blots, scraps of paper
+	Canvas = {
+		light = RGBc(120, 205, 245), main = RGBc(0, 153, 219), deep = RGBc(18, 78, 137),
+		bits = { "ink", "ink", "ink", "paper" },
+		blob = { RGBc(0, 153, 219), RGBc(18, 78, 137), RGBc(60, 120, 200) }, blobSee = 0,
+		paper = { RGBc(255, 255, 255), RGBc(220, 226, 236) },
+		swingSound = { "Brush Swish", "Sword Swing" }, splatSound = { "Ink Splat", "Paint Splash" },
+		hitSound = { "Ink Thwack", "Sword Hit" },
+		-- Copy-Paste Scythe: pixels copied off the cut, blinking out
+		Mythic = {
+			light = RGBc(200, 245, 255), main = RGBc(44, 232, 245), deep = RGBc(18, 78, 137),
+			bits = { "pixel", "pixel", "ink", "paper" },
+			blob = { RGBc(0, 153, 219), RGBc(18, 78, 137) }, blobSee = 0,
+			pixel = { RGBc(44, 232, 245), RGBc(255, 255, 255), RGBc(0, 153, 219) },
+			paper = { RGBc(255, 255, 255), RGBc(220, 226, 236) },
+			swingSound = { "Copy Swish", "Scythe Swing" }, splatSound = { "Pixel Pop", "Mouse Click" },
+			hitSound = { "Paste Hit", "Copy Paste", "Sword Hit" },
+		},
+		-- Delete Key: the cut glitches - red and cyan pixels, a split trail,
+		-- the arc breaking apart and Scribble's doodle eyes popping out of it
+		Secret = {
+			light = RGBc(255, 255, 255), main = RGBc(255, 0, 68), deep = RGBc(24, 20, 37),
+			bits = { "pixel", "pixel", "pixel", "ink" },
+			blob = { RGBc(0, 153, 219), RGBc(18, 78, 137) }, blobSee = 0,
+			pixel = { RGBc(255, 0, 68), RGBc(44, 232, 245), RGBc(255, 255, 255) },
+			stripes = { RGBc(255, 0, 68), RGBc(44, 232, 245), 10 }, wave = "glitch", eyes = "doodle",
+			swingSound = { "Glitch Swing", "Sword Swing" }, splatSound = { "Pixel Pop", "Key Pop" },
+			hitSound = { "Glitch Hit", "Error Pop", "Sword Hit" },
+			waveSound = { "Glitch Wave", "Lag Glitch" }, eyeSound = { "Doodle Pop", "Error Pop" },
+		},
+	},
 }
 WeaponFX.SWING_THEMES = SWING_THEMES
 
@@ -1140,6 +1208,12 @@ local BITS = {
 	flame = { shape = "drop", fall = 30, land = "burn", neon = true }, -- a ball of fire: lands and burns
 	coin = { shape = "coin", fall = 55, bounce = 1, land = "lie", neon = true }, -- flips, clinks, lies there
 	confetti = { shape = "flake", fall = 9, drag = 1.6, land = "lie", life = 2.2 }, -- flutters down
+	leaf = { shape = "flake", fall = 8, drag = 1.8, land = "lie", life = 2.2 }, -- a jungle leaf, fluttering down
+	banana = { shape = "banana", fall = 55, bounce = 1, land = "lie" }, -- tumbles, bounces, lies there
+	splinter = { shape = "sliver", fall = 55, bounce = 1, land = "fade" }, -- a sliver of wood
+	ink = { shape = "drop", fall = 55, land = "splat" }, -- a drop of ink: splats into a blot
+	paper = { shape = "flake", fall = 9, drag = 1.6, land = "lie", life = 2.2 }, -- a scrap of paper
+	pixel = { shape = "pixel", fall = 6, drag = 2.2, land = "fade", life = 0.8, neon = true }, -- blinks out
 }
 WeaponFX.BITS = BITS
 local function bitName(kind)
@@ -1191,8 +1265,10 @@ local function land(b)
 	elseif how == "lie" then
 		-- (a coin or a scrap of paper, lying flat where it fell)
 		landSound(b, 0.3)
-		local flat = fxPart(b.part.Name, b.part.Size, CFrame.new(at + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
-			* (b.spec.shape == "coin" and CFrame.Angles(0, 0, math.rad(90)) or CFrame.new()),
+		local flat = fxPart(b.part.Name, b.part.Size, CFrame.new(at + Vector3.new(0, b.spec.shape == "banana" and b.part.Size.X * 0.5 or 0.05, 0))
+			* CFrame.Angles(0, math.random() * math.pi * 2, 0)
+			* ((b.spec.shape == "coin" and CFrame.Angles(0, 0, math.rad(90))) or (b.spec.shape == "banana" and CFrame.Angles(math.rad(90), 0, 0))
+				or CFrame.new()),
 			b.part.Color, b.part.Transparency, b.part.Material == Enum.Material.Neon, b.part.Shape)
 		fadeAway(flat, b.spec.shape == "coin" and 0.8 or 0.6)
 	end
@@ -1244,6 +1320,9 @@ local function stepGoo(dt)
 				if b.core then
 					b.core.CFrame = cf
 				end
+			elseif shape == "pixel" then
+				b.part.CFrame = CFrame.new(b.pos)
+				b.part.Transparency = (math.floor(b.age * 18) % 3 == 0) and 0.6 or 0
 			elseif shape == "puff" then
 				local k = b.age / (spec.life or 1)
 				b.part.CFrame = CFrame.new(b.pos)
@@ -1290,6 +1369,12 @@ local function flingGoo(theme, pos, vel, size, floor)
 		part = fxPart(bitName(kind), Vector3.new(size * 0.2, size * 1.1, size * 1.1), CFrame.new(pos), c, see, neon, Enum.PartType.Cylinder)
 	elseif shape == "flake" then
 		part = fxPart(bitName(kind), Vector3.new(size * 0.9, size * 0.08, size * 0.6), CFrame.new(pos), c, see, neon)
+	elseif shape == "banana" then
+		part = fxPart(bitName(kind), Vector3.new(size * 0.4, size * 0.4, size * 1.3), CFrame.new(pos), c, see, neon)
+	elseif shape == "sliver" then
+		part = fxPart(bitName(kind), Vector3.new(size * 0.22, size * 0.22, size * 1.1), CFrame.new(pos), c, see, neon)
+	elseif shape == "pixel" then
+		part = fxPart(bitName(kind), Vector3.new(size, size, size) * 0.55, CFrame.new(pos), c, see, neon)
 	else
 		local k = 0.8 + math.random() * 0.4
 		part = fxPart(bitName(kind), Vector3.new(size, size * 0.8, size * 0.9) * k, CFrame.new(pos), c, see, neon)
@@ -1495,6 +1580,200 @@ local function revvEyes(theme, at, floor, centre)
 	end)
 end
 
+-- Kong's Crown's wave: the arc the tip just drew, as a jungle vine lashing out
+-- from you - curling as it goes, leaves along it, its end snapping like a whip
+local function vineWave(theme, path, centre)
+	if #path < 3 then
+		return
+	end
+	if theme.waveSound then
+		soundAt(theme.waveSound, path[math.ceil(#path / 2)], 1, 0.85)
+	end
+	local vine, leaves = RGBc(62, 137, 72), { RGBc(99, 199, 77), RGBc(170, 226, 96) }
+	for i = 1, #path - 1 do
+		local a, b = path[i], path[i + 1]
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude
+		if len > 0.05 then
+			local out = Vector3.new(mid.X - centre.X, 0, mid.Z - centre.Z)
+			out = out.Magnitude > 0.1 and out.Unit or Vector3.new(0, 0, -1)
+			local u = i / #path
+			local bob = math.sin(i * 1.3) * 0.35 -- (the curl)
+			local fat = 0.26 + 0.22 * math.sin(math.pi * u)
+			local cf = CFrame.lookAt(mid, b) * CFrame.new(0, bob, 0)
+			-- (the far end lashes out furthest)
+			local push = out * (5 + 3 * u) + Vector3.new(0, 0.5 + bob, 0)
+			local stem = fxPart("VineWave", Vector3.new(fat, fat, len * 1.2), cf, vine, 0, false)
+			fadeAway(stem, 0.5, { CFrame = cf + push })
+			if i % 3 == 0 then
+				local side = (i % 6 == 0) and 1 or -1
+				local at = cf * CFrame.new(side * (fat / 2 + 0.3), 0.05, 0) * CFrame.Angles(0, math.rad(35 * side), math.rad(20 * side))
+				local leaf = fxPart("VineLeaf", Vector3.new(0.7, 0.08, 0.45), at, leaves[1 + (i // 3) % 2], 0, false)
+				fadeAway(leaf, 0.55, { CFrame = at + push * 1.1 + Vector3.new(0, 0.3, 0) })
+			end
+		end
+	end
+	-- the crack of the whip at its end: a flash of gold
+	local tip = path[#path]
+	local snap = fxPart("VineSnap", Vector3.new(0.4, 0.4, 0.4), CFrame.new(tip), theme.light, 0, true, Enum.PartType.Ball)
+	fadeAway(snap, 0.25, { Size = Vector3.new(2, 2, 2) })
+end
+
+-- Kong's Crown's eyes: Kongo glares out of the arc at you - his heavy brow
+-- down, his eyes under it, teeth bared - and bursts into bananas and leaves
+local function kongoEyes(theme, at, floor, centre)
+	local look = facing(at, centre)
+	local brow, ink = RGBc(38, 36, 50), RGBc(24, 20, 37)
+	local parts = {}
+	local function grow(name, size, cf, color, shape)
+		table.insert(parts, { fxPart(name, Vector3.new(0.1, 0.1, 0.1), cf, color, 0, false, shape), size })
+	end
+	-- (his pale grey face behind)
+	grow("KongoFace", Vector3.new(1.7, 1.5, 0.12), look * CFrame.new(0, -0.15, 0.24), RGBc(165, 160, 172))
+	for _, x in ipairs({ -0.45, 0.45 }) do
+		local cf = look * CFrame.new(x, 0, 0)
+		grow("KongoEye", Vector3.new(0.6, 0.6, 0.6), cf, RGBc(255, 255, 255), Enum.PartType.Ball)
+		-- (looking a little in and down: right at you)
+		grow("KongoPupil", Vector3.new(0.26, 0.26, 0.26), cf * CFrame.new(-x * 0.12, -0.05, -0.26), ink, Enum.PartType.Ball)
+		-- (his brow in two halves, sloping down to the middle: he's cross)
+		grow("KongoBrow", Vector3.new(0.85, 0.28, 0.32), cf * CFrame.new(0, 0.4, -0.12) * CFrame.Angles(0, 0, math.rad(x < 0 and -20 or 20)), brow)
+	end
+	grow("KongoMouth", Vector3.new(0.95, 0.32, 0.14), look * CFrame.new(0, -0.62, -0.05), ink)
+	grow("KongoTeeth", Vector3.new(0.8, 0.12, 0.08), look * CFrame.new(0, -0.58, -0.12), RGBc(255, 250, 225))
+	for _, pr in ipairs(parts) do
+		pcall(function()
+			TweenService:Create(pr[1], TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = pr[2] }):Play()
+		end)
+	end
+	task.delay(0.4, function()
+		local eye = parts[1][1]
+		if eye.Parent then
+			if theme.eyeSound then
+				soundAt(theme.eyeSound, eye.Position, 0.9 + math.random() * 0.2, 0.8)
+			end
+			for _ = 1, 8 do
+				flingGoo(theme, look.Position, Vector3.new(math.random() * 12 - 6, 7 + math.random() * 6, math.random() * 12 - 6), 0.55, floor)
+			end
+		end
+		for _, pr in ipairs(parts) do
+			pr[1]:Destroy()
+		end
+	end)
+end
+
+-- Delete Key's wave: the arc the tip just drew breaks up like a glitch on a
+-- screen - a white line split into red and cyan, bits of it missing, the
+-- pieces jumping away from you in jerks (not sliding), drifting further
+-- apart each jump, then gone
+local function glitchWave(theme, path, centre)
+	if #path < 3 then
+		return
+	end
+	if theme.waveSound then
+		soundAt(theme.waveSound, path[math.ceil(#path / 2)], 1, 0.8)
+	end
+	local looks = { { RGBc(255, 255, 255), 0, 0.28 }, { RGBc(255, 0, 68), -0.3, 0.2 }, { RGBc(44, 232, 245), 0.3, 0.2 } }
+	for i = 1, #path - 1 do
+		local a, b = path[i], path[i + 1]
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude
+		if len > 0.05 and math.random() > 0.15 then
+			local out = Vector3.new(mid.X - centre.X, 0, mid.Z - centre.Z)
+			out = out.Magnitude > 0.1 and out.Unit or Vector3.new(0, 0, -1)
+			local cf = CFrame.lookAt(mid, b) * CFrame.new((math.random() - 0.5) * 0.5, (math.random() - 0.5) * 0.3, 0)
+			local bars = {}
+			for k, l in ipairs(looks) do
+				bars[k] = fxPart("GlitchWave", Vector3.new(l[3], 0.12, len * (0.8 + math.random() * 0.7)), cf * CFrame.new(l[2], k == 1 and 0.03 or 0, 0),
+					l[1], 0, true)
+			end
+			for hop = 1, 3 do
+				task.delay(hop * 0.08, function()
+					local shove = out * (1.6 + math.random() * 0.8) + Vector3.new((math.random() - 0.5) * 0.6, math.random() * 0.3, (math.random() - 0.5) * 0.6)
+					for k, bar in ipairs(bars) do
+						if bar.Parent then
+							local apart = k == 1 and 0 or (k == 2 and -0.14 or 0.14)
+							bar.CFrame = bar.CFrame * CFrame.new(apart, 0, 0) + shove
+							bar.Transparency = hop == 3 and 0.5 or 0
+						end
+					end
+				end)
+			end
+			task.delay(0.32, function()
+				for _, bar in ipairs(bars) do
+					bar:Destroy()
+				end
+			end)
+		end
+	end
+end
+
+-- Delete Key's eyes: Scribble's doodled face pops out of the arc at you - a
+-- white paper circle inked round, his two dot eyes, his big scribbled grin -
+-- glitches (a jump aside, red and cyan copies flashing) and deletes itself
+-- into pixels
+local function doodleEyes(theme, at, floor, centre)
+	local look = facing(at, centre)
+	local ink, paper = RGBc(0, 153, 219), RGBc(255, 255, 255)
+	local flat = CFrame.Angles(0, math.rad(90), 0) -- (a disc facing you)
+	local parts = {}
+	local function grow(name, size, cf, color, shape)
+		table.insert(parts, { fxPart(name, Vector3.new(0.1, 0.1, 0.1), cf, color, 0, false, shape), size, cf })
+	end
+	grow("DoodleLine", Vector3.new(0.06, 1.75, 1.75), look * CFrame.new(0, 0, 0.04) * flat, ink, Enum.PartType.Cylinder)
+	grow("DoodleHead", Vector3.new(0.06, 1.55, 1.55), look * flat, paper, Enum.PartType.Cylinder)
+	for _, x in ipairs({ -0.3, 0.3 }) do
+		grow("DoodleEye", Vector3.new(0.22, 0.4, 0.06), look * CFrame.new(x, 0.22, -0.05), ink)
+	end
+	-- (the grin: four strokes round the bottom of a circle, and a line across it)
+	for i = 1, 4 do
+		local a0, a1 = math.pi * (1.15 + 0.7 * (i - 1) / 4), math.pi * (1.15 + 0.7 * i / 4)
+		local p0 = Vector3.new(math.cos(a0) * 0.5, math.sin(a0) * 0.5 - 0.05, 0)
+		local p1 = Vector3.new(math.cos(a1) * 0.5, math.sin(a1) * 0.5 - 0.05, 0)
+		local m = (p0 + p1) / 2
+		local tilt = math.atan2(p1.Y - p0.Y, p1.X - p0.X)
+		grow("DoodleGrin", Vector3.new((p1 - p0).Magnitude + 0.08, 0.1, 0.06), look * CFrame.new(m.X, m.Y, -0.05) * CFrame.Angles(0, 0, tilt), ink)
+	end
+	grow("DoodleGrin", Vector3.new(0.62, 0.07, 0.06), look * CFrame.new(0, -0.38, -0.05), ink)
+	for _, pr in ipairs(parts) do
+		pcall(function()
+			TweenService:Create(pr[1], TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = pr[2] }):Play()
+		end)
+	end
+	-- the glitch: the face jumps aside, a red and a cyan copy of it flashing
+	task.delay(0.24, function()
+		local head = parts[2][1]
+		if not head.Parent then
+			return
+		end
+		local jump = look.RightVector * (math.random() < 0.5 and -0.3 or 0.3)
+		for _, pr in ipairs(parts) do
+			pr[1].CFrame = pr[3] + jump
+		end
+		for _, ghost in ipairs({ { RGBc(255, 0, 68), -0.22 }, { RGBc(44, 232, 245), 0.22 } }) do
+			local g = fxPart("DoodleGhost", Vector3.new(0.06, 1.6, 1.6), parts[2][3] + jump + look.RightVector * ghost[2] - look.LookVector * 0.08,
+				ghost[1], 0.35, true, Enum.PartType.Cylinder)
+			task.delay(0.1, function()
+				g:Destroy()
+			end)
+		end
+	end)
+	task.delay(0.42, function()
+		local head = parts[2][1]
+		if head.Parent then
+			if theme.eyeSound then
+				soundAt(theme.eyeSound, head.Position, 0.95 + math.random() * 0.15, 0.8)
+			end
+			for _ = 1, 10 do
+				flingGoo(theme, head.Position + look.RightVector * (math.random() - 0.5) * 1.2 + Vector3.new(0, (math.random() - 0.5) * 1.2, 0),
+					Vector3.new(math.random() * 10 - 5, 5 + math.random() * 5, math.random() * 10 - 5), 0.6, floor)
+			end
+		end
+		for _, pr in ipairs(parts) do
+			pr[1]:Destroy()
+		end
+	end)
+end
+
 -- a chequered ColorSequence: n hard stripes, a and b in turn
 local function stripes(a, b, n)
 	local keys = {}
@@ -1560,9 +1839,12 @@ local function dressTrails(trails, def, glow, golden)
 			fades({ { 0, 0.35 }, { 1, 1 } }), 0.5, NumberSequence.new(1, 0.4))
 	elseif tier >= 6 then
 		-- Secret: a thick body that lingers behind the cut - see-through
-		-- jelly, or (Victory Lap) a chequered flag
-		trail("SwingJelly", -0.1, 1.4, theme.stripes and stripes(theme.light, theme.deep, 8) or colors({ theme.light, theme.main, theme.deep }),
-			fades({ { 0, 0.25 }, { 0.5, 0.5 }, { 1, 1 } }), 0.6, NumberSequence.new(1, 0.7))
+		-- jelly, or striped: (Victory Lap) a chequered flag, (Delete Key) a
+		-- glitch of red and cyan. (`stripes`: true, or {a, b, how many})
+		local st = theme.stripes
+		local body = type(st) == "table" and stripes(st[1], st[2], st[3] or 8) or st and stripes(theme.light, theme.deep, 8)
+			or colors({ theme.light, theme.main, theme.deep })
+		trail("SwingJelly", -0.1, 1.4, body, fades({ { 0, 0.25 }, { 0.5, 0.5 }, { 1, 1 } }), 0.6, NumberSequence.new(1, 0.7))
 	end
 	trails.fx = {
 		tier = tier,
@@ -1577,7 +1859,8 @@ WeaponFX.dressTrails = dressTrails
 
 -- while a cut's on: bits off the tip (Epic and up), a burst and a flash as
 -- it starts (Legendary and up), and when it ends the Secret's wave (jelly, a
--- crack of gold, a chequered flag) and the boss's eyes along the arc it drew
+-- crack of gold, a chequered flag, a vine, a glitch) and the boss's eyes along
+-- the arc it drew
 local function swingFx(h, on, starting)
 	local fx = h.trails and h.trails.fx
 	if not (fx and fx.fling and fx.part and fx.part.Parent) then
@@ -1624,18 +1907,17 @@ local function swingFx(h, on, starting)
 		local path = fx.path
 		fx.path = nil
 		local wave, eyes = fx.theme.wave, fx.theme.eyes
+		local WAVES = { checker = checkerWave, vine = vineWave, glitch = glitchWave }
 		if wave == "crack" then
 			goldCrack(fx.theme, path, floor)
-		elseif wave == "checker" and hrp then
-			checkerWave(fx.theme, path, hrp.Position)
 		elseif wave and hrp then
-			jellyWave(fx.theme, path, hrp.Position)
+			(WAVES[wave] or jellyWave)(fx.theme, path, hrp.Position)
 		end
 		local centre = hrp and hrp.Position
 		if eyes == "visor" and #path >= 4 then
 			burrowmoreVisor(fx.theme, path[math.floor(#path * 0.6) + 1], floor, centre)
 		elseif eyes and #path >= 4 then
-			local pop = eyes == "revv" and revvEyes or oozarkEyes
+			local pop = ({ revv = revvEyes, kongo = kongoEyes, doodle = doodleEyes })[eyes] or oozarkEyes
 			pop(fx.theme, path[math.floor(#path * 0.4) + 1], floor, centre)
 			pop(fx.theme, path[math.floor(#path * 0.8)], floor, centre)
 		end

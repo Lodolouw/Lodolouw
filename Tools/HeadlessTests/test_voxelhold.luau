@@ -12,9 +12,10 @@
 --   * before its model arrives it's the blocky one, and the real one swaps in
 --     the moment it does
 --   * its swing effects by rarity, in its pack's theme (Slime goo, Knight dirt
---     and gold, Speedway sparks and fire), the Secrets' own shows, and their
---     sounds (Knight's new ones; Speedway's falling back on older ones, as if
---     its new sounds weren't uploaded yet)
+--     and gold, Speedway sparks and fire, Jungle leaves, bananas and
+--     splinters, Canvas ink, paper and pixels), the Secrets' own shows, and
+--     their sounds (Knight's and Jungle's new ones; Speedway's and Canvas's
+--     falling back on older ones, as if their new sounds weren't uploaded yet)
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -141,8 +142,9 @@ end
 -- the swing sounds, in SoundService like the game has them (SoundLoader)
 for _, name in ipairs({ "Goo Swish", "Goo Splat", "Acid Swish", "Acid Hiss", "Jelly Swing", "Jelly Wave", "Eye Pop", "Goo Hit",
 	"Shovel Swish", "Dirt Splat", "Clang Hit", "Chain Swish", "Gold Swing", "Gold Chop", "Coin Spill", "Plate Crack", "Treasure Glint",
-	-- (Speedway's new sounds left out: these are what they fall back on)
-	"Sword Swing", "Hammer Swing", "Checkered Flag", "Big Honk" }) do
+	"Leaf Swish", "Leaf Rustle", "Barrel Swing", "Splinter Crack", "Crown Swing", "Banana Bounce", "Vine Whip", "Ape Grunt",
+	-- (Speedway's and Canvas's new sounds left out: these are what they fall back on)
+	"Sword Swing", "Hammer Swing", "Checkered Flag", "Big Honk", "Scythe Swing", "Lag Glitch", "Error Pop" }) do
 	local snd = Instance.new("Sound")
 	snd.Name = name
 	snd.Volume, snd.PlaybackSpeed, snd.TimeLength = 0.6, 1, 0.4
@@ -173,11 +175,17 @@ local THEMED = {
 		swing = { [3] = "Shovel Swish", [4] = "Shovel Swish", [5] = "Chain Swish", [6] = "Gold Swing" }, waveSound = "Plate Crack", eyeSound = "Treasure Glint" },
 	Speedway = { bits = { Spark = true, Smoke = true, Flame = true, Confetti = true }, wave = "CheckerWave", eyes = "RevvEye",
 		swing = { [3] = "Sword Swing", [4] = "Sword Swing", [5] = "Hammer Swing", [6] = "Sword Swing" }, waveSound = "Checkered Flag", eyeSound = "Big Honk" },
+	Jungle = { bits = { Leaf = true, Banana = true, Splinter = true, Chip = true, Smoke = true, Glint = true }, wave = "VineWave", eyes = "KongoEye",
+		swing = { [3] = "Leaf Swish", [4] = "Leaf Swish", [5] = "Barrel Swing", [6] = "Crown Swing" }, waveSound = "Vine Whip", eyeSound = "Ape Grunt" },
+	Canvas = { bits = { Ink = true, Paper = true, Pixel = true }, wave = "GlitchWave", eyes = "DoodleEye",
+		swing = { [3] = "Sword Swing", [4] = "Sword Swing", [5] = "Scythe Swing", [6] = "Sword Swing" }, waveSound = "Lag Glitch", eyeSound = "Error Pop" },
 }
-local OTHER_SHOWS = { "JellyWave", "OozarkEye", "GoldCrack", "VisorEye", "CheckerWave", "RevvEye" }
+local OTHER_SHOWS = { "JellyWave", "OozarkEye", "GoldCrack", "VisorEye", "CheckerWave", "RevvEye", "VineWave", "KongoEye", "GlitchWave", "DoodleEye" }
 for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers", "AcidScythe", "GelatinousEdge",
 	"ShovelHammer", "RelicDaggers", "SpadeScythe", "HonourBlade", "AnchorFists", "NoQuarter",
-	"TyreScythe", "NitroKatana", "PistonPunchers", "PitStopSabre", "WheelieWrecker", "VictoryLap" }) do
+	"TyreScythe", "NitroKatana", "PistonPunchers", "PitStopSabre", "WheelieWrecker", "VictoryLap",
+	"ChestPoundFists", "JungleFang", "VineScythe", "BarrelDaggers", "BarrelHammer", "KongsCrown",
+	"EraserHammer", "PencilSword", "InkFists", "DoodleKatana", "CopyPasteScythe", "DeleteKey" }) do
 	local info = Info[key]
 	check(info ~= nil, key .. ": is in WeaponModelInfo")
 	if info then
@@ -270,10 +278,13 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 				for name, n in pairs(names) do
 					if th.bits[name] then
 						thrown += n
-					end
-					for _, other in pairs(THEMED) do
-						if other ~= th and other.bits[name] then
-							strays += n
+					else
+						-- (a kind two packs share - Jungle's iron chips, say - is its own)
+						for _, other in pairs(THEMED) do
+							if other.bits[name] then
+								strays += n
+								break
+							end
 						end
 					end
 				end
@@ -291,9 +302,13 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 				step(0.5)
 				check(tier < 6 or (soundsPlaying()[th.eyeSound] or 0) > 0, key .. ": the eyes pop with a sound (" .. th.eyeSound .. ")")
 				h.handle.CFrame = start
-				step(3)
-				local left = folder and #folder:GetChildren() or 0
-				check(left == 0 and #WeaponFX._goo == 0, key .. ": what it threw lands and is gone (" .. left .. " left)")
+				-- (a leaf flutters down for up to 2.2 s, and its rustle's player stays 2 s)
+				step(4.5)
+				local left, what = folder and #folder:GetChildren() or 0, {}
+				for _, d in ipairs(folder and folder:GetChildren() or {}) do
+					table.insert(what, d.Name)
+				end
+				check(left == 0 and #WeaponFX._goo == 0, key .. ": what it threw lands and is gone (" .. left .. " left: " .. table.concat(what, ", ") .. ")")
 			end
 		end
 		src:Destroy()
