@@ -1,21 +1,29 @@
 --!nocheck
--- RetroWorld with Settings > Low graphics on: the white block on the fountain.
+-- RetroWorld's added detail: never piled up on the fountain, never doubled.
 --
--- Some of RetroWorld's lobby detail moves: the clouds, the birds and gulls,
--- the breeze, the pixel flames and smoke, the sparks, the beacon's runes and
--- the save star. That detail used to be put in its place only by its stepper.
--- A part nobody has moved sits at 0,0,0, which is the fountain in the middle
--- of the plaza. With Low graphics on, the steppers hold still, so every cloud
--- piled up there as one big white block.
+-- 1. Low graphics (the white block on the fountain). Some of RetroWorld's
+-- lobby detail moves: the clouds, the birds and gulls, the breeze, the pixel
+-- flames and smoke, the sparks, the beacon's runes and the save star. That
+-- detail used to be put in its place only by its stepper. A part nobody has
+-- moved sits at 0,0,0, which is the fountain in the middle of the plaza.
+-- With Low graphics on, the steppers hold still, so every cloud piled up
+-- there as one big white block.
 --
--- This builds the real lobby (and the slime arena), runs the real RetroWorld
--- with Low graphics on from the start, and checks:
+-- 2. An arena is only kept loaded while you're on its floor, so it can unload
+-- in the lobby and arrive again as a new model. Its detail (grass, spores,
+-- pixel flames) lives in RetroWorld's own folder and is still standing, so
+-- it mustn't be added again on top.
+--
+-- This builds the real lobby, the slime arena and the dunes, runs the real
+-- RetroWorld with Low graphics on from the start, and checks:
 --   * nothing it shows is left at 0,0,0
 --   * while it's on, the flyers (birds, gulls, breeze) are put away and the
 --     rest holds still
 --   * switched off, the flyers come back and the detail moves again
+--   * an arena that unloads and comes back gets its look again (its new fires
+--     quieted) but not a second lot of detail
 --
---   luau test_retroworld_low.luau      (after: python3 build_sources.py)
+--   luau test_retroworld_detail.luau      (after: python3 build_sources.py)
 local M = require("./rbxmock")
 local S = require("./sources")
 local Instance = M.Instance
@@ -34,7 +42,13 @@ local env = M.env({
 })
 Config = M.load(S.Config, "Config", env)()
 M.load(S.LobbyBuilder, "LobbyBuilder", env)().Build()
+M.load(S.files["ServerScriptService/DunesBuilder.lua"], "DunesBuilder", env)().Build() -- (the dunes: its braziers burn)
 M.run(5)
+for _, d in ipairs(M.workspace:GetDescendants()) do
+	if (d:IsA("Fire") or d:IsA("Smoke")) and d.Enabled == nil then
+		d.Enabled = true -- (a new fire burns: Roblox's default, which the pretend world doesn't have)
+	end
+end
 
 local Players = M.services.Players
 local player = Instance.new("Player")
@@ -107,8 +121,8 @@ local function movedSince(before)
 	return n
 end
 
--- 1. Low graphics on from the start (the lobby's detail, the slime arena's
--- spores and bubbles: 20 seconds is plenty for all of it to be made)
+-- 1. Low graphics on from the start (the lobby's detail, the arenas' grass,
+-- spores and flames: 20 seconds is plenty for all of it to be made)
 check(flyers ~= nil, "RetroWorld made its folders (Detail, and Flyers in it)")
 if not flyers then
 	print("FAILED: " .. fails)
@@ -149,6 +163,48 @@ check(n == 0, "switched off, still nothing at 0,0,0: " .. n .. (n > 0 and (" - "
 player:SetAttribute("LowGraphics", true)
 frames(10)
 check(flyers.Parent == nil, "switched on again, the flyers are put away again")
+
+-- 4. each arena unloads (in the lobby, far away) and comes back as a new model
+-- with its fires burning again, as the server sends it
+local function retroParts()
+	local n = 0
+	for _, root in ipairs({ mine, flyers }) do
+		for _, d in ipairs(root:GetDescendants()) do
+			if d:IsA("BasePart") and (root == mine or flyers.Parent == nil) then
+				n += 1
+			end
+		end
+	end
+	return n
+end
+for _, name in ipairs({ "SlimeArena", "DuneArena" }) do
+	local arena = M.workspace:FindFirstChild(name)
+	check(arena ~= nil, name .. " is built")
+	if arena then
+		local had = retroParts()
+		local copy = arena:Clone()
+		local fires = 0
+		for _, d in ipairs(copy:GetDescendants()) do
+			if d:IsA("Fire") then
+				d.Enabled = true
+				fires += 1
+			end
+		end
+		arena:Destroy()
+		frames(30)
+		copy.Parent = M.workspace
+		frames(300)
+		local now = retroParts()
+		check(now == had, name .. " came back without a second lot of detail (" .. had .. " parts before, " .. now .. " after)")
+		local burning = 0
+		for _, d in ipairs(copy:GetDescendants()) do
+			if d:IsA("Fire") and d.Enabled then
+				burning += 1
+			end
+		end
+		check(burning == 0, name .. "'s fires are quieted again (" .. fires .. " fires; its pixel flames still stand)")
+	end
+end
 
 check(#M.errors == 0, "no errors (" .. #M.errors .. ")")
 for i = 1, math.min(3, #M.errors) do

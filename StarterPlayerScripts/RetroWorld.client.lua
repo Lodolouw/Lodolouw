@@ -428,6 +428,12 @@ end
 local function spread()
 	return rng:NextNumber() - 0.5
 end
+-- A spot, to the stud: where a pixel flame or a puff of smoke already stands
+-- (an arena that is unloaded and comes back has new fires, but RetroWorld's
+-- pixel flames from last time are still standing in their places)
+local function spotOf(v)
+	return string.format("%d,%d,%d", math.floor(v.X + 0.5), math.floor(v.Y + 0.5), math.floor(v.Z + 0.5))
+end
 -- Puts a kind of moving detail where it belongs the moment it's made, by
 -- running its stepper once. Only the steppers ever move these parts, and a
 -- part nobody has moved sits at 0,0,0, which is the fountain in the middle of
@@ -566,17 +572,11 @@ local function stepFlames()
 	end
 end
 table.insert(steppers, stepFlames)
+local flameAt = {} -- [spot] = true: a pixel flame stands there
 local function pixelFlame(fire)
 	local holder = fire.Parent
 	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not fire.Enabled then
 		return
-	end
-	local s = math.clamp(fire.Size / 3, 0.5, 5)
-	local c1, c2 = snap(fire.Color), snap(fire.SecondaryColor)
-	local f = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), s = s, cubes = {} }
-	for i, spec in ipairs({ { 0.9, c1, 0.35 }, { 0.7, c1, 0.95 }, { 0.55, c2, 1.45 }, { 0.38, c2, 1.9 }, { 0.22, RGB(255, 255, 255), 2.25 } }) do
-		local w = spec[1] * s
-		table.insert(f.cubes, { part = block(V3(w, w, w), spec[2], Enum.Material.Neon), h = spec[3] * s, i = i })
 	end
 	fire.Enabled = false
 	fire:GetPropertyChangedSignal("Enabled"):Connect(function()
@@ -584,6 +584,17 @@ local function pixelFlame(fire)
 			fire.Enabled = false
 		end
 	end)
+	local s = math.clamp(fire.Size / 3, 0.5, 5)
+	local c1, c2 = snap(fire.Color), snap(fire.SecondaryColor)
+	local f = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), s = s, cubes = {} }
+	if flameAt[spotOf(f.at)] then
+		return -- (its arena came back: the pixel flame from before still stands here)
+	end
+	flameAt[spotOf(f.at)] = true
+	for i, spec in ipairs({ { 0.9, c1, 0.35 }, { 0.7, c1, 0.95 }, { 0.55, c2, 1.45 }, { 0.38, c2, 1.9 }, { 0.22, RGB(255, 255, 255), 2.25 } }) do
+		local w = spec[1] * s
+		table.insert(f.cubes, { part = block(V3(w, w, w), spec[2], Enum.Material.Neon), h = spec[3] * s, i = i })
+	end
 	table.insert(flames, f)
 	settle(stepFlames)
 end
@@ -605,6 +616,7 @@ local function stepSmoke(_, step)
 	end
 end
 table.insert(steppers, stepSmoke)
+local smokeAt = {} -- [spot] = true: pixel smoke rises there
 local function pixelSmoke(sm)
 	local holder = sm.Parent
 	if not (holder and holder:IsA("BasePart")) or leaveAlone(holder) or not sm.Enabled then
@@ -612,6 +624,10 @@ local function pixelSmoke(sm)
 	end
 	sm.Enabled = false
 	local puff = { at = holder.Position + V3(0, holder.Size.Y / 2, 0), bits = {} }
+	if smokeAt[spotOf(puff.at)] then
+		return -- (the same: still rising from before)
+	end
+	smokeAt[spotOf(puff.at)] = true
 	for i = 1, 5 do
 		puff.bits[i] = { part = block(V3(1, 1, 1), snap(sm.Color), nil, 0.3), t = i / 5, dx = spread() }
 	end
@@ -1236,6 +1252,12 @@ local function arenaDetail(arena, slime)
 	end
 end
 
+-- [arena name] = true once its detail is in. An arena is only kept loaded
+-- while you're on its floor (SpireService), so it can unload in the lobby and
+-- arrive again as a new model next time. Its detail lives in RetroWorld's own
+-- folder and is still standing, so only the arena's look is redone; its grass
+-- and dust aren't added a second time on top.
+local detailed = {}
 local function dressArena(arena)
 	if W.Arenas == false then
 		return
@@ -1245,9 +1267,12 @@ local function dressArena(arena)
 	-- hasn't streamed in yet is an empty model, and an empty model says it
 	-- sits at 0,0,0 - the middle of the lobby's plaza - so its dust would all
 	-- pile up there in one tall column. Wait until it has size, then dress it.
-	if D.On ~= false then
+	if D.On ~= false and not detailed[arena.Name] then
 		task.spawn(function()
 			for _ = 1, 600 do -- (keeps looking for up to 10 minutes)
+				if detailed[arena.Name] or not arena.Parent then
+					return -- (dressed meanwhile, or gone again)
+				end
 				local ok, _, size = pcall(function()
 					return arena:GetBoundingBox()
 				end)
@@ -1261,6 +1286,7 @@ local function dressArena(arena)
 					end
 				end
 				if ok and size and size.Magnitude > 60 and count > 50 then
+					detailed[arena.Name] = true
 					pcall(arenaDetail, arena, arena.Name == "SlimeArena")
 					return
 				end
