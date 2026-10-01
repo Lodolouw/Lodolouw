@@ -110,9 +110,11 @@ function Body.init(kit)
 					table.insert(list, sound)
 				end
 			end
-			local music = def and def.Music and findSound(def.Music)
-			if music then
-				table.insert(list, music)
+			for _, key in ipairs({ "Music", "Round2Music", "FallbackMusic" }) do
+				local music = def and def[key] and findSound(def[key])
+				if music then
+					table.insert(list, music)
+				end
 			end
 			if #list > 0 then
 				game:GetService("ContentProvider"):PreloadAsync(list)
@@ -2827,6 +2829,35 @@ local function gravityNow(B, now)
 end
 
 -- what his moves are made of: his neon, and the level's purple
+-- HIS SONG: Config's Music, and Round2Music once GRAVITY FLIP! starts round
+-- 2 (the same song played harder, the same length - BossClient starts it at
+-- the same spot, so the beat never slips). One not uploaded yet: the next in
+-- line (FallbackMusic last).
+function Body.music(B, now)
+	local def = B.def
+	local round2 = (tonumber(B.model:GetAttribute("Phase")) or 1) >= 2
+	-- (asked every frame: the answer is kept for a second, so a song that
+	-- isn't there isn't hunted for sixty times a second)
+	if B.songPick and B.songRound2 == round2 and os.clock() - B.songPickAt < 1 then
+		return B.songPick, B.songVolume
+	end
+	B.songRound2, B.songPickAt = round2, os.clock()
+	B.songPick, B.songVolume = def.Music, nil
+	local order = {}
+	if round2 and def.Round2Music then
+		table.insert(order, def.Round2Music)
+	end
+	table.insert(order, def.Music)
+	table.insert(order, def.FallbackMusic)
+	for _, name in ipairs(order) do
+		if name and findSound(name) then
+			B.songPick, B.songVolume = name, (round2 and name == def.Round2Music) and def.Round2MusicVolume or nil
+			break
+		end
+	end
+	return B.songPick, B.songVolume
+end
+
 function Body.fx(def)
 	return { color = def.Color or HOT, deep = def.DeepColor or INK, rock = NIGHT, material = Enum.Material.Neon, solid = true }
 end

@@ -2063,10 +2063,15 @@ Config.Bosses = {
 
 		Reward = { Power = 4, FirstClear = 10 },
 
-		-- the fight's music: add a Sound named "Gridlock Song" to SoundService
-		-- (until you do, Oozark's plays instead) - and set Bpm above to its tempo
-		Music = "Gridlock Song",
+		-- the fight's music: his own song (Tools/Sounds/music_gridlock.py - 128
+		-- beats a minute, 64 bars, so it fits Bpm above beat for beat), and in
+		-- round 2 the same song played harder. Until they're uploaded,
+		-- FallbackMusic plays (a song of your own: set Bpm to its tempo).
+		Music = "Gridlock Theme",
+		Round2Music = "Gridlock Theme Flip",
+		FallbackMusic = "Gridlock Song",
 		MusicVolume = 0.8,
+		Round2MusicVolume = 0.8,
 		VictorySound = "Victory Is Ours (a) Sting",
 		Weather = "Clear",
 

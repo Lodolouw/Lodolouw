@@ -120,6 +120,7 @@ for seed in 1 2 3; do run test_gridlock.luau -a full $seed; done
 for sc in attacks reset duo timing drop pads; do run test_gridlock.luau -a $sc 1; done
 run test_gridlock.luau -a full 2 client
 run test_gridlock.luau -a attacks 1 client
+run test_gridlock_music.luau
 # Kongo (floor 7): whole fights, every move, resets, two players, the dodge
 # windows, the tired opening, and his body, the villagers and torches on screen
 for seed in 1 2 3; do run test_kongo.luau -a full $seed; done
