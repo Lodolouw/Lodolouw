@@ -251,7 +251,7 @@ local function fadeTo(transparency, seconds)
 	return t
 end
 
-local function travel(action, floorId)
+local function travel(action, floorId, tierId)
 	if travelling then
 		return
 	end
@@ -259,7 +259,7 @@ local function travel(action, floorId)
 	arrivedInfo = nil
 	fadeTo(0, 0.45)
 	local ok, success, reason = pcall(function()
-		return SpireTravel:InvokeServer(action, floorId)
+		return SpireTravel:InvokeServer(action, floorId, tierId)
 	end)
 	if ok and success then
 		task.wait(0.35) -- let the new area load in behind the black screen
@@ -293,18 +293,35 @@ local function myLevel()
 	return (s and Config.levelFromPower) and Config.levelFromPower(tonumber(s.Power) or 0) or 1
 end
 
+-- the Spire being looked at: Normal, or a harder tier (the menu's tabs:
+-- Config.Spire.Tiers)
+local viewTier = "Normal"
+local function tierDef()
+	return Config.spireTier(viewTier)
+end
 local function clearedUpTo()
-	return player:GetAttribute("SpireCleared") or 0
+	return player:GetAttribute(Config.spireClearedKey(viewTier)) or 0
+end
+-- a floor's recommended level on the tier being looked at
+local function levelFor(f)
+	return Config.spireLevel(f.id, viewTier)
 end
 
--- A floor opens once the boss on the floor below it is beaten (every open
--- floor is free to enter in Studio, so you can test). Returns the boss you
--- still have to beat, or nil if you can go in.
+-- A floor opens once the boss on the floor below it is beaten - on the same
+-- tier, and a harder tier only once the one before it is beaten to the top
+-- (every open floor is free to enter in Studio, so you can test). Returns
+-- what you still have to beat, or nil if you can go in.
 local function lockedBy(f)
-	if not (Config.Spire.RequirePrevious and f.id > 1) or RunService:IsStudio() or player:GetAttribute("Dev") == true then
+	if RunService:IsStudio() or player:GetAttribute("Dev") == true then
 		return nil
 	end
-	if clearedUpTo() >= f.id - 1 then
+	local cleared = Config.spireCleared(player)
+	if not Config.spireTierOpen(cleared, viewTier) then
+		local _, i = Config.spireTier(viewTier)
+		local before = Config.Spire.Tiers[i - 1]
+		return "the whole Spire on " .. (before and before.name or "the tier before")
+	end
+	if not (Config.Spire.RequirePrevious and f.id > 1) or clearedUpTo() >= f.id - 1 then
 		return nil
 	end
 	local below = Config.Spire.Floors[f.id - 1]
@@ -328,7 +345,7 @@ local function floorState(f)
 	if f.id <= clearedUpTo() then
 		return "beaten"
 	end
-	if myLevel() < f.level then
+	if myLevel() < levelFor(f) then
 		return "low"
 	end
 	return "ready"
@@ -396,7 +413,7 @@ local function drawDetail(holder, w, h, api)
 	local y = 18
 	if not f then
 		-- the ground floor: the Colosseum, training you for your next floor
-		local bonus, nextF = Config.colosseumCatchUp(myLevel(), clearedUpTo())
+		local bonus, nextF = Config.colosseumCatchUp(myLevel(), Config.spireCleared(player))
 		local pct = math.floor(bonus * 100 + 0.5)
 		K.chip(face, "GROUND FLOOR", KC.Ink, { Name = "FloorChip", Position = UDim2.fromOffset(20, y), ZIndex = 9 })
 		K.chip(face, pct > 0 and ("+" .. pct .. "% XP") or "TRAINING", pct > 0 and KC.Green or KC.Blue, { Name = "State", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, y), ZIndex = 9 })
@@ -405,7 +422,7 @@ local function drawDetail(holder, w, h, api)
 		words(face, "Blurb", "Waves of dummies, always your level, and the Straw King every 5th wave. Train here for the floor above: below its level, every win pays more XP.", 20, 20, y + 140, -40, 76)
 		local row = y + 226
 		if nextF then
-			local c = K.chip(face, "TRAINING FOR: " .. string.upper(shortName(nextF)) .. " LV " .. nextF.level, KC.Ink, { Name = "TrainingFor", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
+			local c = K.chip(face, "TRAINING FOR: " .. (nextF.tier and (Config.spireTier(nextF.tier).name .. " ") or "") .. string.upper(shortName(nextF)) .. " LV " .. nextF.level, KC.Ink, { Name = "TrainingFor", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
 			K.chip(face, "YOU LV " .. myLevel(), myLevel() >= nextF.level and KC.Green or KC.Red, { Name = "You", Position = UDim2.new(0, 20 + c.Size.X.Offset + 10, 0, row), ZIndex = 9 })
 		else
 			K.chip(face, "YOU LV " .. myLevel(), KC.Green, { Name = "You", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
@@ -419,7 +436,10 @@ local function drawDetail(holder, w, h, api)
 		end)
 		return face
 	end
-	K.chip(face, "FLOOR " .. f.id, KC.Ink, { Name = "FloorChip", Position = UDim2.fromOffset(20, y), ZIndex = 9 })
+	local fc = K.chip(face, "FLOOR " .. f.id, KC.Ink, { Name = "FloorChip", Position = UDim2.fromOffset(20, y), ZIndex = 9 })
+	if viewTier ~= "Normal" then
+		K.chip(face, tierDef().name, tierDef().color, { Name = "TierChip", Position = UDim2.new(0, 20 + fc.Size.X.Offset + 10, 0, y), ZIndex = 9 })
+	end
 	local sc = STATE_CHIP[state]
 	K.chip(face, sc[1], sc[2], { Name = "State", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, y), ZIndex = 9 })
 	local name = words(face, "BossName", open and f.boss or "Sealed", 46, 20, y + 42, -40, 104, { TextScaled = true })
@@ -429,8 +449,8 @@ local function drawDetail(holder, w, h, api)
 	local row = math.min(h - 150, y + 188 + 120)
 	words(face, "Blurb", f.blurb or "", 21, 20, y + 188, -40, row - (y + 188) - 10)
 	local lv = myLevel()
-	local rec = K.chip(face, "RECOMMENDED LV " .. f.level, KC.Ink, { Name = "Recommended", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
-	K.chip(face, "YOU LV " .. lv, lv >= f.level and KC.Green or KC.Red, { Name = "You", Position = UDim2.new(0, 20 + rec.Size.X.Offset + 10, 0, row), ZIndex = 9 })
+	local rec = K.chip(face, "RECOMMENDED LV " .. levelFor(f), KC.Ink, { Name = "Recommended", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
+	K.chip(face, "YOU LV " .. lv, lv >= levelFor(f) and KC.Green or KC.Red, { Name = "You", Position = UDim2.new(0, 20 + rec.Size.X.Offset + 10, 0, row), ZIndex = 9 })
 	-- and what's in the way, or who's coming
 	local note = nil
 	if state == "locked" then
@@ -457,7 +477,7 @@ local function drawDetail(holder, w, h, api)
 			return
 		end
 		Menus.close()
-		task.spawn(travel, "enter", f.id)
+		task.spawn(travel, "enter", f.id, viewTier ~= "Normal" and viewTier or nil)
 	end)
 	if state == "low" then
 		local train = api.button(face, "TRAIN FIRST", KC.Gold, { Name = "TrainFirst", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -276, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
@@ -501,7 +521,7 @@ local function drawCards(holder, across, api)
 			end
 		end)
 	end
-	local bonus = Config.colosseumCatchUp(myLevel(), clearedUpTo())
+	local bonus = Config.colosseumCatchUp(myLevel(), Config.spireCleared(player))
 	local pct = math.floor(bonus * 100 + 0.5)
 	card(0, "GROUND FLOOR", "The Colosseum", "Training", KC.Orange, pct > 0 and ("+" .. pct .. "% XP") or "TRAIN", pct > 0 and KC.Green or KC.Blue, false)
 	for _, f in ipairs(Config.Spire.Floors) do
@@ -511,9 +531,9 @@ local function drawCards(holder, across, api)
 		if state == "beaten" then
 			chip, chipColor = "BEATEN", KC.Green
 		elseif reach then
-			chip, chipColor = "LV " .. f.level, state == "low" and KC.Red or KC.Pink
+			chip, chipColor = "LV " .. levelFor(f), state == "low" and KC.Red or KC.Pink
 		else
-			chip, chipColor = "LV " .. f.level, KC.Slate
+			chip, chipColor = "LV " .. levelFor(f), KC.Slate
 		end
 		card(f.id, "FLOOR " .. f.id, f.open and shortName(f) or "Sealed", f.open and (f.area or "") or "", reach and f.color or KC.Well, chip, chipColor, not reach)
 	end
@@ -522,10 +542,26 @@ end
 Menus.define("Spire", {
 	Title = "The Spire",
 	Color = KC.Pink,
-	Tabs = { { Key = "Floors", Label = "Floors", Icon = "Spire" } },
+	-- a tab for each Spire: Normal, then the harder tiers
+	Tabs = {
+		{ Key = "Normal", Label = "Normal", Icon = "Spire" },
+		{ Key = "Nightmare", Label = "Nightmare", Icon = "Bolt" },
+		{ Key = "Eclipse", Label = "Eclipse", Icon = "BossRush" },
+		{ Key = "Doom", Label = "Doom", Icon = "Bosses" },
+	},
 	render = function(page, tab, api)
+		viewTier = Config.spireTier(tab).id
+		local t = tierDef()
 		local beaten = math.min(clearedUpTo(), #Config.Spire.Floors)
-		api.section("Choose a floor", beaten .. " / " .. #Config.Spire.Floors .. " beaten")
+		if t.id == "Normal" then
+			api.section("Choose a floor", beaten .. " / " .. #Config.Spire.Floors .. " beaten")
+		else
+			api.section(t.name .. " · Lv " .. Config.spireLevel(1, t.id) .. "-" .. Config.spireLevel(#Config.Spire.Floors, t.id), beaten .. " / " .. #Config.Spire.Floors .. " beaten")
+			local open = Config.spireTierOpen(Config.spireCleared(player), t.id) or RunService:IsStudio() or player:GetAttribute("Dev") == true
+			local _, i = Config.spireTier(t.id)
+			local before = Config.Spire.Tiers[i - 1]
+			api.words((t.blurb or "") .. (open and "" or ("  Beat the whole Spire on " .. before.name .. " to open it.")), 30, open and KC.White or KC.Yellow)
+		end
 		local count = #Config.Spire.Floors + 1
 		local across = 3
 		local cardsW = across * CARD_W + (across - 1) * CARD_GAP
@@ -557,7 +593,9 @@ local function redrawSpire()
 		Menus.redraw()
 	end
 end
-player:GetAttributeChangedSignal("SpireCleared"):Connect(redrawSpire)
+for _, t in ipairs(Config.Spire.Tiers) do
+	player:GetAttributeChangedSignal(Config.spireClearedKey(t.id)):Connect(redrawSpire)
+end
 local function watchParty(p)
 	p:GetAttributeChangedSignal("PartyLeader"):Connect(redrawSpire)
 end
@@ -570,13 +608,16 @@ local function openMenu()
 	if travelling then
 		return
 	end
-	-- (it opens on the floor you're up to: the one after the last you've beaten)
-	local upTo = math.clamp(clearedUpTo() + 1, 1, #Config.Spire.Floors)
+	-- (it opens on the boss you're up to: the next one not beaten, on the
+	-- lowest tier not finished - or Doom's top floor once everything is)
+	local nextF = Config.nextSpireFloor(Config.spireCleared(player))
+	viewTier = nextF and nextF.tier or (nextF and "Normal") or "Doom"
+	local upTo = nextF and nextF.id or #Config.Spire.Floors
 	while upTo > 1 and not Config.Spire.Floors[upTo].open do
 		upTo = upTo - 1
 	end
 	selected = upTo
-	Menus.open("Spire")
+	Menus.open("Spire", viewTier)
 end
 local function closeMenu()
 	if Menus.current() == "Spire" then

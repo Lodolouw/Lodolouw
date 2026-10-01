@@ -78,11 +78,13 @@ local function charParts(player)
 	return hum, root, char
 end
 
+-- the Spire floor a player is fighting on, as it is on their tier (a harder
+-- tier's floors are at higher levels: Config.spireFloorFor)
 local function floorOf(player)
 	local id = player:GetAttribute("SpireFloor")
 	for _, f in ipairs(Config.Spire.Floors) do
 		if f.id == id then
-			return f
+			return Config.spireFloorFor and Config.spireFloorFor(f.id, player:GetAttribute("SpireTier")) or f
 		end
 	end
 	return nil
@@ -295,6 +297,12 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 			end
 			return false
 		end
+	end
+	-- a harder Spire's bosses hit harder (Config.spireTierDamage: their hits
+	-- take the tier's share of your health, whatever your level gives you)
+	local floorId = player:GetAttribute("SpireFloor")
+	if floorId and player:GetAttribute("SpireTier") and Config.spireTierDamage then
+		amount = amount * Config.spireTierDamage(floorId, player:GetAttribute("SpireTier"))
 	end
 	-- your level's defence takes a share off every hit
 	amount = amount * (1 - levelOf(player).Defense / 100)

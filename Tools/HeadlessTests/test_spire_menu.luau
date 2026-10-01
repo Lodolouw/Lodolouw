@@ -111,9 +111,11 @@ spireTravel.Name = "SpireTravel"
 spireTravel.Parent = spireRemotes
 local travelled = {}
 local travelAnswer = { true }
-M.onInvokeServer = function(remote, a, b)
+local travelTier = {}
+M.onInvokeServer = function(remote, a, b, c)
 	if remote == spireTravel then
 		table.insert(travelled, tostring(a) .. (b ~= nil and (":" .. tostring(b)) or ""))
+		table.insert(travelTier, c)
 		return travelAnswer[1], travelAnswer[2]
 	end
 	return true, nil
@@ -208,7 +210,7 @@ hrp.CFrame = CFrame.new(DOORS)
 wait(0.3)
 check(Menus.current() == "Spire", "walking up to the doors opens the Spire menu")
 check(playerGui.Menus.Root.Title.Text == "The Spire", "titled The Spire, like the other menus")
-check(find("Tab_Floors", playerGui.Menus.Root) ~= nil, "its tab down the side")
+check(find("Tab_Normal", playerGui.Menus.Root) ~= nil and find("Tab_Doom", playerGui.Menus.Root) ~= nil, "a tab for each Spire: Normal ... Doom")
 local floors = find("Floors")
 local cards = 0
 for _, c in ipairs(floors and floors:GetChildren() or {}) do
@@ -361,6 +363,42 @@ check(travelled[1] == "leave", "LEAVE asks the server (" .. tostring(travelled[1
 me:SetAttribute("SpireFloor", nil)
 wait(2)
 check(not leaveBtn.Visible and not confirm.Visible, "back in the lobby: both gone")
+
+----------------------------------------------------------------------
+-- THE HARDER SPIRE: Nightmare, Eclipse, Doom
+----------------------------------------------------------------------
+me:SetAttribute("SpireCleared", 2)
+levelValue.Value = 50
+hrp.CFrame = CFrame.new(DOORS)
+wait(0.3)
+hrp.CFrame = CFrame.new(DOORS + Vector3.new(0, 0, 40))
+wait(0.3)
+hrp.CFrame = CFrame.new(DOORS)
+wait(0.3)
+click(find("Tab_Nightmare", playerGui.Menus.Root))
+detail = find("Detail")
+check(textOf("TierChip", detail) == "NIGHTMARE", "the Nightmare tab: its floors, marked NIGHTMARE")
+check(textOf("Recommended", detail) == "RECOMMENDED LV " .. Config.spireLevel(3, "Nightmare"), "at Nightmare's levels (" .. textOf("Recommended", detail) .. ")")
+check(textOf("State", detail) == "LOCKED" and string.find(textOf("Note", detail), "whole Spire on NORMAL", 1, true) ~= nil, "locked until Normal is beaten to the top (" .. textOf("Note", detail) .. ")")
+-- beat Normal: Nightmare opens, and the menu opens on it
+me:SetAttribute("SpireCleared", 10)
+levelValue.Value = 170
+Menus.close()
+hrp.CFrame = CFrame.new(DOORS + Vector3.new(0, 0, 40))
+wait(0.3)
+hrp.CFrame = CFrame.new(DOORS)
+wait(0.3)
+check(select(2, Menus.current()) == "Nightmare", "with Normal beaten, it opens on Nightmare (" .. tostring(select(2, Menus.current())) .. ")")
+detail = find("Detail")
+check(textOf("BossName", detail) == F[1].boss and textOf("State", detail) == "READY", "on its floor 1, READY at Lv 170")
+snap("THE SPIRE · NIGHTMARE|the harder Spire: the same floors at Nightmare's levels")
+table.clear(travelled)
+click(find("Enter", detail))
+wait(1)
+check(travelled[1] == "enter:1" and travelTier[#travelTier] == "Nightmare", "ENTER goes up floor 1 on Nightmare (" .. tostring(travelled[1]) .. ", " .. tostring(travelTier[#travelTier]) .. ")")
+wait(2)
+check(Config.spireTierHealth(10, "Doom") > 1.8 and Config.spireTierDamage(10, "Doom") > 2, "Doom's bosses: tougher and harder-hitting than their level alone")
+check(Config.levelsWorth(150, 1) == Config.powerForLevel(151) - Config.powerForLevel(150), "a level's worth of Power")
 
 check(#M.errors == 0, "no errors (" .. #M.errors .. ")")
 for i = 1, math.min(5, #M.errors) do

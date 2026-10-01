@@ -239,10 +239,14 @@ local function mergeSaved(saved)
 	local refund = oldShopRefund(saved)
 	d.Coins = d.Coins + refund
 	if type(saved.Cleared) == "table" then
+		-- (Normal's wins by "<floor>", the harder tiers' by "<tier>:<floor>")
 		for floorId in pairs(Config.Bosses or {}) do
-			local n = saved.Cleared[tostring(floorId)]
-			if type(n) == "number" and n > 0 then
-				d.Cleared[tostring(floorId)] = math.floor(n)
+			for _, t in ipairs(Config.Spire.Tiers) do
+				local key = t.id == "Normal" and tostring(floorId) or (t.id .. ":" .. tostring(floorId))
+				local n = saved.Cleared[key]
+				if type(n) == "number" and n > 0 then
+					d.Cleared[key] = math.floor(n)
+				end
 			end
 		end
 	end
@@ -418,15 +422,35 @@ local function mergeSaved(saved)
 end
 
 -- the highest Spire floor this player has ever cleared (0 = none yet)
-local function highestCleared(d)
+-- The highest floor beaten on a tier. Wins are kept in d.Cleared by
+-- "<floor>" (Normal) or "<tier>:<floor>" (Nightmare, Eclipse, Doom).
+local function clearedKey(floorId, tierId)
+	if tierId == nil or tierId == "Normal" then
+		return tostring(floorId)
+	end
+	return tostring(tierId) .. ":" .. tostring(floorId)
+end
+local function highestCleared(d, tierId)
 	local best = 0
+	local prefix = (tierId == nil or tierId == "Normal") and "" or (tostring(tierId) .. ":")
 	for key, n in pairs(d.Cleared or {}) do
-		local id = tonumber(key)
+		local id = nil
+		if prefix == "" then
+			id = tonumber(key)
+		elseif string.sub(key, 1, #prefix) == prefix then
+			id = tonumber(string.sub(key, #prefix + 1))
+		end
 		if id and n > 0 and id > best then
 			best = id
 		end
 	end
 	return best
+end
+-- every tier's best floor, on the player (the Spire menu shows them)
+local function showCleared(player, d)
+	for _, t in ipairs(Config.Spire.Tiers) do
+		player:SetAttribute(Config.spireClearedKey(t.id), highestCleared(d, t.id))
+	end
 end
 
 -- SAVING, SAFELY. Only one server may own a player's save at a time: when a
@@ -714,19 +738,28 @@ end
 
 -- A boss on `floorId` died with this player in the arena. Returns true if it
 -- was their first time beating it (BossService pays a bigger reward for that).
-function PlayerService.RecordBossKill(player, floorId)
+function PlayerService.RecordBossKill(player, floorId, tierId)
 	local profile = profiles[player]
 	if not profile then
 		return false
 	end
 	local d = profile.data
 	d.Cleared = d.Cleared or {}
-	local key = tostring(floorId)
+	local key = clearedKey(floorId, tierId)
 	local before = d.Cleared[key] or 0
 	d.Cleared[key] = before + 1
-	player:SetAttribute("SpireCleared", highestCleared(d))
-	-- a boss's first clear pays a bundle of Arcade Tokens
-	local tokens = before == 0 and Config.Arcade and Config.Arcade.FirstClear[tonumber(floorId) or 0] or 0
+	showCleared(player, d)
+	-- a boss's first clear pays a bundle of Arcade Tokens (a harder tier's:
+	-- its own number, Config.Spire.Tiers)
+	local tier = Config.spireTier(tierId)
+	local tokens = 0
+	if before == 0 then
+		if tier.id == "Normal" then
+			tokens = Config.Arcade and Config.Arcade.FirstClear[tonumber(floorId) or 0] or 0
+		else
+			tokens = tier.tokens or 0
+		end
+	end
 	if tokens > 0 then
 		d.Tokens = (d.Tokens or 0) + tokens
 		notify(player, "First win! +" .. tokens .. " ARCADE TOKENS - spin them at the Arcade!", "rare")
@@ -1004,7 +1037,7 @@ local function onPlayerAdded(player)
 	local profile = { data = data, canSave = ok }
 	profiles[player] = profile
 	ensureQuests(profile.data)
-	player:SetAttribute("SpireCleared", highestCleared(profile.data)) -- the Spire menu shows it
+	showCleared(player, profile.data) -- the Spire menu shows them
 
 	local ls = Instance.new("Folder")
 	ls.Name = "leaderstats"

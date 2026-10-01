@@ -91,8 +91,8 @@ function RewardService.CollectorPoints(d)
 			owned = owned + 1
 		end
 	end
-	for _, n in pairs(d.Cleared or {}) do
-		if n > 0 then
+	for key, n in pairs(d.Cleared or {}) do
+		if n > 0 and tonumber(key) then -- (each boss once: Normal's wins)
 			cleared = cleared + 1
 		end
 	end

@@ -364,15 +364,17 @@ local function healthShare(E)
 end
 
 -- how long this recovery really lasts: faster in phase two, faster again when desperate
+-- (and quicker on a harder Spire: its tier's pace)
 local function recovery(E, seconds)
 	local def = E.def
+	local pace = E.pace or 1
 	if E.phase >= 2 then
 		if healthShare(E) <= def.DesperateAt then
-			return seconds * def.DesperateRecovery
+			return seconds * def.DesperateRecovery * pace
 		end
-		return seconds * def.Phase2Recovery
+		return seconds * def.Phase2Recovery * pace
 	end
-	return seconds
+	return seconds * pace
 end
 
 ----------------------------------------------------------------------
@@ -534,11 +536,24 @@ local function wake(E)
 	E.token = E.token + 1
 	local token = E.token
 	local def = E.def
+	-- which Spire they came up: Normal, or a harder tier (SpireService puts
+	-- it on each player). The floor takes that tier's level - so its health,
+	-- its props and what a win pays all follow - and the tier makes it
+	-- tougher and quicker still (Config.Spire.Tiers)
+	local tierId = nil
+	for _, p in ipairs(fightersIn(E)) do
+		tierId = tierId or p:GetAttribute("SpireTier")
+	end
+	local tier = Config.spireTier(tierId)
+	E.tier = tier.id
+	E.pace = tier.pace or 1
+	E.floorDef = Config.spireFloorFor(E.floor, tier.id) or E.floorDef
+	E.model:SetAttribute("Tier", tier.id ~= "Normal" and tier.id or nil)
 	-- health for this fight: its punch count at the floor's recommended power,
 	-- scaled up for every extra player here when it wakes
 	local rec = math.max(1, Config.powerForLevel((E.floorDef and E.floorDef.level) or 1))
 	local party = math.max(1, #fightersIn(E))
-	local maxHealth = math.floor(rec * def.HealthPunches * (1 + def.PartyScale * (party - 1)))
+	local maxHealth = math.floor(rec * def.HealthPunches * (1 + def.PartyScale * (party - 1)) * Config.spireTierHealth(E.floor, tier.id))
 	E.model:SetAttribute("MaxHealth", maxHealth)
 	E.model:SetAttribute("Health", maxHealth)
 	E.model:SetAttribute("MinHealth", math.floor(maxHealth * def.PhaseAt)) -- the phase shield
@@ -609,17 +624,21 @@ local function die(E)
 	setState(E, "Dead")
 	setAction(E, "Death", nil)
 	E.deadAt = now()
-	-- everyone in the arena when it falls shares the win
-	local rec = math.max(1, Config.powerForLevel((E.floorDef and E.floorDef.level) or 1))
+	-- everyone in the arena when it falls shares the win: so many LEVELS'
+	-- worth of Power at the floor's recommended level (its Reward; a harder
+	-- tier's floors are closer together, so its reward share is smaller)
+	local level = (E.floorDef and E.floorDef.level) or 1
+	local share = Config.spireTier(E.tier).reward or 1
 	for _, p in ipairs(presentIn(E)) do
-		local gained = math.floor(rec * E.def.Reward.Power)
+		local levels = E.def.Reward.Power
 		local first = false
 		if PlayerService and PlayerService.RecordBossKill then
-			first = PlayerService.RecordBossKill(p, E.floor)
+			first = PlayerService.RecordBossKill(p, E.floor, E.tier)
 		end
 		if first then
-			gained = gained + math.floor(rec * E.def.Reward.FirstClear)
+			levels = levels + E.def.Reward.FirstClear
 		end
+		local gained = Config.levelsWorth(level, levels * share)
 		-- a BOSS RUSH ticket (the shop's) on a boss you'd beaten before: more
 		-- Power (ShopService.Rush says how much, and uses the ticket)
 		local rush = 1
@@ -654,7 +673,7 @@ local function stepMovement(E, dt)
 		local keep = def.Size / 2 + 5 -- stop short of standing on them
 		if aim then
 			local gap = flat(aim - E.pos)
-			local speed = def.MoveSpeed[E.phase] or def.MoveSpeed[1]
+			local speed = (def.MoveSpeed[E.phase] or def.MoveSpeed[1]) / (E.pace or 1)
 			if gap.Magnitude > keep then
 				local step = math.min(speed * dt, gap.Magnitude - keep)
 				E.pos = E.pos + gap.Unit * step

@@ -63,8 +63,8 @@ local function collectorPoints(d)
 			owned = owned + 1
 		end
 	end
-	for _, n in pairs(d and type(d.Cleared) == "table" and d.Cleared or {}) do
-		if (tonumber(n) or 0) > 0 then
+	for key, n in pairs(d and type(d.Cleared) == "table" and d.Cleared or {}) do
+		if (tonumber(n) or 0) > 0 and tonumber(key) then -- (each boss once: Normal's wins)
 			cleared = cleared + 1
 		end
 	end

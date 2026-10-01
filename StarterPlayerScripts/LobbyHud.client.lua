@@ -500,17 +500,24 @@ local function nextGoal(d)
 	end
 	local level = Config.levelFromPower(tonumber(d.Power) or 0)
 	local cleared = type(d.Cleared) == "table" and d.Cleared or {}
-	for _, f in ipairs(Config.Spire.Floors) do
-		if f.open ~= false and (tonumber(cleared[tostring(f.id)]) or 0) <= 0 then
-			local short = string.match(f.boss, "^([^,]+)") or f.boss
-			if level + 5 >= f.level then
-				return { text = "Climb the Spire · Floor " .. f.id, sub = "Beat " .. short, icon = "Spire", place = "Spire" }
+	-- the first boss not beaten, tier by tier (Normal, then Nightmare...)
+	for _, t in ipairs(Config.Spire.Tiers or { { id = "Normal" } }) do
+		local normal = t.id == "Normal"
+		for _, f in ipairs(Config.Spire.Floors) do
+			local key = normal and tostring(f.id) or (t.id .. ":" .. f.id)
+			if f.open ~= false and (tonumber(cleared[key]) or 0) <= 0 then
+				local short = string.match(f.boss, "^([^,]+)") or f.boss
+				local need = Config.spireLevel and Config.spireLevel(f.id, t.id) or f.level
+				local where = (normal and "Floor " or (t.name .. " ")) .. f.id
+				if level + 5 >= need then
+					return { text = "Climb the Spire · " .. where, sub = "Beat " .. short, icon = "Spire", place = "Spire" }
+				end
+				-- (the Colosseum is the Spire's ground floor: the trail leads to the Spire)
+				return { text = "Train in the Colosseum", sub = "Spire ground floor · Lv " .. need .. " for " .. where .. " (you're Lv " .. level .. ")", icon = "Weapons", place = "Spire" }
 			end
-			-- (the Colosseum is the Spire's ground floor: the trail leads to the Spire)
-			return { text = "Train in the Colosseum", sub = "Spire ground floor · Lv " .. f.level .. " for Floor " .. f.id .. " (you're Lv " .. level .. ")", icon = "Weapons", place = "Spire" }
 		end
 	end
-	return { text = "Every boss beaten!", sub = "Beat them again for more loot", icon = "Bosses", place = "Spire" }
+	return { text = "Every boss beaten!", sub = "Even on Doom! Beat them again for more", icon = "Bosses", place = "Spire" }
 end
 ui.nextGoal = nextGoal
 

@@ -92,9 +92,11 @@ function Combat.SetTargetShape() end
 function Combat.Launch() end
 local kills = {} -- [player] = floors they were paid for
 local Profile = {}
-function Profile.RecordBossKill(p, floorId)
+local killTiers = {}
+function Profile.RecordBossKill(p, floorId, tierId)
 	kills[p] = kills[p] or {}
 	table.insert(kills[p], floorId)
+	killTiers[p] = tierId
 	return false
 end
 function Profile.AddPower() end
@@ -210,6 +212,30 @@ check(party > solo, string.format("the party's boss has more health (%d vs %d al
 out(C)
 out(D)
 out(F)
+
+----------------------------------------------------------------------
+-- 3b. a harder Spire (Nightmare): the same boss, at Nightmare's level
+----------------------------------------------------------------------
+local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
+local Nm = makePlayer("Nina", 8)
+local arenaN = Pool.Acquire(1, { Nm })
+local EN = BS.EncounterIn(arenaN:GetAttribute("ArenaId"))
+Nm:SetAttribute("SpireTier", "Nightmare")
+enter(Nm, arenaN, 1)
+standAt(Nm, EN.home + Vector3.new(0, 3, 12))
+runFor(3)
+local nh = EN.model:GetAttribute("MaxHealth") or 0
+local want = solo * Config.powerForLevel(Config.spireLevel(1, "Nightmare")) / Config.powerForLevel(Config.spireLevel(1, "Normal")) * Config.spireTierHealth(1, "Nightmare")
+check(math.abs(nh - want) / want < 0.01, string.format("on Nightmare it wakes with Nightmare's health (%d, wanted %d)", nh, want))
+check(EN.model:GetAttribute("Tier") == "Nightmare" and EN.pace < 1, "marked NIGHTMARE, and quicker")
+EN.model:SetAttribute("Health", 0)
+EN.model.OnHit:Fire(Nm, 1, true)
+runFor(1)
+check(EN.state == "Dead" and killTiers[Nm] == "Nightmare", "the win is kept as a Nightmare win")
+out(Nm)
+Nm:SetAttribute("SpireTier", nil)
+-- (back on Normal, the same copy's boss is Normal again)
+runFor(12)
 
 ----------------------------------------------------------------------
 -- 4. world positions and arena pieces moved with the copies

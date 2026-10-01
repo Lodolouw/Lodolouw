@@ -166,7 +166,7 @@ end
 -- TRAINING: the floor you're training for, and the extra XP for being
 -- below its level (0.45 = +45%)
 local function training(player)
-	return Config.colosseumCatchUp(playerLevel(player), player:GetAttribute("SpireCleared") or 0)
+	return Config.colosseumCatchUp(playerLevel(player), Config.spireCleared(player)) -- (every tier: the next boss may be on Nightmare)
 end
 local function trained(player, power)
 	return math.max(1, math.floor(power * (1 + training(player))))
@@ -211,7 +211,7 @@ local function trainInfo(player)
 	end
 	return {
 		floor = f.id,
-		boss = string.match(f.boss or "", "^[^,]+") or f.boss,
+		boss = (f.tier and (Config.spireTier(f.tier).name .. " ") or "") .. (string.match(f.boss or "", "^[^,]+") or f.boss),
 		level = f.level,
 		you = playerLevel(player),
 		bonus = bonus,

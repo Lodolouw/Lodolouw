@@ -286,10 +286,18 @@ end
 -- The floor you're training for (the next one you haven't beaten, that's
 -- open), and how much more XP the Colosseum pays you for being below its
 -- level (0.45 = +45%). cleared = the highest floor you've beaten.
+-- The next boss to beat: the first floor not beaten on the lowest tier not
+-- finished (`cleared`: a number - Normal's best floor - or the table
+-- Config.spireCleared gives). Returns that floor as on its tier (its level).
 function Config.nextSpireFloor(cleared)
-	for _, f in ipairs(Config.Spire and Config.Spire.Floors or {}) do
-		if f.open and f.id > (cleared or 0) then
-			return f
+	if type(cleared) ~= "table" then
+		cleared = { Normal = cleared or 0 }
+	end
+	for _, t in ipairs(Config.Spire and Config.Spire.Tiers or { { id = "Normal" } }) do
+		for _, f in ipairs(Config.Spire and Config.Spire.Floors or {}) do
+			if f.open and f.id > (cleared[t.id] or 0) then
+				return Config.spireFloorFor and Config.spireFloorFor(f.id, t.id) or f
+			end
 		end
 	end
 	return nil
@@ -392,11 +400,22 @@ end
 -- the Colosseum and beating bosses - up to MaxLevel. Every level makes you
 -- a little stronger at everything (Config.LevelBonus).
 -- Total Power for a level = LevelScale x (level - 1) ^ LevelCurve
--- (level 2 needs 18, level 44 about 1.4M, level 256 about 297M).
+-- (level 2 needs 18, level 44 about 1.4M, level 256 about 297M, level 500
+-- about 2.2 billion). The Spire's levels run 15 to 150 (Normal), then
+-- Nightmare 160-250, Eclipse 260-350 and Doom 360-450 (Config.Spire.Tiers);
+-- MaxLevel leaves room to grow past Doom's last floor.
 ----------------------------------------------------------------------
-Config.MaxLevel = 256
+Config.MaxLevel = 500
 Config.LevelScale = 17.9
 Config.LevelCurve = 3
+
+-- The Power that `levels` more levels take from `level` (fractions too):
+-- what a boss win pays (its Reward, counted in levels)
+function Config.levelsWorth(level, levels)
+	level = math.max(1, level or 1)
+	local a = math.max(0, level - 1)
+	return math.max(1, math.floor(Config.LevelScale * ((a + (levels or 0)) ^ Config.LevelCurve - a ^ Config.LevelCurve)))
+end
 
 -- Total Power you need to reach `level`
 function Config.powerForLevel(level)
@@ -835,6 +854,122 @@ Config.Spire = {
 	},
 }
 
+-- THE HARDER SPIRE: after King Gavelgrunt falls, the whole Spire again -
+-- NIGHTMARE, then ECLIPSE, then DOOM. Same floors, same bosses and moves,
+-- at higher levels (floor 1 at `start`, then `step` more a floor), and
+-- tougher than the level alone makes them:
+--   health  takes this many times the punches a Normal fight does (for a
+--           player at the floor's level - their level's damage bonus is
+--           already allowed for)
+--   damage  their hits take this many times the share of your health a
+--           Normal hit does (your level's health and defence allowed for)
+--   pace    recoveries and chasing: x this long (0.8 = 20% quicker)
+--   reward  the win's levels (Reward) x this - the floors are closer together
+--   tokens  Arcade Tokens for each floor's first win on this tier
+-- A tier's floor 1 opens once the tier before it is beaten to the top;
+-- after that, floor by floor as in Normal. Your best floor on each is the
+-- player's SpireCleared (Normal) / SpireCleared_<id> attribute.
+Config.Spire.Tiers = {
+	{ id = "Normal", name = "NORMAL", color = Color3.fromRGB(255, 63, 164), health = 1, damage = 1, pace = 1, reward = 1 },
+	{ id = "Nightmare", name = "NIGHTMARE", color = Color3.fromRGB(229, 57, 74), start = 160, step = 10, health = 1.25, damage = 1.3, pace = 0.85, reward = 0.7, tokens = 2,
+		blurb = "The Spire's bosses, back from the dead and angrier. Faster, tougher, and they hit harder." },
+	{ id = "Eclipse", name = "ECLIPSE", color = Color3.fromRGB(141, 75, 255), start = 260, step = 10, health = 1.5, damage = 1.6, pace = 0.75, reward = 0.7, tokens = 3,
+		blurb = "The sun has gone out over the Spire. Every boss is quicker still, and one mistake costs a lot." },
+	{ id = "Doom", name = "DOOM", color = Color3.fromRGB(150, 20, 30), start = 360, step = 10, health = 1.8, damage = 2, pace = 0.65, reward = 0.7, tokens = 5,
+		blurb = "The last climb. Bosses at their very worst - only the strongest reach the top." },
+}
+
+-- a tier by id (Normal if it's not one)
+function Config.spireTier(id)
+	for i, t in ipairs(Config.Spire.Tiers) do
+		if t.id == id then
+			return t, i
+		end
+	end
+	return Config.Spire.Tiers[1], 1
+end
+
+-- a floor's recommended level on a tier
+function Config.spireLevel(floorId, tierId)
+	local t = Config.spireTier(tierId)
+	local f = Config.Spire.Floors[floorId]
+	if not t.start then
+		return f and f.level or 1
+	end
+	return t.start + t.step * ((floorId or 1) - 1)
+end
+
+-- a floor as it is on a tier: a copy with that tier's level (and its id)
+function Config.spireFloorFor(floorId, tierId)
+	local f = Config.Spire.Floors[floorId]
+	if not f then
+		return nil
+	end
+	local t = Config.spireTier(tierId)
+	if t.id == "Normal" then
+		return f
+	end
+	local copy = table.clone(f)
+	copy.level = Config.spireLevel(floorId, t.id)
+	copy.tier = t.id
+	return copy
+end
+
+-- (a player at level L: their punch's level bonus, their health and the
+-- share of a hit they take - Config.LevelBonus)
+local function atLevel(level)
+	local n = math.max(0, level - 1)
+	local B = Config.LevelBonus
+	return 1 + B.Damage * n / 100, (Config.BaseHealth or 100) + B.Health * n, 1 - math.min(B.Defense * n, Config.MaxDefense or 60) / 100
+end
+
+-- a boss's health on a tier, x its Normal health (for a player at the level)
+function Config.spireTierHealth(floorId, tierId)
+	local t = Config.spireTier(tierId)
+	if t.id == "Normal" then
+		return 1
+	end
+	local dmgN = atLevel(Config.spireLevel(floorId, "Normal"))
+	local dmgT = atLevel(Config.spireLevel(floorId, t.id))
+	return t.health * dmgT / dmgN
+end
+
+-- a boss's hits on a tier, x their Normal damage (so each takes `damage` x
+-- the share of your health a Normal hit takes, at the floor's level)
+function Config.spireTierDamage(floorId, tierId)
+	local t = Config.spireTier(tierId)
+	if t.id == "Normal" then
+		return 1
+	end
+	local _, hpN, takeN = atLevel(Config.spireLevel(floorId, "Normal"))
+	local _, hpT, takeT = atLevel(Config.spireLevel(floorId, t.id))
+	return t.damage * (hpT / hpN) * (takeN / takeT)
+end
+
+-- the attribute that keeps a player's best floor on a tier
+function Config.spireClearedKey(tierId)
+	return (tierId == nil or tierId == "Normal") and "SpireCleared" or ("SpireCleared_" .. tierId)
+end
+
+-- a player's best floor on every tier: { Normal = 10, Nightmare = 3, ... }
+function Config.spireCleared(player)
+	local out = {}
+	for _, t in ipairs(Config.Spire.Tiers) do
+		out[t.id] = (player and player:GetAttribute(Config.spireClearedKey(t.id))) or 0
+	end
+	return out
+end
+
+-- Can this tier be played at all? (the tier before it beaten to the top)
+function Config.spireTierOpen(cleared, tierId)
+	local _, i = Config.spireTier(tierId)
+	if i <= 1 then
+		return true
+	end
+	local before = Config.Spire.Tiers[i - 1]
+	return (cleared[before.id] or 0) >= #Config.Spire.Floors
+end
+
 -- The bosses of the Spire, by floor. Every number that shapes a fight is here.
 --
 -- Times are in seconds, distances in studs, damage against a player's 100
@@ -1159,7 +1294,9 @@ Config.Bosses = {
 			Wail = { Tell = 0.6, Rings = 5, Gap = 0.38, Fuse = 1.05, Radius = 11, Geyser = 30, Damage = 24, Recovery = 0.9, Knockback = 38, Phase = 1, Range = { 0, 200 }, Weight = 3 },
 		},
 
-		-- What a kill is worth, in multiples of the floor's recommended power.
+		-- What a kill is worth, in LEVELS at the floor's recommended level (Power
+		-- = every win, FirstClear = on top the first time; a harder Spire's
+		-- tier multiplies it: Config.Spire.Tiers' reward).
 		Reward = { Power = 1.5, FirstClear = 4 },
 
 		-- the fight's music: the name of a Sound in SoundService

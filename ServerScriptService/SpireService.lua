@@ -242,7 +242,7 @@ local function openMenu(player)
 	remotes.SpireEvent:FireClient(player, "OpenMenu")
 end
 
-local function travel(player, action, floorId)
+local function travel(player, action, floorId, tierId)
 	local now = os.clock()
 	if lastTravel[player] and now - lastTravel[player] < TRAVEL_COOLDOWN then
 		return false, "Slow down."
@@ -260,13 +260,22 @@ local function travel(player, action, floorId)
 		if not floor.open then
 			return false, "That floor is sealed."
 		end
-		-- the floor below has to be beaten first (not for a dev - Studio, or the
-		-- game's owner - so you can test any floor)
-		if Config.Spire.RequirePrevious and floor.id > 1 and not Config.isDev(player) then
-			if (player:GetAttribute("SpireCleared") or 0) < floor.id - 1 then
+		-- which Spire: Normal, or a harder tier (Nightmare, Eclipse, Doom)
+		local tier = Config.spireTier(tierId)
+		-- the floor below has to be beaten first, on the same tier - and a
+		-- harder tier opens once the one before it is beaten to the top (not
+		-- for a dev - Studio, or the game's owner - so you can test any floor)
+		if not Config.isDev(player) then
+			local cleared = Config.spireCleared(player)
+			if not Config.spireTierOpen(cleared, tier.id) then
+				local _, i = Config.spireTier(tier.id)
+				local before = Config.Spire.Tiers[i - 1]
+				return false, "Beat the whole Spire on " .. (before and before.name or "the tier before") .. " first."
+			end
+			if Config.Spire.RequirePrevious and floor.id > 1 and (cleared[tier.id] or 0) < floor.id - 1 then
 				local below = floorInfo(floor.id - 1)
 				local name = below and below.boss and string.match(below.boss, "^[^,]+") or "the floor below"
-				return false, "Defeat " .. name .. " first."
+				return false, "Defeat " .. name .. " first" .. (tier.id ~= "Normal" and (" on " .. tier.name) or "") .. "."
 			end
 		end
 		local entrance = firstTagged("SpireEntrance")
@@ -303,8 +312,10 @@ local function travel(player, action, floorId)
 				if moveCharacter(p, pChar, dest) then
 					-- which copy first: screens react to SpireFloor changing
 					p:SetAttribute("SpireArena", id)
+					-- (the tier before the floor: the fight reads it when the boss wakes)
+					p:SetAttribute("SpireTier", tier.id ~= "Normal" and tier.id or nil)
 					p:SetAttribute("SpireFloor", floor.id)
-					remotes.SpireEvent:FireClient(p, "Arrived", floor.area, floor.boss)
+					remotes.SpireEvent:FireClient(p, "Arrived", floor.area, tier.id ~= "Normal" and (tier.name .. " · " .. floor.boss) or floor.boss)
 				else
 					ArenaPool.Leave(p)
 				end
@@ -349,6 +360,7 @@ local function travel(player, action, floorId)
 		end
 		player:SetAttribute("SpireFloor", nil)
 		player:SetAttribute("SpireArena", nil)
+		player:SetAttribute("SpireTier", nil)
 		ArenaPool.Leave(player)
 		coolArena(player)
 		-- out of the arena: patched up, back to full health
@@ -402,8 +414,8 @@ function SpireService.Start()
 	remotes.SpireEvent = event
 	remotes.SpireTravel = fn
 
-	fn.OnServerInvoke = function(player, action, floorId)
-		local ok, success, message = pcall(travel, player, action, floorId)
+	fn.OnServerInvoke = function(player, action, floorId, tierId)
+		local ok, success, message = pcall(travel, player, action, floorId, type(tierId) == "string" and tierId or nil)
 		if not ok then
 			warn("[SpireService] travel failed: " .. tostring(success))
 			return false, "Something went wrong."
@@ -436,6 +448,7 @@ function SpireService.Start()
 		player.CharacterAdded:Connect(function(char)
 			player:SetAttribute("SpireFloor", nil)
 			player:SetAttribute("SpireArena", nil)
+			player:SetAttribute("SpireTier", nil)
 			ArenaPool.Leave(player)
 			coolArena(player) -- (back in the lobby: the arena can go)
 			if not player:GetAttribute("DiedInSpire") then
