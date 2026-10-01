@@ -439,6 +439,7 @@ local function playSound(def, key, at, volume)
 		near = clamp(1 - (d - 40) / 260, 0.33, 1)
 	end
 	s.Volume = (volume or 1) * ((Config.Audio and Config.Audio.BossSounds) or 0.85) * near
+		* (tonumber(def.SoundVolume) or 1) -- (a boss whose sounds are too loud: its SoundVolume)
 		* (tonumber(s:GetAttribute("Loudness")) or 1) -- (a softer sound: see Config.SoundLoudness)
 	s.SoundGroup = soundGroup("Effects")
 	-- sounds fired in quick bursts (the barrage) vary a little, so fourteen in a

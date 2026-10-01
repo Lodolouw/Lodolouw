@@ -1765,6 +1765,7 @@ Config.Bosses = {
 		-- like. Any you haven't added yet borrow one of Oozark's (see BossClient),
 		-- except the announcer's (Round1, Round2, Fight, KO, Perfect): those just
 		-- stay quiet until you add them.
+		SoundVolume = 0.7, -- his sounds, a little quieter than the other bosses' (1 = the same)
 		Sounds = {
 			Wake = "Kaze Wake", -- "HAH!" as he drops into his stance
 			Punch = "Kaze Punch", -- a jab or a straight
