@@ -717,6 +717,10 @@ local function start(player)
 	end)
 
 	setStage(S, "Void")
+	-- (fighting from this moment: punching works straight away)
+	if CombatService.ForceFight then
+		CombatService.ForceFight(player)
+	end
 	-- (placed as soon as there's a body, and again each time they respawn)
 	S.charConn = player.CharacterAdded:Connect(function(char)
 		task.spawn(place, S, char)

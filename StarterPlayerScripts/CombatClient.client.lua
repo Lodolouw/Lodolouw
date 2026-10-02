@@ -3420,6 +3420,11 @@ end
 
 CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 	if kind == "State" then
+		-- (the server only sends this to someone in a fight: if this screen
+		-- isn't in fight mode yet, it is now)
+		if not active then
+			setActive(true)
+		end
 		-- the server is in charge: take its numbers (a = stamina, b = max, c = flasks)
 		if math.abs(a - stamina) > 6 or os.clock() - lastSpend > 0.5 then
 			stamina = a

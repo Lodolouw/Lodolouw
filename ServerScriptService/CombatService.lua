@@ -1755,6 +1755,19 @@ local function stopFighting(player)
 	player:SetAttribute("Stacks", nil)
 end
 
+-- Into a fight right now, whatever the attributes' signals are doing (the
+-- intro calls this the moment it starts: nothing can leave you out of it)
+function CombatService.ForceFight(player)
+	if not fighters[player] then
+		startFighting(player)
+		pcall(function()
+			player.DevEnableMouseLock = false
+		end)
+	else
+		pushState(player, fighters[player])
+	end
+end
+
 local function onFloorChanged(player)
 	local fighting = player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") or introFight(player)
 	if fighting then
