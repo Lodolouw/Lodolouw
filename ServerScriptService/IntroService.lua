@@ -816,8 +816,8 @@ function IntroService.Start(combatService, playerService)
 		end
 		return true
 	end)
-	-- DEV ONLY (Studio, or the game's owner): play it again from the start
-	-- (the dev console's "DEV: Replay Intro")
+	-- DEV ONLY (Studio, or the game's owner): start over as a new player and
+	-- play it from the start (the dev console's "DEV: Replay Intro")
 	PlayerService.AddAction("DevReplayIntro", function(player)
 		if not Config.isDev(player) then
 			return false, "Dev tools are only for the game's owner."
@@ -829,8 +829,31 @@ function IntroService.Start(combatService, playerService)
 		if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") then
 			return false, "Go back to the lobby first."
 		end
-		start(player)
-		return true
+		-- START OVER, as a brand-new player would: the intro not done yet (so
+		-- the chest pays and the new player path starts again after it), bare
+		-- fists, a fresh body - then the intro, the same as on a first join
+		local d = PlayerService.GetData(player)
+		if d then
+			d.IntroDone = false
+			d.Path = { step = 0, done = false }
+			if PlayerService.MarkDirty then
+				PlayerService.MarkDirty(player)
+			end
+		end
+		if CombatService.Equip then
+			CombatService.Equip(player, nil)
+		end
+		task.spawn(function()
+			if player.LoadCharacter then
+				pcall(function()
+					player:LoadCharacter()
+				end)
+			end
+			if player.Parent and not (sessions[player] and not sessions[player].over) then
+				start(player)
+			end
+		end)
+		return true, "Starting over: here comes the intro!"
 	end)
 	-- their screen couldn't show it (something broke there): they play on
 	-- normally - no reward, and the intro again next time (all a player

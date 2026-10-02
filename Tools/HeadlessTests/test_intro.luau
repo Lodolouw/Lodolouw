@@ -13,7 +13,7 @@
 --   luau test_intro.luau -a full detail   ...printing every change of words and move
 --   luau test_intro.luau -a skip      a returning player: no intro at all
 --   luau test_intro.luau -a fail      their screen breaks mid-intro: back to normal, no reward
---   luau test_intro.luau -a replay    the whole intro, then Studio's DEV: Replay Intro
+--   luau test_intro.luau -a replay    the whole intro, then Studio's DEV: Replay Intro (start over as new)
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -542,8 +542,14 @@ if MODE == "replay" then
 	RunService.IsStudio = function()
 		return true
 	end
+	me:SetAttribute("Weapon", "IronSword")
 	ok = ReplicatedStorage.Remotes.Action:InvokeServer("DevReplayIntro")
 	assert(ok == true, "it replays in Studio")
+	-- (starting over as a brand-new player: not done, the path from the top, fists)
+	local fresh = PS.GetData(me)
+	assert(fresh.IntroDone == false, "the intro counts as not done again")
+	assert(fresh.Path.step == 0 and fresh.Path.done == false, "the new player path starts over after it")
+	assert(me:GetAttribute("Weapon") == nil, "bare fists, like a new player")
 	waitFor(function()
 		return gui:FindFirstChild("IntroGui") ~= nil and workspace:FindFirstChild("IntroWorld") ~= nil
 	end, 5, "the intro to start again")
