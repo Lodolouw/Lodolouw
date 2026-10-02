@@ -25,6 +25,15 @@ zone, the noob diving out, his boss bar), G BRAINROT (a meme mash-up boss:
 Revvington with Kongo's arms and the king's crown, a popping-eyed noob,
 BOSS???), H THE SPIRE (the tower of bosses, floor 1 to FLOOR 10, the noob
 at its foot). The review sheet shows SHEET (F, G, H).
+
+    python3 render_game_icon.py ... --thumbs all   (the game page thumbnails)
+
+THUMBNAILS (1920 x 1080, thumb_1.png, thumb_2.png and thumb_sheet.png): 1
+THE SPIRE (the tower in a storm, a boss on each floor's balcony - Oozark 1,
+Revvington 5, Kongo 7, King Gavelgrunt under FLOOR 10 - the noob at its
+foot, 10 BOSSES / CLIMB THE SPIRE), 2 THE FIGHT (King Gavelgrunt side on
+with the war-gavel raised over the cracked red zone, the noob diving out,
+DODGE IT!, his boss bar).
 Kaze, Burrowmore, Petalina, Scribble and Tuber are left off: their looks
 sit closest to the characters they parody (the handoff's Copyright rule).
 
@@ -54,6 +63,7 @@ ap.add_argument('--pixel-font', default='', help='PressStart2P.ttf')
 ap.add_argument('--only', default='', help='just these icons (A,B,...)')
 ap.add_argument('--preview', action='store_true', help='every boss pose alone (a contact sheet)')
 ap.add_argument('--size', type=int, default=512)
+ap.add_argument('--thumbs', default='', help='the game page thumbnails instead (1,2 or all)')
 args = ap.parse_args()
 
 SIZE = args.size
@@ -229,8 +239,9 @@ def moved(parts, offset):
 # drawing a layer: the game's look, cut out (drawn on black and on white:
 # the difference is how see-through each pixel is)
 # ----------------------------------------------------------------------
-def layer(parts, eye, look, fov, size=SIZE):
-    fd.W, fd.H, fd.SS = size, size, 2
+def layer(parts, eye, look, fov, size=SIZE, h=None):
+    """(size wide, h tall - square when h is None; fov is the vertical one)"""
+    fd.W, fd.H, fd.SS = size, h or size, 2
     fd.args.scale = 1
     # a key light from over the camera's left shoulder (the faces lit, like a
     # studio shot) instead of the game's sun
@@ -309,11 +320,12 @@ def outlined(img, width=7, color=INK, rim=None, rim_dir=(-1, -1), rim_w=4, glow=
     return out
 
 
-def rays_bg(size, c_in, c_out, ray, n=18, center=(0.5, 0.5), turn=0.0, ray_alpha=0.22, vignette=0.45):
+def rays_bg(size, c_in, c_out, ray, n=18, center=(0.5, 0.5), turn=0.0, ray_alpha=0.22, vignette=0.45, w=None):
     """A radial gradient (c_in in the middle to c_out at the edge) with a
-    burst of n rays (the colour `ray`), and a dark vignette."""
-    ys, xs = np.mgrid[0:size, 0:size].astype(np.float32) + 0.5
-    cx, cy = center[0] * size, center[1] * size
+    burst of n rays (the colour `ray`), and a dark vignette (w wide, size tall)."""
+    w = w or size
+    ys, xs = np.mgrid[0:size, 0:w].astype(np.float32) + 0.5
+    cx, cy = center[0] * w, center[1] * size
     dx, dy = xs - cx, ys - cy
     r = np.sqrt(dx * dx + dy * dy) / (size * 0.75)
     t = np.clip(r, 0, 1)[..., None]
@@ -669,34 +681,45 @@ def world_layers(layers, eye, look, fov, size=SIZE):
     return [layer(parts, eye, look, fov, size=size)[0] for parts in layers]
 
 
-def screen_of(pt, eye, look, fov, size=SIZE):
+def screen_of(pt, eye, look, fov, size=SIZE, h=None):
+    h = h or size
     fwd = unit(np.asarray(look, float) - np.asarray(eye, float))
     right = unit(np.cross(fwd, [0, 1, 0]))
     up = np.cross(right, fwd)
     q = np.asarray(pt, float) - np.asarray(eye, float)
     z = q @ fwd
-    f = (size / 2) / math.tan(math.radians(fov) / 2)
-    return size / 2 + f * (q @ right) / z, size / 2 - f * (q @ up) / z
+    f = (h / 2) / math.tan(math.radians(fov) / 2)
+    return size / 2 + f * (q @ right) / z, h / 2 - f * (q @ up) / z
 
 
-def vgrad(size, top, bottom):
+def vgrad(size, top, bottom, w=None):
     t = np.linspace(0, 1, size)[:, None, None]
     col = np.array(top, np.float32) * (1 - t) + np.array(bottom, np.float32) * t
-    return Image.fromarray(np.repeat(col, size, axis=1).astype(np.uint8), 'RGB').convert('RGBA')
+    return Image.fromarray(np.repeat(col, w or size, axis=1).astype(np.uint8), 'RGB').convert('RGBA')
 
 
-def lightning(canvas, x0, y0, x1, y1, seed=3, width=8, col=(235, 240, 255)):
+def lightning(canvas, x0, y0, x1, y1, seed=3, width=8, col=(235, 240, 255), k=None, branches=0):
+    k = k or K
     rng = np.random.default_rng(seed)
     pts = [(x0, y0)]
     nseg = 7
     for i in range(1, nseg):
         t = i / nseg
-        pts.append((x0 + (x1 - x0) * t + rng.uniform(-1, 1) * 28 * K, y0 + (y1 - y0) * t))
+        pts.append((x0 + (x1 - x0) * t + rng.uniform(-1, 1) * 28 * k, y0 + (y1 - y0) * t))
     pts.append((x1, y1))
+    lines = [pts]
+    for b in range(branches):  # forks off the main bolt
+        j = int(rng.integers(2, nseg - 1))
+        bx, by = pts[j]
+        ln = rng.uniform(60, 120) * k
+        sgn = 1 if rng.random() > 0.5 else -1
+        lines.append([(bx, by), (bx + sgn * ln * 0.5, by + ln * 0.5), (bx + sgn * ln * 0.7, by + ln)])
     glow = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
-    ImageDraw.Draw(glow).line(pts, fill=(170, 190, 255, 200), width=int(width * 3 * K))
-    canvas.alpha_composite(glow.filter(ImageFilter.GaussianBlur(10 * K)))
-    ImageDraw.Draw(canvas).line(pts, fill=col + (255,), width=int(width * K), joint='curve')
+    for l_ in lines:
+        ImageDraw.Draw(glow).line(l_, fill=(170, 190, 255, 200), width=int(width * 3 * k))
+    canvas.alpha_composite(glow.filter(ImageFilter.GaussianBlur(10 * k)))
+    for i, l_ in enumerate(lines):
+        ImageDraw.Draw(canvas).line(l_, fill=col + (255,), width=int(width * k * (1 if i == 0 else 0.55)), joint='curve')
 
 
 def boss_bar(canvas, name, share, y=18):
@@ -924,7 +947,7 @@ def icon_G():
     return finish(c)
 
 
-def spire_parts(tiers=4, tier_h=11.0, w0=28.0, w1=16.0, roof=False):
+def spire_parts(tiers=4, tier_h=11.0, w0=28.0, w1=16.0, roof=False, balconies=()):
     """THE SPIRE as blocks: stone tiers getting narrower as they go up, each
     with a ledge, battlements and a glowing window - the game's chunky look."""
     out = []
@@ -947,6 +970,20 @@ def spire_parts(tiers=4, tier_h=11.0, w0=28.0, w1=16.0, roof=False):
         out.append(part((0, y + tier_h * 0.45, -w / 2 - 0.1), np.eye(3), (w * 0.22, tier_h * 0.45, 0.2),
                         (254, 231, 97), m='Neon', n='Window'))
         y += tier_h + 1.0
+    step = tier_h + 1.0
+    for (i, side, reach) in balconies:  # a stone balcony out of floor i's ledge, for its boss
+        wi = w0 + (w1 - w0) * (i - 1) / max(1, tiers - 1)
+        x0 = wi / 2 - 1
+        cx = side * (x0 + reach / 2)
+        y = i * step
+        out.append(part((cx, y - 0.7, -1.0), np.eye(3), (reach, 1.4, 12), (139, 155, 180), n='Balcony'))
+        out.append(part((cx, y - 2.2, -1.0), np.eye(3), (reach * 0.8, 1.6, 9), (104, 116, 156), n='Corbel'))
+        out.append(part((cx + side * reach * 0.12, y - 4.0, -1.0), np.eye(3), (reach * 0.45, 2.0, 6), (86, 98, 136),
+                        n='Corbel'))
+        n = 6
+        for j in range(n):
+            x = cx - reach / 2 + reach * (j + 0.5) / n
+            out.append(part((x, y + 0.6, -6.6), np.eye(3), (reach / n * 0.55, 1.2, 1.0), (170, 182, 204), n='Merlon'))
     if roof:  # the tip: a red roof spike
         out.append(part((0, y + 4, 0), np.eye(3), (w1 * 0.7, 8, w1 * 0.7), (162, 38, 51), n='Roof'))
     return out, tier_h + 1.0
@@ -1059,6 +1096,266 @@ def sheet(keys):
         d.text((sx, sy + small + 36), 'icon_%s.png' % k, font=f2, fill=(150, 152, 160, 255))
     out.convert('RGB').save(os.path.join(args.out, 'icon_sheet.png'))
 
+
+# ----------------------------------------------------------------------
+# the game page's THUMBNAILS (1920 x 1080): the same look, room to breathe
+# ----------------------------------------------------------------------
+TW, TH = 1920, 1080
+
+
+def cut(img, h, margin=70):
+    """A cut-out (crop_to_content's 48 px margin) scaled so the thing in it
+    is h tall, with `margin` more room round it (so a glow or an outline is
+    never clipped by the picture's edge); returns it and its margin."""
+    k = h / (img.height - 96)
+    img = img.resize((max(1, int(img.width * k)), max(1, int(img.height * k))), Image.LANCZOS)
+    out = Image.new('RGBA', (img.width + 2 * margin, img.height + 2 * margin), (0, 0, 0, 0))
+    out.alpha_composite(img, (margin, margin))
+    return out, 48 * k + margin
+
+
+def zone_cracks(canvas, box, n=12, seed=7, width=7, col=(90, 14, 30)):
+    zl, zt, zr, zb = box
+    zcx, zcy = (zl + zr) / 2, (zt + zb) / 2
+    rng = np.random.default_rng(seed)
+    d = ImageDraw.Draw(canvas)
+    for i in range(n):
+        a = 2 * math.pi * i / n + rng.uniform(-0.2, 0.2)
+        pts = [(zcx, zcy)]
+        r = 0
+        while r < 1.05:
+            r += rng.uniform(0.14, 0.26)
+            aa = a + rng.uniform(-0.22, 0.22)
+            pts.append((zcx + math.cos(aa) * r * (zr - zl) / 2, zcy + math.sin(aa) * r * (zb - zt) / 2))
+        d.line(pts, fill=col + (255,), width=width, joint='curve')
+
+
+def rubble(canvas, pts, seed=3, col=(150, 158, 182)):
+    """Little stone blocks kicked up off the floor (outlined squares, tilted)."""
+    rng = np.random.default_rng(seed)
+    for (x, y, r) in pts:
+        tile = Image.new('RGBA', (int(r * 3), int(r * 3)), (0, 0, 0, 0))
+        dd = ImageDraw.Draw(tile)
+        c0 = r * 1.5
+        dd.rectangle((c0 - r, c0 - r, c0 + r, c0 + r), fill=col + (255,), outline=INK + (255,), width=max(2, int(r * 0.25)))
+        dd.rectangle((c0 - r + r * 0.25, c0 - r + r * 0.25, c0 + r * 0.2, c0 - r * 0.2), fill=(200, 206, 222, 255))
+        tile = tile.rotate(rng.uniform(0, 90), resample=Image.BICUBIC, expand=True)
+        canvas.alpha_composite(tile, (int(x - tile.width / 2), int(y - tile.height / 2)))
+
+
+def big_boss_bar(canvas, name, share, cx, y, w, h, label_px):
+    d = ImageDraw.Draw(canvas)
+    f = font(PIXEL_FONT, label_px)
+    d.text((cx, y), name, font=f, fill=(255, 255, 255, 255), anchor='mt', stroke_width=int(label_px * 0.24),
+           stroke_fill=INK + (255,))
+    by = y + label_px * 1.45
+    x = cx - w / 2
+    o = h * 0.2
+    d.rectangle((x - o, by - o, x + w + o, by + h + o), fill=INK + (255,))
+    d.rectangle((x, by, x + w, by + h), fill=(64, 18, 32, 255))
+    fw = w * share
+    d.rectangle((x, by, x + fw, by + h), fill=(229, 59, 68, 255))
+    d.rectangle((x, by, x + fw, by + h * 0.36), fill=(255, 130, 120, 255))
+    d.rectangle((x + fw, by, x + fw + h * 0.45, by + h), fill=(255, 235, 180, 255))
+    return by + h + o
+
+
+def thumb_fight():
+    """THUMB 2, THE FIGHT: King Gavelgrunt mid Royal Smash - seen from his
+    side so the war-gavel is plain to see, raised back and glowing - over the
+    huge cracked red zone, the noob diving out of it with dust and speed
+    lines, his name and health bar across the top, a bright storm."""
+    feet, facing, parts = load_poses('gavelgrunt')['smash:0.85']
+    f = unit([facing[0], 0, facing[2]])
+    sidev = np.cross(f, [0, 1, 0])
+    ring = [p for p in parts if p['g'] == 'RingPiece']
+    rc = np.mean([p['cf'][0:3] for p in ring], axis=0)
+    rr = np.mean([np.linalg.norm(np.array(p['cf'][0:3])[[0, 2]] - rc[[0, 2]]) for p in ring])
+    zone = [disc(rc, rr + 0.6, (235, 50, 62), t=0.22, y=0.04), disc(rc, rr * 0.6, (255, 120, 120), t=0.45, y=0.06)]
+    for p in ring:
+        q = dict(p)
+        q['s'] = [p['s'][0] * 1.3, 0.35, p['s'][2] * 2.4]
+        q['col'] = [255, 70, 80]
+        q['t'] = 0
+        zone.append(q)
+    floor = floor_tiles(rc, 120, 8, cols=((178, 186, 206), (152, 160, 184)))
+    over = 400  # (the floor drawn wider than the picture, to slide it across)
+    fw_ = TW + over
+    eye = rc + f * 22 + sidev * 2 + np.array([0, 10, 0])
+    look = rc + f * -10 + np.array([0, FIGHT_FLOOR_LOOK, 0])
+    fov = 46
+    floor_img, zone_img = [layer(g_, eye, look, fov, size=fw_, h=TH)[0] for g_ in (floor, zone)]
+    zl, zt, zr, zb = zone_img.getchannel('A').point(lambda v: 255 if v > 40 else 0).getbbox()
+    shift = (TW * 0.56) - (zl + zr) / 2
+    zl, zr = zl + shift, zr + shift
+    zcx, zcy = (zl + zr) / 2, (zt + zb) / 2
+    c = vgrad(TH, (22, 34, 120), (255, 120, 96), w=TW)
+    rays = rays_bg(TH, (0, 0, 0), (0, 0, 0), (255, 255, 255), n=22, center=(0.3, 0.3), ray_alpha=1.0, vignette=0, w=TW)
+    rm = Image.fromarray(((np.asarray(rays.convert('L')) > 128) * 34).astype(np.uint8))
+    rl = Image.new('RGBA', (TW, TH), (255, 230, 190, 0))
+    rl.putalpha(rm)
+    c.alpha_composite(rl)
+    lightning(c, 1500, 0, 1640, 430, seed=4, width=10, k=2.2, branches=2)
+    lightning(c, 1840, 0, 1790, 330, seed=9, width=7, k=2.0, branches=1)
+    lightning(c, 120, 0, 60, 380, seed=12, width=8, k=2.0, branches=2)
+    c.alpha_composite(floor_img, (int(shift), 0))
+    haze = Image.new('RGBA', (TW, TH), (255, 150, 130, 0))
+    hy = screen_of(rc - f * 170, eye, look, fov, size=fw_, h=TH)[1]
+    hm = Image.new('L', (TW, TH), 0)
+    ImageDraw.Draw(hm).rectangle((0, hy - 90, TW, hy + 70), fill=230)
+    haze.putalpha(hm.filter(ImageFilter.GaussianBlur(60)))
+    c.alpha_composite(haze)
+    zg = Image.new('RGBA', (TW, TH), (0, 0, 0, 0))
+    zg.alpha_composite(zone_img, (int(shift), 0))
+    c.alpha_composite(zg.filter(ImageFilter.GaussianBlur(26)))
+    c.alpha_composite(zg)
+    zone_cracks(c, (zl, zt, zr, zb), n=14, width=9)
+    # the king, side on: the gavel back and up, glowing
+    kcam = dict(at_h=31, dist=60, side=70, rise=3, fov=46, size=1400)
+    raw = boss_layer('gavelgrunt', 'smash:0.85', **kcam)
+    gpts = [p for p in body_only(parts) if p['n'].startswith('Gavel')]
+    geye, glook = face_camera(feet, facing, kcam['at_h'], kcam['dist'], kcam['side'], kcam['rise'])
+    gimg = layer(gpts, geye, glook, kcam['fov'], size=kcam['size'])[0]
+    l, t, r, b = raw.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox()
+    gl, gt, gr, gb = gimg.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox()
+    king, pad = cut(crop_to_content(raw), FIGHT_KING_H)
+    k = (pad - 70) / 48
+    king = outlined(punch_up(king, 1.28, 1.1), width=12, rim=(255, 230, 170), rim_dir=(1, -1), rim_w=9,
+                    glow=(255, 70, 90), glow_r=34)
+    kx = zcx - FIGHT_KING_DX - king.width / 2
+    ky = zt + FIGHT_KING_FEET - king.height + pad
+    gx, gy = kx + 70 + (48 + (gl + gr) / 2 - l) * k, ky + 70 + (48 + (gt + gb) / 2 - t) * k
+    soft_light(c, gx, gy, 170, 170, (255, 236, 140), 1.0)
+    place(c, king, kx, ky)
+    # the noob diving out to the right
+    nb = noob('dive', 0.0, head=1.4)
+    nb = transformed(nb, rot_y(math.radians(38)) @ rot_x(math.radians(-34)), (0, 2.6, 0), (0, 3.4, 0))
+    kid = crop_to_content(layer(nb, np.array([0, 5.0, -16.0]), np.array([0, 2.6, 0]), 32, size=900)[0])
+    kid, kpad = cut(kid, 380)
+    kid = punch_up(kid, 1.15, 1.05)
+    nx, ny = zr + 40, zcy - 150
+    d = ImageDraw.Draw(c)
+    for (dx, dy, r_) in [(150, -6, 62), (270, -26, 50), (375, -44, 40), (465, -58, 30)]:
+        px, py = nx - dx, ny + 100 + dy
+        d.ellipse((px - r_, py - r_ * 0.62, px + r_, py + r_ * 0.62), fill=(240, 230, 218, 240), outline=INK + (255,),
+                  width=8)
+    for (oy, x0, ln) in [(-110, 150, 330), (-50, 190, 420), (10, 175, 360), (70, 160, 250)]:
+        d.line((nx - x0, ny + oy, nx - x0 - ln, ny + oy - ln * 0.14), fill=(255, 255, 255, 240), width=14)
+    rubble(c, [(zcx + 60, zt - 40, 26), (zcx + 230, zt - 130, 20), (zr - 260, zt - 60, 22), (zcx - 60, zt - 170, 16),
+               (zcx + 150, zt - 250, 14)])
+    kid = outlined(kid, width=11, rim=(255, 255, 255), rim_dir=(1, -1), rim_w=6, glow=(255, 255, 255), glow_r=22)
+    place(c, kid, nx - kid.width / 2, ny - kid.height / 2)
+    pop_text(c, 'DODGE IT!', 1430, 360, 150, angle=-6)
+    big_boss_bar(c, 'KING GAVELGRUNT', 0.42, TW / 2, 26, 1400, 40, 46)
+    return c.convert('RGB')
+
+
+def clouds(canvas, rows, seed=1):
+    """Blocky storm clouds: rows of rounded slabs (y, colour, alpha)."""
+    rng = np.random.default_rng(seed)
+    W = canvas.width
+    for (y, col, a, hgt) in rows:
+        layer_ = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer_)
+        x = -100
+        while x < W + 100:
+            w = rng.uniform(160, 380)
+            h = hgt * rng.uniform(0.7, 1.2)
+            yy = y + rng.uniform(-hgt * 0.4, hgt * 0.4)
+            d.rounded_rectangle((x, yy - h / 2, x + w, yy + h / 2), radius=h * 0.35, fill=col + (a,))
+            x += w * rng.uniform(0.55, 0.85)
+        canvas.alpha_composite(layer_)
+
+
+def thumb_spire():
+    """THUMB 1, THE SPIRE: the stone tower in a storm with a boss on each
+    floor, scarier as it climbs - Oozark on floor 1, Revvington on 5, Kongo
+    on 7, King Gavelgrunt on top under FLOOR 10 - big floor badges, the noob
+    at its foot looking up, CLIMB THE SPIRE / 10 BOSSES."""
+    c = vgrad(TH, (30, 18, 70), (255, 150, 80), w=TW)
+    rays = rays_bg(TH, (0, 0, 0), (0, 0, 0), (255, 255, 255), n=26, center=(0.5, 0.05), ray_alpha=1.0, vignette=0, w=TW)
+    rm = Image.fromarray(((np.asarray(rays.convert('L')) > 128) * 40).astype(np.uint8))
+    rl = Image.new('RGBA', (TW, TH), (255, 230, 190, 0))
+    rl.putalpha(rm)
+    c.alpha_composite(rl)
+    clouds(c, [(120, (44, 30, 92), 230, 90), (260, (70, 44, 112), 170, 70), (700, (255, 190, 140), 70, 60)], seed=3)
+    lightning(c, 210, 0, 300, 520, seed=2, width=9, k=2.2, branches=2)
+    lightning(c, 1730, 0, 1640, 470, seed=8, width=9, k=2.2, branches=2)
+    soft_light(c, TW / 2, 250, 420, 300, (255, 220, 160), 0.55)
+    tower, step_h = spire_parts(tiers=4, tier_h=11.0, w0=28.0, w1=18.0,
+                                balconies=[(1, 1, 26), (2, -1, 27), (3, 1, 25)])  # (+1 is the picture's left)
+    eye, look = np.array([0, 8.0, -300.0]), np.array([0, 36.5, 0])
+    fov = 13.4
+    t_img = layer(tower, eye, look, fov, size=TW, h=TH)[0]
+    t_img = outlined(punch_up(t_img, 1.15, 1.05), width=10, rim=(255, 210, 160), rim_dir=(1, -1), rim_w=6)
+    c.alpha_composite(t_img)
+
+    def ledge(i):
+        return screen_of((0, i * step_h + 1.0, -10), eye, look, fov, size=TW, h=TH)
+
+    floors = [(1, 'oozark', 'wake:1.0', (9, 44, 4, 4, 40), 250, 'FLOOR 1', -330),
+              (2, 'revvington', 'wake:1.0', (3, 24, -6, 4, 40), 220, 'FLOOR 5', 360),
+              (3, 'kongo', 'mad', (8, 26, 5, 2, 40), 320, 'FLOOR 7', -330),
+              (4, 'gavelgrunt', 'laugh', (34, 70, -12, 4, 40), 350, 'FLOOR 10', 0)]
+    for (i, boss, pose, cam, h, label, dx) in floors:
+        x, y = ledge(i)
+        img = crop_to_content(boss_layer(boss, pose, *cam, size=1100))
+        img, pad = cut(img, h)
+        img = outlined(punch_up(img, 1.25, 1.08), width=11, rim=(255, 240, 210), rim_dir=(-1, -1), rim_w=7,
+                       glow=(255, 70, 90) if boss == 'gavelgrunt' else (255, 255, 255),
+                       glow_r=30 if boss == 'gavelgrunt' else 16)
+        top = y - img.height + pad + 12
+        place(c, img, x + dx - img.width / 2, top)
+        if boss == 'gavelgrunt':
+            floor_badge(c, label, x, y + 52, 40, col=(255, 231, 97), bg=(162, 38, 51))
+        else:
+            floor_badge(c, label, x + dx, y + 40, 30)
+    n = crop_to_content(noob_layer('shock', yaw=math.radians(160), size=800, fov=26, dist=18, rise=-2.0, head=1.4))
+    n, npad = cut(n, 230)
+    n = outlined(punch_up(n, 1.15, 1.05), width=9, rim=(255, 255, 255), rim_dir=(1, -1), rim_w=5, glow=(255, 255, 255),
+                 glow_r=20)
+    place(c, n, TW / 2 - n.width / 2, TH - n.height + npad + 10)
+    pop_text(c, 'CLIMB THE', 1560, 160, 110, angle=-4)
+    pop_text(c, 'SPIRE', 1560, 290, 170, top=(255, 120, 110), bottom=(200, 30, 60), angle=-4)
+    pop_text(c, '10 BOSSES', 370, 190, 120, top=(255, 255, 255), bottom=(190, 220, 255), angle=4)
+    return c.convert('RGB')
+
+
+FIGHT_KING_H, FIGHT_KING_DX, FIGHT_KING_FEET, FIGHT_FLOOR_LOOK = 780, 500, 95, 7.4
+THUMBS = {'1': thumb_spire, '2': thumb_fight}
+THUMB_NAMES = {'1': 'THE SPIRE', '2': 'THE FIGHT'}
+
+
+def thumb_sheet():
+    """Each thumbnail at 960 x 540 with the size the game page and search
+    show it (480 x 270) beside it, on the page's dark."""
+    keys = [k for k in THUMBS if os.path.exists(os.path.join(args.out, 'thumb_%s.png' % k))]
+    pad, bw, bh, sw, sh = 24, 960, 540, 480, 270
+    out = Image.new('RGBA', (pad + bw + pad + sw + pad, pad + len(keys) * (bh + pad)), (25, 27, 31, 255))
+    d = ImageDraw.Draw(out)
+    f, f2 = font(ROUND_FONT, 26), font(ROUND_FONT, 17)
+    for i, k in enumerate(keys):
+        im = Image.open(os.path.join(args.out, 'thumb_%s.png' % k)).convert('RGBA')
+        y = pad + i * (bh + pad)
+        out.alpha_composite(rounded(im.resize((bw, bh), Image.LANCZOS), 14), (pad, y))
+        out.alpha_composite(rounded(im.resize((sw, sh), Image.LANCZOS), 8), (pad + bw + pad, y))
+        d.text((pad + bw + pad, y + sh + 16), '%s  %s' % (k, THUMB_NAMES.get(k, '')), font=f, fill=(235, 235, 240, 255))
+        d.text((pad + bw + pad, y + sh + 52), 'thumb_%s.png  (1920 x 1080; right: 480 x 270)' % k, font=f2,
+               fill=(150, 152, 160, 255))
+    out.convert('RGB').save(os.path.join(args.out, 'thumb_sheet.png'))
+
+
+if __name__ == '__main__' and args.thumbs:
+    os.makedirs(args.out, exist_ok=True)
+    keys = list(THUMBS) if args.thumbs == 'all' else args.thumbs.split(',')
+    for key in keys:
+        img = THUMBS[key]()
+        path = os.path.join(args.out, 'thumb_%s.png' % key)
+        img.save(path)
+        print('saved', path)
+    thumb_sheet()
+    print('saved', os.path.join(args.out, 'thumb_sheet.png'))
+    sys.exit(0)
 
 if __name__ == '__main__':
     os.makedirs(args.out, exist_ok=True)
