@@ -137,7 +137,6 @@ local function dump(name)
 	local feet = E.pos or pv.Position
 	local look = pv.LookVector
 	realPrint(string.format("POSE %s %.3f %.3f %.3f %.4f %.4f", name, feet.X, feet.Y, feet.Z, look.X, look.Z))
-	realPrint(string.format("INFO %s %s %s t=%.2f", tostring(model:GetAttribute("State")), tostring(model:GetAttribute("Action")), tostring(model:GetAttribute("Health")), M.now()))
 	local fx = workspace:FindFirstChild("BossFX")
 	for _, child in ipairs(fx and fx:GetChildren() or {}) do
 		local list = child:GetDescendants()
@@ -225,6 +224,35 @@ SPECIAL.laugh = function() -- King Gavelgrunt: HAR HAR HAR! after his landing
 	local t0 = wake()
 	stepUntil(t0 + def.IntroDelay + 0.7 + 0.4)
 end
+local smashAt = nil
+SPECIAL.smash = function(share) -- King Gavelgrunt: ROYAL SMASH (share of its tell), the gavel up, the red circle
+	if not smashAt then
+		local t0 = wake()
+		stepUntil(t0 + def.WakeTime + 0.5)
+		standAt(E.pos + Vector3.new(2, 3, 24), E.pos)
+		smashAt = force("RoyalSmash")
+	end
+	stepUntil(smashAt + def.Attacks.RoyalSmash.Tell * (share or 0.85))
+end
+SPECIAL.punch = function() -- Kongo: GIANT PUNCH, the windmill, the red lane growing
+	wake()
+	takeOver()
+	standAt(E.pos + Vector3.new(2, 3, 24), E.pos)
+	local token = takeOver()
+	M.task.spawn(function()
+		E.boss._giantPunch(E, token, 1.5)
+	end)
+	step(DT * 2)
+	local a0 = model:GetAttribute("ActionStart") or M.now()
+	stepUntil(a0 + 1.05)
+end
+SPECIAL.slap = function() -- Kongo: HAND SLAP, the hands raised before the slam
+	wake()
+	takeOver()
+	standAt(E.pos + Vector3.new(4, 3, 22), E.pos)
+	local a0 = force("HandSlap")
+	stepUntil(a0 + def.Attacks.HandSlap.Tell * 0.8)
+end
 SPECIAL.mad = function() -- Kongo: round 2, going bananas, pounding his chest
 	wake()
 	takeOver()
@@ -241,7 +269,8 @@ for pose in string.gmatch(POSES, "[^,]+") do
 		local t0 = wake()
 		stepUntil(t0 + def.WakeTime * tonumber(share))
 	else
-		assert(SPECIAL[pose], "no pose " .. pose)()
+		local name, arg = string.match(pose, "^(%a+):?([%d%.]*)$")
+		assert(SPECIAL[name], "no pose " .. pose)(tonumber(arg))
 	end
 	dump(pose)
 end
