@@ -59,8 +59,8 @@ local cam = Instance.new("Camera")
 local ws = { CurrentCamera = cam }
 
 local env = M.env({ Vector2 = Vector2 })
-local chunk = "local UserInputService, workspace, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn = ...\n"
-	.. string.sub(src, a, b) .. "\nreturn placeTouch, TOUCH_LAYOUT"
+local chunk = "local UserInputService, workspace, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn = ...\nlocal K = {}\n"
+	.. string.sub(src, a, b) .. "\nreturn placeTouch, K.TOUCH_LAYOUT"
 local placeTouch = M.load(chunk, "CombatClient (the phone layout)", env)(UIS, ws, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn)
 
 -- where a button really is on a screen (its box, in pixels)

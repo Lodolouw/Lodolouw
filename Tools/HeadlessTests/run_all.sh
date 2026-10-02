@@ -15,6 +15,20 @@ run() {
 		fails=$((fails + 1))
 	fi
 }
+# every script compiles the way Roblox compiles it (no optimising away: a
+# script's main body may hold at most 200 locals - over that, Roblox won't
+# run the script at all). Needs luau-compile beside luau, or LUAUC=...
+LUAUC=${LUAUC:-$(dirname "$(command -v "$LUAU")")/luau-compile}
+if [ -x "$LUAUC" ]; then
+	bad=0
+	for f in $(cd ../.. && git ls-files '*.lua'); do
+		err=$("$LUAUC" --null -O0 "../../$f" 2>&1 | grep -i "error")
+		if [ -n "$err" ]; then echo "FAIL  compile $f"; echo "$err"; bad=1; fi
+	done
+	if [ $bad = 0 ]; then echo "pass  every script compiles as Roblox does"; else fails=$((fails + 1)); fi
+else
+	echo "skip  compile check (no luau-compile: set LUAUC)"
+fi
 for seed in 1 2 3 4 5 6; do run test_colosseum.luau -a full $seed; done
 for sc in cursed clearleave leave die oldbuilder kite kitejump nextrun locked react train; do run test_colosseum.luau -a $sc 3; done
 for seed in 1 2 3; do run test_colosseum.luau -a hard $seed; run test_colosseum.luau -a nightmare $seed; done

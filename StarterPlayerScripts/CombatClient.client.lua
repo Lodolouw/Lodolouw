@@ -69,12 +69,15 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local RGB = Color3.fromRGB
-local SERIF = Enum.Font.Garamond
-local BOLD = Enum.Font.FredokaOne
+-- (the script's fixed settings live in one table: Roblox allows at most
+-- 200 locals in a script's main body, and this one is long)
+local K = {}
+K.SERIF = Enum.Font.Garamond
+K.BOLD = Enum.Font.FredokaOne
 
 -- Same two punches as training on the dummies
-local PUNCH_ANIMATION_IDS = { "140534557983022", "128188028965818" }
-local ROLL_ANIMATION_ID = "100272054307066"
+K.PUNCH_ANIMATION_IDS = { "140534557983022", "128188028965818" }
+K.ROLL_ANIMATION_ID = "100272054307066"
 
 ----------------------------------------------------------------------
 -- UI helpers
@@ -157,7 +160,7 @@ local hints = create("TextLabel", {
 	Position = UDim2.new(0.5, 0, 1, -150),
 	Size = UDim2.fromOffset(720, 22),
 	BackgroundTransparency = 1,
-	Font = BOLD,
+	Font = K.BOLD,
 	Text = "Click: punch     Shift: dodge roll     Space: jump     R: flask     Tab: lock on     Q / E: switch target",
 	TextSize = 18,
 	TextColor3 = RGB(220, 225, 235),
@@ -174,7 +177,7 @@ local function roundButton(name, label, pos, size, color)
 		Size = UDim2.fromOffset(size, size),
 		BackgroundColor3 = color,
 		BackgroundTransparency = 0.2,
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = label,
 		TextSize = 20,
 		TextColor3 = RGB(255, 255, 255),
@@ -194,8 +197,8 @@ local lockBtn = roundButton("LockButton", "LOCK", UDim2.new(1, -170, 1, -293), 6
 -- after), ROLL and the weapon's ability; further out the potion and LOCK.
 -- { angle (degrees round ATTACK, 0 = right, 90 = up), distance, size }, all
 -- scaled to the screen.
-local TOUCH_CENTER = 100
-local TOUCH_LAYOUT = {
+K.TOUCH_CENTER = 100
+K.TOUCH_LAYOUT = {
 	Attack = { 0, 0, 124 },
 	Jump = { 180, 130, 84 },
 	Roll = { 135, 150, 84 }, -- (a little further: buttons are tapped by their square box, not the circle)
@@ -213,7 +216,7 @@ local function touchScale()
 end
 local function touchSpot(spec, k)
 	local a, r = math.rad(spec[1]), spec[2] * k
-	return UDim2.new(1, -TOUCH_CENTER * k + math.cos(a) * r, 1, -TOUCH_CENTER * k - math.sin(a) * r), UDim2.fromOffset(spec[3] * k, spec[3] * k)
+	return UDim2.new(1, -K.TOUCH_CENTER * k + math.cos(a) * r, 1, -K.TOUCH_CENTER * k - math.sin(a) * r), UDim2.fromOffset(spec[3] * k, spec[3] * k)
 end
 local function jumpButton()
 	local tg = playerGui:FindFirstChild("TouchGui")
@@ -224,14 +227,14 @@ local jumpHome = nil -- where Roblox had the jump button (put back after the fig
 local function placeTouch(fighting)
 	local k = touchScale()
 	for btn, key in pairs({ [attackBtn] = "Attack", [rollBtn] = "Roll", [flaskBtn] = "Flask", [lockBtn] = "Lock" }) do
-		local pos, size = touchSpot(TOUCH_LAYOUT[key], k)
+		local pos, size = touchSpot(K.TOUCH_LAYOUT[key], k)
 		if btn.Position ~= pos then
 			btn.Position, btn.Size = pos, size
 		end
 	end
 	local ability = combatUI:FindFirstChild("AbilityButton")
 	if ability then
-		local pos, size = touchSpot(TOUCH_LAYOUT.Ability, k)
+		local pos, size = touchSpot(K.TOUCH_LAYOUT.Ability, k)
 		if ability.Position ~= pos then
 			ability.Position, ability.Size = pos, size
 		end
@@ -248,7 +251,7 @@ local function placeTouch(fighting)
 			if not jumpHome then
 				jumpHome = { jb.Position, jb.Size, jb.AnchorPoint }
 			end
-			local pos, size = touchSpot(TOUCH_LAYOUT.Jump, k)
+			local pos, size = touchSpot(K.TOUCH_LAYOUT.Jump, k)
 			if jb.Position ~= pos or jb.Size ~= size then
 				jb.AnchorPoint = Vector2.new(0.5, 0.5)
 				jb.Position, jb.Size = pos, size
@@ -308,7 +311,7 @@ local centerMsg = create("TextLabel", {
 	Position = UDim2.fromScale(0.5, 0.62),
 	Size = UDim2.fromOffset(600, 50),
 	BackgroundTransparency = 1,
-	Font = BOLD,
+	Font = K.BOLD,
 	Text = "",
 	TextSize = 34,
 	TextColor3 = RGB(255, 255, 255),
@@ -322,7 +325,7 @@ local msgToken = 0
 -- text - left alone it stays behind as a dark ghost of the last message. So the
 -- outline fades with the text, and the label is switched off once it's gone.
 local msgStroke = centerMsg:FindFirstChildWhichIsA("UIStroke")
-local MSG_STROKE = msgStroke and msgStroke.Transparency or 0.15
+K.MSG_STROKE = msgStroke and msgStroke.Transparency or 0.15
 local msgFades = {}
 local function stopMsgFades()
 	for _, t in ipairs(msgFades) do
@@ -348,7 +351,7 @@ local function flashMessage(text, color, seconds)
 	centerMsg.TextColor3 = color or RGB(255, 255, 255)
 	centerMsg.TextTransparency = 0
 	if msgStroke then
-		msgStroke.Transparency = MSG_STROKE
+		msgStroke.Transparency = K.MSG_STROKE
 	end
 	centerMsg.Size = UDim2.fromOffset(560, 46)
 	tween(centerMsg, 0.15, { Size = UDim2.fromOffset(600, 50) }, Enum.EasingStyle.Back)
@@ -393,7 +396,7 @@ local deathBand = create("Frame", {
 local deathText = create("TextLabel", {
 	Size = UDim2.fromScale(1, 1),
 	BackgroundTransparency = 1,
-	Font = SERIF,
+	Font = K.SERIF,
 	Text = "YOU DIED",
 	TextSize = 110,
 	TextColor3 = RGB(170, 20, 25),
@@ -411,7 +414,7 @@ do
 		Position = UDim2.new(1, -16, 1, -200),
 		Size = UDim2.fromOffset(170, 30),
 		BackgroundColor3 = RGB(120, 40, 50),
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = "DEV: Incoming hit",
 		TextSize = 15,
 		TextColor3 = RGB(255, 255, 255),
@@ -497,7 +500,7 @@ end
 -- not the terrain, the animation or the push. So for the length of a roll we
 -- switch the tripping states off, hold the body upright, and switch them back
 -- on when the roll ends.
-local TRIP_STATES = {
+K.TRIP_STATES = {
 	Enum.HumanoidStateType.FallingDown,
 	Enum.HumanoidStateType.Ragdoll,
 	Enum.HumanoidStateType.Physics,
@@ -508,7 +511,7 @@ local TRIP_STATES = {
 -- never falls over, whatever moves you. `allowed` is kept so the callers
 -- read the same, but it can't switch tripping back on.)
 local function allowTripping(hum, allowed)
-	for _, state in ipairs(TRIP_STATES) do
+	for _, state in ipairs(K.TRIP_STATES) do
 		pcall(function()
 			hum:SetStateEnabled(state, false)
 		end)
@@ -552,10 +555,10 @@ end
 -- and on a finisher holds everything in a beat of slow motion. The camera
 -- reacting is what sells the force - more than the victim's animation does.
 local IM = CC.Impact or {}
-local IMPACT_SHAKE = IM.Shake or 1.1
-local IMPACT_FOV = IM.Fov or 4
-local IMPACT_STOP = IM.Stop or 0.09
-local IMPACT_SOUNDS = IM.Sounds or {}
+K.IMPACT_SHAKE = IM.Shake or 1.1
+K.IMPACT_FOV = IM.Fov or 4
+K.IMPACT_STOP = IM.Stop or 0.09
+K.IMPACT_SOUNDS = IM.Sounds or {}
 
 local shake, shakeDir = 0, Vector3.new(1, 0, 0)
 local fovOffset, restFov = 0, nil
@@ -675,7 +678,7 @@ end
 -- Your own sounds (rolling, getting hurt, drinking, dying): a Sound from
 -- SoundService named in Config.Combat.PlayerSounds, found ignoring capitals and
 -- spaces. Only you hear them, played flat rather than from a spot in the world.
-local PLAYER_SOUNDS = CC.PlayerSounds or {}
+K.PLAYER_SOUNDS = CC.PlayerSounds or {}
 local function findNamedSound(name)
 	if not name or name == "" then
 		return nil
@@ -689,7 +692,7 @@ local function findNamedSound(name)
 	return nil
 end
 local function playPlayerSound(key, pitchJitter)
-	local entry = PLAYER_SOUNDS[key]
+	local entry = K.PLAYER_SOUNDS[key]
 	local template = entry and findNamedSound(entry.Name)
 	if not template then
 		return -- not added yet: silent, not an error
@@ -789,15 +792,15 @@ end
 -- dead upright the whole way, landing clean. So the roll now lifts you off the
 -- floor first. You rise for a moment, dash level while airborne, then gravity
 -- brings you down and you land normally.
-local ROLL_HOP_SPEED = 30 -- studs per second upwards at the start
-local ROLL_HOP_TIME = 0.1 -- how long you rise before the dash levels out (~3 studs)
+K.ROLL_HOP_SPEED = 30 -- studs per second upwards at the start
+K.ROLL_HOP_TIME = 0.1 -- how long you rise before the dash levels out (~3 studs)
 
 -- How long a roll really takes, worked out rather than guessed: you rise, you
 -- travel level, then you fall back the height you gained. Everything else about
 -- the roll is measured against this one number - the animation's speed, when you
 -- can act again, and how long you're untouchable for.
 local function rollDuration()
-	local height = ROLL_HOP_SPEED * ROLL_HOP_TIME
+	local height = K.ROLL_HOP_SPEED * K.ROLL_HOP_TIME
 	local gravity = math.max(workspace.Gravity, 1)
 	return CC.RollTime + math.sqrt(2 * height / gravity)
 end
@@ -816,11 +819,11 @@ local function hopDash(hrp, dir)
 	lv.MaxForce = math.huge
 	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
 	lv.RelativeTo = Enum.ActuatorRelativeTo.World
-	lv.VectorVelocity = flat + Vector3.new(0, ROLL_HOP_SPEED, 0) -- up and away
+	lv.VectorVelocity = flat + Vector3.new(0, K.ROLL_HOP_SPEED, 0) -- up and away
 	lv.Parent = hrp
 
 	-- once you are clear of the floor, hold the height and just travel
-	task.delay(ROLL_HOP_TIME, function()
+	task.delay(K.ROLL_HOP_TIME, function()
 		if lv.Parent then
 			lv.VectorVelocity = flat
 		end
@@ -845,9 +848,9 @@ end
 -- through once the moment you spawn, quietly, before you ever throw a punch.
 local tracks = {} -- [animation id] = AnimationTrack, for the animator we loaded it on
 local tracksAnimator = nil
-local PUNCH_SET = {}
-for _, id in ipairs(PUNCH_ANIMATION_IDS) do
-	PUNCH_SET[id] = true
+K.PUNCH_SET = {}
+for _, id in ipairs(K.PUNCH_ANIMATION_IDS) do
+	K.PUNCH_SET[id] = true
 end
 
 local function animatorOf()
@@ -886,8 +889,8 @@ end
 -- fade and no weight and stops it on the spot. Nothing shows on your character;
 -- it just gets the fetching and compiling done at spawn rather than mid-fight.
 local function warmAnimations()
-	local wanted = { { ROLL_ANIMATION_ID, Enum.AnimationPriority.Action4 } }
-	for _, id in ipairs(PUNCH_ANIMATION_IDS) do
+	local wanted = { { K.ROLL_ANIMATION_ID, Enum.AnimationPriority.Action4 } }
+	for _, id in ipairs(K.PUNCH_ANIMATION_IDS) do
 		table.insert(wanted, { id, Enum.AnimationPriority.Action2 })
 	end
 	local ready, assets = {}, {}
@@ -986,14 +989,14 @@ local punchIndex = 0
 local function playPunch(swing, recovery)
 	-- the swing's place in the string picks the animation, so a combo plays as a
 	-- sequence rather than three interchangeable swings
-	punchIndex = swing and ((swing - 1) % #PUNCH_ANIMATION_IDS + 1) or (punchIndex % #PUNCH_ANIMATION_IDS + 1)
-	local id = PUNCH_ANIMATION_IDS[punchIndex]
+	punchIndex = swing and ((swing - 1) % #K.PUNCH_ANIMATION_IDS + 1) or (punchIndex % #K.PUNCH_ANIMATION_IDS + 1)
+	local id = K.PUNCH_ANIMATION_IDS[punchIndex]
 	local track = trackFor(id, Enum.AnimationPriority.Action2)
 	if not track then
 		return
 	end
 	for otherId, other in pairs(tracks) do
-		if PUNCH_SET[otherId] and other ~= track and other.IsPlaying then
+		if K.PUNCH_SET[otherId] and other ~= track and other.IsPlaying then
 			other:Stop(0.05)
 		end
 	end
@@ -1012,7 +1015,7 @@ end
 -- animation can't build up), and forced back every frame until you walk.
 local savedFacing = nil
 local facingHoldUntil = 0
-local FACING_HOLD = 0.6 -- seconds after your last punch
+K.FACING_HOLD = 0.6 -- seconds after your last punch
 
 local function flatLook(hrp)
 	local look = hrp.CFrame.LookVector
@@ -1057,11 +1060,11 @@ end
 -- punch brings its own step, a combo walks you forward - each one a little
 -- further than the last, up to a point. Locked on, the step goes at your target
 -- and stops short of it so you never end up standing inside them.
-local PUNCH_STEP = 15 -- studs per second (well under walking pace, so it reads as a lean)
+K.PUNCH_STEP = 15 -- studs per second (well under walking pace, so it reads as a lean)
 -- the lean is over before the fist lands, so the step pushes you into the punch
 -- rather than dragging you through it
-local PUNCH_STEP_TIME = CC.PunchLock * CC.PunchContact * 0.66
-local PUNCH_STOP_SHORT = 5 -- never close to within this of what you're hitting
+K.PUNCH_STEP_TIME = CC.PunchLock * CC.PunchContact * 0.66
+K.PUNCH_STOP_SHORT = 5 -- never close to within this of what you're hitting
 
 local function punchStep(hrp, swing, distance, seconds)
 	local dir = flatLook(hrp)
@@ -1074,15 +1077,15 @@ local function punchStep(hrp, swing, distance, seconds)
 			local flat = Vector3.new(cf.X - hrp.Position.X, 0, cf.Z - hrp.Position.Z)
 			if flat.Magnitude > 0.5 then
 				dir = flat.Unit
-				room = flat.Magnitude - PUNCH_STOP_SHORT
+				room = flat.Magnitude - K.PUNCH_STOP_SHORT
 			end
 		end
 	end
 	if not dir or room <= 0 then
 		return -- nowhere to go, or already on top of them
 	end
-	local time = seconds or PUNCH_STEP_TIME
-	local speed = PUNCH_STEP * (CB.Steps[swing] or CB.Steps[#CB.Steps] or 1)
+	local time = seconds or K.PUNCH_STEP_TIME
+	local speed = K.PUNCH_STEP * (CB.Steps[swing] or CB.Steps[#CB.Steps] or 1)
 	if distance then
 		speed = distance / time -- (a weapon's swing: its own lunge)
 	end
@@ -1132,7 +1135,7 @@ local function tryPunch()
 	if not savedFacing or now > facingHoldUntil then
 		savedFacing = flatLook(hrp)
 	end
-	facingHoldUntil = now + FACING_HOLD
+	facingHoldUntil = now + K.FACING_HOLD
 	bufferedPunchAt = nil
 	comboSwing = nextSwing
 	lastPunch = now
@@ -1175,7 +1178,7 @@ local function tryPunch()
 		return
 	else
 		-- the air moving, straight away: waiting for the server would feel laggy
-		playLocalSound(IMPACT_SOUNDS.Whoosh, 0.45 + 0.08 * comboSwing, 1.12 - 0.07 * comboSwing)
+		playLocalSound(K.IMPACT_SOUNDS.Whoosh, 0.45 + 0.08 * comboSwing, 1.12 - 0.07 * comboSwing)
 		local recovery = CB.Recovery[comboSwing] or 1
 		playPunch(comboSwing, recovery)
 		commitToPunch(now, recovery)
@@ -1352,8 +1355,8 @@ end)
 -- after you've already left the ground. So that one is muted, and the same sound
 -- plays the instant a jump you can actually do is pressed. (A Sound named "Jump"
 -- in SoundService is used instead, if you add one.)
-local JUMP_SOUND_ID = "rbxasset://sounds/action_jump.mp3" -- Roblox's standard jump
-local JUMP_VOLUME = 0.5
+K.JUMP_SOUND_ID = "rbxasset://sounds/action_jump.mp3" -- Roblox's standard jump
+K.JUMP_VOLUME = 0.5
 local lastJumpSound = 0
 
 local function muteDefaultJump(sound)
@@ -1407,8 +1410,8 @@ UserInputService.JumpRequest:Connect(function()
 		sound.Looped = false
 	else
 		sound = Instance.new("Sound")
-		sound.SoundId = JUMP_SOUND_ID
-		sound.Volume = JUMP_VOLUME
+		sound.SoundId = K.JUMP_SOUND_ID
+		sound.Volume = K.JUMP_VOLUME
 	end
 	local effects = SoundService:FindFirstChild("Effects")
 	if effects and effects:IsA("SoundGroup") then
@@ -1425,13 +1428,13 @@ end)
 -- Dodge roll
 ----------------------------------------------------------------------
 local function playRoll()
-	local rollTrack = trackFor(ROLL_ANIMATION_ID, Enum.AnimationPriority.Action4)
+	local rollTrack = trackFor(K.ROLL_ANIMATION_ID, Enum.AnimationPriority.Action4)
 	if not rollTrack then
 		return
 	end
 	-- stop any punch mid-swing, then play the roll fitted to the dash
 	for id, t in pairs(tracks) do
-		if PUNCH_SET[id] and t.IsPlaying then
+		if K.PUNCH_SET[id] and t.IsPlaying then
 			t:Stop(0.05)
 		end
 	end
@@ -1950,7 +1953,7 @@ do
 		if move then
 			commitToPunch(now, (move.Time or 0.6) / CC.PunchLock)
 			for otherId, other in pairs(tracks) do
-				if PUNCH_SET[otherId] and other.IsPlaying then
+				if K.PUNCH_SET[otherId] and other.IsPlaying then
 					other:Stop(0.05)
 				end
 			end
@@ -2001,7 +2004,7 @@ do
 	create("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = "⚔",
 		TextSize = 30,
 		TextColor3 = WHITE,
@@ -2019,7 +2022,7 @@ do
 	local cdText = create("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = "",
 		TextSize = 26,
 		TextColor3 = WHITE,
@@ -2030,7 +2033,7 @@ do
 		Position = UDim2.fromOffset(2, 0),
 		Size = UDim2.fromOffset(18, 16),
 		BackgroundTransparency = 1,
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = "F",
 		TextSize = 14,
 		TextColor3 = GOLD,
@@ -2042,7 +2045,7 @@ do
 			Position = UDim2.fromOffset(76, y),
 			Size = UDim2.fromOffset(168, size + 2),
 			BackgroundTransparency = 1,
-			Font = BOLD,
+			Font = K.BOLD,
 			Text = "",
 			TextSize = size,
 			TextColor3 = color,
@@ -2087,7 +2090,7 @@ do
 	local phoneCd = create("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = "",
 		TextSize = 26,
 		TextColor3 = WHITE,
@@ -2145,7 +2148,7 @@ do
 		Position = UDim2.new(1, -40, 0.42, 0),
 		Size = UDim2.fromOffset(260, 60),
 		BackgroundTransparency = 1,
-		Font = BOLD,
+		Font = K.BOLD,
 		Text = "",
 		TextSize = 44,
 		TextColor3 = GOLD,
@@ -2334,10 +2337,10 @@ end
 -- washed-out colour when something lands, and when you are down to your last
 -- health a faint red breathing at the edges of the screen. Nothing that gets in
 -- the way of reading the fight.
-local HURT_BLUR = 5 -- how soft the screen goes on a big hit
-local HURT_FADE = 3.2 -- how quickly a hit's effect clears (per second)
-local LOW_HEALTH = 0.3 -- the fraction of health where the warning starts
-local DESPERATE = 0.08 -- and where it is at its strongest
+K.HURT_BLUR = 5 -- how soft the screen goes on a big hit
+K.HURT_FADE = 3.2 -- how quickly a hit's effect clears (per second)
+K.LOW_HEALTH = 0.3 -- the fraction of health where the warning starts
+K.DESPERATE = 0.08 -- and where it is at its strongest
 
 local blur = Instance.new("BlurEffect")
 blur.Name = "CombatHurtBlur"
@@ -2387,14 +2390,14 @@ end
 -- nothing to show the effects are switched off entirely.
 local function stepScreenEffects(dt)
 	if hurtFlash > 0 then
-		hurtFlash = math.max(0, hurtFlash - dt * HURT_FADE)
+		hurtFlash = math.max(0, hurtFlash - dt * K.HURT_FADE)
 	end
 
 	local hum = charParts()
 	local want = 0
 	if active and hum and hum.MaxHealth > 0 then
 		local share = hum.Health / hum.MaxHealth
-		want = math.clamp((LOW_HEALTH - share) / (LOW_HEALTH - DESPERATE), 0, 1)
+		want = math.clamp((K.LOW_HEALTH - share) / (K.LOW_HEALTH - K.DESPERATE), 0, 1)
 	end
 	lowAmount = lowAmount + (want - lowAmount) * math.min(1, dt * 5) -- eases in and out
 
@@ -2408,7 +2411,7 @@ local function stepScreenEffects(dt)
 
 	-- the soft knock to the eyes from a hit
 	blur.Enabled = hurtFlash > 0.02
-	blur.Size = HURT_BLUR * hurtFlash
+	blur.Size = K.HURT_BLUR * hurtFlash
 
 	-- colour drains, from the hit and from being nearly dead
 	local drain = math.max(lowAmount, hurtFlash)
@@ -2451,7 +2454,7 @@ local function damageNumber(pos, amount, killed, label)
 	local t = Instance.new("TextLabel")
 	t.Size = UDim2.fromScale(1, 1)
 	t.BackgroundTransparency = 1
-	t.Font = BOLD
+	t.Font = K.BOLD
 	local immune = (tonumber(amount) or 0) <= 0
 	t.Text = label or (immune and "IMMUNE" or Config.format(amount))
 	t.TextSize = killed and 44 or (immune and 24 or 34)
@@ -2500,8 +2503,8 @@ end
 -- Press it again to let go. When the target dies the lock jumps to the
 -- nearest enemy left; it lets go if the enemy gets too far away, you lose
 -- sight of it for over a second, or you leave the arena.
-local LOCK_RANGE = 80 -- how far away you can lock on from
-local LOCK_BREAK = 110 -- the lock lets go past this distance
+K.LOCK_RANGE = 80 -- how far away you can lock on from
+K.LOCK_BREAK = 110 -- the lock lets go past this distance
 
 -- The marker on your target: four 8-bit corner brackets that pulse in and
 -- out, with a little arrow bobbing over it. The enemies Q and E would jump
@@ -2652,7 +2655,7 @@ local function candidates()
 	for _, m in ipairs(game:GetService("CollectionService"):GetTagged("CombatTarget")) do
 		if lockable(m) then
 			local pos = targetPoint(m)
-			if pos and (pos - hrp.Position).Magnitude <= LOCK_RANGE and canSee(m, pos) then
+			if pos and (pos - hrp.Position).Magnitude <= K.LOCK_RANGE and canSee(m, pos) then
 				table.insert(list, { model = m, pos = pos, dist = (pos - hrp.Position).Magnitude })
 			end
 		end
@@ -2972,7 +2975,7 @@ do
 			end
 		end
 		local tpos, tsize, drawn = targetPoint(lockTarget)
-		if not tpos or (tpos - hrp.Position).Magnitude > LOCK_BREAK then
+		if not tpos or (tpos - hrp.Position).Magnitude > K.LOCK_BREAK then
 			unlock()
 			return
 		end
@@ -3447,10 +3450,10 @@ CombatEvent.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 		if (tonumber(b) or 0) > 0 then
 			playHitSound(weight) -- (nothing for a hit it shrugged off while untouchable)
 		end
-		cameraKick(IMPACT_SHAKE * (0.3 + 0.22 * weight) * (c and 1.6 or 1))
-		fovPunch(-IMPACT_FOV * (0.55 + 0.22 * weight))
+		cameraKick(K.IMPACT_SHAKE * (0.3 + 0.22 * weight) * (c and 1.6 or 1))
+		fovPunch(-K.IMPACT_FOV * (0.55 + 0.22 * weight))
 		if c or weight >= 3 then
-			slowMotion(IMPACT_STOP) -- a beat of slow motion on the big ones
+			slowMotion(K.IMPACT_STOP) -- a beat of slow motion on the big ones
 		end
 		if Weapon.current() then
 			Weapon.landed(a, weight, c) -- a blade: hit-stop, a slash mark, the combo
