@@ -453,8 +453,8 @@ end
 
 ----------------------------------------------------------------------
 -- THE COMMUNITY CHEST in the lobby: a big wooden treasure chest with gold
--- corners and bands on a two-step stone dais, its rounded lid propped half
--- open with gold light and coins glowing inside and rays rising out of it,
+-- corners and bands on a two-step stone dais, its rounded lid shut until you
+-- walk up (then it swings open: gold light, coins and rays rising out),
 -- a few coins and gems spilled in front, a sign over it and a walk-up box in
 -- front (Activity = "Community": RewardsMenu opens its window when you walk in)
 ----------------------------------------------------------------------
@@ -518,24 +518,35 @@ function RewardService.BuildChest()
 	for k, c in ipairs({ { -1.8, -0.8 }, { -0.6, 0.4 }, { 0.7, -0.5 }, { 1.9, 0.6 }, { 0.1, 1.1 }, { -1.3, 1.0 }, { 1.4, -1.1 } }) do
 		part("Coin", Vector3.new(1.0, 1.0, 1.0), CFrame.new(c[1], B + 3.0 + (k % 3) * 0.15, c[2]), GOLD, Enum.Material.Metal, { Shape = Enum.PartType.Ball, CanCollide = false, CastShadow = false })
 	end
-	-- the lid, rounded (three steps), hinged at the back and propped open
-	local hinge = CFrame.new(0, B + 3.0, 2.05) * CFrame.Angles(math.rad(32), 0, 0)
+	-- the lid, rounded (three steps), hinged at the back: built shut, in its
+	-- own model with its hinge saved on it - RewardsMenu swings it open on
+	-- your screen as you walk up (and shut again as you leave)
+	local hinge = CFrame.new(0, B + 3.0, 2.05)
+	local lidModel = Instance.new("Model")
+	lidModel.Name = "Lid"
+	lidModel:SetAttribute("Hinge", origin * hinge)
+	lidModel.Parent = model
+	local function lidPart(name, size, offset, color, material, props)
+		local p = part(name, size, hinge * offset, color, material, props)
+		p.Parent = lidModel
+		return p
+	end
 	local function lid(name, size, y, color, material)
-		return part(name, size, hinge * CFrame.new(0, y, -2.05), color, material)
+		return lidPart(name, size, CFrame.new(0, y, -2.05), color, material)
 	end
 	local lidMain = lid("Lid", Vector3.new(6.2, 0.9, 4.2), 0.45, WOOD, Enum.Material.WoodPlanks)
 	lid("LidMid", Vector3.new(6.2, 0.6, 3.4), 1.2, WOOD, Enum.Material.WoodPlanks)
 	lid("LidTop", Vector3.new(6.2, 0.4, 2.2), 1.7, WOOD, Enum.Material.WoodPlanks)
 	for _, x in ipairs({ -2.95, -1.6, 1.6, 2.95 }) do
-		part("LidBand", Vector3.new(0.5, 0.95, 4.3), hinge * CFrame.new(x, 0.45, -2.05), GOLD, Enum.Material.Metal, deco)
-		part("LidBand", Vector3.new(0.5, 0.65, 3.5), hinge * CFrame.new(x, 1.2, -2.05), GOLD, Enum.Material.Metal, deco)
-		part("LidBand", Vector3.new(0.5, 0.45, 2.3), hinge * CFrame.new(x, 1.7, -2.05), GOLD, Enum.Material.Metal, deco)
+		lidPart("LidBand", Vector3.new(0.5, 0.95, 4.3), CFrame.new(x, 0.45, -2.05), GOLD, Enum.Material.Metal, deco)
+		lidPart("LidBand", Vector3.new(0.5, 0.65, 3.5), CFrame.new(x, 1.2, -2.05), GOLD, Enum.Material.Metal, deco)
+		lidPart("LidBand", Vector3.new(0.5, 0.45, 2.3), CFrame.new(x, 1.7, -2.05), GOLD, Enum.Material.Metal, deco)
 	end
-	part("LidEdge", Vector3.new(6.3, 0.3, 0.3), hinge * CFrame.new(0, 0.15, -4.15), GOLD, Enum.Material.Metal, deco)
+	lidPart("LidEdge", Vector3.new(6.3, 0.3, 0.3), CFrame.new(0, 0.15, -4.15), GOLD, Enum.Material.Metal, deco)
 	-- rays of light rising out of it
 	for k, r in ipairs({ { -1.6, 8, -12 }, { 0, 10, 4 }, { 1.7, 7, 14 } }) do
 		part("Ray", Vector3.new(0.9, r[2], 0.2), CFrame.new(r[1], B + 3 + r[2] / 2, -0.4) * CFrame.Angles(0, 0, math.rad(r[3])), RGB(255, 230, 140), Enum.Material.Neon,
-			{ Transparency = 0.75 + k * 0.03, CanCollide = false, CanQuery = false, CastShadow = false })
+			{ Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false }):SetAttribute("Shine", 0.75 + k * 0.03)
 	end
 	-- coins and gems spilled on the dais in front
 	for _, c in ipairs({ { -2.4, -2.9, 20 }, { -1.2, -3.1, -40 }, { 1.8, -2.8, 70 }, { 2.9, -3.0, 10 } }) do

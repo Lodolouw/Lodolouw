@@ -367,6 +367,77 @@ do
 	end)
 end
 
+-- the chest's lid swings open as you walk up (the gold light inside, the
+-- rays rising out, a burst of sparkles) and falls shut as you walk away -
+-- only on your screen (RewardService builds it shut, the hinge saved on it)
+do
+	local OPEN_AT, SHUT_AT = 16, 19 -- studs from the chest
+	local WIDE = math.rad(-75) -- how far it swings back
+	local chest, lid, hinge, pieces, rays, sparkle
+	local angle, wasOpen = 0, false
+	local function find()
+		chest = workspace:FindFirstChild("CommunityChest")
+		lid = chest and chest:FindFirstChild("Lid")
+		hinge = lid and lid:GetAttribute("Hinge")
+		if typeof(hinge) ~= "CFrame" then
+			chest = nil
+			return
+		end
+		pieces, rays = {}, {}
+		for _, p in ipairs(lid:GetDescendants()) do
+			if p:IsA("BasePart") then
+				table.insert(pieces, { p, hinge:ToObjectSpace(p.CFrame) })
+			end
+		end
+		for _, p in ipairs(chest:GetChildren()) do
+			if p.Name == "Ray" and p:IsA("BasePart") then
+				table.insert(rays, { p, p:GetAttribute("Shine") or 0.78 })
+			end
+		end
+		local glow = chest:FindFirstChild("Glow")
+		sparkle = glow and glow:FindFirstChild("Sparkle")
+		angle, wasOpen = 0, false
+	end
+	local look = 0
+	RunService.Heartbeat:Connect(function(dt)
+		if not (chest and chest.Parent and lid.Parent) then
+			look -= dt
+			if look > 0 then
+				return
+			end
+			look = 1
+			find()
+			if not chest then
+				return
+			end
+		end
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		local far = hrp and (hrp.Position - hinge.Position).Magnitude or math.huge
+		local open = far < (wasOpen and SHUT_AT or OPEN_AT)
+		if open and not wasOpen and sparkle then
+			sparkle:Emit(24)
+		end
+		wasOpen = open
+		-- quick to fly open, a little slower to fall shut
+		local want = open and WIDE or 0
+		local speed = open and 7 or 5
+		local before = angle
+		angle += (want - angle) * math.min(1, dt * speed)
+		if math.abs(angle - before) < 1e-4 and math.abs(want - angle) < 1e-3 then
+			return
+		end
+		local turned = hinge * CFrame.Angles(-angle, 0, 0)
+		for _, piece in ipairs(pieces) do
+			piece[1].CFrame = turned * piece[2]
+		end
+		local shown = angle / WIDE
+		for _, r in ipairs(rays) do
+			r[1].Transparency = 1 - (1 - r[2]) * shown
+		end
+	end)
+end
+
 ----------------------------------------------------------------------
 -- keeping up with your save; the newest update opens by itself once
 ----------------------------------------------------------------------

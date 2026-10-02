@@ -77,6 +77,25 @@ zone.CFrame = CFrame.new(-50, 4, 12)
 zone:SetAttribute("Activity", "Community")
 zone.Parent = M.workspace
 CollectionService:AddTag(zone, "AutoOpenZone")
+-- and the chest itself: its lid (shut, the hinge saved on it) and a ray
+local chestModel = Instance.new("Model")
+chestModel.Name = "CommunityChest"
+local lidModel = Instance.new("Model")
+lidModel.Name = "Lid"
+local HINGE = CFrame.new(-50, 4.4, 20.05)
+lidModel:SetAttribute("Hinge", HINGE)
+lidModel.Parent = chestModel
+local lidPart = Instance.new("Part")
+lidPart.Name = "Lid"
+lidPart.CFrame = HINGE * CFrame.new(0, 0.45, -2.05)
+lidPart.Parent = lidModel
+local LID_SHUT = lidPart.CFrame
+local ray = Instance.new("Part")
+ray.Name = "Ray"
+ray.Transparency = 1
+ray:SetAttribute("Shine", 0.78)
+ray.Parent = chestModel
+chestModel.Parent = M.workspace
 
 local remotes = Instance.new("Folder")
 remotes.Name = "Remotes"
@@ -248,6 +267,11 @@ Menus.close()
 hrp.CFrame = CFrame.new(-50, 3, 12)
 wait(0.5)
 check(Menus.current() == "Community", "walking up to the chest opens its window")
+wait(1)
+local lifted = lidPart.Position.Y - LID_SHUT.Position.Y
+check(lifted > 1, "and its lid swings open (the front up " .. string.format("%.2f", lifted) .. ")")
+check((lidPart.Position - HINGE.Position).Magnitude - (LID_SHUT.Position - HINGE.Position).Magnitude < 0.01, "round its hinge")
+check(ray.Transparency < 0.9, "the light shines out")
 snap("THE COMMUNITY CHEST|join, then claim once")
 asked = {}
 click(find("Claim", find("ChestCard")))
@@ -255,6 +279,9 @@ check(askedFor("GroupClaim"), "CLAIM asks the server")
 hrp.CFrame = CFrame.new(0, 3, 0)
 wait(0.5)
 check(Menus.current() == nil, "walking away closes it")
+wait(2)
+check((lidPart.Position - LID_SHUT.Position).Magnitude < 0.05, "and the lid falls shut")
+check(ray.Transparency > 0.98, "the light goes out")
 
 ----------------------------------------------------------------------
 -- THE INDEX

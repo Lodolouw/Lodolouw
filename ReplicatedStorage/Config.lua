@@ -1057,7 +1057,7 @@ Config.Retro = {
 		Palette = true, -- the lobby's colours snapped to the same palette as the menus
 		Flat = true, -- realistic textures (cobblestone, slate, metal...) become flat colour
 		Motes = 36, -- glowing pixel cubes drifting around you (0 = none)
-		SaveStar = true, -- the spinning pixel star over the spawn
+		SaveStar = false, -- (off: the spinning pixel star over the spawn - the user had it removed; true brings it back)
 		Flavour = false, -- (off: a line of text typed out when you walk up to a place - the user found it useless; true brings it back)
 		Repeat = 150, -- seconds before the same place talks again
 		Grade = true, -- a slightly warmer, punchier colour grade in the lobby
