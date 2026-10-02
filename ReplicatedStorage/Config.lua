@@ -12,7 +12,7 @@ local Config = {}
 ----------------------------------------------------------------------
 Config.GameName = "Boss Grow" -- working title, rename freely
 Config.BaseHealth = 100
-Config.BaseWalkSpeed = 24 -- your speed outside a fight (the lobby is big: quicker than Roblox's 16)
+Config.BaseWalkSpeed = 34 -- your speed outside a fight (the lobby is big: much quicker than Roblox's 16)
 Config.RequireProximity = true -- shops only work when you stand near them
 Config.StationRange = 34 -- studs
 Config.MaxPrestige = 0 -- (prestige is gone)
