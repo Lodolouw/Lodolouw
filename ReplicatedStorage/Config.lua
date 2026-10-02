@@ -3573,12 +3573,14 @@ end
 
 ----------------------------------------------------------------------
 -- DEV ACCESS: who gets the dev console (the DEV button's test tools).
--- Always you in Studio. In the real game: the game's owner (when a person
--- owns it, not a group) and anyone whose UserId is in DevUserIds (your
--- UserId is the number in your Roblox profile's web address). The SERVER
--- decides: every dev action checks this again, so nobody else can use them
--- even if they hack their screen - the screen only uses it to show the button.
+-- Always you in Studio. In the real game: nobody, unless DevInLiveGame is
+-- true - then the game's owner (when a person owns it, not a group) and
+-- anyone whose UserId is in DevUserIds (your UserId is the number in your
+-- Roblox profile's web address). The SERVER decides: every dev action checks
+-- this again, so nobody else can use them even if they hack their screen -
+-- the screen only uses it to show the button.
 ----------------------------------------------------------------------
+Config.DevInLiveGame = false -- true: the DEV button for the owner in the real game too
 Config.DevUserIds = {}
 ----------------------------------------------------------------------
 -- THE NEW PLAYER PATH: right after the intro, five steps lead a new player
@@ -3609,7 +3611,7 @@ function Config.isDev(player)
 	if ok and studio then
 		return true
 	end
-	if not player then
+	if not player or not Config.DevInLiveGame then
 		return false
 	end
 	local owner = false
