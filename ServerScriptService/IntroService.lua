@@ -919,6 +919,22 @@ function IntroService.Start(combatService, playerService)
 			if not S.over then
 				S.box.CFrame = CFrame.new(posAt(S, t) + Vector3.new(0, (O.Size or 4.6) * 0.45, 0))
 				local root = rootOf(player)
+				-- (backup for their screen's own check: well past the wall while it's
+				-- dark - a roll through it, a knock - and they're put back inside)
+				if root and S.stage ~= "Reveal" then
+					local wall = I.Wall or 24.5
+					local off = Vector3.new(root.Position.X - CENTER.X, 0, root.Position.Z - CENTER.Z)
+					if off.Magnitude <= wall then
+						S.inside = true -- (only once they've been put inside does the wall hold them)
+					elseif S.inside and off.Magnitude > wall + 4 then
+						local spot = CENTER + off.Unit * (wall - 2)
+						spot = Vector3.new(spot.X, root.Position.Y, spot.Z)
+						player:SetAttribute("MoveTo", spot)
+						player:SetAttribute("MoveUntil", now() + 1)
+						root.AssemblyLinearVelocity = Vector3.zero
+						root.CFrame = root.CFrame + (spot - root.Position)
+					end
+				end
 				if root and (root.Position - S.stillPos).Magnitude > 1.5 then
 					S.stillPos = root.Position
 					S.stillSince = t

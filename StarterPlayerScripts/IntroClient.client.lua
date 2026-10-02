@@ -731,8 +731,9 @@ do
 			local a = (i - 0.5) / n * math.pi * 2
 			local w = newPart("DarkFence", C.black, nil, 1)
 			w.CanCollide = true
-			w.Size = V3(2 * math.pi * R / n + 1, 40, 2)
-			local pos = CENTER + V3(math.cos(a) * (R + 1), 18, math.sin(a) * (R + 1))
+			-- (thick, so a roll's burst of speed can't slip through it)
+			w.Size = V3(2 * math.pi * (R + 4) / n + 1, 40, 8)
+			local pos = CENTER + V3(math.cos(a) * (R + 4), 18, math.sin(a) * (R + 4))
 			w.CFrame = CFrame.lookAt(pos, V3(CENTER.X, pos.Y, CENTER.Z))
 			fence[i] = w
 		end
@@ -2594,6 +2595,7 @@ local function reveal()
 	tellServer("IntroDone")
 end
 
+local keepInside -- (below: never past the wall while it's dark)
 local function runIntro()
 	if running then
 		return
@@ -2749,6 +2751,7 @@ local function runIntro()
 		local ok, err = pcall(function()
 			if stage() ~= "Reveal" and not finished then
 				Dark.stepMist(dt, RADIUS - 0.5, 0)
+				keepInside()
 			end
 			Oz.step(dt, now)
 			Arrow.step(Oz.top(), now)
@@ -2805,6 +2808,32 @@ local function runIntro()
 				Words.hint(howTo("PunchHow"))
 			end
 		end)
+	end
+end
+
+-- Never past the wall while it's dark (a roll, a knock or a lag spike can
+-- carry you through it): back to just inside, the outward speed taken off
+keepInside = function()
+	local root = myRoot()
+	if not root then
+		return
+	end
+	local wall = I.Wall or (RADIUS + 1)
+	local off = V3(root.Position.X - CENTER.X, 0, root.Position.Z - CENTER.Z)
+	local d = off.Magnitude
+	if d <= wall then
+		root:SetAttribute("IntroInside", true) -- (held in only once it's put you inside)
+		return
+	end
+	if root:GetAttribute("IntroInside") and d > 0.01 then
+		local dir = off / d
+		local inside = CENTER + dir * (wall - 1.5)
+		root.CFrame = root.CFrame + V3(inside.X - root.Position.X, 0, inside.Z - root.Position.Z)
+		local v = root.AssemblyLinearVelocity
+		local out = v:Dot(dir)
+		if out > 0 then
+			root.AssemblyLinearVelocity = v - dir * out
+		end
 	end
 end
 
