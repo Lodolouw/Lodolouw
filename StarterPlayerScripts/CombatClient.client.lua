@@ -3123,6 +3123,26 @@ player:GetAttributeChangedSignal("Intro"):Connect(function()
 	end
 end)
 setActive(inFight())
+-- (and every half second, in case a change was missed or a stray "Stop"
+-- switched the fight off while you're still in one: the attributes decide)
+do
+	local acc, told = 0, false
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < 0.5 then
+			return
+		end
+		acc = 0
+		local want = inFight()
+		if want ~= active then
+			if not told then
+				told = true
+				warn("[CombatClient] fight mode was " .. (active and "on" or "off") .. " but should be " .. (want and "on" or "off") .. " (Intro = " .. tostring(player:GetAttribute("Intro")) .. ") - fixed")
+			end
+			setActive(want)
+		end
+	end)
+end
 
 -- A fresh body starts clean: nothing from the last life (a roll, a punch, a
 -- held facing, a lock-on, the slow-motion beat) carries over onto it.
@@ -3191,6 +3211,19 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		holding = true
 		tryPunch()
 		return
+	end
+	if processed and isPointer(input) and player:GetAttribute("Intro") then
+		-- (a click in the intro that something on screen took first: say what)
+		pcall(function()
+			local p = input.Position
+			local names = {}
+			for _, g in ipairs(playerGui:GetGuiObjectsAtPosition(p.X, p.Y)) do
+				if g:IsA("GuiButton") or g.Active then
+					names[#names + 1] = g:GetFullName()
+				end
+			end
+			warn("[CombatClient] intro click taken by the screen: " .. (#names > 0 and table.concat(names, ", ") or "(a Roblox menu or nothing listed)"))
+		end)
 	end
 	if processed or not isPointer(input) then
 		return
