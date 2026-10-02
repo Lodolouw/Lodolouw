@@ -55,7 +55,13 @@ end
 check(count == 8, "it flips through all 8 pictures (" .. count .. ")")
 check(bobs > 3, "and bobs")
 check(Money.make(parent, "Coin", 48) == nil, "with a picture missing, nothing (the screen draws its own)")
-check(#M.preloaded >= 8, "its pictures start downloading straight away")
+-- (the pictures start downloading when the server says the fast ones are
+-- known - or, with no PictureLoader as here, 8 s after joining anyway)
+while T < 9 do
+	T += 1 / 30
+	M.run(T)
+end
+check(#M.preloaded >= 8, "its pictures start downloading (" .. #M.preloaded .. ")")
 
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))

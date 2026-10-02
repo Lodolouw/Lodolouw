@@ -174,7 +174,9 @@ local THEMED = {
 	Knight = { bits = { Clod = true, Glint = true, Chip = true, Coin = true }, wave = "GoldCrack", eyes = "VisorEye",
 		swing = { [3] = "Shovel Swish", [4] = "Shovel Swish", [5] = "Chain Swish", [6] = "Gold Swing" }, waveSound = "Plate Crack", eyeSound = "Treasure Glint" },
 	Speedway = { bits = { Spark = true, Smoke = true, Flame = true, Confetti = true }, wave = "CheckerWave", eyes = "RevvEye",
-		swing = { [3] = "Sword Swing", [4] = "Sword Swing", [5] = "Hammer Swing", [6] = "Sword Swing" }, waveSound = "Checkered Flag", eyeSound = "Big Honk" },
+		swing = { [3] = "Sword Swing", [4] = "Sword Swing", [5] = "Hammer Swing", [6] = "Sword Swing" }, waveSound = "Checkered Flag", eyeSound = "Big Honk", quiet = true },
+	-- (quiet: Victory Lap's flag and eyes still show, but the fanfare and honks
+	-- were taken off - they got annoying swing after swing)
 	Jungle = { bits = { Leaf = true, Banana = true, Splinter = true, Chip = true, Smoke = true, Glint = true }, wave = "VineWave", eyes = "KongoEye",
 		swing = { [3] = "Leaf Swish", [4] = "Leaf Swish", [5] = "Barrel Swing", [6] = "Crown Swing" }, waveSound = "Vine Whip", eyeSound = "Ape Grunt" },
 	Canvas = { bits = { Ink = true, Paper = true, Pixel = true }, wave = "GlitchWave", eyes = "DoodleEye",
@@ -298,9 +300,10 @@ for _, key in ipairs({ "Jellyblade", "GooGloves", "GelatinHammer", "OozeDaggers"
 				local heard = soundsPlaying()
 				local swingSound = th.swing[tier]
 				check(swingSound == nil or (heard[swingSound] or 0) > 0, key .. ": its swing sound plays (" .. tostring(swingSound) .. ")")
-				check(((heard[th.waveSound] or 0) > 0) == (tier >= 6), key .. ": the wave's sound only on the Secret (" .. th.waveSound .. ")")
+				local loud = tier >= 6 and not th.quiet
+				check(((heard[th.waveSound] or 0) > 0) == loud, key .. ": the wave's sound " .. (th.quiet and "never" or "only on the Secret") .. " (" .. th.waveSound .. ")")
 				step(0.5)
-				check(tier < 6 or (soundsPlaying()[th.eyeSound] or 0) > 0, key .. ": the eyes pop with a sound (" .. th.eyeSound .. ")")
+				check(((soundsPlaying()[th.eyeSound] or 0) > 0) == loud or (not th.quiet and tier < 6), key .. ": the eyes pop " .. (th.quiet and "silently" or "with a sound") .. " (" .. th.eyeSound .. ")")
 				h.handle.CFrame = start
 				-- (a leaf flutters down for up to 2.2 s, and its rustle's player stays 2 s)
 				step(4.5)
