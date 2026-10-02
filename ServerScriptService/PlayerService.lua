@@ -1114,6 +1114,34 @@ handlers.DevPath = function(player, d)
 	return true, "New player path: back to step 1 - " .. Config.Path.Steps[1].Text
 end
 
+-- DEV: wipe this player's save back to a brand-new player's (exactly what a
+-- first join gets). Only the list of Robux receipts already handed out is
+-- kept, so no purchase can ever be paid out twice. (IntroService's
+-- "DevResetMe" calls this, then plays the intro.)
+function PlayerService.ResetToNew(player)
+	local profile = profiles[player]
+	if not profile then
+		return false
+	end
+	local old = profile.data
+	local fresh = mergeSaved(nil)
+	if old.Shop and type(old.Shop.receipts) == "table" then
+		fresh.Shop.receipts = old.Shop.receipts
+	end
+	profile.data = fresh
+	ensureQuests(fresh)
+	showCleared(player, fresh)
+	if profile.leaderPower then
+		profile.leaderPower.Value = 0
+	end
+	if profile.leaderLevel then
+		profile.leaderLevel.Value = Config.levelFromPower(0)
+	end
+	pcall(applyCharacterStats, player, true)
+	markDirty(player)
+	return true
+end
+
 -- Dev test helpers: Studio, or the game's owner in the real game (Config.isDev)
 handlers.DevGive = function(player, d, kind)
 	if not Config.isDev(player) then

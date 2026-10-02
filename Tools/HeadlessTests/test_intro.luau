@@ -566,6 +566,22 @@ if MODE == "replay" then
 	step(2.5)
 	assert(me:GetAttribute("Intro") == nil and ltm(island) == 0 and hud.Enabled, "and back to normal")
 	assert(not SoundService:FindFirstChild("IntroMusicPlaying"), "no music left playing")
+	-- DEV: Reset Me - a complete beginner again (only bought receipts kept)
+	local before = PS.GetData(me)
+	before.Coins, before.Tokens, before.Power = 777, 9, 5000
+	before.Weapons.own.IronSword = 3
+	before.Shop.receipts["r-1"] = true
+	ok = ReplicatedStorage.Remotes.Action:InvokeServer("DevResetMe")
+	assert(ok == true, "the reset works in Studio")
+	local wiped = PS.GetData(me)
+	assert(wiped.Coins == 0 and wiped.Tokens == 0 and wiped.Power == 0 and wiped.IntroDone == false, "back to nothing")
+	assert(next(wiped.Weapons.own) == nil, "no weapons")
+	assert(wiped.Shop.receipts["r-1"] == true, "purchases already handed out stay handed out")
+	waitFor(function()
+		return me:GetAttribute("Intro") == "Void"
+	end, 5, "the intro after a reset")
+	ReplicatedStorage.Remotes.Action:InvokeServer("IntroFailed")
+	step(2.5)
 end
 
 print(string.format("t %.1f  hops %d  events %s  health low %.0f  kicks %d  power %d", T, hops, table.concat(introEvents, " "), minHealth, kicks, d.Power))

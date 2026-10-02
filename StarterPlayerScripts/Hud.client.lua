@@ -1339,7 +1339,7 @@ do
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -52),
-		Size = UDim2.fromOffset(150, 498),
+		Size = UDim2.fromOffset(150, 540),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = root,
@@ -1357,6 +1357,32 @@ do
 	})
 	replay.Activated:Connect(function()
 		doAction("DevReplayIntro")
+	end)
+	-- wipe your save back to a brand-new player's and play the intro (press
+	-- twice: it can't be undone)
+	local reset = button({
+		LayoutOrder = 3,
+		Size = UDim2.fromOffset(150, 36),
+		Text = "DEV: Reset Me",
+		TextSize = 16,
+		BackgroundColor3 = RGB(190, 60, 60),
+		Parent = devCol,
+	})
+	local armedAt = -math.huge
+	reset.Activated:Connect(function()
+		if os.clock() - armedAt > 3 then
+			armedAt = os.clock()
+			reset.Text = "Sure? Press again"
+			task.delay(3, function()
+				if os.clock() - armedAt >= 2.9 then
+					reset.Text = "DEV: Reset Me"
+				end
+			end)
+			return
+		end
+		armedAt = -math.huge
+		reset.Text = "DEV: Reset Me"
+		doAction("DevResetMe")
 	end)
 	-- walk the NEW PLAYER PATH from step 1 (the steps have to be done for real)
 	local path = button({

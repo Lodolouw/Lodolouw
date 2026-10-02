@@ -859,6 +859,37 @@ function IntroService.Start(combatService, playerService)
 		end)
 		return true, "Starting over: here comes the intro!"
 	end)
+	-- DEV ONLY: become a complete beginner - the save wiped back to a brand-new
+	-- player's, a fresh body, and the intro (the dev console's "DEV: Reset Me")
+	PlayerService.AddAction("DevResetMe", function(player)
+		if not Config.isDev(player) then
+			return false, "Dev tools are only for the game's owner."
+		end
+		local S = sessions[player]
+		if S and not S.over then
+			return false, "Finish the intro first."
+		end
+		if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") then
+			return false, "Go back to the lobby first."
+		end
+		if not (PlayerService.ResetToNew and PlayerService.ResetToNew(player)) then
+			return false, "Your save isn't loaded yet."
+		end
+		if CombatService.Equip then
+			CombatService.Equip(player, nil)
+		end
+		task.spawn(function()
+			if player.LoadCharacter then
+				pcall(function()
+					player:LoadCharacter()
+				end)
+			end
+			if player.Parent and not (sessions[player] and not sessions[player].over) then
+				start(player)
+			end
+		end)
+		return true, "Reset: you're a brand-new player. Here comes the intro!"
+	end)
 	-- their screen couldn't show it (something broke there): they play on
 	-- normally - no reward, and the intro again next time (all a player
 	-- gains by sending this is skipping the intro and its reward)
