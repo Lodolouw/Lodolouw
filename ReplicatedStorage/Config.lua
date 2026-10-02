@@ -3362,6 +3362,12 @@ do
 		FirstClear = { [1] = 5, [2] = 5, [3] = 6, [4] = 6, [5] = 7, [6] = 7, [7] = 8, [8] = 8, [9] = 9, [10] = 10 },
 		-- a spin can't be asked for again sooner than this (seconds)
 		Gap = 0.4,
+		-- THE COIN EXCHANGE (the top of the Arcade menu): coins for a token,
+		-- once every `Hours` hours. Its price grows with how far up the Spire
+		-- you are: `Base` coins with floor 1 (or nothing) beaten, `PerFloor`
+		-- more for every floor above that (floor 10: 15,500) - so coins keep a
+		-- use, but it never replaces quests or the token packs.
+		Exchange = { Tokens = 1, Hours = 3, Base = 2000, PerFloor = 1500 },
 		-- THE ARCADE'S MUSIC (made by Tools/Sounds/arcade_sfx.py; Sounds in
 		-- SoundService by these names): its own song while you're in the
 		-- Arcade, its menu or a spin (the lobby's song fades out under it),
@@ -3409,6 +3415,30 @@ function Config.arcadeWeapon(machineId, rarity)
 		end
 	end
 	return nil
+end
+
+-- THE COIN EXCHANGE: the highest Spire floor this player has beaten (on
+-- Normal; 0 = none yet), what a trade costs them, and how many seconds until
+-- they can trade again (0 = now) - `now` is os.time()
+function Config.bestFloor(data)
+	local best = 0
+	local cleared = type(data) == "table" and type(data.Cleared) == "table" and data.Cleared or {}
+	for key, n in pairs(cleared) do
+		local f = tonumber(key) -- (Normal's are "<floor>"; harder tiers' "<tier>:<floor>")
+		if f and type(n) == "number" and n > 0 and f > best then
+			best = f
+		end
+	end
+	return best
+end
+function Config.exchangePrice(data)
+	local X = Config.Arcade.Exchange
+	return X.Base + X.PerFloor * math.max(0, Config.bestFloor(data) - 1)
+end
+function Config.exchangeWait(data, now)
+	local X = Config.Arcade.Exchange
+	local at = type(data) == "table" and type(data.Arcade) == "table" and tonumber(data.Arcade.exchanged) or 0
+	return math.max(0, math.ceil(at + X.Hours * 3600 - now))
 end
 
 -- Whether a player with this data may spin that machine (and if not, why)

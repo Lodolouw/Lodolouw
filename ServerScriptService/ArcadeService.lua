@@ -14,6 +14,11 @@
 	once it's at mastery 100 - never a token back, so a spin always costs); and answers with what you got. Your screen
 	then plays the spin, which only SHOWS the result it was given.
 
+	The "ArcadeExchange" action: THE COIN EXCHANGE - coins for a token, once
+	every Config.Arcade.Exchange.Hours, at Config.exchangePrice (it grows
+	with your best Spire floor). The time you last traded is saved
+	(Arcade.exchanged, os.time()).
+
 	Everyone's screen is told too (the "ArcadeEvent" RemoteEvent: "Roll",
 	userId, name, machine, { {id, rarity}, ... }), so that machine lights up
 	for the whole lobby and a Secret gets a banner. The server's latest
@@ -196,6 +201,43 @@ local function roll(player, d, arg)
 end
 ArcadeService._roll = roll -- (for the headless tests)
 
+-- THE COIN EXCHANGE: coins for a token, once every few hours, at a price that
+-- grows with your best Spire floor (Config.Arcade.Exchange)
+ArcadeService.now = os.time -- (the headless tests move the clock)
+local function exchange(player, d)
+	local X = A.Exchange
+	if not X then
+		return false, "The exchange is closed."
+	end
+	d.Arcade = type(d.Arcade) == "table" and d.Arcade or { spins = 0, pity = {} }
+	local now = ArcadeService.now()
+	local wait = Config.exchangeWait(d, now)
+	if wait > 0 then
+		local h, m = math.floor(wait / 3600), math.ceil((wait % 3600) / 60)
+		if m == 60 then
+			h, m = h + 1, 0
+		end
+		return false, "The exchange is recharging - ready in " .. (h > 0 and (h .. "h " .. m .. "m") or (m .. "m")) .. "."
+	end
+	local price = Config.exchangePrice(d)
+	if (d.Coins or 0) < price then
+		return false, "Not enough coins yet - that's " .. Config.format(price) .. " coins."
+	end
+	d.Coins = d.Coins - price
+	d.Tokens = (d.Tokens or 0) + X.Tokens
+	d.Arcade.exchanged = now
+	if PlayerService and PlayerService.MarkDirty then
+		PlayerService.MarkDirty(player)
+	end
+	return true, {
+		tokens = d.Tokens,
+		coins = d.Coins,
+		price = price,
+		wait = X.Hours * 3600,
+	}
+end
+ArcadeService._exchange = exchange -- (for the headless tests)
+
 function ArcadeService.Start(playerService, combatService)
 	PlayerService, CombatService = playerService, combatService
 	event = ReplicatedStorage:FindFirstChild("ArcadeEvent")
@@ -206,6 +248,7 @@ function ArcadeService.Start(playerService, combatService)
 	end
 	if PlayerService and PlayerService.AddAction then
 		PlayerService.AddAction("ArcadeRoll", roll)
+		PlayerService.AddAction("ArcadeExchange", exchange)
 	end
 end
 

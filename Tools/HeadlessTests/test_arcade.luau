@@ -584,6 +584,69 @@ step(0.5)
 gd = PS.GetData(golf)
 check(gd and gd.Tokens == want and gd.Coins == 710, "so it's only ever swapped once (" .. tostring(gd and gd.Tokens) .. ", " .. tostring(gd and gd.Coins) .. ")")
 
+----------------------------------------------------------------------
+-- THE COIN EXCHANGE: coins for a token, once every few hours, the price
+-- growing with your best Spire floor
+----------------------------------------------------------------------
+do
+	local X = A.Exchange
+	local clock = 1800000000
+	AS.now = function()
+		return clock
+	end
+	d = PS.GetData(golf)
+	d.Cleared = {}
+	d.Arcade.exchanged = nil
+	check(Config.exchangePrice(d) == X.Base, "no floor beaten: the base price (" .. Config.exchangePrice(d) .. ")")
+	d.Cleared = { ["1"] = 1 }
+	check(Config.exchangePrice(d) == X.Base, "floor 1: the base price")
+	d.Cleared = { ["1"] = 3, ["2"] = 1, ["5"] = 2, ["Hard:9"] = 1, ["7"] = 0 }
+	check(Config.bestFloor(d) == 5, "the best floor is the highest Normal one beaten (" .. Config.bestFloor(d) .. ")")
+	check(Config.exchangePrice(d) == X.Base + 4 * X.PerFloor, "floor 5: " .. (X.Base + 4 * X.PerFloor) .. " coins")
+	d.Cleared["10"] = 1
+	check(Config.exchangePrice(d) == 15500, "floor 10: 15,500 coins (" .. Config.exchangePrice(d) .. ")")
+	d.Cleared = { ["3"] = 1 }
+	local price = Config.exchangePrice(d)
+	-- not enough coins
+	d.Coins, d.Tokens = price - 1, 4
+	step(0.3)
+	local ok, msg = ask("ArcadeExchange", nil, golf)
+	check(not ok and string.find(tostring(msg), "Not enough coins"), "short of coins: refused (" .. tostring(msg) .. ")")
+	check(d.Coins == price - 1 and d.Tokens == 4, "and nothing changes")
+	-- a trade
+	d.Coins = price + 50
+	step(0.3)
+	ok, msg = ask("ArcadeExchange", nil, golf)
+	check(ok and type(msg) == "table", "with the coins: a trade (" .. tostring(msg) .. ")")
+	check(d.Coins == 50 and d.Tokens == 4 + X.Tokens, "the coins go, the token comes (" .. d.Coins .. ", " .. d.Tokens .. ")")
+	check(d.Arcade.exchanged == clock, "and the time is kept")
+	check(type(msg) == "table" and msg.tokens == d.Tokens and msg.coins == 50 and msg.price == price, "the answer says what you have now")
+	-- again too soon
+	d.Coins = price * 3
+	clock += X.Hours * 3600 - 120
+	step(0.3)
+	ok, msg = ask("ArcadeExchange", nil, golf)
+	check(not ok and string.find(tostring(msg), "ready in 2m"), "2 minutes early: recharging (" .. tostring(msg) .. ")")
+	check(Config.exchangeWait(d, clock) == 120, "the wait is 120 s (" .. Config.exchangeWait(d, clock) .. ")")
+	clock += 120
+	check(Config.exchangeWait(d, clock) == 0, "then it's ready")
+	step(0.3)
+	ok = ask("ArcadeExchange", nil, golf)
+	check(ok and d.Tokens == 4 + 2 * X.Tokens, "and trades again")
+	-- the time is saved; a nonsense or future one is thrown away
+	local saved = clock
+	Players.PlayerRemoving:Fire(golf)
+	step(1)
+	local key = "u_" .. golf.UserId
+	check(saves[key] and saves[key].Arcade and saves[key].Arcade.exchanged == saved, "the last trade's time is saved")
+	saves[key].Arcade.exchanged = os.time() + 99999
+	Players.PlayerAdded:Fire(golf)
+	step(0.5)
+	d = PS.GetData(golf)
+	check(d and d.Arcade and d.Arcade.exchanged == nil, "a time in the future is thrown away")
+	AS.now = os.time
+end
+
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))
 end

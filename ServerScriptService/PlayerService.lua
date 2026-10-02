@@ -335,6 +335,11 @@ local function mergeSaved(saved)
 	d.QuestsDone = count(saved.QuestsDone)
 	if type(saved.Arcade) == "table" then
 		d.Arcade.spins = count(saved.Arcade.spins)
+		-- (when you last used the Coin Exchange: os.time(), never in the future)
+		local ex = saved.Arcade.exchanged
+		if type(ex) == "number" and ex == ex and ex > 0 and ex <= os.time() + 60 then
+			d.Arcade.exchanged = math.floor(ex)
+		end
 		if type(saved.Arcade.pity) == "table" then
 			for id in pairs(Config.Arcade and Config.Arcade.Machines or {}) do
 				d.Arcade.pity[id] = count(saved.Arcade.pity[id])

@@ -334,6 +334,7 @@ local function tokensPage(page, api)
 	local ways = {
 		"Quests at the Quest Board: " .. Config.Quests.Tokens .. " token every " .. Config.Quests.Hours .. " hours",
 		"Beat a Spire boss for the first time: a bundle of tokens",
+		"The Coin Exchange in the Arcade: your coins for a token, once every " .. Config.Arcade.Exchange.Hours .. " hours",
 		"The login streak: up to " .. ((R.Login[#R.Login] or {}).Tokens or 0) .. " tokens on day " .. #R.Login,
 		"Codes on update days, and the update gift",
 		"The Index: Epic and rarer finds, and collector levels",

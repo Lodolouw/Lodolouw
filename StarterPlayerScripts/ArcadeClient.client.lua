@@ -44,6 +44,10 @@
 	    Secret puts a banner on every screen, with its jackpot; the BIG WINS
 	    marquee over the machines lists the lobby's latest Legendary-or-better
 	    spins.
+	  * THE COIN EXCHANGE, at the top of the menu: your coins for a token,
+	    once every few hours, at a price that grows with your best Spire
+	    floor (the deal, a TRADE button, or the countdown / the coins you're
+	    short; the server decides: ArcadeService's "ArcadeExchange").
 	  * THE TOKEN MACHINE: walk up to it for "Get Tokens" (the Robux shop,
 	    later; for now it says where free tokens come from).
 ]]
@@ -541,6 +545,35 @@ local list = new("ScrollingFrame", {
 new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, Padding = UDim.new(0, UI.GAP), SortOrder = Enum.SortOrder.LayoutOrder }, list)
 new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 10), PaddingRight = UDim.new(0, 4) }, list)
 
+-- THE COIN EXCHANGE, first in the list: your coins for a token, once every
+-- few hours, at a price that grows with your best Spire floor (the server
+-- decides: ArcadeService's "ArcadeExchange"; the numbers: Config.Arcade.Exchange)
+UI.EX_H = 128
+UI.ex = {}
+do
+	local X = A.Exchange
+	local panel = new("Frame", { Name = "Exchange", BackgroundTransparency = 1, Size = UDim2.new(1, -14, 0, UI.EX_H), LayoutOrder = 1, ZIndex = 4, Visible = X ~= nil }, list)
+	new("Frame", { Name = "Shadow", BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -6, 1, -6), ZIndex = 4 }, panel)
+	local face = new("Frame", { Name = "Face", BackgroundColor3 = WHITE, BorderSizePixel = 0, Size = UDim2.new(1, -6, 1, -6), ClipsDescendants = true, ZIndex = 5 }, panel)
+	new("UIGradient", { Color = ColorSequence.new(RGB(70, 44, 18), UI.SCREEN) }, face)
+	UI.ex.edge = WK.outline(face, GOLD, 4)
+	for k = 0, 9 do -- (gold stripes, like the packs' banners)
+		new("Frame", { Name = "Stripe", BackgroundColor3 = GOLD, BackgroundTransparency = 0.9, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(300 + k * 80, UI.EX_H / 2), Size = UDim2.fromOffset(30, 360), Rotation = 24, ZIndex = 5 }, face)
+	end
+	-- coins -> token
+	UI.ex.coin = WK.coin(face, 62, { Name = "Coin", Position = UDim2.fromOffset(20, 26), ZIndex = 7 })
+	WK.label(face, { Name = "Arrow", Text = ">", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 30, TextColor3 = YELLOW, TextStrokeTransparency = 0, Position = UDim2.fromOffset(84, 40), Size = UDim2.fromOffset(34, 36), ZIndex = 7 })
+	UI.ex.token = tokenIcon(face, 62, { Name = "Token", Position = UDim2.fromOffset(118, 26), ZIndex = 7 })
+	UI.ex.tokenScale = new("UIScale", {}, UI.ex.token)
+	WK.label(face, { Name = "Title", Text = "COIN EXCHANGE", Font = WK.TITLE_FONT, TextScaled = false, TextSize = 26, TextColor3 = YELLOW, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(200, 16), Size = UDim2.fromOffset(480, 32), ZIndex = 7 })
+	UI.ex.deal = WK.label(face, { Name = "Deal", Text = "", TextScaled = false, TextSize = 22, TextColor3 = WHITE, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(200, 52), Size = UDim2.fromOffset(500, 26), ZIndex = 7 })
+	UI.ex.note = WK.label(face, { Name = "Note", Text = X and ("Once every " .. X.Hours .. " hours. The price grows as you climb the Spire.") or "", TextScaled = false, TextSize = 16, TextColor3 = UI.SOFT, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(200, 82), Size = UDim2.fromOffset(500, 22), ZIndex = 7 })
+	UI.ex.button = WK.button(face, "TRADE", WC.Green, { Name = "Trade", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -20, 0.5, 0), Size = UDim2.fromOffset(250, 70), ZIndex = 7 })
+	UI.ex.buttonScale = new("UIScale", {}, UI.ex.button)
+	UI.ex.ready = false
+end
+
 -- the picked pack's spin menu (it sits in the list, right under its banner)
 UI.detail = new("Frame", { Name = "Detail", BackgroundColor3 = UI.SCREEN, BorderSizePixel = 0, Size = UDim2.new(1, -14, 0, UI.DETAIL_H), ClipsDescendants = true, LayoutOrder = 3, ZIndex = 4 }, list)
 UI.detailEdge = WK.outline(UI.detail, INK, 4)
@@ -658,10 +691,82 @@ local function nudge(b, s)
 	end)
 end
 
+local refresh -- (below)
+
+-- the exchange: what it says now (the price, the countdown, or what you're short)
+local function exchangeTime(secs)
+	local h, m, sec = math.floor(secs / 3600), math.floor(secs / 60) % 60, secs % 60
+	return string.format("%d:%02d:%02d", h, m, sec)
+end
+function UI.refreshExchange()
+	local X = A.Exchange
+	if not X or not state then
+		return
+	end
+	local price = Config.exchangePrice(state)
+	local wait = Config.exchangeWait(state, os.time())
+	local coins = tonumber(state.Coins) or 0
+	UI.ex.deal.Text = X.Tokens .. (X.Tokens == 1 and " TOKEN" or " TOKENS") .. " for " .. Config.format(price) .. " coins"
+	UI.ex.ready = false
+	if wait > 0 then
+		UI.ex.button.Text = "READY IN\n" .. exchangeTime(wait)
+		UI.ex.button.BackgroundColor3 = WC.Off
+		UI.ex.edge.Color = GREY
+	elseif coins < price then
+		UI.ex.button.Text = "NEED " .. Config.format(price - coins) .. "\nMORE COINS"
+		UI.ex.button.BackgroundColor3 = WC.Off
+		UI.ex.edge.Color = GOLD
+	else
+		UI.ex.button.Text = "TRADE"
+		UI.ex.button.BackgroundColor3 = WC.Green
+		UI.ex.edge.Color = YELLOW
+		UI.ex.ready = true
+	end
+end
+do
+	local trading = false
+	UI.ex.button.Activated:Connect(function()
+		if trading or not A.Exchange then
+			return
+		end
+		UI.refreshExchange()
+		if not UI.ex.ready then
+			nudge(UI.ex.button, UI.ex.buttonScale)
+			play({ "UI Blip" }, 0.7, 0.6)
+			if state and Config.exchangeWait(state, os.time()) == 0 then
+				say("Not enough coins yet - beat bosses and do quests for more!", RED)
+			else
+				say("The exchange is recharging - come back when the timer's done.", GOLD)
+			end
+			return
+		end
+		trading = true
+		local ok, success, answer = pcall(function()
+			return Action:InvokeServer("ArcadeExchange")
+		end)
+		trading = false
+		if not ok or not success or type(answer) ~= "table" then
+			say(ok and tostring(answer or "Couldn't trade.") or "Couldn't reach the server.", RED)
+			play({ "UI Blip" }, 0.7, 0.6)
+			return
+		end
+		if state then
+			state.Tokens, state.Coins = answer.tokens, answer.coins
+			state.Arcade = state.Arcade or { spins = 0, pity = {} }
+			state.Arcade.exchanged = os.time()
+		end
+		-- the token pops
+		UI.ex.tokenScale.Scale = 1.6
+		tween(UI.ex.tokenScale, 0.5, { Scale = 1 }, Enum.EasingStyle.Elastic)
+		play({ "Win Rare", "Reward Pop", "UI Blip" }, 1, 0.7)
+		say("+" .. A.Exchange.Tokens .. (A.Exchange.Tokens == 1 and " token!" or " tokens!") .. " The exchange is ready again in " .. A.Exchange.Hours .. " hours.", YELLOW)
+		refresh()
+	end)
+end
+
 ----------------------------------------------------------------------
 -- Filling the menu in
 ----------------------------------------------------------------------
-local refresh -- (below)
 
 for i, e in ipairs(MACHINES) do
 	local color = e.machine and e.machine.Light or RGB(120, 108, 160)
@@ -720,6 +825,7 @@ UI.canSpin1, UI.canSpin10 = false, false
 refresh = function()
 	local t = tokens()
 	UI.tokenText.Text = tostring(t)
+	UI.refreshExchange()
 	rollBadge.Text = tostring(t)
 	rollBadge.Visible = t > 0
 	local spins = state and state.Arcade and tonumber(state.Arcade.spins) or 0
@@ -762,7 +868,7 @@ refresh = function()
 	if popIn then
 		UI.detail.Size = UDim2.new(1, -14, 0, 0)
 		tween(UI.detail, 0.3, { Size = UDim2.new(1, -14, 0, h) }, Enum.EasingStyle.Quint)
-		local y = 4 + (idx - 1) * (UI.BANNER_H + UI.GAP)
+		local y = 4 + (A.Exchange and (UI.EX_H + UI.GAP) or 0) + (idx - 1) * (UI.BANNER_H + UI.GAP)
 		pcall(function()
 			tween(list, 0.3, { CanvasPosition = Vector2.new(0, y) }, Enum.EasingStyle.Quint)
 		end)
@@ -884,6 +990,14 @@ do
 		UI.pulse1.Scale = UI.canSpin1 and (1 + 0.025 * math.sin(clock * 5)) or 1
 		UI.pulse10.Scale = UI.canSpin10 and (1 + 0.025 * math.sin(clock * 5 + 1.5)) or 1
 		UI.pityStar.Rotation = math.sin(clock * 3) * 12
+		local sec = math.floor(clock)
+		if sec ~= UI.ex.lastTick then
+			UI.ex.lastTick = sec
+			UI.refreshExchange()
+		end
+		if UI.ex.ready then -- (a trade you can make throbs)
+			UI.ex.buttonScale.Scale = 1 + 0.03 * math.sin(clock * 5)
+		end
 		local open = UI.cards[selected]
 		if open then
 			open.zoom.Scale = 1.05 + 0.03 * math.sin(clock * 0.45)
@@ -938,7 +1052,7 @@ local function showTokens()
 		return
 	end
 	openMenu()
-	say("Quests give a token every " .. (Config.Quests.Hours or 6) .. " hours, and every boss gives tokens the first time you beat it.", GOLD)
+	say("Quests give a token every " .. (Config.Quests.Hours or 6) .. " hours, the Coin Exchange trades coins for one, and every boss gives tokens the first time you beat it.", GOLD)
 end
 getBtn.Activated:Connect(showTokens)
 

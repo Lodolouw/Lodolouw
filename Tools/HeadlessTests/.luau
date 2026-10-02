@@ -494,7 +494,7 @@ do
 	check((invokes.ArcadeExchange or 0) == 1, "TRADE asks the server once")
 	check(d.Tokens == tokensBefore + X.Tokens and d.Coins == 1000, "the coins go and the token comes (" .. d.Tokens .. ", " .. d.Coins .. ")")
 	check(textOn(win, "^" .. d.Tokens .. "$") ~= nil, "the menu's counter shows it")
-	check(string.find(trade.Text, "READY IN") and (string.find(trade.Text, "2:59:5") or string.find(trade.Text, "3:00:00")), "then it counts down from " .. X.Hours .. " hours (" .. trade.Text .. ")")
+	check(string.find(trade.Text, "READY IN") and string.find(trade.Text, "2:59:5"), "then it counts down from " .. X.Hours .. " hours (" .. trade.Text .. ")")
 	snap("THE COIN EXCHANGE, USED|it counts down to the next trade")
 	-- (put things back for the rest of the test)
 	d.Tokens, d.Coins = tokensBefore, coinsBefore
@@ -530,25 +530,11 @@ local leverArm = cabinets.Slime:FindFirstChild("LeverArm")
 local leverHome = leverArm and leverArm.CFrame
 local sawToken, tokenNearSlot, leverMoved = false, false, false
 local tiles = nil
-local lastTok, prevTok = nil, nil -- (it moves ~3.5 studs a frame: the path between frames is what's checked)
-local function nearPath(a, b, p)
-	local ab = b - a
-	local len2 = ab:Dot(ab)
-	local t = len2 > 0 and math.clamp((p - a):Dot(ab) / len2, 0, 1) or 0
-	return ((a + ab * t) - p).Magnitude
-end
 waitFor(function()
 	local tok = workspace:FindFirstChild("ThrownToken")
 	if tok then
 		sawToken = true
-		if slot then
-			tokenNearSlot = tokenNearSlot or nearPath(lastTok or tok.Position, tok.Position, slot.Position) < 3
-		end
-		prevTok, lastTok = lastTok, tok.Position
-	elseif lastTok and prevTok and slot then
-		-- (gone into the slot between two frames: its last frame's flight, carried on)
-		tokenNearSlot = tokenNearSlot or nearPath(lastTok, lastTok + (lastTok - prevTok), slot.Position) < 3
-		lastTok = nil
+		tokenNearSlot = tokenNearSlot or (slot and (tok.Position - slot.Position).Magnitude < 3)
 	end
 	leverMoved = leverMoved or (leverArm and (leverArm.Position - leverHome.Position).Magnitude > 0.3)
 	tiles = find("Tiles", spinScreen)
