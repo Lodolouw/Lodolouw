@@ -577,13 +577,15 @@ local function win(S)
 	-- (the first chest pays once ever - a replay, e.g. the dev's, pays nothing)
 	local d = PlayerService.GetData and PlayerService.GetData(S.player)
 	local firstTime = not (d and d.IntroDone)
-	PlayerService.SetIntroDone(S.player)
 	if firstTime and (R.Tokens or 0) > 0 then
 		PlayerService.AddTokens(S.player, R.Tokens)
 	end
 	if firstTime and (R.Coins or 0) > 0 then
 		PlayerService.AddCoins(S.player, R.Coins, true)
 	end
+	-- (done AFTER the chest pays: that starts the new player path, whose first
+	-- step hands out a token only if you've none - the chest's is the one)
+	PlayerService.SetIntroDone(S.player)
 	send(S, "Win")
 	local V = I.Reveal or {}
 	task.wait(V.Delay or 2.8)
