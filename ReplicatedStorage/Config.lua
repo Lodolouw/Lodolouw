@@ -3717,7 +3717,7 @@ Config.Rewards = {
 	-- THE COMMUNITY CHEST in the lobby: join the group, walk up, claim (once).
 	-- GroupId: the number in your community's web address (0: the chest just
 	-- says the community isn't linked yet).
-	GroupId = 0,
+	GroupId = 1064901184,
 	Group = { Tokens = 3, Title = "Member" },
 	-- where the chest stands: on the grass west of the plaza, just north of the
 	-- east-west path (it faces the path; its walk-up box is between the two)

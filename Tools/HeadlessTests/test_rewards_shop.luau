@@ -372,7 +372,8 @@ do
 	check(not ask("CollectorClaim", 10), "level 10 is far off")
 	check(not ask("CollectorClaim", 4), "there's nothing at level 4")
 
-	-- the community chest
+	-- the community chest (as if no community were linked yet)
+	R.GroupId = 0
 	local ok, msg = ask("GroupClaim")
 	check(not ok and string.find(msg, "isn't linked"), "no community linked yet: the chest says so")
 	R.GroupId = 555
