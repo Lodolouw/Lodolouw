@@ -290,27 +290,99 @@ Menus.define("Rewards", {
 ----------------------------------------------------------------------
 local function chestPage(page, api)
 	local rw = rewardsOf(api.state)
-	api.section("Join our community!", rw.group and "Thanks for joining!" or nil)
-	local block = api.block(290)
-	local face = K.card(block, { Name = "ChestCard", Size = UDim2.fromOffset(math.min(760, api.width), 270), ZIndex = 7 }, C.Pink)
+	local G = R.Group or {}
+	api.section("Join the community", rw.group and "Claimed - thanks for joining!" or "A free reward for members")
+	local W = api.width
+	-- the big card: the chest bursting with treasure, what's in it, CLAIM
+	local block = api.block(262)
+	local face = K.card(block, { Name = "ChestCard", Size = UDim2.fromOffset(W, 250), ZIndex = 7 }, C.Pink)
 	K.shine(face, 0.15).ZIndex = 8
-	-- the chest, drawn
-	local chest = new("Frame", { Name = "Chest", BackgroundColor3 = C.Red, BorderSizePixel = 0, Position = UDim2.fromOffset(30, 70), Size = UDim2.fromOffset(170, 120), ZIndex = 9 }, face)
-	K.outline(chest, C.Ink, 4)
-	new("Frame", { BackgroundColor3 = C.Ink, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0.4, 0), Size = UDim2.new(1, 0, 0, 8), ZIndex = 10 }, chest)
-	new("Frame", { BackgroundColor3 = C.Gold, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.32, 0), Size = UDim2.fromOffset(28, 34), ZIndex = 11 }, chest)
-	for _, x in ipairs({ 0.18, 0.82 }) do
-		new("Frame", { BackgroundColor3 = C.Gold, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(x, 0, 0, 0), Size = UDim2.new(0, 12, 1, 0), ZIndex = 10 }, chest)
+	local art = new("Frame", { Name = "Art", BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(220, 222), ZIndex = 9 }, face)
+	-- a gold glow behind it, and rays
+	local glow = new("Frame", { Name = "Glow", BackgroundColor3 = C.Yellow, BackgroundTransparency = 0.35, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(110, 104), Size = UDim2.fromOffset(190, 190), ZIndex = 9 }, art)
+	new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, glow)
+	for k, a in ipairs({ -38, -14, 12, 36 }) do
+		new("Frame", { Name = "Ray", BackgroundColor3 = C.White, BackgroundTransparency = 0.45 + k * 0.05, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromOffset(110, 112), Size = UDim2.fromOffset(16, 104), Rotation = a, ZIndex = 9 }, art)
 	end
-	K.big(face, { Name = "Reward", Text = Config.rewardText(R.Group), TextScaled = false, TextSize = 30, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(230, 30), Size = UDim2.new(1, -250, 0, 80), ZIndex = 9 })
-	K.big(face, { Name = "How", Text = "1. Open the game's page and tap the community's name.   2. Join it.   3. Come back and claim - once.", TextScaled = false, TextSize = 20, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(230, 110), Size = UDim2.new(1, -250, 0, 80), ZIndex = 9, Edge = 2 })
+	local WOOD, WOOD_D, GOLD = Color3.fromRGB(176, 96, 58), Color3.fromRGB(115, 62, 57), Color3.fromRGB(255, 196, 56)
+	local function box(name, color, x, y, w, h, z, rot)
+		local f = new("Frame", { Name = name, BackgroundColor3 = color, BorderSizePixel = 0, Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h), Rotation = rot or 0, ZIndex = z }, art)
+		K.outline(f, C.Ink, 4)
+		return f
+	end
+	-- the lid, flung open behind
+	local lid = box("Lid", WOOD, 44, 48, 132, 46, 10, -14)
+	new("Frame", { BackgroundColor3 = WOOD_D, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0.5, -3), Size = UDim2.new(1, 0, 0, 6), ZIndex = 11 }, lid)
+	for _, x in ipairs({ 0.12, 0.88 }) do
+		new("Frame", { BackgroundColor3 = GOLD, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(x, 0, 0, 0), Size = UDim2.new(0, 14, 1, 0), ZIndex = 11 }, lid)
+	end
+	-- treasure heaped over the rim: tokens and a gem
+	for k, t in ipairs({ { 52, 84, 46 }, { 92, 70, 54 }, { 138, 82, 46 }, { 74, 96, 40 }, { 120, 98, 40 } }) do
+		K.token(art, t[3], { Name = "Treasure" .. k, Position = UDim2.fromOffset(t[1], t[2]), ZIndex = 12 })
+	end
+	-- the chest
+	local body = box("Chest", WOOD, 36, 118, 148, 86, 13)
+	new("Frame", { BackgroundColor3 = WOOD_D, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0.45, 0), Size = UDim2.new(1, 0, 0, 6), ZIndex = 14 }, body)
+	new("Frame", { BackgroundColor3 = GOLD, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 0, 12), ZIndex = 14 }, body)
+	for _, x in ipairs({ 0.1, 0.9 }) do
+		new("Frame", { BackgroundColor3 = GOLD, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(x, 0, 0, 0), Size = UDim2.new(0, 14, 1, 0), ZIndex = 14 }, body)
+	end
+	local lock = new("Frame", { Name = "Lock", BackgroundColor3 = GOLD, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.fromOffset(28, 34), ZIndex = 15 }, body)
+	K.outline(lock, C.Ink, 3)
+	new("Frame", { BackgroundColor3 = C.Ink, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), Size = UDim2.fromOffset(6, 12), ZIndex = 16 }, lock)
+	for k, sp in ipairs({ { 18, 30, 26 }, { 186, 44, 22 }, { 196, 150, 18 }, { 8, 150, 16 } }) do
+		K.label(art, { Name = "Sparkle" .. k, Text = "+", Font = K.TITLE_FONT, TextScaled = false, TextSize = sp[3], TextColor3 = C.White, Position = UDim2.fromOffset(sp[1], sp[2]), Size = UDim2.fromOffset(sp[3], sp[3]), ZIndex = 16 })
+	end
+	-- what's in it
+	local right = 250
+	K.big(face, { Name = "Heading", Text = rw.group and "THANKS FOR JOINING!" or "FREE FOR MEMBERS", TextScaled = false, TextSize = 30, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(right, 18), Size = UDim2.new(1, -right - 20, 0, 38), ZIndex = 9 })
+	local prizes = {}
+	if (G.Tokens or 0) > 0 then
+		table.insert(prizes, { "Tokens", "+" .. G.Tokens .. " TOKENS" })
+	end
+	if G.Title then
+		table.insert(prizes, { "Titles", '"' .. G.Title .. '" TITLE' })
+	end
+	local tileW = math.min(210, math.floor((W - right - 20 - 12 * (#prizes - 1)) / math.max(1, #prizes)))
+	for k, pz in ipairs(prizes) do
+		local tile = K.card(face, { Name = "Prize" .. k, Position = UDim2.fromOffset(right + (k - 1) * (tileW + 12), 64), Size = UDim2.fromOffset(tileW, 112), ZIndex = 9 }, C.Paper)
+		if pz[1] == "Tokens" then
+			K.token(tile, 54, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10), ZIndex = 11 })
+		else
+			K.icon(tile, pz[1], { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10), Size = UDim2.fromOffset(54, 54), ZIndex = 11 })
+		end
+		K.label(tile, { Name = "Text", Text = pz[2], TextColor3 = C.Ink, TextStrokeTransparency = 1, TextScaled = false, TextSize = 18, TextWrapped = true, Position = UDim2.fromOffset(6, 70), Size = UDim2.new(1, -12, 0, 34), ZIndex = 11 })
+		if rw.group then
+			K.chip(tile, "GOT IT", C.Green, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), ZIndex = 12 })
+		end
+	end
 	if rw.group then
-		K.chip(face, "CLAIMED", C.Ink, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -20), ZIndex = 9 })
+		K.chip(face, "CLAIMED", C.Ink, { Name = "Claimed", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -22), ZIndex = 9 })
 	else
-		local b = api.button(face, "CLAIM", C.Green, { Name = "Claim", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -18), Size = UDim2.fromOffset(180, 54), ZIndex = 10 })
+		local b = api.button(face, "CLAIM", C.Green, { Name = "Claim", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -16), Size = UDim2.fromOffset(200, 54), ZIndex = 10 })
 		b.Activated:Connect(function()
 			api.act("GroupClaim")
 		end)
+		K.label(face, { Name = "Once", Text = "Once per player", TextColor3 = C.White, TextScaled = false, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, right, 1, -30), Size = UDim2.fromOffset(200, 20), ZIndex = 9 })
+	end
+	-- how: three steps
+	if not rw.group then
+		api.section("How to get it")
+		local w = math.floor((W - 2 * 12) / 3)
+		local grid = api.grid(3, w, 128, 12)
+		for k, st in ipairs({
+			{ "Updates", "Open the game's page" },
+			{ "Friends", "Tap the community's name, then JOIN" },
+			{ "Gift", "Come back here and press CLAIM" },
+		}) do
+			local tile = K.card(grid, { Name = "Step" .. k, LayoutOrder = k, ZIndex = 7 }, C.Paper)
+			local n = new("Frame", { Name = "Number", BackgroundColor3 = C.Pink, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(36, 36), ZIndex = 9 }, tile)
+			new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, n)
+			K.outline(n, C.Ink, 3)
+			K.label(n, { Text = tostring(k), Font = K.TITLE_FONT, TextScaled = false, TextSize = 18, TextColor3 = C.White, Size = UDim2.fromScale(1, 1), ZIndex = 10 })
+			K.icon(tile, st[1], { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 10), Size = UDim2.fromOffset(48, 48), ZIndex = 9 })
+			K.label(tile, { Name = "Text", Text = st[2], TextColor3 = C.Ink, TextStrokeTransparency = 1, TextScaled = false, TextSize = 19, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(14, 62), Size = UDim2.new(1, -28, 0, 56), ZIndex = 9 })
+		end
 	end
 end
 Menus.define("Community", {
