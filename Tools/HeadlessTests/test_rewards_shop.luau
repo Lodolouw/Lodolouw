@@ -550,7 +550,15 @@ do
 	check(not ask("ShopPass", "Luck2", bravo), "no luck passes where paid random items aren't allowed")
 	Marketplace.PromptGamePassPurchaseFinished:Fire(me, 902, false)
 	check(me:GetAttribute("Pass_DoubleXP") == nil, "a closed prompt gives nothing")
+	-- (the "finished" event alone proves nothing - an exploit can fake it:
+	-- Roblox is asked whether they really own the pass first)
 	Marketplace.PromptGamePassPurchaseFinished:Fire(me, 902, true)
+	play(0.5)
+	check(me:GetAttribute("Pass_DoubleXP") == nil, "a faked 'bought' event gives nothing without the pass")
+	owned[me.UserId] = owned[me.UserId] or {}
+	owned[me.UserId][902] = true
+	Marketplace.PromptGamePassPurchaseFinished:Fire(me, 902, true)
+	play(0.5)
 	check(me:GetAttribute("Pass_DoubleXP") == true, "a bought pass works at once")
 	me:SetAttribute("Pass_DoubleXP", nil)
 end

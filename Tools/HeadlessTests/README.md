@@ -455,6 +455,18 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `test_moneyicons.luau` - the living coin and token (MoneyIcons): made
   once all 8 pictures are uploaded (flipping through them, the token
   bobbing), nothing while any is missing.
+- `test_security_economy.luau` - SECURITY, the economy, attacked the way a
+  modified client would: 15 community-chest claims fired at once pay once (the
+  Action remote runs one action per player at a time); NaN / infinite /
+  negative amounts never reach coins, tokens or power; a purchase whose payout
+  breaks part-way is never paid twice on Roblox's retry; a once-only pack bought
+  again gives its worth; Index rewards and collector points count only weapons
+  found yourself; starters can't be traded. (Fails on the code before the audit.)
+- `test_security_combat.luau` - SECURITY, combat: the server picks the swing of
+  the string (asking for the finisher gets swing 1), swings can't beat their
+  lock, a hit from where you blinked in for an instant lands nothing, another
+  arena copy's boss can't be hit, a no-damage hit earns no mastery, and remote
+  spam past its budget is ignored. (Fails on the code before the audit.)
 - `test_rewards_shop.luau` - THE NEW GUI's SERVER SIDE (RewardService and
   ShopService) with a pretend DataStore, Marketplace and PolicyService and
   three players: the new save fields start empty and a nonsense save is

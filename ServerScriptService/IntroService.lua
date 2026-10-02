@@ -574,11 +574,14 @@ local function win(S)
 	CollectionService:RemoveTag(m, "CombatTarget") -- (nothing left to punch)
 	act(S, "Pop", S.rest, 0, 0)
 	local R = I.Reward or {}
+	-- (the first chest pays once ever - a replay, e.g. the dev's, pays nothing)
+	local d = PlayerService.GetData and PlayerService.GetData(S.player)
+	local firstTime = not (d and d.IntroDone)
 	PlayerService.SetIntroDone(S.player)
-	if (R.Tokens or 0) > 0 then
+	if firstTime and (R.Tokens or 0) > 0 then
 		PlayerService.AddTokens(S.player, R.Tokens)
 	end
-	if (R.Coins or 0) > 0 then
+	if firstTime and (R.Coins or 0) > 0 then
 		PlayerService.AddCoins(S.player, R.Coins, true)
 	end
 	send(S, "Win")

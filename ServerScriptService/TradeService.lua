@@ -158,6 +158,11 @@ local function problemWith(trade)
 		if not PlayerService.GetData(p) then
 			return name .. "'s save isn't ready."
 		end
+		-- (a session whose save couldn't load can't save either: what it trades
+		-- away would come back next time - a copy)
+		if PlayerService.CanSave and not PlayerService.CanSave(p) then
+			return name .. "'s progress isn't being saved right now, so they can't trade."
+		end
 	end
 	if not s or sitter(s.A) ~= trade.a then
 		return trade.a.DisplayName .. " stood up."
@@ -364,6 +369,12 @@ local function finish(trade)
 	end
 	PlayerService.MarkDirty(a)
 	PlayerService.MarkDirty(b)
+	-- (both saves written straight away, so a crash right after can't leave
+	-- one side saved and the other not - a weapon on both accounts)
+	if PlayerService.SaveNow then
+		task.spawn(PlayerService.SaveNow, a)
+		task.spawn(PlayerService.SaveNow, b)
+	end
 	send(a, "Done", table.clone(ob), table.clone(oa), b.DisplayName)
 	send(b, "Done", table.clone(oa), table.clone(ob), a.DisplayName)
 	standUp(a)

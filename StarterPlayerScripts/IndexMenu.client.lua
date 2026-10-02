@@ -58,7 +58,7 @@ end
 -- the collector bar's points (the same sum as RewardService.CollectorPoints)
 local function collectorPoints(d)
 	local owned, cleared = 0, 0
-	for id in pairs(d and type(d.Weapons) == "table" and type(d.Weapons.own) == "table" and d.Weapons.own or {}) do
+	for id in pairs(Config.foundWeapons(d)) do -- (found yourself: traded ones don't count)
 		if W.List[id] then
 			owned = owned + 1
 		end
@@ -143,7 +143,9 @@ local function weaponsPage(page, api)
 		for i, id in ipairs(g.list) do
 			local def = W.List[id]
 			if def then
-				weaponCard(grid, i, id, def, own[id] ~= nil, idx[id] == true, api)
+				-- (a weapon traded to you shows as yours, but its Index reward is
+				-- for finding it yourself)
+				weaponCard(grid, i, id, def, own[id] ~= nil and Config.foundWeapons(d)[id] ~= nil, idx[id] == true, api)
 			end
 		end
 	end

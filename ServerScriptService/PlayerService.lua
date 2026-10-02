@@ -30,6 +30,8 @@ local AUTOSAVE_SECONDS = 90
 local profiles = {} -- [player] = { data = {...}, canSave = bool, ... }
 local dirty = {} -- [player] = true when the client needs a fresh snapshot
 local started = {} -- [player] = true once onPlayerAdded ran
+local busy = {} -- [player] = true while one of their actions is running (one at a time)
+local releasing = {} -- [userId] = the profile of a player who left, until its leave-save is written
 local hookedPrompts = {}
 local allowRequest, saneArg -- (the request budget and argument checks, below)
 local remotes = {}
@@ -64,7 +66,7 @@ local function defaultData()
 		Colosseum = { clears = 0, best = nil, bonusDay = 0, pick = "Normal", wins = {}, bests = {} },
 		-- WEAPONS (Config.Weapons): the ones you own, each with its mastery
 		-- points (["IronSword"] = 140), and the one in your hand (nil: fists)
-		Weapons = { own = {}, hold = nil },
+		Weapons = { own = {}, found = {}, hold = nil },
 		-- ARCADE TOKENS (Config.Arcade): what the Arcade's machines take
 		Tokens = 0,
 		-- the Arcade: spins ever (the first is Rare or better), and on each
@@ -322,6 +324,19 @@ local function mergeSaved(saved)
 		if type(hold) == "string" and d.Weapons.own[hold] then
 			d.Weapons.hold = hold
 		end
+		-- (found yourself - Config.foundWeapons; an old save without the list:
+		-- everything it owns, once)
+		if type(saved.Weapons.found) == "table" then
+			for id, on in pairs(saved.Weapons.found) do
+				if type(id) == "string" and W.List[id] and on == true then
+					d.Weapons.found[id] = true
+				end
+			end
+		else
+			for id in pairs(d.Weapons.own) do
+				d.Weapons.found[id] = true
+			end
+		end
 	end
 	-- tokens, the Arcade's counters, quests handed in: only sensible numbers
 	local function count(v)
@@ -417,6 +432,9 @@ local function mergeSaved(saved)
 	for _, id in ipairs(W and W.Starters or {}) do
 		if W.List[id] and not d.Weapons.own[id] then
 			d.Weapons.own[id] = 0
+		end
+		if W.List[id] then
+			d.Weapons.found[id] = true
 		end
 	end
 	-- a quest finished in an earlier set but never handed in: handed in now
@@ -531,20 +549,28 @@ local function loadData(player)
 	return nil, false, lockedTries >= 5
 end
 
--- `release` = true when the player is leaving: the lock is let go
-local function saveProfile(player, release)
-	local profile = profiles[player]
+-- `release` = true when the player is leaving: the lock is let go. Once a
+-- profile has started letting go, no ordinary save may write again (an
+-- autosave landing after the leave-save would take the lock back and leave
+-- it stuck), and an ordinary save only writes while the lock is still ours.
+local function saveProfile(player, release, profile)
+	profile = profile or profiles[player]
 	if not profile or not profile.canSave or not store then
 		return
+	end
+	if release then
+		profile.released = true
+	elseif profile.released then
+		return false
 	end
 	local key = "u_" .. player.UserId
 	for attempt = 1, 3 do
 		local stolen = false
 		local ok, err = pcall(function()
 			store:UpdateAsync(key, function(old)
-				if type(old) == "table" and old._lockJob and old._lockJob ~= JOB then
+				if type(old) == "table" and old._lockJob ~= JOB and (old._lockJob ~= nil or not release) then
 					stolen = true
-					return nil -- (another server owns it now: never write over its copy)
+					return nil -- (another server owns it now, or it's been let go: never write over it)
 				end
 				local out = cleanCopy(profile.data, 0)
 				out._lockJob = (not release) and JOB or nil
@@ -703,13 +729,19 @@ local gainHooks = {}
 function PlayerService.AddGainHook(fn)
 	table.insert(gainHooks, fn)
 end
+-- (a real, finite number: NaN or an infinity in a balance would make every
+-- "can you afford it?" check pass, so none may ever reach one)
+local function finite(n)
+	return type(n) == "number" and n == n and n > -math.huge and n < math.huge
+end
+PlayerService.finite = finite
 local function boosted(player, d, kind, amount)
-	if amount <= 0 then
-		return amount
+	if not finite(amount) or amount <= 0 then
+		return finite(amount) and amount or 0
 	end
 	for _, fn in ipairs(gainHooks) do
 		local ok, v = pcall(fn, player, d, kind, amount)
-		if ok and type(v) == "number" and v == v then
+		if ok and finite(v) and v >= 0 then
 			amount = v
 		end
 	end
@@ -719,11 +751,16 @@ end
 -- Coins earned (multiplied by the gain hooks), or exactly `amount` if `raw`
 function PlayerService.AddCoins(player, amount, raw)
 	local profile = profiles[player]
-	if profile then
+	if profile and finite(amount) then
 		if not raw then
 			amount = boosted(player, profile.data, "Coins", amount)
 		end
-		profile.data.Coins = profile.data.Coins + amount
+		local new = (profile.data.Coins or 0) + amount
+		if not finite(new) then
+			warn("[PlayerService] refused a bad coin amount: " .. tostring(amount))
+			return
+		end
+		profile.data.Coins = math.max(0, new)
 		markDirty(player)
 	end
 end
@@ -732,7 +769,7 @@ end
 function PlayerService.AddTokens(player, amount, why)
 	local profile = profiles[player]
 	amount = math.floor(tonumber(amount) or 0)
-	if profile and amount > 0 then
+	if profile and finite(amount) and amount > 0 and amount < 1e6 then
 		profile.data.Tokens = (profile.data.Tokens or 0) + amount
 		markDirty(player)
 		if why then
@@ -869,12 +906,22 @@ function PlayerService.GiveWeapon(player, id)
 		return false
 	end
 	own[id] = 0
+	profile.data.Weapons.found = profile.data.Weapons.found or {}
+	profile.data.Weapons.found[id] = true
 	markDirty(player)
 	return true
 end
 
 -- Saves this player right now (a Robux purchase: ShopService). True if it
 -- was written to the DataStore.
+-- Whether this player's progress is being saved (false after a failed load,
+-- or once another server owns their save; true in Studio without saves is
+-- not needed - there's nothing to copy into)
+function PlayerService.CanSave(player)
+	local profile = profiles[player]
+	return profile ~= nil and (profile.canSave == true or store == nil)
+end
+
 function PlayerService.SaveNow(player)
 	return saveProfile(player, false) == true
 end
@@ -888,12 +935,17 @@ end
 -- Power (XP) earned (multiplied by the gain hooks), or exactly `amount` if `raw`
 function PlayerService.AddPower(player, amount, raw)
 	local profile = profiles[player]
-	if profile then
+	if profile and finite(amount) then
 		if not raw then
 			amount = boosted(player, profile.data, "Power", amount)
 		end
 		local before = Config.levelFromPower(profile.data.Power)
-		profile.data.Power = profile.data.Power + amount
+		local new = profile.data.Power + amount
+		if not finite(new) then
+			warn("[PlayerService] refused a bad power amount: " .. tostring(amount))
+			return
+		end
+		profile.data.Power = math.max(0, new)
 		-- (a new level: more max health - every level gives some, Config.LevelBonus)
 		if Config.levelFromPower(profile.data.Power) ~= before then
 			applyCharacterStats(player, false)
@@ -982,7 +1034,8 @@ handlers.DevSetLevel = function(player, d, level)
 	if not Config.isDev(player) then
 		return false, "Dev tools are only for the game's owner."
 	end
-	level = math.floor(tonumber(level) or 0)
+	level = tonumber(level)
+	level = finite(level) and math.floor(level) or 0 -- (tonumber("nan") is NaN)
 	if level < 1 or level > Config.MaxLevel then
 		return false, "Pick a level from 1 to " .. Config.MaxLevel .. "."
 	end
@@ -1027,8 +1080,32 @@ local function onPlayerAdded(player)
 		player:SetAttribute("Dev", true)
 	end
 
-	local saved, ok, stillLocked = loadData(player)
+	-- (back on this same server while their leave-save is still being
+	-- written or retried: carry on with that copy - it's newer than anything
+	-- in the DataStore, and loading the stored one would roll them back)
+	local pending = releasing[player.UserId]
+	local saved, ok, stillLocked
+	if pending then
+		releasing[player.UserId] = nil
+		pending.released = nil
+		ok = pending.canSave
+	else
+		saved, ok, stillLocked = loadData(player)
+	end
 	if not player.Parent then
+		if ok and not pending then
+			task.spawn(function() -- (left while loading: let go of the lock we just took)
+				pcall(function()
+					store:UpdateAsync("u_" .. player.UserId, function(old)
+						if type(old) == "table" and old._lockJob == JOB then
+							old._lockJob = nil
+							return old
+						end
+						return nil
+					end)
+				end)
+			end)
+		end
 		return
 	end
 	if stillLocked then
@@ -1038,8 +1115,15 @@ local function onPlayerAdded(player)
 		return
 	end
 
-	local data, swapped, refund = mergeSaved(saved)
-	local profile = { data = data, canSave = ok }
+	local data, swapped, refund
+	local profile
+	if pending then
+		data, swapped, refund = pending.data, 0, 0
+		profile = pending
+	else
+		data, swapped, refund = mergeSaved(saved)
+		profile = { data = data, canSave = ok }
+	end
 	profiles[player] = profile
 	ensureQuests(profile.data)
 	showCleared(player, profile.data) -- the Spire menu shows them
@@ -1088,10 +1172,30 @@ local function onPlayerAdded(player)
 end
 
 local function onPlayerRemoving(player)
-	saveProfile(player, true) -- (and let go of the lock)
+	local profile = profiles[player]
+	busy[player] = nil
+	if profile then
+		releasing[player.UserId] = profile
+	end
+	local saved = saveProfile(player, true) -- (and let go of the lock)
 	profiles[player] = nil
 	dirty[player] = nil
 	started[player] = nil
+	-- a failed leave-save is retried (a few times, further apart each time)
+	-- rather than leaving the DataStore with an older copy; the profile stays
+	-- in `releasing` until it's written, so rejoining here picks it up
+	local tries = 0
+	while profile and saved == false and profile.canSave and releasing[player.UserId] == profile and tries < 5 do
+		tries += 1
+		task.wait(2 ^ tries)
+		if releasing[player.UserId] ~= profile then
+			return -- (they came back to this server: that copy is live again)
+		end
+		saved = saveProfile(player, true, profile)
+	end
+	if releasing[player.UserId] == profile then
+		releasing[player.UserId] = nil
+	end
 end
 
 ----------------------------------------------------------------------
@@ -1185,7 +1289,15 @@ local function buildRemotes()
 		if not profile or not handler then
 			return false, "Not ready yet."
 		end
+		-- ONE AT A TIME: a handler that yields (a web call, a save) could
+		-- otherwise be run again by the same player before the first one has
+		-- finished, and both would pass its "already claimed?" check
+		if busy[player] then
+			return false, "One thing at a time!"
+		end
+		busy[player] = true
 		local ok, success, message = pcall(handler, player, profile.data, arg)
+		busy[player] = nil
 		if not ok then
 			warn("[PlayerService] " .. tostring(name) .. " failed: " .. tostring(success))
 			return false, "Something went wrong."
@@ -1225,24 +1337,48 @@ end
 -- first, and for that long the player isn't judged (then starts fresh from
 -- wherever the move put them).
 -- (A client can't set those: attributes a client sets never reach the server.)
-local TELEPORT_STUDS = 60
+local TELEPORT_STUDS = 60 -- straight up in one tick (and the most any one tick may ever move)
+local TICK_SLACK = 2.5 -- one tick may move this many times the allowed speed (rolls, lag)
+local TICK_MIN = 24 -- ...but never less than this many studs (a lag spike, a knock)
 local SPEED_WINDOW = 3
 local SPEED_SLACK = 12 -- studs a second on top of walk speed * 1.35
 local FLY_SECONDS = 2.5
+local FIGHT_FLY_SECONDS = 1.3 -- in an arena: off the floor longer than any jump = hovering
+local FIGHT_GROUND_RAY = 7 -- (in an arena the floor has to be right under you)
+local FALLING = 1.2 -- studs a tick: dropping at least this fast is really falling
+local CORRIDOR = 40 -- a server move: anywhere this close to the line from start to finish
+local ARRIVED = 30 -- ...and this close to the finish counts as there
+local STRIKE_WINDOW, STRIKE_KICK = 60, 30 -- this many put-backs inside a minute: kicked
 local guard = setmetatable({}, { __mode = "k" })
 
 local function flatMag(v)
 	return Vector3.new(v.X, 0, v.Z).Magnitude
 end
 
--- (while a move the server started is under way, the player isn't judged at
--- all - their screen may take a moment to get them there, and network lag
--- mustn't snap them back mid-trip - and once it's over, wherever they are
--- is their new starting point)
-local function sanctioned(player, pos)
+-- (while a move the server started is under way, the player isn't judged -
+-- their screen may take a moment to get them there, and network lag mustn't
+-- snap them back mid-trip - but ONLY along the way: somewhere near the line
+-- from where they set off to where they're going. Anywhere else is judged as
+-- usual, so a server move can't be used as a moment to teleport anywhere.
+-- Arriving makes that spot their new starting point.)
+-- returns "arrived", "along" or nil
+local function sanctioned(player, pos, g)
 	local to = player:GetAttribute("MoveTo")
 	local untilT = player:GetAttribute("MoveUntil")
-	return typeof(to) == "Vector3" and type(untilT) == "number" and workspace:GetServerTimeNow() <= untilT
+	if not (typeof(to) == "Vector3" and type(untilT) == "number" and workspace:GetServerTimeNow() <= untilT) then
+		return nil
+	end
+	if (pos - to).Magnitude <= ARRIVED then
+		return "arrived"
+	end
+	local a = g.good
+	local ab = to - a
+	local len2 = ab:Dot(ab)
+	local t = len2 > 1e-6 and math.clamp((pos - a):Dot(ab) / len2, 0, 1) or 0
+	if (pos - (a + ab * t)).Magnitude <= CORRIDOR then
+		return "along"
+	end
+	return nil
 end
 
 local function checkMovement(player, dt)
@@ -1261,17 +1397,30 @@ local function checkMovement(player, dt)
 		return
 	end
 	local now = os.clock()
-	if sanctioned(player, pos) then
-		-- a move the server asked for: start again from here
-		g.last, g.good, g.history, g.air = pos, pos, {}, 0
+	local moving = sanctioned(player, pos, g)
+	if moving == "arrived" then
+		-- a move the server asked for, done: start again from here
+		g.last, g.good, g.history, g.air, g.vy = pos, pos, {}, 0, 0
+		return
+	elseif moving == "along" then
+		g.last, g.history, g.air = pos, {}, 0 -- (on the way: not judged, start point kept)
 		return
 	end
 
 	local why = nil
-	-- 1. teleports
-	if flatMag(pos - g.last) > TELEPORT_STUDS or pos.Y - g.last.Y > TELEPORT_STUDS then
+	local d = PlayerService.GetData(player)
+	local limit = Config.walkSpeedFor(player, d) * 1.35 + SPEED_SLACK
+	local fighting = player:GetAttribute("SpireFloor") ~= nil or player:GetAttribute("Colosseum") ~= nil
+	-- 1. teleports: one tick may only carry them so far (what their speed
+	-- allows, with room for a roll or lag), never 60 studs up, and a drop
+	-- only as fast as falling gets
+	local tickCap = math.min(TELEPORT_STUDS, math.max(TICK_MIN, limit * dt * TICK_SLACK))
+	local drop = g.last.Y - pos.Y
+	local maxDrop = math.max(TELEPORT_STUDS, (g.vy or 0) * dt + (tonumber(workspace.Gravity) or 196.2) * dt * dt + 10)
+	if flatMag(pos - g.last) > tickCap or pos.Y - g.last.Y > TELEPORT_STUDS or drop > maxDrop then
 		why = "teleport"
 	end
+	g.vy = math.max(0, drop / math.max(dt, 1e-3))
 	-- 2. speed, averaged so a roll or a knock-back never counts
 	table.insert(g.history, { t = now, pos = pos })
 	while #g.history > 0 and now - g.history[1].t > SPEED_WINDOW do
@@ -1279,22 +1428,29 @@ local function checkMovement(player, dt)
 	end
 	local oldest = g.history[1]
 	if not why and oldest and now - oldest.t > SPEED_WINDOW * 0.8 then
-		local d = PlayerService.GetData(player)
-		local limit = Config.walkSpeedFor(player, d) * 1.35 + SPEED_SLACK
-		if flatMag(pos - oldest.pos) / (now - oldest.t) > limit then
+		-- (the distance actually travelled, every step added up - darting out
+		-- and back can't hide behind a small net move)
+		local path = 0
+		for i = 2, #g.history do
+			path = path + flatMag(g.history[i].pos - g.history[i - 1].pos)
+		end
+		if path / (now - oldest.t) > limit then
 			why = "speed"
 		end
 	end
-	-- 3. flying: nothing under them, and not coming down
+	-- 3. flying: nothing solid under them, and not really falling (in an
+	-- arena: the floor right under them - holding yourself up off it to float
+	-- over the shockwaves counts as flying, and is put back down)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { char }
-	local ground = workspace:Raycast(pos, Vector3.new(0, -16, 0), params)
-	if ground or pos.Y < g.last.Y - 0.3 then
+	params.RespectCanCollide = true
+	local ground = workspace:Raycast(pos, Vector3.new(0, fighting and -FIGHT_GROUND_RAY or -16, 0), params)
+	if ground or drop >= FALLING then
 		g.air = 0
 	else
 		g.air = g.air + dt
-		if g.air > FLY_SECONDS and not why then
+		if g.air > (fighting and FIGHT_FLY_SECONDS or FLY_SECONDS) and not why then
 			why = "flying"
 		end
 	end
@@ -1303,10 +1459,21 @@ local function checkMovement(player, dt)
 		-- back to where they last stood fairly, stopped dead
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.CFrame = CFrame.new(g.good) * (root.CFrame - root.Position)
-		g.last, g.history, g.air = g.good, {}, 0
+		g.last, g.history, g.air, g.vy = g.good, {}, 0, 0
 		g.strikes = g.strikes + 1
 		if g.strikes == 1 or g.strikes % 20 == 0 then
 			warn(string.format("[PlayerService] movement guard: %s (%s) - put back (%d times)", player.Name, why, g.strikes))
+		end
+		-- (put back again and again inside a minute: no real connection does
+		-- that - the session ends rather than playing tug-of-war forever)
+		g.recent = g.recent or {}
+		table.insert(g.recent, now)
+		while g.recent[1] and now - g.recent[1] > STRIKE_WINDOW do
+			table.remove(g.recent, 1)
+		end
+		if #g.recent >= STRIKE_KICK then
+			warn("[PlayerService] movement guard: " .. player.Name .. " kicked (" .. why .. ")")
+			player:Kick("Your character kept moving in ways the game can't allow. Please rejoin.")
 		end
 		return
 	end
@@ -1399,10 +1566,19 @@ function PlayerService.Start()
 	end)
 
 	game:BindToClose(function()
+		-- (wait for every save to finish - up to 25 s of the 30 Roblox gives)
+		local left = 0
 		for _, p in ipairs(Players:GetPlayers()) do
-			task.spawn(saveProfile, p, true)
+			left += 1
+			task.spawn(function()
+				pcall(saveProfile, p, true)
+				left -= 1
+			end)
 		end
-		task.wait(3)
+		local t0 = os.clock()
+		while left > 0 and os.clock() - t0 < 25 do
+			task.wait(0.25)
+		end
 	end)
 end
 

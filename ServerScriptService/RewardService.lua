@@ -77,7 +77,9 @@ function RewardService.Pay(player, r, why)
 	if why then
 		notify(player, why .. " " .. Config.rewardText(r), "rare")
 	end
-	RewardService.RefreshLooks(player)
+	-- (the looks are only for show: nothing about them - e.g. a player
+	-- deleting their own title's parts - may make a payment look failed)
+	pcall(RewardService.RefreshLooks, player)
 	return true
 end
 
@@ -86,7 +88,7 @@ end
 ----------------------------------------------------------------------
 function RewardService.CollectorPoints(d)
 	local owned, cleared = 0, 0
-	for id in pairs(d.Weapons and d.Weapons.own or {}) do
+	for id in pairs(Config.foundWeapons(d)) do -- (found yourself: traded ones don't count)
 		if Config.Weapons.List[id] then
 			owned = owned + 1
 		end
@@ -135,8 +137,10 @@ function RewardService.RefreshLooks(player)
 			tag.Parent = head
 		end
 		local l = tag:FindFirstChild("Text")
-		l.Text = "[ " .. def.Text .. " ]"
-		l.TextColor3 = def.Color
+		if l and l:IsA("TextLabel") then
+			l.Text = "[ " .. def.Text .. " ]"
+			l.TextColor3 = def.Color
+		end
 	elseif tag then
 		tag:Destroy()
 	end
@@ -369,6 +373,9 @@ local function claimIndex(player, d, arg)
 	if d.Weapons.own[arg] == nil then
 		return false, "Find it first!"
 	end
+	if not Config.foundWeapons(d)[arg] then
+		return false, "Index rewards are for weapons you find yourself - win it at the Arcade!"
+	end
 	if d.Rewards.index[arg] then
 		return false, "Already claimed."
 	end
@@ -402,16 +409,24 @@ local function claimCollector(player, d, arg)
 	return true, "Collector level " .. m.Level .. "! " .. Config.rewardText(m)
 end
 
+local checkingGroup = setmetatable({}, { __mode = "k" }) -- [player] = true while IsInGroup is asked
 local function claimGroup(player, d)
-	if d.Rewards.group then
+	if d.Rewards.group or checkingGroup[player] then
 		return false, "Already claimed - thanks for joining!"
 	end
 	if (R.GroupId or 0) <= 0 then
 		return false, "The community isn't linked yet."
 	end
+	-- (IsInGroup asks Roblox and waits: nobody may get in a second claim
+	-- meanwhile, and the flag is checked again once it answers)
+	checkingGroup[player] = true
 	local ok, member = pcall(function()
 		return player:IsInGroup(R.GroupId)
 	end)
+	checkingGroup[player] = nil
+	if d.Rewards.group then
+		return false, "Already claimed - thanks for joining!"
+	end
 	if not ok then
 		return false, "Couldn't check - try again in a moment."
 	end

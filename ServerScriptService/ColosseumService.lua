@@ -1828,7 +1828,7 @@ local function canEnter(player)
 	if going[player] then
 		return false, "Hold on, you're on your way!"
 	end
-	if player:GetAttribute("SpireFloor") then
+	if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") or player:GetAttribute("Intro") then
 		return false, "Not from here!"
 	end
 	local root = rootOf(player)

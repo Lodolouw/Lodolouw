@@ -3473,7 +3473,20 @@ Config.Trade = {
 -- Whether weapon `id` can be traded (a real weapon, not marked NoTrade)
 function Config.tradeable(id)
 	local def = type(id) == "string" and Config.Weapons.List[id] or nil
-	return def ~= nil and not def.NoTrade
+	-- (a starter comes back to everyone on every load: trading one would make copies)
+	return def ~= nil and not def.NoTrade and not table.find(Config.Weapons.Starters or {}, id)
+end
+
+-- The weapons a player has FOUND themselves (the Arcade, a reward, a starter) -
+-- not ones traded to them: the Index's rewards and the collector bar count
+-- these, so passing weapons between accounts can't claim them over and over.
+-- (An old save without the list: everything it owns counts.)
+function Config.foundWeapons(data)
+	local w = type(data) == "table" and type(data.Weapons) == "table" and data.Weapons or {}
+	if type(w.found) == "table" then
+		return w.found
+	end
+	return type(w.own) == "table" and w.own or {}
 end
 
 -- The mastery level `points` mastery points make (1 to MasteryMax), and how far

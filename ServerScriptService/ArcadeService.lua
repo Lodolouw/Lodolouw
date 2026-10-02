@@ -101,6 +101,8 @@ end
 -- The weapon goes in the player's bag - or, if they have it, its mastery goes up
 local function give(player, d, id, rarity)
 	local own = d.Weapons.own
+	d.Weapons.found = d.Weapons.found or {}
+	d.Weapons.found[id] = true -- (found it yourself: it counts for the Index)
 	if own[id] == nil then
 		own[id] = 0
 		return { id = id, rarity = rarity, new = true }

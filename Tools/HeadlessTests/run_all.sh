@@ -60,6 +60,8 @@ run test_moneyicons.luau
 # the new GUI's server side: rewards, the shop's Robux receipts (each paid
 # exactly once), gifts, passes, Daily Items, luck
 run test_rewards_shop.luau
+run test_security_economy.luau
+run test_security_combat.luau
 # the new lobby screen (next goal and its trail, gift clock, quest, boosts)
 # and the menus' host (see-through, tabs, one at a time)
 run test_lobbyhud.luau

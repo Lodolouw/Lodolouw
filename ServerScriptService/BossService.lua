@@ -562,6 +562,7 @@ local function wake(E)
 	E.phase = 1
 	E.history = {}
 	E.participants = {}
+	E.killer = nil
 	makeTarget(E, true)
 	setState(E, "Waking")
 	local t0 = setAction(E, "Wake", def.WakeTime)
@@ -629,7 +630,21 @@ local function die(E)
 	-- tier's floors are closer together, so its reward share is smaller)
 	local level = (E.floorDef and E.floorDef.level) or 1
 	local share = Config.spireTier(E.tier).reward or 1
+	-- (only those who really fought it - did a share of its health in damage,
+	-- or landed the last blow - and are still standing: nobody is carried up
+	-- the Spire by hiding in a corner, or paid for being dead in the arena)
+	local need = math.max(1, (tonumber(E.model:GetAttribute("MaxHealth")) or 0) * 0.01)
+	local function earned(p)
+		local alive = not (CombatService and CombatService.IsFighting) or CombatService.IsFighting(p)
+		return alive and (p == E.killer or (E.participants[p] or 0) >= need)
+	end
 	for _, p in ipairs(presentIn(E)) do
+		if not earned(p) then
+			if BossEvent then
+				BossEvent:FireClient(p, "Victory", E.floor, 0, false)
+			end
+			continue
+		end
 		local levels = E.def.Reward.Power
 		local first = false
 		if PlayerService and PlayerService.RecordBossKill then
@@ -933,8 +948,17 @@ local function build(floorId, homePart)
 	end
 
 	onHit.Event:Connect(function(player, damage, killed)
+		-- (who's really fighting it: the damage each player has actually done -
+		-- the win is shared only with them)
 		if typeof(player) == "Instance" and player:IsA("Player") then
-			E.participants[player] = true
+			local d = tonumber(damage) or 0
+			if d ~= d or d < 0 or d == math.huge then
+				d = 0
+			end
+			E.participants[player] = (E.participants[player] or 0) + d
+			if killed then
+				E.killer = player
+			end
 		end
 		if E.state == "Dormant" then
 			wake(E)

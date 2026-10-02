@@ -62,6 +62,7 @@ local CC = Config.Combat
 local PlayerService = nil -- set in Start (avoids a require loop)
 local remotes = {}
 local fighters = {} -- [player] = combat state while in an arena
+local nextSwing, movedFairly -- (below: the string, and fair positions)
 local targets = {} -- [model] = true for every punchable enemy
 local whiffListeners = {} -- functions that hear about punches at thin air (CombatService.OnWhiff)
 
@@ -498,7 +499,89 @@ local PUNCH_CONE = math.cos(math.rad(55))
 -- Can this player hit this target? (A Colosseum dummy belongs to one player.)
 local function mine(model, player)
 	local owner = model:GetAttribute("Owner")
-	return owner == nil or owner == player.UserId
+	if owner ~= nil then
+		return owner == player.UserId
+	end
+	-- (a Spire boss belongs to one copy of its arena: only fighters in that
+	-- copy can hit it - nobody wanders in from another copy to wake or chip it)
+	local arena = model:GetAttribute("ArenaId")
+	return arena == nil or arena == player:GetAttribute("SpireArena")
+end
+
+-- THE STRING: the next swing continues it if it comes within `window` of the
+-- last one and the string isn't finished, else starts it again (the same rule
+-- as your screen - CombatClient)
+local SWING_SLACK = 0.08 -- seconds: network jitter can bunch two presses up a little
+nextSwing = function(st, window, steps, now)
+	local c = st.combo or 0
+	if c >= 1 and c < steps and now - (st.lastPunch or 0) <= window then
+		return c + 1
+	end
+	return 1
+end
+
+-- FAIR POSITION: a hit is judged from where your character is when it lands -
+-- and your own computer moves your character. So a hit only counts if you got
+-- there in a way a player can: never faster than a roll (the quickest thing
+-- you can do) over the last moments. That stops standing out of reach and
+-- blinking in for the instant a punch lands. (A move the server makes itself -
+-- a launch pad, a trip - is allowed: MoveUntil.)
+local FAIR_SPEED = (CC.RollSpeed or 62) * 1.3 -- studs a second
+local FAIR_WINDOW = 0.45 -- seconds looked back
+movedFairly = function(player, st, root)
+	local mu = player:GetAttribute("MoveUntil")
+	if type(mu) == "number" and workspace:GetServerTimeNow() <= mu then
+		return true
+	end
+	local now = os.clock()
+	local pos = root.Position
+	for _, s in ipairs(st.trail or {}) do
+		local dt = now - s.t
+		if dt <= FAIR_WINDOW then
+			local d = Vector3.new(pos.X - s.p.X, 0, pos.Z - s.p.Z).Magnitude
+			if d > FAIR_SPEED * math.max(dt, 0.05) + 4 then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+-- LINE OF SIGHT: nothing solid in the way (a pillar, a wall) between you
+-- and what you're hitting - no punching through the arena. Characters and
+-- the things you can hit never count as in the way.
+local sightParams = nil
+local function clearShot(root, model, point)
+	if typeof(point) ~= "Vector3" then
+		return true
+	end
+	local dir = point - root.Position
+	if dir.Magnitude < 3 then
+		return true -- (right up against it)
+	end
+	if not sightParams then
+		sightParams = RaycastParams.new()
+		sightParams.FilterType = Enum.RaycastFilterType.Exclude
+		sightParams.RespectCanCollide = true
+	end
+	local ignore = { model }
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			ignore[#ignore + 1] = p.Character
+		end
+	end
+	for m in pairs(targets) do
+		ignore[#ignore + 1] = m
+	end
+	sightParams.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(root.Position, dir, sightParams)
+	if not hit then
+		return true
+	end
+	-- (only something solid and fixed blocks it, and only well short of the target)
+	local inst = hit.Instance
+	local solid = typeof(inst) == "Instance" and inst:IsA("BasePart") and inst.Anchored and inst.CanCollide
+	return not solid or (hit.Position - root.Position).Magnitude >= dir.Magnitude - 2
 end
 
 local function nearestTarget(root, player)
@@ -516,7 +599,7 @@ local function nearestTarget(root, player)
 				local dy = math.abs(cf.Y - root.Position.Y)
 				-- right up against it counts from any angle; otherwise it must be in front
 				local inFront = centre < 0.01 or d < 1 or facing:Dot(flat.Unit) >= PUNCH_CONE
-				if d <= CC.PunchRange and dy < 12 and inFront and d < bestDist then
+				if d <= CC.PunchRange and dy < 12 and inFront and d < bestDist and clearShot(root, model, cf) then
 					best, bestDist = model, d
 				end
 			end
@@ -728,7 +811,7 @@ local function hitTarget(player, model, damage, weight, remote)
 				if onBlock and onBlock:IsA("BindableEvent") then
 					onBlock:Fire(player)
 				end
-				return
+				return 0
 			end
 		end
 	end
@@ -793,6 +876,9 @@ local function hitTarget(player, model, damage, weight, remote)
 			end
 		end)
 	end
+	-- (what it really took: blocked, shielded, untouchable or held at a phase
+	-- line is 0 - and only real damage earns lifesteal, stamina or mastery)
+	return damage
 end
 
 ----------------------------------------------------------------------
@@ -913,7 +999,7 @@ local function targetsInArc(root, player, range, arc, locked)
 				local centre = flat.Magnitude
 				local d = centre - radius
 				local inArc = arc >= 180 or centre < 0.01 or d < 1 or facing:Dot(flat.Unit) >= cosArc or model == locked
-				if d <= range and math.abs(cf.Y - root.Position.Y) < 12 and inArc then
+				if d <= range and math.abs(cf.Y - root.Position.Y) < 12 and inArc and clearShot(root, model, cf) then
 					list[#list + 1] = model
 				end
 			end
@@ -1130,9 +1216,10 @@ local function burst(player, st, def, id, spec, scale)
 	for _, target in ipairs(targetsInArc(root, player, spec.Radius or 10, 180)) do
 		local dmg, crit = CombatService.DamageAgainst(player, target)
 		dmg, crit = boostHit(player, st, target, dmg * mult, crit)
-		hitTarget(player, target, dmg, crit and 3 or 2)
-		afterHit(player, st, 1.5, target)
-		count = count + 1
+		if (hitTarget(player, target, dmg, crit and 3 or 2) or 0) > 0 then
+			afterHit(player, st, 1.5, target)
+			count = count + 1
+		end
 	end
 	addMastery(player, id, (W.MasteryPerHit or 1) * count)
 end
@@ -1229,13 +1316,16 @@ local function moveHits(player, st, def, id, list, dmg, weight, scale, remote)
 		return 0
 	end
 	local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1) * (dmg or 1) * (scale or 1)
+	local landed = 0
 	for _, target in ipairs(list) do
 		local d, crit = CombatService.DamageAgainst(player, target)
 		d, crit = boostHit(player, st, target, d * mult, crit)
-		hitTarget(player, target, d, crit and 3 or (weight or 2), remote)
-		afterHit(player, st, math.min(dmg or 1, 1.5), target)
+		if (hitTarget(player, target, d, crit and 3 or (weight or 2), remote) or 0) > 0 then
+			afterHit(player, st, math.min(dmg or 1, 1.5), target)
+			landed = landed + 1
+		end
 	end
-	addMastery(player, id, (W.MasteryPerHit or 1) * #list)
+	addMastery(player, id, (W.MasteryPerHit or 1) * landed)
 	return #list
 end
 
@@ -1460,12 +1550,16 @@ end
 -- partway through), but it cuts every enemy in its arc, hits as hard as the
 -- weapon's rarity and mastery say, and every enemy it hits is mastery.
 local function swingWeapon(player, st, def, kind, id, locked, swing, now)
-	local n = (type(swing) == "number" and swing == swing and math.clamp(math.floor(swing), 1, #kind.Swings)) or 1
+	-- which swing of the string this is - decided HERE, by the same rule your
+	-- screen uses (the number your screen sends is ignored: otherwise a cheat
+	-- just asks for the strongest swing every time), and never sooner than
+	-- the last swing's own Lock allows (a little slack for network jitter)
+	local n = nextSwing(st, kind.Window or CC.Combo.Window, #kind.Swings, now)
 	local s = kind.Swings[n]
-	if st.drinking or now < (st.busyUntil or 0) or now - st.lastPunch < (st.lastLock or 0) * 0.85 or st.stamina < s.Cost then
+	if st.drinking or now < (st.busyUntil or 0) or now - st.lastPunch < (st.lastLock or 0) - SWING_SLACK or st.stamina < s.Cost then
 		return
 	end
-	st.lastPunch, st.lastLock = now, s.Lock
+	st.lastPunch, st.lastLock, st.combo = now, s.Lock, n
 	spend(st, s.Cost, now)
 	st.swings = (st.swings or 0) + 1
 	player:SetAttribute("SwingN", st.swings .. ":" .. n) -- (everyone's screen swings it)
@@ -1475,7 +1569,7 @@ local function swingWeapon(player, st, def, kind, id, locked, swing, now)
 			return -- left the arena, died, or otherwise stopped fighting
 		end
 		local _, atRoot = charParts(player)
-		if not atRoot then
+		if not atRoot or not movedFairly(player, st, atRoot) then
 			return
 		end
 		local tnow = os.clock()
@@ -1505,13 +1599,16 @@ local function swingWeapon(player, st, def, kind, id, locked, swing, now)
 			return
 		end
 		local mult = Config.weaponMultiplier(def, player:GetAttribute("Mastery") or 1) * s.Damage
+		local landed = 0
 		for _, target in ipairs(hit) do
 			local dmg, crit = CombatService.DamageAgainst(player, target)
 			dmg, crit = boostHit(player, st, target, dmg * mult, crit)
-			hitTarget(player, target, dmg, (crit or n == #kind.Swings) and 3 or n)
-			afterHit(player, st, s.Damage, target)
+			if (hitTarget(player, target, dmg, (crit or n == #kind.Swings) and 3 or n) or 0) > 0 then
+				afterHit(player, st, s.Damage, target)
+				landed = landed + 1
+			end
 		end
-		addMastery(player, id, (W.MasteryPerHit or 1) * #hit)
+		addMastery(player, id, (W.MasteryPerHit or 1) * landed)
 	end)
 end
 
@@ -1553,7 +1650,7 @@ local function useAbility(player, st, def, id, now, locked)
 				return
 			end
 			local _, atRoot = charParts(player)
-			if not atRoot then
+			if not atRoot or not movedFairly(player, st, atRoot) then
 				return
 			end
 			local last = spin == tier.Spins
@@ -1561,19 +1658,21 @@ local function useAbility(player, st, def, id, now, locked)
 			local count = 0
 			for _, target in ipairs(targetsInArc(atRoot, player, tier.Radius, 180)) do
 				cut[target] = true
-				count = count + 1
 				local dmg, crit = CombatService.DamageAgainst(player, target)
 				dmg, crit = boostHit(player, st, target, dmg * mult * tier.Damage, crit)
-				hitTarget(player, target, dmg, (crit or last) and 3 or 2)
-				afterHit(player, st, 1, target)
+				if (hitTarget(player, target, dmg, (crit or last) and 3 or 2) or 0) > 0 then
+					afterHit(player, st, 1, target)
+					count = count + 1
+				end
 			end
 			-- the shockwave off the last spin: what's a little further out
 			if last and tier.Ring then
 				for _, target in ipairs(targetsInArc(atRoot, player, tier.Ring, 180)) do
 					if not cut[target] then
-						count = count + 1
 						local dmg = CombatService.DamageAgainst(player, target)
-						hitTarget(player, target, math.max(1, math.floor(dmg * mult * (tier.RingDamage or 1))), 2)
+						if (hitTarget(player, target, math.max(1, math.floor(dmg * mult * (tier.RingDamage or 1))), 2) or 0) > 0 then
+							count = count + 1
+						end
 					end
 				end
 			end
@@ -1587,7 +1686,11 @@ end
 ----------------------------------------------------------------------
 local function startFighting(player)
 	fighters[player] = {
-		free = introFight(player), -- (the intro: nothing costs stamina)
+		-- (the intro: nothing costs stamina - but only the intro's own fight,
+		-- never a Spire floor or the Colosseum someone wandered into from it)
+		free = introFight(player) and not player:GetAttribute("SpireFloor") and not player:GetAttribute("Colosseum"),
+		trail = {}, -- where they've been lately (movedFairly)
+		combo = 0,
 		stamina = CC.MaxStamina,
 		lastSpend = 0,
 		iframeUntil = 0,
@@ -1654,13 +1757,20 @@ local function onAction(player, action, arg, swing)
 	end
 
 	if action == "Punch" then
-		if st.drinking or now - st.lastPunch < math.max(CC.PunchInterval, CC.PunchLock) * 0.85 or st.stamina < CC.PunchCost then
+		-- (the string's next punch, decided here - each one commits you for
+		-- PunchLock x its Recovery, the finisher longest)
+		local combo = CC.Combo or {}
+		local recovery = combo.Recovery or { 1 }
+		local n = nextSwing(st, combo.Window or 0.85, #recovery, now)
+		local wait = math.max(CC.PunchInterval, st.lastLock or CC.PunchLock) - SWING_SLACK
+		if st.drinking or now - st.lastPunch < wait or st.stamina < CC.PunchCost then
 			return
 		end
-		st.lastPunch = now
+		st.lastPunch, st.combo = now, n
+		st.lastLock = CC.PunchLock * (recovery[n] or 1)
 		spend(st, CC.PunchCost, now)
 		-- which swing of the string this was: used for how heavy it looks, nothing else
-		local weight = (type(swing) == "number" and math.clamp(math.floor(swing), 1, 3)) or 1
+		local weight = math.clamp(n, 1, 3)
 		local locked = typeof(arg) == "Instance" and arg or nil
 
 		-- The fist lands partway through the swing, not on the button press. We
@@ -1675,7 +1785,7 @@ local function onAction(player, action, arg, swing)
 				return -- left the arena, died, or otherwise stopped fighting
 			end
 			local _, atRoot = charParts(player)
-			if not atRoot then
+			if not atRoot or not movedFairly(player, st, atRoot) then
 				return
 			end
 			local target = nil
@@ -1683,7 +1793,7 @@ local function onAction(player, action, arg, swing)
 				local cf, radius = aimAt(locked, atRoot.Position)
 				if cf then
 					local d = (Vector3.new(cf.X, 0, cf.Z) - Vector3.new(atRoot.Position.X, 0, atRoot.Position.Z)).Magnitude - radius
-					if d <= CC.PunchRange and math.abs(cf.Y - atRoot.Position.Y) < 12 then
+					if d <= CC.PunchRange and math.abs(cf.Y - atRoot.Position.Y) < 12 and clearShot(atRoot, locked, cf) then
 						target = locked
 					end
 				end
@@ -1799,10 +1909,22 @@ function CombatService.Start(playerService)
 	remotes.AbilityFx = fx
 	RunService.Heartbeat:Connect(stepZones)
 
+	-- (a budget per player, like the Action remote's: 30 a second, 40 saved up -
+	-- far more than any real fighter presses, so a script spamming it is ignored)
+	local budget = setmetatable({}, { __mode = "k" })
 	action.OnServerEvent:Connect(function(player, name, arg, swing)
-		if type(name) ~= "string" then
+		if type(name) ~= "string" or #name > 24 then
 			return
 		end
+		local t = os.clock()
+		local b = budget[player] or { n = 40, at = t }
+		b.n = math.min(40, b.n + (t - b.at) * 30)
+		b.at = t
+		budget[player] = b
+		if b.n < 1 then
+			return
+		end
+		b.n = b.n - 1
 		local ok, err = pcall(onAction, player, name, arg, swing)
 		if not ok then
 			warn("[CombatService] " .. name .. " failed: " .. tostring(err))
@@ -1972,7 +2094,10 @@ function CombatService.Start(playerService)
 		-- the intro: on when Oozlet can be punched, off when it's over
 		-- (going from "Void" to "Fight" changes nothing: you were already fighting)
 		player:GetAttributeChangedSignal("Intro"):Connect(function()
-			if introFight(player) ~= (fighters[player] ~= nil) then
+			-- (only when the intro is the one reason to be fighting: the intro's
+			-- flags flipping mid-Colosseum must not hand out a fresh start)
+			if not player:GetAttribute("SpireFloor") and not player:GetAttribute("Colosseum")
+				and introFight(player) ~= (fighters[player] ~= nil) then
 				onFloorChanged(player)
 			end
 		end)
@@ -1996,9 +2121,20 @@ function CombatService.Start(playerService)
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
-		for _, st in pairs(fighters) do
+		for player, st in pairs(fighters) do
 			if not st.drinking and now - st.lastSpend >= CC.StaminaRegenDelay and st.stamina < CC.MaxStamina then
 				st.stamina = math.min(CC.MaxStamina, st.stamina + CC.StaminaRegen * dt)
+			end
+			-- (where they are, for movedFairly: the last half second or so)
+			local _, r = charParts(player)
+			if r and st.trail then
+				local tr = st.trail
+				if not tr[#tr] or now - tr[#tr].t >= 0.05 then
+					tr[#tr + 1] = { t = now, p = r.Position }
+				end
+				while tr[1] and now - tr[1].t > FAIR_WINDOW + 0.1 do
+					table.remove(tr, 1)
+				end
 			end
 		end
 		acc = acc + dt

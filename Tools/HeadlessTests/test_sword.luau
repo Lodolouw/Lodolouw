@@ -209,8 +209,23 @@ check(h and h[1] == me and h[2] > 0 and h[3] == false and h[4] == 1 and M.typeof
 	"the enemy's own script hears who hit it, how hard, the weight and which way")
 healAll()
 
--- the chop (swing 3): 1.5x, reaches a little further, narrower
-swingAndWait(3)
+-- the chop (swing 3): 1.5x, reaches a little further, narrower. (The server
+-- picks the swing of the string - by the same rule as your screen - so the
+-- chop comes by really throwing the string: 1, 2, then 3 in rhythm.)
+local function chop()
+	step(1.5) -- (any string before this has ended)
+	fire("Punch", nil, 1)
+	step(SWINGS[1].Lock + 0.02)
+	fire("Punch", nil, 2)
+	step(SWINGS[2].Lock + 0.02)
+	healAll()
+	for _, m in pairs(targets) do
+		m:SetAttribute("HitFx", nil)
+	end
+	fire("Punch", nil, 3)
+	step(0.9)
+end
+chop()
 check(lost(targets.Far) > 0, "the chop reaches the enemy at 10.5 studs")
 check(math.abs(lost(targets.Far) - math.floor(punch * SWINGS[3].Damage)) <= 1,
 	("the chop hits 1.5x (%d vs %d)"):format(lost(targets.Far), math.floor(punch * 1.5)))
@@ -219,7 +234,17 @@ local nF, wF = hitFx(targets.Far)
 check(nF == 1 and wF == 3, ("the chop, the finisher, lands as the heaviest hit (%s)"):format(tostring(targets.Far:GetAttribute("HitFx"))))
 -- a blow that does nothing (it can't be hurt right now) doesn't make it flinch
 targets.Far:SetAttribute("Invulnerable", true)
-swingAndWait(3)
+targets.Far:SetAttribute("HitFx", "1:3:0:0")
+local function chopKeepFx()
+	step(1.5)
+	fire("Punch", nil, 1)
+	step(SWINGS[1].Lock + 0.02)
+	fire("Punch", nil, 2)
+	step(SWINGS[2].Lock + 0.02)
+	fire("Punch", nil, 3)
+	step(0.9)
+end
+chopKeepFx()
 check(hitFx(targets.Far) == 1, "a hit on an enemy that can't be hurt doesn't make it flinch")
 targets.Far:SetAttribute("Invulnerable", nil)
 healAll()
@@ -230,7 +255,9 @@ fire("Punch", nil, 1)
 step(0.05)
 fire("Punch", nil, 2)
 step(1)
-check(lost(targets.FrontLeft) == math.floor(punch * SWINGS[1].Damage) or math.abs(lost(targets.FrontLeft) - punch) <= 1,
+-- (one slash's worth - a touch over a punch now: the strings above built a
+-- little mastery - and nowhere near two)
+check(lost(targets.FrontLeft) >= punch * SWINGS[1].Damage - 1 and lost(targets.FrontLeft) < punch * SWINGS[1].Damage * 1.5,
 	"a swing thrown too soon after the last is ignored (one hit, not two)")
 healAll()
 
@@ -246,8 +273,13 @@ for _ = 1, 12 do
 	step(0.45)
 end
 local done = swingCount() - before
-check(done == math.floor(Config.Combat.MaxStamina / SWINGS[1].Cost),
-	("stamina: out of 12 quick slashes only %d get through (%d did)"):format(math.floor(Config.Combat.MaxStamina / SWINGS[1].Cost), done))
+-- (quick presses carry the string on - 1, 2, the finisher (dearer, and
+-- slower to recover), 1, ... - so the count lands between all-slashes and
+-- all-finishers; the point: stamina runs out, nowhere near all 12 get through)
+local most = math.floor(Config.Combat.MaxStamina / SWINGS[1].Cost)
+local fewest = math.floor(Config.Combat.MaxStamina / SWINGS[3].Cost)
+check(done >= fewest - 1 and done <= most,
+	("stamina: out of 12 quick slashes only %d to %d get through (%d did)"):format(fewest - 1, most, done))
 step(3)
 
 ----------------------------------------------------------------------

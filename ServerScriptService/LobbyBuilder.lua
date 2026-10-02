@@ -4377,10 +4377,14 @@ local function buildIsland(parent)
 		local char = hit and hit.Parent
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local player = hum and game:GetService("Players"):GetPlayerFromCharacter(char)
+		-- (only for the lobby: never a way out of an arena or the Colosseum)
+		if player and (player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum")) then
+			return
+		end
 		if hum and root and hum.Health > 0 and not char:GetAttribute("WashedBack") then
 			char:SetAttribute("WashedBack", true)
 			-- (tells the movement guard in PlayerService this jump is the server's own)
-			local player = game:GetService("Players"):GetPlayerFromCharacter(char)
 			if player then
 				player:SetAttribute("MoveTo", spawnAt.Position)
 				player:SetAttribute("MoveUntil", Workspace:GetServerTimeNow() + 3)

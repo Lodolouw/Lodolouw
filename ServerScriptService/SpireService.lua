@@ -251,6 +251,17 @@ local function travel(player, action, floorId, tierId)
 	if not root then
 		return false, "You can't travel right now."
 	end
+	-- (one place at a time: not from the intro, and not from the Colosseum or
+	-- a floor already - except leaving the floor you're on)
+	if player:GetAttribute("Intro") then
+		return false, "Finish your first fight first!"
+	end
+	if player:GetAttribute("Colosseum") then
+		return false, "Not from here!"
+	end
+	if action ~= "leave" and player:GetAttribute("SpireFloor") then
+		return false, "Not from here!"
+	end
 
 	if action == "enter" then
 		local floor = type(floorId) == "number" and floorInfo(floorId)
@@ -290,7 +301,7 @@ local function travel(player, action, floorId, tierId)
 		-- an arena of your own (with your party: SpireService.PartyFor)
 		local group, why = { player }, nil
 		if SpireService.PartyFor then
-			group, why = SpireService.PartyFor(player, floor.id)
+			group, why = SpireService.PartyFor(player, floor.id, tier.id)
 			if not group then
 				return false, why or "Your party's leader picks the floor."
 			end

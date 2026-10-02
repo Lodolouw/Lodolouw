@@ -151,6 +151,11 @@ local function grant(receiver, key)
 		return false
 	end
 	if p.Once then
+		if d.Shop.starter then
+			-- (a once-only pack bought again - a client can prompt any product
+			-- itself: they paid, so they get its worth in tokens instead)
+			p = { Tokens = p.Tokens or 0, Coins = p.Coins }
+		end
 		d.Shop.starter = true
 	end
 	if RewardService then
@@ -187,18 +192,52 @@ local function processReceipt(info)
 		end
 		giftFor[buyer] = nil
 	end
-	if not grant(receiver, key) then
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-	table.insert(d.Shop.receipts, id)
-	while #d.Shop.receipts > 50 do
-		table.remove(d.Shop.receipts, 1)
-	end
 	local p = S.Products[key]
+	local function keep()
+		table.insert(d.Shop.receipts, id)
+		while #d.Shop.receipts > 50 do
+			table.remove(d.Shop.receipts, 1)
+		end
+	end
+	local function forget()
+		local at = table.find(d.Shop.receipts, id)
+		if at then
+			table.remove(d.Shop.receipts, at)
+		end
+	end
 	if receiver ~= buyer then
+		-- A GIFT: the receipt lives in the buyer's save, so that's written
+		-- FIRST - only then does the friend get it. (Granting first and then
+		-- failing to save the buyer would let Roblox send the receipt again
+		-- later, in a server where the gift is forgotten: paid once, granted
+		-- twice.)
+		keep()
+		if not PlayerService.SaveNow(buyer) then
+			forget()
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		local okGrant, granted = pcall(grant, receiver, key)
+		if not (okGrant and granted) then
+			grant(buyer, key) -- (the friend left meanwhile: the buyer has it)
+			PlayerService.SaveNow(buyer)
+			return Enum.ProductPurchaseDecision.PurchaseGranted
+		end
 		notify(receiver, buyer.DisplayName .. " gifted you " .. p.Name .. "! " .. Config.rewardText(p), "rare")
 		notify(buyer, "Gift sent to " .. receiver.DisplayName .. "!", "good")
 		PlayerService.SaveNow(receiver)
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	-- For yourself: the receipt is kept BEFORE anything is handed out, so a
+	-- second copy of the same receipt (Roblox retries) finds it and stops.
+	keep()
+	local okGrant, granted = pcall(grant, buyer, key)
+	if not okGrant then
+		-- (it broke part-way: it may already have paid, so the receipt stays -
+		-- never risk paying twice; the error is logged for a look)
+		warn("[ShopService] grant failed after the receipt was kept: " .. tostring(granted))
+	elseif not granted then
+		forget() -- (nothing was handed out: let Roblox try again)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
 	else
 		notify(buyer, "Thanks! " .. Config.rewardText(p), "rare")
 	end
@@ -343,10 +382,26 @@ function ShopService.Start(playerService, rewardService)
 		if not purchased then
 			return
 		end
+		-- (this event alone isn't proof - Roblox is asked whether they really
+		-- own it before anything is given, a few times while the sale settles)
 		for key, p in pairs(S.Passes) do
-			if p.PassId == passId then
-				givePass(player, key)
-				notify(player, "Thanks! " .. p.Name .. " is yours.", "rare")
+			if p.PassId == passId and (p.PassId or 0) > 0 then
+				task.spawn(function()
+					for _ = 1, 5 do
+						local ok, owns = pcall(function()
+							return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
+						end)
+						if not player.Parent then
+							return
+						end
+						if ok and owns then
+							givePass(player, key)
+							notify(player, "Thanks! " .. p.Name .. " is yours.", "rare")
+							return
+						end
+						task.wait(2)
+					end
+				end)
 			end
 		end
 	end)

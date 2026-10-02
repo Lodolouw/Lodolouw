@@ -23,6 +23,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+
 local PartyService = {}
 
 local MAX = 4
@@ -47,7 +49,7 @@ local function publish(party)
 end
 
 local function free(p)
-	return p:GetAttribute("SpireFloor") == nil and not p:GetAttribute("Colosseum")
+	return p:GetAttribute("SpireFloor") == nil and not p:GetAttribute("Colosseum") and not p:GetAttribute("Intro")
 end
 
 -- out of their party (and the party tidied: a new leader, or none left)
@@ -96,6 +98,24 @@ local function invite(from, target)
 	if partyOf[target] then
 		return tell(from, target.Name .. " is already in a party.")
 	end
+	-- (no invite spam: one live invite per sender, a handful per player, and
+	-- nobody busy fighting gets pop-ups)
+	local theirs = invites[target]
+	if theirs and theirs[from] and os.clock() < theirs[from] then
+		return tell(from, "You already invited " .. target.Name .. ".")
+	end
+	local live = 0
+	for _, untilT in pairs(theirs or {}) do
+		if os.clock() < untilT then
+			live = live + 1
+		end
+	end
+	if live >= 5 then
+		return tell(from, target.Name .. " has too many invites right now.")
+	end
+	if not free(target) then
+		return tell(from, target.Name .. " is busy right now.")
+	end
 	invites[target] = invites[target] or {}
 	invites[target][from] = os.clock() + INVITE_TIME
 	remote:FireClient(target, "Invited", from, INVITE_TIME)
@@ -111,15 +131,17 @@ local function accept(p, from)
 	if not untilT or os.clock() > untilT or not from.Parent then
 		return tell(p, "That invite has run out.")
 	end
-	if partyOf[p] then
-		leave(p)
-	end
 	local party = partyOf[from]
 	if party and party.leader ~= from then
 		return tell(p, "That party has a new leader now - ask them for an invite.")
 	end
 	if party and #party.members >= MAX then
 		return tell(p, from.Name .. "'s party is full.")
+	end
+	-- (only once the new party can really take you does the old one let go)
+	if partyOf[p] then
+		leave(p)
+		party = partyOf[from]
 	end
 	if not party then
 		party = { leader = from, members = { from } }
@@ -173,7 +195,7 @@ end
 -- just them, or - for a party's leader - everyone in the party who's in the
 -- lobby and alive. A party member who isn't the leader can't start a trip:
 -- nil and why.
-function PartyService.PartyFor(player, _floorId)
+function PartyService.PartyFor(player, floorId, tierId)
 	local party = partyOf[player]
 	if not party then
 		return { player }
@@ -185,8 +207,20 @@ function PartyService.PartyFor(player, _floorId)
 	for _, p in ipairs(party.members) do
 		if p ~= player then
 			local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
-			if free(p) and hum and hum.Health > 0 then
+			-- (each member must have opened that floor themselves - the floor
+			-- below it beaten, its tier open - or anyone could be carried
+			-- straight to the top and have the whole Spire unlocked for them)
+			local unlocked = true
+			if type(floorId) == "number" and not (Config.Spire.DevSkip and Config.isDev(p)) then
+				local tier = Config.spireTier(tierId)
+				local cleared = Config.spireCleared(p)
+				unlocked = Config.spireTierOpen(cleared, tier.id)
+					and (not Config.Spire.RequirePrevious or floorId <= 1 or (cleared[tier.id] or 0) >= floorId - 1)
+			end
+			if free(p) and hum and hum.Health > 0 and unlocked then
 				table.insert(group, p)
+			elseif not unlocked then
+				tell(p, "Your party went up without you - you haven't opened that floor yet.")
 			else
 				tell(p, "Your party went up the Spire without you (you were busy).")
 			end
