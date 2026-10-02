@@ -154,6 +154,11 @@ end
 
 local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
 local Shop, R = Config.Shop, Config.Rewards
+-- start from a shop that isn't set up yet (the real ids are in Config):
+-- every product and pass at 0, each test gives ids to the ones it buys
+for _, p in pairs(Shop.Products) do p.ProductId = 0 end
+for _, p in pairs(Shop.Passes) do p.PassId = 0 end
+table.clear(Config.ShopByProductId)
 -- (Bravo's VIP pass is "made" before the server starts, so joining finds it)
 Shop.Passes.VIP.PassId = 901
 local PS = mount.require(mount.module("ServerScriptService/PlayerService.lua"))

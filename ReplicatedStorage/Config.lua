@@ -3774,26 +3774,26 @@ Config.Shop = {
 	-- out how much more each bigger pack gives from these numbers - never a
 	-- made-up "bonus".)
 	Products = {
-		Tokens10 = { ProductId = 0, Price = 99, Tokens = 10, Name = "Handful", Gift = true, Random = true },
-		Tokens25 = { ProductId = 0, Price = 229, Tokens = 25, Name = "Pouch", Gift = true, Random = true },
-		Tokens60 = { ProductId = 0, Price = 499, Tokens = 60, Name = "Sack", Gift = true, Random = true },
-		Tokens150 = { ProductId = 0, Price = 1199, Tokens = 150, Name = "Treasure Chest", Gift = true, Random = true },
-		Revive3 = { ProductId = 0, Price = 29, Revives = 3, Name = "Revive x3", Gift = true },
-		Spin3 = { ProductId = 0, Price = 45, Tokens = 3, Name = "Spin x3", Gift = true, Random = true },
-		Rush3 = { ProductId = 0, Price = 35, Rushes = 3, Name = "Boss Rush x3", Gift = true },
-		Boost30 = { ProductId = 0, Price = 25, Boost = "XP", Minutes = 30, Name = "30 min 2x XP", Gift = true },
+		Tokens10 = { ProductId = 3715970994, Price = 99, Tokens = 10, Name = "Handful", Gift = true, Random = true },
+		Tokens25 = { ProductId = 3715971051, Price = 229, Tokens = 25, Name = "Pouch", Gift = true, Random = true },
+		Tokens60 = { ProductId = 3715971088, Price = 449, Tokens = 60, Name = "Sack", Gift = true, Random = true },
+		Tokens150 = { ProductId = 3715971137, Price = 1199, Tokens = 150, Name = "Treasure Chest", Gift = true, Random = true },
+		Revive3 = { ProductId = 3715971207, Price = 29, Revives = 3, Name = "Revive x3", Gift = true },
+		Spin3 = { ProductId = 3715971231, Price = 45, Tokens = 3, Name = "Spin x3", Gift = true, Random = true },
+		Rush3 = { ProductId = 3715971473, Price = 35, Rushes = 3, Name = "Boss Rush x3", Gift = true },
+		Boost30 = { ProductId = 3715971539, Price = 25, Boost = "XP", Minutes = 30, Name = "30 min 2x XP", Gift = true },
 		-- once per player, offered after the first boss
-		Starter = { ProductId = 0, Price = 49, Once = true, Tokens = 10, Coins = 5000, Revives = 1, Title = "Rookie", Name = "Starter Pack", Gift = false },
+		Starter = { ProductId = 3715971585, Price = 49, Once = true, Tokens = 10, Coins = 5000, Revives = 1, Title = "Rookie", Name = "Starter Pack", Gift = false },
 	},
 	-- GAME PASSES (bought once, kept forever)
 	Passes = {
-		VIP = { PassId = 0, Price = 299, Name = "VIP" }, -- +50% XP, +25% coins, VIP title, +10% XP for friends in your server
-		DoubleXP = { PassId = 0, Price = 199, Name = "2x XP" },
-		DoubleCoins = { PassId = 0, Price = 199, Name = "2x Coins" },
-		Luck1 = { PassId = 0, Price = 99, Luck = 1.5, Name = "+50% Luck", Random = true },
-		Luck2 = { PassId = 0, Price = 299, Luck = 2, Name = "+100% Luck", Random = true },
-		Luck3 = { PassId = 0, Price = 799, Luck = 3, Name = "+200% Luck", Random = true },
-		InstantTen = { PassId = 0, Price = 29, Name = "Instant x10" }, -- the x10 spin skips straight to the results
+		VIP = { PassId = 2005418400, Price = 299, Name = "VIP" }, -- +50% XP, +25% coins, VIP title, +10% XP for friends in your server
+		DoubleXP = { PassId = 2005268391, Price = 199, Name = "2x XP" },
+		DoubleCoins = { PassId = 2005370419, Price = 199, Name = "2x Coins" },
+		Luck1 = { PassId = 2005430397, Price = 99, Luck = 1.5, Name = "+50% Luck", Random = true },
+		Luck2 = { PassId = 2006948389, Price = 299, Luck = 2, Name = "+100% Luck", Random = true },
+		Luck3 = { PassId = 2005934386, Price = 799, Luck = 3, Name = "+200% Luck", Random = true },
+		InstantTen = { PassId = 2006204386, Price = 29, Name = "Instant x10" }, -- the x10 spin skips straight to the results
 	},
 	VIP = { XP = 0.5, Coins = 0.25, FriendXP = 10, Title = "VIP" },
 	-- TICKETS in fights (used by themselves; Settings can turn each off):

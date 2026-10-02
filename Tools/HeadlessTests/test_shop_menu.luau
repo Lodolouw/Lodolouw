@@ -101,6 +101,11 @@ end
 
 local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
 local Shop = Config.Shop
+-- start from a shop that isn't set up yet (the real ids are in Config):
+-- every product and pass at 0, each test gives ids to the ones it buys
+for _, p in pairs(Shop.Products) do p.ProductId = 0 end
+for _, p in pairs(Shop.Passes) do p.PassId = 0 end
+table.clear(Config.ShopByProductId)
 if SNAPS then
 	local AssetIds = mount.require(mount.module("ReplicatedStorage/AssetIds.lua"))
 	AssetIds.Icons = AssetIds.Icons or {}
