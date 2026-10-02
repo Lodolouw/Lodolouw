@@ -62,6 +62,7 @@ run test_moneyicons.luau
 run test_rewards_shop.luau
 run test_security_economy.luau
 run test_security_combat.luau
+run test_path.luau
 # the new lobby screen (next goal and its trail, gift clock, quest, boosts)
 # and the menus' host (see-through, tabs, one at a time)
 run test_lobbyhud.luau

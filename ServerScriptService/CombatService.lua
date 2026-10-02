@@ -1946,6 +1946,9 @@ function CombatService.Start(playerService)
 				return false, def.Type .. " weapons aren't swingable yet - coming soon."
 			end
 			CombatService.Equip(player, id)
+			if PlayerService.PathEvent then
+				task.defer(PlayerService.PathEvent, player, "Equip") -- (the new player path)
+			end
 			return true, def.Name .. " equipped!"
 		end)
 	end

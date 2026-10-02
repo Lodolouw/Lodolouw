@@ -289,6 +289,37 @@ send({ Quests = quests, Power = Config.powerForLevel(lv), Cleared = { ["1"] = 1 
 check(goalText() ~= nil and string.find(goalText(), "Floor 2") ~= nil or goalText() == "Train in the Colosseum", "floor 1 beaten: on to floor 2 (" .. tostring(goalText()) .. ")")
 check(badge("Shop") == "!", "first boss down: the shop's starter pack badge")
 
+-- THE NEW PLAYER PATH comes first: its step on the card, the pips, the trail
+-- to the step's place, and an arrow beside the BAG for the equip step
+do
+	local steps = Config.Path.Steps
+	local function kicker()
+		local g = find(root, "NextGoal")
+		return g and find(g, "Kicker").Text or ""
+	end
+	send({ Quests = quests, Power = Config.powerForLevel(lv), Tokens = 3, Path = { step = 1, done = false } })
+	check(goalText() == steps[1].Text, "the path's step 1 on the card (" .. tostring(goalText()) .. ")")
+	check(string.find(kicker(), "STEP 1 OF " .. #steps) ~= nil, "...marked as the path's step 1 of " .. #steps .. " (" .. kicker() .. ")")
+	check(trailPointsTo(zones.Arcade), "...and the trail leads to the Arcade")
+	local pips = find(root, "PathPips")
+	check(pips and pips.Visible, "the path's pips show")
+	send({ Quests = quests, Power = Config.powerForLevel(lv), Path = { step = 2, done = false } })
+	check(goalText() == steps[2].Text, "step 2: hold your weapon (" .. tostring(goalText()) .. ")")
+	wait(0.1)
+	local arrow = find(lobby, "PathArrow")
+	check(arrow and arrow.Visible, "an arrow bobs beside the BAG")
+	if SNAPS then
+		snapGui(lobby, "THE NEW PLAYER PATH|step 2 of 5 on the goal card, the pips, an arrow at the BAG", 1280, 720)
+	end
+	send({ Quests = quests, Power = Config.powerForLevel(lv), Path = { step = 3, done = false } })
+	check(goalText() == steps[3].Text and trailPointsTo(zones.Quests), "step 3: the Quest Board, trail and all")
+	wait(0.1)
+	check(not (arrow and arrow.Visible), "no arrow when the step's a place to walk to")
+	send({ Quests = quests, Power = Config.powerForLevel(lv), Path = { step = 5, done = true } })
+	check(goalText() ~= steps[5].Text and string.find(kicker(), "STEP") == nil, "the path done: back to the usual goals (" .. tostring(goalText()) .. ")")
+	check(not (pips and pips.Visible), "and no pips")
+end
+
 -- walking up to it: the trail goes
 hrp.CFrame = CFrame.new(zones.Spire.Position.X, 3, zones.Spire.Position.Z + 5)
 send({ Quests = quests, Power = Config.powerForLevel(lv) })

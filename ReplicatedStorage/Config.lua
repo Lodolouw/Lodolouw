@@ -3580,6 +3580,28 @@ end
 -- even if they hack their screen - the screen only uses it to show the button.
 ----------------------------------------------------------------------
 Config.DevUserIds = {}
+----------------------------------------------------------------------
+-- THE NEW PLAYER PATH: right after the intro, five steps lead a new player
+-- through the game - the lobby's goal card shows the step (and its trail
+-- leads there; the Bag step points at the BAG button). The server moves you
+-- on only when it sees the thing really happen (PlayerService.PathEvent) and
+-- pays each step's Reward then, and Done at the end. Players from before the
+-- path existed skip it. DEV: "New Player Path" starts it again from step 1.
+--   Place = a walk-up spot in the lobby the trail leads to ("Arcade",
+--   "Quests", "Spire"); Open = a menu the goal card opens; Point = a lobby
+--   button an arrow bounces beside.
+----------------------------------------------------------------------
+Config.Path = {
+	Steps = {
+		{ Id = "Spin", Text = "Spin your token at the Arcade", Sub = "Your first weapon is waiting!", Icon = "Arcade", Place = "Arcade", Reward = { Coins = 100 } },
+		{ Id = "Equip", Text = "Hold your new weapon", Sub = "Open your BAG and press EQUIP", Icon = "Bag", Open = "Bag", Point = "Bag", Reward = { Coins = 100 } },
+		{ Id = "Quest", Text = "Pick a quest", Sub = "At the Quest Board - it pays a token", Icon = "Goals", Place = "Quests", Reward = { Coins = 150 } },
+		{ Id = "Enter", Text = "Enter the Spire", Sub = "Walk to its doors and pick Floor 1", Icon = "Spire", Place = "Spire", Reward = { Coins = 150 } },
+		{ Id = "Beat", Text = "Beat Oozark on Floor 1", Sub = "Roll through his attacks, then hit back!", Icon = "Bosses", Place = "Spire", Reward = { Coins = 300 } },
+	},
+	Done = { Tokens = 2, Coins = 500 }, -- for finishing the whole path
+}
+
 function Config.isDev(player)
 	local ok, studio = pcall(function()
 		return game:GetService("RunService"):IsStudio()

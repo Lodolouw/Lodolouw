@@ -1339,7 +1339,7 @@ do
 		Name = "DevTools",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -52),
-		Size = UDim2.fromOffset(150, 456),
+		Size = UDim2.fromOffset(150, 498),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = root,
@@ -1357,6 +1357,18 @@ do
 	})
 	replay.Activated:Connect(function()
 		doAction("DevReplayIntro")
+	end)
+	-- walk the NEW PLAYER PATH from step 1 (the steps have to be done for real)
+	local path = button({
+		LayoutOrder = 4,
+		Size = UDim2.fromOffset(150, 36),
+		Text = "DEV: New Player Path",
+		TextSize = 15,
+		BackgroundColor3 = RGB(181, 80, 136),
+		Parent = devCol,
+	})
+	path.Activated:Connect(function()
+		doAction("DevPath")
 	end)
 	-- the weapon test: hold the test sword (again: back to fists), and level its
 	-- mastery up a quarter at a time (25, 50, 75, 100, then back to 1)

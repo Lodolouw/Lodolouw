@@ -53,6 +53,9 @@ local function defaultData()
 		Prestige = 0,
 		Cleared = {}, -- ["1"] = how many times you've killed floor 1's boss
 		IntroDone = false, -- beaten Oozlet (the intro: only brand-new players get it)
+		-- THE NEW PLAYER PATH (Config.Path): the step you're on (0: not started -
+		-- it starts when the intro ends), and whether it's all done
+		Path = { step = 0, done = false },
 		-- the board's quests (see Config.Quests): which set they're from (`day`:
 		-- Config.questPeriod, a new set every 6 hours), and for
 		-- each one how far along you are and whether you've handed it in
@@ -232,6 +235,16 @@ local function mergeSaved(saved)
 	-- (the intro is for brand-new players: a save from before it existed that
 	-- has any progress counts as having done it)
 	d.IntroDone = saved.IntroDone == true or d.Power > 0
+	-- (the new player path: kept in range; a save from before it existed
+	-- skips it if the intro's done - they know their way round already)
+	local steps = Config.Path and #Config.Path.Steps or 0
+	if type(saved.Path) == "table" then
+		local s = tonumber(saved.Path.step)
+		d.Path.step = (s and s == s) and math.clamp(math.floor(s), 0, steps) or 0
+		d.Path.done = saved.Path.done == true
+	else
+		d.Path.done = d.IntroDone
+	end
 	-- (prestige is gone: every prestige you had became one of Oozark's
 	-- treasure chests, once - and now the chests are gone too, an Arcade
 	-- Token each: OLD_GEAR, above)
@@ -790,6 +803,9 @@ function PlayerService.RecordBossKill(player, floorId, tierId)
 	local key = clearedKey(floorId, tierId)
 	local before = d.Cleared[key] or 0
 	d.Cleared[key] = before + 1
+	if floorId == 1 and (tierId == nil or tierId == "Normal") then
+		task.defer(PlayerService.PathEvent, player, "Beat")
+	end
 	showCleared(player, d)
 	-- a boss's first clear pays a bundle of Arcade Tokens (a harder tier's:
 	-- its own number, Config.Spire.Tiers)
@@ -816,8 +832,84 @@ function PlayerService.SetIntroDone(player)
 	local profile = profiles[player]
 	if profile then
 		profile.data.IntroDone = true
+		-- (the intro's over: the new player path starts)
+		local P = profile.data.Path
+		if P and not P.done and P.step == 0 then
+			P.step = 1
+			PlayerService.PathBegin(player)
+		end
 		markDirty(player)
 	end
+end
+
+----------------------------------------------------------------------
+-- THE NEW PLAYER PATH (Config.Path). Other services tell it what just
+-- happened - PathEvent(player, "Spin" / "Equip" / "Quest" / "Enter" /
+-- "Beat") - and it only counts if it's the step you're on: the server saw
+-- it happen, so nothing a client says can skip a step or claim its reward.
+----------------------------------------------------------------------
+local function payPath(player, r)
+	if (r.Coins or 0) > 0 then
+		PlayerService.AddCoins(player, r.Coins, true)
+	end
+	if (r.Tokens or 0) > 0 then
+		PlayerService.AddTokens(player, r.Tokens)
+	end
+end
+local function rewardWords(r)
+	local bits = {}
+	if (r.Tokens or 0) > 0 then
+		table.insert(bits, "+" .. r.Tokens .. (r.Tokens == 1 and " token" or " tokens"))
+	end
+	if (r.Coins or 0) > 0 then
+		table.insert(bits, "+" .. Config.format(r.Coins) .. " coins")
+	end
+	return table.concat(bits, ", ")
+end
+
+-- a step has just begun: make sure it can be done
+function PlayerService.PathBegin(player)
+	local profile = profiles[player]
+	local P = profile and profile.data.Path
+	local step = P and not P.done and Config.Path.Steps[P.step]
+	if not step then
+		return
+	end
+	local d = profile.data
+	if step.Id == "Spin" and (d.Tokens or 0) < 1 then
+		-- (the first spin is on us: nobody gets stuck on step 1)
+		d.Tokens = (d.Tokens or 0) + 1
+		notify(player, "Here's a token for your first spin!", "rare")
+	elseif step.Id == "Quest" and d.Quests and d.Quests.pick then
+		-- (already holding a quest: that step's done)
+		task.defer(PlayerService.PathEvent, player, "Quest")
+	end
+	markDirty(player)
+end
+
+function PlayerService.PathEvent(player, id)
+	local profile = profiles[player]
+	local P = profile and profile.data.Path
+	if not P or P.done or P.step < 1 then
+		return
+	end
+	local steps = Config.Path.Steps
+	local step = steps[P.step]
+	if not step or step.Id ~= id then
+		return
+	end
+	payPath(player, step.Reward or {})
+	P.step = P.step + 1
+	if P.step > #steps then
+		P.step = #steps
+		P.done = true
+		payPath(player, Config.Path.Done or {})
+		notify(player, "PATH COMPLETE! You know the way now. " .. rewardWords(Config.Path.Done or {}), "rare")
+	else
+		notify(player, "Step done! " .. rewardWords(step.Reward or {}) .. "  Next: " .. steps[P.step].Text, "good")
+		PlayerService.PathBegin(player)
+	end
+	markDirty(player)
 end
 
 -- A Colosseum run was cleared in `seconds` (worked out by the server) on the
@@ -977,6 +1069,7 @@ handlers.PickQuest = function(player, d, index)
 	end
 	d.Quests.pick = index
 	markDirty(player)
+	task.defer(PlayerService.PathEvent, player, "Quest")
 	return true, "Quest taken: " .. Config.questText(def)
 end
 
@@ -1007,6 +1100,18 @@ handlers.ClaimQuest = function(player, d)
 	local message = payQuest(d, q, def)
 	markDirty(player)
 	return true, message
+end
+
+-- DEV: walk the new player path from step 1 (the steps really have to be
+-- done again: spin, equip, pick a quest, enter the Spire, beat Oozark)
+handlers.DevPath = function(player, d)
+	if not Config.isDev(player) then
+		return false, "Dev tools are only for the game's owner."
+	end
+	d.Path = { step = 1, done = false }
+	PlayerService.PathBegin(player)
+	markDirty(player)
+	return true, "New player path: back to step 1 - " .. Config.Path.Steps[1].Text
 end
 
 -- Dev test helpers: Studio, or the game's owner in the real game (Config.isDev)

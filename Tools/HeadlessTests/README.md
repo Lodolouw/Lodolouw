@@ -455,6 +455,14 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `test_moneyicons.luau` - the living coin and token (MoneyIcons): made
   once all 8 pictures are uploaded (flipping through them, the token
   bobbing), nothing while any is missing.
+- `test_path.luau` - THE NEW PLAYER PATH (Config.Path, PlayerService.PathEvent):
+  a brand-new player gets it when the intro ends and a player from before it
+  skips it; each step moves on only when the server sees it happen, in order
+  (a real Arcade spin, a real EquipWeapon...), paying its reward once; the
+  whole path pays Done; there's no remote to push it along; the spin step hands
+  out a token if you've none; a nonsense saved path is kept in range; DEV: New
+  Player Path starts it again. (`test_lobbyhud` checks the goal card shows it:
+  STEP n OF 5, the pips, the trail, the arrow at the BAG.)
 - `test_security_economy.luau` - SECURITY, the economy, attacked the way a
   modified client would: 15 community-chest claims fired at once pay once (the
   Action remote runs one action per player at a time); NaN / infinite /

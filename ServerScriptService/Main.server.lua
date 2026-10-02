@@ -114,6 +114,12 @@ start("SpireService", SpireService and SpireService.Start) -- the Spire menu and
 
 -- Parties (up to 4): the leader picks the floor and everyone goes into one
 -- arena together (it hands SpireService who goes up with whom)
+-- (arriving on a Spire floor: the new player path's "Enter the Spire" step)
+if SpireService and PlayerService and PlayerService.PathEvent then
+	SpireService.OnArrive = function(p)
+		PlayerService.PathEvent(p, "Enter")
+	end
+end
 local PartyService = load("PartyService", 3)
 start("PartyService", PartyService and PartyService.Start, SpireService)
 

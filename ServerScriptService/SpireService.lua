@@ -328,6 +328,10 @@ local function travel(player, action, floorId, tierId)
 					p:SetAttribute("SpireTier", tier.id ~= "Normal" and tier.id or nil)
 					p:SetAttribute("SpireFloor", floor.id)
 					remotes.SpireEvent:FireClient(p, "Arrived", floor.area, tier.id ~= "Normal" and (tier.name .. " · " .. floor.boss) or floor.boss)
+					-- (anyone listening - the new player path's "Enter the Spire")
+					if SpireService.OnArrive then
+						task.defer(pcall, SpireService.OnArrive, p, floor.id, tier.id)
+					end
 				else
 					ArenaPool.Leave(p)
 				end

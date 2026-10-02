@@ -208,9 +208,9 @@ do
 		Visible = false,
 	})
 	ui.goal = holder
-	new("UIScale", { Scale = 0.8 }, holder) -- (a bit smaller: it covered a lot of the view)
+	ui.goalScale = new("UIScale", { Scale = 0.8 }, holder) -- (a bit smaller: it covered a lot of the view)
 	ui.goalIcon = K.icon(face, "Spire", { Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(62, 62), ZIndex = 3 })
-	K.label(face, {
+	ui.goalKicker = K.label(face, {
 		Name = "Kicker",
 		Text = "NEXT GOAL",
 		Font = K.TITLE_FONT,
@@ -263,6 +263,31 @@ do
 	guideBtn.Activated:Connect(function()
 		player:SetAttribute("GuideOff", (not player:GetAttribute("GuideOff")) or nil)
 	end)
+	-- THE NEW PLAYER PATH's progress: a pip per step under the card (lit up
+	-- to the one you're on) - and an arrow that bobs beside a lobby button
+	-- when that's where the step is (the BAG)
+	local pips = new("Frame", { Name = "PathPips", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 8), Size = UDim2.fromOffset(300, 14), Visible = false }, ui.goal)
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, pips)
+	ui.pathPips, ui.pathPip = pips, {}
+	for i = 1, Config.Path and #Config.Path.Steps or 0 do
+		local pip = new("Frame", { Name = "Pip" .. i, LayoutOrder = i, BackgroundColor3 = C.Off, BorderSizePixel = 0, Size = UDim2.fromOffset(48, 12) }, pips)
+		K.outline(pip, C.Ink, 2)
+		ui.pathPip[i] = pip
+	end
+	ui.pathArrow = K.label(ui.buttons, {
+		Name = "PathArrow",
+		Text = "< HERE!",
+		Font = K.TITLE_FONT,
+		TextScaled = false,
+		TextSize = 22,
+		TextColor3 = C.Yellow,
+		TextStrokeTransparency = 0,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Size = UDim2.fromOffset(170, 40),
+		Visible = false,
+		ZIndex = 20,
+	})
 	-- (tapping it: for a goal with no place to walk to, it opens the thing)
 	local tap = new("TextButton", { Name = "Tap", Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 4 }, face)
 	tap.Activated:Connect(function()
@@ -484,6 +509,19 @@ local function nextGoal(d)
 	if not d then
 		return nil
 	end
+	-- THE NEW PLAYER PATH comes first, step by step (Config.Path; the server
+	-- moves you on when it sees the step done)
+	local P = type(d.Path) == "table" and d.Path or nil
+	local steps = Config.Path and Config.Path.Steps or {}
+	local at = P and not P.done and tonumber(P.step) or 0
+	if steps[at] then
+		local s = steps[at]
+		local open = s.Open
+		if open == "Bag" and not Menus.defs.Bag then
+			open = "Weapons"
+		end
+		return { text = s.Text, sub = s.Sub, icon = s.Icon, place = s.Place, open = open, point = s.Point, path = at, total = #steps }
+	end
 	local q = type(d.Quests) == "table" and d.Quests or {}
 	local list = type(q.list) == "table" and q.list or {}
 	local picked = q.pick and list[q.pick]
@@ -704,6 +742,20 @@ local function tick()
 		ui.goalText.Text = g.text
 		ui.goalSub.Text = g.sub or ""
 		ui.goalOpen = g.open
+		-- the path: its step on the card, the pips, and a pop when it moves on
+		ui.goalKicker.Text = g.path and ("NEW PLAYER PATH  ·  STEP " .. g.path .. " OF " .. g.total) or "NEXT GOAL"
+		ui.goalKicker.TextColor3 = g.path and C.Pink or C.Muted
+		ui.pathPips.Visible = g.path ~= nil
+		for i, pip in ipairs(ui.pathPip) do
+			pip.BackgroundColor3 = (g.path and i < g.path) and C.Green or (i == g.path and C.Yellow or C.Off)
+		end
+		if g.path and ui.lastPathStep and g.path ~= ui.lastPathStep then
+			ui.goalScale.Scale = 1
+			task.delay(0.18, function()
+				ui.goalScale.Scale = 0.8
+			end)
+		end
+		ui.lastPathStep = g.path
 		if ui.goalIconKey ~= g.icon then
 			ui.goalIconKey = g.icon
 			local old = ui.goalIcon
@@ -717,6 +769,15 @@ end
 local phase = 0
 local function follow(dt)
 	local g = ui.goalData
+	-- the path's arrow, bobbing beside the button it means
+	local target = g and g.point and shown() and ui.buttons:FindFirstChild(g.point)
+	ui.pathArrow.Visible = target ~= nil
+	if target then
+		-- (beside it, in the buttons' own frame: right of the button, level with its middle)
+		local bob = math.abs(math.sin(os.clock() * 5)) * 10
+		local w, h = target.Size.X.Offset, target.Size.Y.Offset
+		ui.pathArrow.Position = target.Position + UDim2.fromOffset(w + 10 + bob, h / 2)
+	end
 	local zone = g and g.place and shown() and zoneFor(g.place) or nil
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")

@@ -193,6 +193,9 @@ local function roll(player, d, arg)
 	if event then
 		event:FireAllClients("Roll", player.UserId, player.DisplayName, machineId, shown)
 	end
+	if PlayerService and PlayerService.PathEvent then
+		task.defer(PlayerService.PathEvent, player, "Spin") -- (the new player path's first step)
+	end
 	return true, {
 		machine = machineId,
 		results = results,
