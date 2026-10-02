@@ -1229,7 +1229,7 @@ Config.Intro = {
 		Finish = "FINISH IT!!!", -- one or two punches left
 		Awaits = "OOZARK AWAITS...", -- at the end, looking at the Spire
 		-- the little line under the big words: how, on each kind of controls
-		PunchHow = { Mouse = "CLICK TO PUNCH", Touch = "TAP TO PUNCH", Gamepad = "PRESS R2 TO PUNCH" },
+		PunchHow = { Mouse = "CLICK TO PUNCH", Touch = "TAP THE RED BUTTON", Gamepad = "PRESS R2 TO PUNCH" },
 		RollHow = { Mouse = "PRESS SHIFT TO ROLL", Touch = "TAP ROLL", Gamepad = "PRESS B TO ROLL" },
 	},
 

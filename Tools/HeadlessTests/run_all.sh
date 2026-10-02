@@ -122,6 +122,7 @@ run test_gridlock.luau -a full 2 client
 run test_gridlock.luau -a attacks 1 client
 run test_gridlock_music.luau
 run test_arena_horizon.luau
+run test_touch_controls.luau
 # Kongo (floor 7): whole fights, every move, resets, two players, the dodge
 # windows, the tired opening, and his body, the villagers and torches on screen
 for seed in 1 2 3; do run test_kongo.luau -a full $seed; done

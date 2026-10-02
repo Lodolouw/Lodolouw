@@ -165,7 +165,7 @@ local hints = create("TextLabel", {
 	Parent = combatUI,
 }, { textStroke(2) })
 
--- phone buttons, next to the jump button
+-- phone buttons (laid out round ATTACK by placeTouch, below)
 local function roundButton(name, label, pos, size, color)
 	return create("TextButton", {
 		Name = name,
@@ -183,9 +183,82 @@ local function roundButton(name, label, pos, size, color)
 		Parent = combatUI,
 	}, { create("UICorner", { CornerRadius = UDim.new(1, 0) }), stroke(3, RGB(0, 0, 0), 0.2), textStroke(2) })
 end
-local rollBtn = roundButton("RollButton", "ROLL", UDim2.new(1, -210, 1, -95), 88, RGB(60, 110, 200))
-local flaskBtn = roundButton("FlaskButton", "🧪", UDim2.new(1, -120, 1, -200), 70, RGB(50, 150, 80))
-local lockBtn = roundButton("LockButton", "LOCK", UDim2.new(1, -205, 1, -195), 62, RGB(90, 90, 110))
+local attackBtn = roundButton("AttackButton", "👊", UDim2.new(1, -100, 1, -100), 124, RGB(228, 59, 68))
+local rollBtn = roundButton("RollButton", "ROLL", UDim2.new(1, -228, 1, -100), 84, RGB(60, 110, 200))
+local flaskBtn = roundButton("FlaskButton", "🧪", UDim2.new(1, -293, 1, -170), 62, RGB(50, 150, 80))
+local lockBtn = roundButton("LockButton", "LOCK", UDim2.new(1, -170, 1, -293), 62, RGB(90, 90, 110))
+
+-- THE PHONE LAYOUT: one thumb's reach in the bottom-right corner. ATTACK is
+-- the big button in the corner (hold it to keep swinging); round it in an
+-- arc JUMP (Roblox's own button, moved here while you fight and put back
+-- after), ROLL and the weapon's ability; further out the potion and LOCK.
+-- { angle (degrees round ATTACK, 0 = right, 90 = up), distance, size }, all
+-- scaled to the screen.
+local TOUCH_CENTER = 100
+local TOUCH_LAYOUT = {
+	Attack = { 0, 0, 124 },
+	Jump = { 180, 130, 84 },
+	Roll = { 135, 150, 84 }, -- (a little further: buttons are tapped by their square box, not the circle)
+	Ability = { 90, 130, 84 },
+	Flask = { 158, 210, 62 },
+	Lock = { 112, 210, 62 },
+}
+local function touchMode()
+	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+end
+local function touchScale()
+	local cam = workspace.CurrentCamera
+	local vs = cam and cam.ViewportSize or Vector2.new(844, 390)
+	return math.clamp(math.min(vs.X, vs.Y) / 400, 0.8, 1.35)
+end
+local function touchSpot(spec, k)
+	local a, r = math.rad(spec[1]), spec[2] * k
+	return UDim2.new(1, -TOUCH_CENTER * k + math.cos(a) * r, 1, -TOUCH_CENTER * k - math.sin(a) * r), UDim2.fromOffset(spec[3] * k, spec[3] * k)
+end
+local function jumpButton()
+	local tg = playerGui:FindFirstChild("TouchGui")
+	local frame = tg and tg:FindFirstChild("TouchControlFrame")
+	return frame and frame:FindFirstChild("JumpButton")
+end
+local jumpHome = nil -- where Roblox had the jump button (put back after the fight)
+local function placeTouch(fighting)
+	local k = touchScale()
+	for btn, key in pairs({ [attackBtn] = "Attack", [rollBtn] = "Roll", [flaskBtn] = "Flask", [lockBtn] = "Lock" }) do
+		local pos, size = touchSpot(TOUCH_LAYOUT[key], k)
+		if btn.Position ~= pos then
+			btn.Position, btn.Size = pos, size
+		end
+	end
+	local ability = combatUI:FindFirstChild("AbilityButton")
+	if ability then
+		local pos, size = touchSpot(TOUCH_LAYOUT.Ability, k)
+		if ability.Position ~= pos then
+			ability.Position, ability.Size = pos, size
+		end
+	end
+	attackBtn.TextSize = math.floor(46 * k)
+	rollBtn.TextSize = math.floor(20 * k)
+	lockBtn.TextSize = math.floor(16 * k)
+	flaskBtn.TextSize = math.floor(26 * k)
+	-- Roblox's jump button joins the arc while you fight (it puts it back
+	-- itself if the screen turns, so this is checked again now and then)
+	local jb = jumpButton()
+	if jb then
+		if fighting and touchMode() then
+			if not jumpHome then
+				jumpHome = { jb.Position, jb.Size, jb.AnchorPoint }
+			end
+			local pos, size = touchSpot(TOUCH_LAYOUT.Jump, k)
+			if jb.Position ~= pos or jb.Size ~= size then
+				jb.AnchorPoint = Vector2.new(0.5, 0.5)
+				jb.Position, jb.Size = pos, size
+			end
+		elseif jumpHome then
+			jb.Position, jb.Size, jb.AnchorPoint = jumpHome[1], jumpHome[2], jumpHome[3]
+			jumpHome = nil
+		end
+	end
+end
 
 -- red flash round the edges when you're hit
 local vignette = create("Frame", {
@@ -2010,7 +2083,7 @@ do
 	end
 
 	-- THE PHONE BUTTON (next to ROLL), with the cooldown counting down on it
-	local phoneBtn = roundButton("AbilityButton", "⚔", UDim2.new(1, -300, 1, -110), 74, RGB(162, 38, 51))
+	local phoneBtn = roundButton("AbilityButton", "SKILL", UDim2.new(1, -100, 1, -230), 84, RGB(162, 38, 51))
 	local phoneCd = create("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
@@ -3006,6 +3079,7 @@ local function setActive(on)
 	-- (the intro shows nothing but the ROLL button: the big words teach the rest)
 	local intro = player:GetAttribute("Intro") ~= nil
 	Vitals.set({ shown = on and not intro }) -- the bolt and the potion beside the heart
+	attackBtn.Visible = on and touch
 	rollBtn.Visible = on and touch
 	flaskBtn.Visible = on and touch and not intro
 	hints.Visible = on and not touch and not intro
@@ -3016,6 +3090,7 @@ local function setActive(on)
 		toasts.Position = on and UDim2.new(0.5, 0, 1, -178) or toastHome
 	end
 	lockBtn.Visible = on and touch and not intro
+	placeTouch(on)
 	if on then
 		stamina, flasks = CC.MaxStamina, CC.Flasks
 		renderStats()
@@ -3120,14 +3195,70 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or not isPointer(input) then
 		return
 	end
+	-- (on a phone only the ATTACK button swings: a tap to turn the camera or
+	-- a thumb on the stick never throws a punch by accident)
+	if input.UserInputType == Enum.UserInputType.Touch and touchMode() then
+		return
+	end
 	holding = true
 	tryPunch()
 end)
+local attackTouch = nil -- the finger on the ATTACK button
 UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch and touchMode() then
+		if input == attackTouch then -- (lifting the stick's thumb doesn't stop the swings)
+			attackTouch = nil
+			holding = false
+		end
+		return
+	end
 	if isPointer(input) or input.KeyCode == Enum.KeyCode.ButtonR2 then
 		holding = false
 	end
 end)
+-- ATTACK: press to swing, hold to keep swinging
+attackBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		attackTouch = input
+		holding = true
+		tryPunch()
+	end
+end)
+attackBtn.InputEnded:Connect(function(input)
+	if input == attackTouch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		attackTouch = nil
+		holding = false
+	end
+end)
+-- the layout follows the screen (turning it, a new size) and keeps the jump
+-- button in its place
+do
+	local function relayout()
+		placeTouch(active)
+	end
+	local function watchCamera()
+		local cam = workspace.CurrentCamera
+		if cam then
+			cam:GetPropertyChangedSignal("ViewportSize"):Connect(relayout)
+		end
+		relayout()
+	end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(watchCamera)
+	watchCamera()
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			if active and touchMode() then
+				relayout()
+				-- the ATTACK button shows what you swing
+				local want = Weapon.current() and "⚔" or "👊"
+				if attackBtn.Text ~= want then
+					attackBtn.Text = want
+				end
+			end
+		end
+	end)
+end
 -- gamepad: flick the right stick left or right to switch target
 local stickFlicked = false
 UserInputService.InputChanged:Connect(function(input)
