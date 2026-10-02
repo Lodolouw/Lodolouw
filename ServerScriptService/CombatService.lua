@@ -62,7 +62,7 @@ local CC = Config.Combat
 local PlayerService = nil -- set in Start (avoids a require loop)
 local remotes = {}
 local fighters = {} -- [player] = combat state while in an arena
-local nextSwing, movedFairly -- (below: the string, and fair positions)
+local nextSwing, movedFairly, introMiss -- (below: the string, fair positions, the intro's missed-punch note)
 local targets = {} -- [model] = true for every punchable enemy
 local whiffListeners = {} -- functions that hear about punches at thin air (CombatService.OnWhiff)
 
@@ -529,6 +529,10 @@ end
 local FAIR_SPEED = (CC.RollSpeed or 62) * 1.3 -- studs a second
 local FAIR_WINDOW = 0.45 -- seconds looked back
 movedFairly = function(player, st, root)
+	-- (the intro's fight is private and can't be lost: nothing to protect)
+	if introFight(player) and not player:GetAttribute("SpireFloor") and not player:GetAttribute("Colosseum") then
+		return true
+	end
 	local mu = player:GetAttribute("MoveUntil")
 	if type(mu) == "number" and workspace:GetServerTimeNow() <= mu then
 		return true
@@ -553,6 +557,12 @@ end
 local sightParams = nil
 local function clearShot(root, model, point)
 	if typeof(point) ~= "Vector3" then
+		return true
+	end
+	-- (a target only one player can hit - Oozlet in the intro, a Colosseum
+	-- dummy - is theirs alone: punching it through something takes nothing
+	-- from anyone)
+	if model:GetAttribute("Owner") ~= nil then
 		return true
 	end
 	local dir = point - root.Position
@@ -582,6 +592,38 @@ local function clearShot(root, model, point)
 	local inst = hit.Instance
 	local solid = typeof(inst) == "Instance" and inst:IsA("BasePart") and inst.Anchored and inst.CanCollide
 	return not solid or (hit.Position - root.Position).Magnitude >= dir.Magnitude - 2
+end
+
+-- A punch in the intro that found nothing: say why in the Output window
+-- (once every few seconds), so a fight that won't land can be tracked down
+local lastMissNote = setmetatable({}, { __mode = "k" })
+function introMiss(player, root)
+	local t = os.clock()
+	if t - (lastMissNote[player] or -math.huge) < 3 then
+		return
+	end
+	lastMissNote[player] = t
+	local look = root.CFrame.LookVector
+	local facing = Vector3.new(look.X, 0, look.Z)
+	facing = facing.Magnitude > 0.01 and facing.Unit or Vector3.new(0, 0, -1)
+	local seen = 0
+	for model in pairs(targets) do
+		if model.Parent and model:GetAttribute("Owner") == player.UserId then
+			seen += 1
+			local cf, radius = aimAt(model, root.Position)
+			if cf then
+				local flat = Vector3.new(cf.X - root.Position.X, 0, cf.Z - root.Position.Z)
+				warn(string.format(
+					"[CombatService] intro punch missed %s: %.1f studs to its edge (reach %s), %.1f up/down, facing %.2f (needs %.2f), health %s%s",
+					model.Name, flat.Magnitude - radius, tostring(CC.PunchRange), cf.Y - root.Position.Y,
+					flat.Magnitude > 0.01 and facing:Dot(flat.Unit) or 1, PUNCH_CONE,
+					tostring(model:GetAttribute("Health")), model:GetAttribute("Invulnerable") and " (can't be hurt right now)" or ""))
+			end
+		end
+	end
+	if seen == 0 then
+		warn("[CombatService] intro punch: no Oozlet of yours is registered as a target (UserId " .. tostring(player.UserId) .. ")")
+	end
 end
 
 local function nearestTarget(root, player)
@@ -1733,9 +1775,15 @@ local function onFloorChanged(player)
 	end
 end
 
+local noFightNote = setmetatable({}, { __mode = "k" })
 local function onAction(player, action, arg, swing)
 	local st = fighters[player]
 	if not st then
+		-- (in the intro this would mean every punch is ignored: say so, once)
+		if player:GetAttribute("Intro") and not noFightNote[player] then
+			noFightNote[player] = true
+			warn("[CombatService] " .. tostring(action) .. " ignored: the intro is on (" .. tostring(player:GetAttribute("Intro")) .. ") but you aren't set up as fighting")
+		end
 		return
 	end
 	local hum, root = charParts(player)
@@ -1803,6 +1851,9 @@ local function onAction(player, action, arg, swing)
 				local dmg, crit = CombatService.DamageAgainst(player, target)
 				hitTarget(player, target, dmg, crit and 3 or weight) -- (a crit lands as the heaviest punch)
 			else
+				if introFight(player) then
+					introMiss(player, atRoot)
+				end
 				-- a punch at thin air: anything listening hears about it (Kaze
 				-- feeds on your misses)
 				for _, fn in ipairs(whiffListeners) do
