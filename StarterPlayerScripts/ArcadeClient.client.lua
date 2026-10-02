@@ -868,7 +868,9 @@ refresh = function()
 	if popIn then
 		UI.detail.Size = UDim2.new(1, -14, 0, 0)
 		tween(UI.detail, 0.3, { Size = UDim2.new(1, -14, 0, h) }, Enum.EasingStyle.Quint)
-		local y = 4 + (A.Exchange and (UI.EX_H + UI.GAP) or 0) + (idx - 1) * (UI.BANNER_H + UI.GAP)
+		-- (the first pack keeps the Coin Exchange in view above it - the
+		-- exchange, its banner and its spin menu just fit)
+		local y = idx == 1 and 0 or 4 + (A.Exchange and (UI.EX_H + UI.GAP) or 0) + (idx - 1) * (UI.BANNER_H + UI.GAP)
 		pcall(function()
 			tween(list, 0.3, { CanvasPosition = Vector2.new(0, y) }, Enum.EasingStyle.Quint)
 		end)
