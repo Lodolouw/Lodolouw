@@ -1031,9 +1031,9 @@ if R.StartScreen ~= false then
 	end
 	-- the title bounces in from above with a hard purple shadow; then the
 	-- subtitle types itself out in yellow
-	local shadow = label(R.Title or "DEFEAT THE BOSS", -0.2, 0.12, RGB(104, 56, 108), true)
+	local shadow = label(R.Title or "DEFEAT A BOSS", -0.2, 0.12, RGB(104, 56, 108), true)
 	shadow.ZIndex = 7
-	local main = label(R.Title or "DEFEAT THE BOSS", -0.2, 0.12, WHITE, true)
+	local main = label(R.Title or "DEFEAT A BOSS", -0.2, 0.12, WHITE, true)
 	tween(main, 0.8, { Position = UDim2.fromScale(0.5, 0.3) }, Enum.EasingStyle.Bounce)
 	tween(shadow, 0.8, { Position = UDim2.new(0.5, 6, 0.3, 6) }, Enum.EasingStyle.Bounce)
 	local sub = label(R.Subtitle or "TO GROW", 0.42, 0.06, YELLOW, true)

@@ -1047,7 +1047,7 @@ Config.Retro = {
 	ClickBurst = true, -- a burst of pixel sparks every time you click a button
 	Scanlines = 1, -- an old-TV screen (1 = off - a clean screen; 0.93 = faint)
 	StartScreen = true, -- the title screen when you join
-	Title = "DEFEAT THE BOSS",
+	Title = "DEFEAT A BOSS",
 	Subtitle = "TO GROW",
 	Blip = "UI Blip", -- a short blip on clicks, if you add a Sound with this name to SoundService
 	-- the lobby in the same look (RetroWorld - only on your screen, only how
