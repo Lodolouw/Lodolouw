@@ -297,8 +297,9 @@ local function buildWindow()
 		local len = EDGE * 2
 		local mid = V3(dx * (HALF + t / 2), 0, dz * (HALF + t / 2))
 		local size = along and V3(len, 4.6, t) or V3(t, 4.6, len)
-		-- (its top stands 0.6 over the paper)
-		part("WindowFrame", size, CFrame.new(at(mid.X, 0.6 - 2.3, mid.Z)), SILVER, SCENERY)
+		-- (its top stands 0.6 over the paper; SOLID - the way to the [X] door
+		-- crosses it, and as scenery you fell straight through it there)
+		part("WindowFrame", size, CFrame.new(at(mid.X, 0.6 - 2.3, mid.Z)), SILVER, { CanQuery = false })
 		-- the pale inner bevel and the dark outer one
 		local inner = V3(dx * (HALF + 0.6), 0.7, dz * (HALF + 0.6))
 		part("FrameBevel", along and V3(HALF * 2 + 1.2, 0.2, 1.2) or V3(1.2, 0.2, HALF * 2 + 1.2), CFrame.new(at(inner.X, inner.Y, inner.Z)), WHITE, DECOR)
@@ -308,7 +309,8 @@ local function buildWindow()
 	-- the window's drop shadow on the desktop far below
 	part("WindowShadow", V3(EDGE * 2, 0.2, EDGE * 2), CFrame.new(at(9, DESK_Y + 0.15, 9)), NAVY, DECOR)
 	-- and the window's underside (it's a thick slab, floating)
-	part("WindowUnder", V3(EDGE * 2 - 0.4, 3, EDGE * 2 - 0.4), CFrame.new(at(0, -5.5, 0)), STEEL, SCENERY)
+	-- (solid too: nothing on the window falls through it)
+	part("WindowUnder", V3(EDGE * 2 - 0.4, 3, EDGE * 2 - 0.4), CFrame.new(at(0, -5.5, 0)), STEEL, { CanQuery = false })
 
 	-- THE TITLE BAR: standing up behind the north edge, navy, with the
 	-- program's name and a little pencil icon, and its three buttons
