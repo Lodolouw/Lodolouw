@@ -4,8 +4,9 @@
 -- player from before it skips it; each step only moves on when the server
 -- sees that thing really happen - in order - and pays its reward once; the
 -- whole path pays Done at the end; a client can't push it along itself; it
--- starts in the Colosseum (no Spire or Oozark on it); the spin step hands out
--- a token if you've none; DEV: New Player Path starts it again from step 1.
+-- spins the slime's token (the weapon goes straight into your hand), then one
+-- Colosseum run; the spin step hands out a token if you've none; DEV: New
+-- Player Path starts it again from step 1.
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -203,7 +204,7 @@ end
 
 local P = Config.Path
 local steps = P.Steps
-check(#steps == 5, "five steps")
+check(#steps == 3, "three steps: spin, into the Colosseum, clear it")
 
 ----------------------------------------------------------------------
 -- who gets it
@@ -214,81 +215,60 @@ check(bd.Path and bd.Path.done == true, "a player from before the path existed s
 ----------------------------------------------------------------------
 -- step by step
 ----------------------------------------------------------------------
+d.Tokens = 0
 PS.SetIntroDone(me)
 play(0.2)
-check(d.Path.step == 1 and steps[1].Id == "Colosseum", "the intro ends: step 1, the Colosseum (" .. tostring(d.Path.step) .. ")")
+check(d.Path.step == 1 and steps[1].Id == "Spin", "the intro ends: step 1, spin your token (" .. tostring(d.Path.step) .. ")")
+check(d.Tokens >= 1, "with no token, the spin step hands you one")
 
 -- out of order: nothing
 local coins = d.Coins
-PS.PathEvent(me, "Spin")
-PS.PathEvent(me, "Equip")
+PS.PathEvent(me, "Colosseum")
 PS.PathEvent(me, "Clear")
-check(d.Path.step == 1 and d.Coins == coins, "doing a later step first moves nothing and pays nothing")
--- (the old Spire steps are gone: entering a floor or beating Oozark is no step)
-PS.PathEvent(me, "Enter")
-PS.RecordBossKill(me, 1)
-play(0.1)
-check(d.Path.step == 1 and d.Coins == coins, "the Spire and Oozark aren't on the path any more")
+PS.PathEvent(me, "Equip")
+PS.PathEvent(me, "Quest")
+check(d.Path.step == 1 and d.Coins == coins, "doing a later step (or an old one) first moves nothing and pays nothing")
 
 -- a client can't push it along
-local ok = ask("PathEvent", "Colosseum")
+local ok = ask("PathEvent", "Spin")
 check(not ok and d.Path.step == 1, "there's no remote to push the path along")
 
--- 1. into the Colosseum (ColosseumService tells the path when you arrive)
-PS.PathEvent(me, "Colosseum")
-play(0.1)
-check(d.Path.step == 2, "in the Colosseum: on to step 2 (" .. tostring(d.Path.step) .. ")")
-check(d.Coins == coins + (steps[1].Reward.Coins or 0), "step 1's reward (" .. d.Coins - coins .. ")")
-coins = d.Coins
-PS.PathEvent(me, "Colosseum")
-check(d.Path.step == 2 and d.Coins == coins, "going in again pays nothing more")
-
--- 2. the Colosseum cleared (ColosseumService.FinishRun tells the path)
-d.Tokens = 0
-PS.PathEvent(me, "Clear")
-play(0.2)
-check(d.Path.step == 3, "the Colosseum cleared: on to step 3 (" .. tostring(d.Path.step) .. ")")
-check(d.Tokens >= 1, "with no token, the spin step hands you one")
-
--- 3. spin (for real, at the Arcade)
-coins = d.Coins
+-- 1. spin (for real, at the Arcade): the weapon goes straight into your hand
+me:SetAttribute("Weapon", nil)
 ok = ask("ArcadeRoll", { machine = "Slime", count = 1 })
 play(0.2)
 check(ok, "the spin happens")
-check(d.Path.step == 4, "spinning: on to step 4 (" .. tostring(d.Path.step) .. ")")
-check(d.Coins == coins + (steps[3].Reward.Coins or 0), "step 3's reward (" .. d.Coins - coins .. ")")
--- a second spin doesn't pay again
+check(d.Path.step == 2, "spinning: on to step 2 (" .. tostring(d.Path.step) .. ")")
+check(d.Coins == coins + (steps[1].Reward.Coins or 0), "step 1's reward (" .. d.Coins - coins .. ")")
+local held = me:GetAttribute("Weapon")
+check(held ~= nil and d.Weapons.own[held] ~= nil, "the weapon it won is in your hand (" .. tostring(held) .. ")")
+-- a second spin doesn't pay again, or swap what you hold
 coins = d.Coins
 d.Tokens = math.max(d.Tokens, 1)
 play(0.6)
 ask("ArcadeRoll", { machine = "Slime", count = 1 })
 play(0.2)
-check(d.Path.step == 4 and d.Coins == coins, "spinning again pays nothing more")
+check(d.Path.step == 2 and d.Coins == coins, "spinning again pays nothing more")
+check(me:GetAttribute("Weapon") == held, "and doesn't swap your weapon")
 
--- 4. equip (any weapon you own)
-local held
-for id in pairs(d.Weapons.own) do
-	local def = Config.Weapons.List[id]
-	if def and Config.Weapons.Types[def.Type] then
-		held = id
-		break
-	end
-end
-ok = ask("EquipWeapon", held)
-play(0.2)
-check(ok and d.Path.step == 5, "equipping: on to step 5 (" .. tostring(d.Path.step) .. ")")
+-- 2. into the Colosseum (ColosseumService tells the path when you arrive)
+PS.PathEvent(me, "Colosseum")
+play(0.1)
+check(d.Path.step == 3, "in the Colosseum: on to step 3 (" .. tostring(d.Path.step) .. ")")
+check(d.Coins == coins + (steps[2].Reward.Coins or 0), "step 2's reward")
 
--- 5. a quest (PickQuest tells the path; here, straight from the server side)
+-- 3. the Colosseum cleared (ColosseumService.FinishRun): the path is done
 local tokens
 tokens, coins = d.Tokens, d.Coins
-PS.PathEvent(me, "Quest")
+PS.PathEvent(me, "Clear")
 play(0.1)
-check(d.Path.done, "a quest picked: the path is done")
+check(d.Path.done, "the Colosseum cleared: the path is done")
 check(d.Tokens >= tokens + (P.Done.Tokens or 0), "the path's Done reward: tokens (" .. d.Tokens - tokens .. ")")
-check(d.Coins >= coins + (steps[5].Reward.Coins or 0) + (P.Done.Coins or 0), "and coins (" .. d.Coins - coins .. ")")
+check(d.Coins >= coins + (steps[3].Reward.Coins or 0) + (P.Done.Coins or 0), "and coins (" .. d.Coins - coins .. ")")
+check(me:GetAttribute("PathStep") == nil, "and the usual goals take over (no path step)")
 local after = d.Coins
-PS.PathEvent(me, "Quest")
-PS.PathEvent(me, "Colosseum")
+PS.PathEvent(me, "Clear")
+PS.PathEvent(me, "Spin")
 check(d.Coins == after, "done is done: nothing more")
 
 ----------------------------------------------------------------------

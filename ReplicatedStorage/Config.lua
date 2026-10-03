@@ -3624,7 +3624,7 @@ end
 Config.DevInLiveGame = false -- true: the DEV button for the owner in the real game too
 Config.DevUserIds = {}
 ----------------------------------------------------------------------
--- THE NEW PLAYER PATH: right after the intro, five steps lead a new player
+-- THE NEW PLAYER PATH: right after the intro, three steps lead a new player
 -- through the game - the lobby's goal card shows the step (and its trail
 -- leads there; the Bag step points at the BAG button). The server moves you
 -- on only when it sees the thing really happen (PlayerService.PathEvent) and
@@ -3636,13 +3636,12 @@ Config.DevUserIds = {}
 ----------------------------------------------------------------------
 Config.Path = {
 	Steps = {
-		-- first: a real fight (the Colosseum, the Spire's ground floor - the
-		-- training grounds), then your first weapon and a quest
+		-- the first 15 minutes, straight after the slime: spin the token it
+		-- dropped (the weapon goes straight into your hand), then one full
+		-- Colosseum run. After that the usual goals take over.
+		{ Id = "Spin", Text = "Spin your token at the Arcade", Sub = "Oozlet's token wins your first weapon!", Icon = "Arcade", Place = "Arcade", Reward = { Coins = 100 } },
 		{ Id = "Colosseum", Text = "Fight in the Colosseum", Sub = "Walk to the Spire's doors and pick THE COLOSSEUM", Icon = "Weapons", Place = "Spire", Reward = { Coins = 100 } },
 		{ Id = "Clear", Text = "Clear the Colosseum", Sub = "Beat all 5 waves - the Straw King comes last!", Icon = "Bosses", Place = "Spire", Reward = { Coins = 300 } },
-		{ Id = "Spin", Text = "Spin your token at the Arcade", Sub = "Your first weapon is waiting!", Icon = "Arcade", Place = "Arcade", Reward = { Coins = 100 } },
-		{ Id = "Equip", Text = "Hold your new weapon", Sub = "Open your BAG and press EQUIP", Icon = "Bag", Open = "Bag", Point = "Bag", Reward = { Coins = 100 } },
-		{ Id = "Quest", Text = "Pick a quest", Sub = "At the Quest Board - it pays a token", Icon = "Goals", Place = "Quests", Reward = { Coins = 150 } },
 	},
 	Done = { Tokens = 2, Coins = 500 }, -- for finishing the whole path
 }

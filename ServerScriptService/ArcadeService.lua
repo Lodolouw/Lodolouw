@@ -193,6 +193,29 @@ local function roll(player, d, arg)
 	if event then
 		event:FireAllClients("Roll", player.UserId, player.DisplayName, machineId, shown)
 	end
+	-- the new player path's first spin: the best weapon it won goes straight
+	-- into their hand (if they're holding nothing yet) - no hunting through
+	-- the bag before the first fight
+	local P = d.Path
+	local step = P and not P.done and Config.Path and Config.Path.Steps[P.step]
+	if step and step.Id == "Spin" and player:GetAttribute("Weapon") == nil and CombatService and CombatService.Equip then
+		local order = (Config.Arcade and Config.Arcade.Order) or {}
+		local best, bestRank = nil, -1
+		for _, r in ipairs(shown) do
+			local def = W.List[r.id]
+			local rank = table.find(order, r.rarity) or 0
+			if def and W.Types[def.Type] and rank > bestRank then
+				best, bestRank = r.id, rank
+			end
+		end
+		if best then
+			CombatService.Equip(player, best)
+			local notify = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Notify")
+			if notify then
+				notify:FireClient(player, "You're holding your new " .. W.List[best].Name .. "! (Swap any time in your BAG.)", "rare")
+			end
+		end
+	end
 	if PlayerService and PlayerService.PathEvent then
 		task.defer(PlayerService.PathEvent, player, "Spin") -- (the new player path's first step)
 	end
