@@ -583,7 +583,7 @@ local function win(S)
 	if firstTime and (R.Coins or 0) > 0 then
 		PlayerService.AddCoins(S.player, R.Coins, true)
 	end
-	-- (done AFTER the chest pays: that starts the new player path, whose first
+	-- (done AFTER the chest pays: that starts the new player path, whose spin
 	-- step hands out a token only if you've none - the chest's is the one)
 	PlayerService.SetIntroDone(S.player)
 	send(S, "Win")

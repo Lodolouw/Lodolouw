@@ -625,6 +625,11 @@ local function openMenu()
 		upTo = upTo - 1
 	end
 	selected = upTo
+	-- (the new player path sends you to the Colosseum first: it opens there)
+	local pathStep = player:GetAttribute("PathStep")
+	if pathStep == "Colosseum" or pathStep == "Clear" then
+		selected = 0
+	end
 	Menus.open("Spire", viewTier)
 end
 local function closeMenu()

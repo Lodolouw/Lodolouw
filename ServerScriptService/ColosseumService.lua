@@ -1748,6 +1748,9 @@ function ColosseumService.FinishRun(s)
 	end
 	send(player, "RunClear", info)
 	pushState(player, s)
+	if PlayerService and PlayerService.PathEvent then
+		task.defer(PlayerService.PathEvent, player, "Clear") -- (the new player path: the Colosseum cleared)
+	end
 end
 
 -- Pays the quest (BEAT 5 WAVES) at this run's difficulty. Gives back what it paid.
@@ -1883,6 +1886,9 @@ local function enter(player)
 		end)
 	end
 	player:SetAttribute("Colosseum", true)
+	if PlayerService and PlayerService.PathEvent then
+		task.defer(PlayerService.PathEvent, player, "Colosseum") -- (the new player path's first step)
+	end
 	send(player, "Arrived")
 	pushState(player, s)
 	task.delay(2, function()

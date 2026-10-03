@@ -3595,11 +3595,13 @@ Config.DevUserIds = {}
 ----------------------------------------------------------------------
 Config.Path = {
 	Steps = {
+		-- first: a real fight (the Colosseum, the Spire's ground floor - the
+		-- training grounds), then your first weapon and a quest
+		{ Id = "Colosseum", Text = "Fight in the Colosseum", Sub = "Walk to the Spire's doors and pick THE COLOSSEUM", Icon = "Weapons", Place = "Spire", Reward = { Coins = 100 } },
+		{ Id = "Clear", Text = "Clear the Colosseum", Sub = "Beat all 5 waves - the Straw King comes last!", Icon = "Bosses", Place = "Spire", Reward = { Coins = 300 } },
 		{ Id = "Spin", Text = "Spin your token at the Arcade", Sub = "Your first weapon is waiting!", Icon = "Arcade", Place = "Arcade", Reward = { Coins = 100 } },
 		{ Id = "Equip", Text = "Hold your new weapon", Sub = "Open your BAG and press EQUIP", Icon = "Bag", Open = "Bag", Point = "Bag", Reward = { Coins = 100 } },
 		{ Id = "Quest", Text = "Pick a quest", Sub = "At the Quest Board - it pays a token", Icon = "Goals", Place = "Quests", Reward = { Coins = 150 } },
-		{ Id = "Enter", Text = "Enter the Spire", Sub = "Walk to its doors and pick Floor 1", Icon = "Spire", Place = "Spire", Reward = { Coins = 150 } },
-		{ Id = "Beat", Text = "Beat Oozark on Floor 1", Sub = "Roll through his attacks, then hit back!", Icon = "Bosses", Place = "Spire", Reward = { Coins = 300 } },
 	},
 	Done = { Tokens = 2, Coins = 500 }, -- for finishing the whole path
 }

@@ -214,6 +214,11 @@ function Players2.AddCoins(_, n)
 	stats.coins += n
 end
 function Players2.QuestProgress() end
+-- (the new player path: what the Colosseum told it, in order)
+local pathEvents = {}
+function Players2.PathEvent(_, id)
+	table.insert(pathEvents, id)
+end
 local actions = {}
 function Players2.AddAction(name, fn)
 	actions[name] = fn
@@ -1163,6 +1168,7 @@ if SCENARIO == "cursed" then
 end
 if SCENARIO == "clearleave" then
 	assert(stats.runClears == 1, "the run should be cleared")
+	assert(pathEvents[1] == "Colosseum" and table.find(pathEvents, "Clear"), "the new player path hears: in the Colosseum, then cleared (" .. table.concat(pathEvents, " ") .. ")")
 	assert(left == 0 and not player:GetAttribute("Colosseum"), "LEAVE should take you out")
 end
 if SCENARIO == "leave" or SCENARIO == "die" then

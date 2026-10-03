@@ -3,9 +3,9 @@
 -- on a pretend server: a brand-new player gets it when the intro ends, a
 -- player from before it skips it; each step only moves on when the server
 -- sees that thing really happen - in order - and pays its reward once; the
--- whole path pays Done at the end; a client can't push it along itself; the
--- spin step hands out a token if you've none; DEV: New Player Path starts it
--- again from step 1.
+-- whole path pays Done at the end; a client can't push it along itself; it
+-- starts in the Colosseum (no Spire or Oozark on it); the spin step hands out
+-- a token if you've none; DEV: New Player Path starts it again from step 1.
 local M = require("./rbxmock")
 local S = require("./sources")
 local mount = require("./mount")(M, S)
@@ -214,37 +214,58 @@ check(bd.Path and bd.Path.done == true, "a player from before the path existed s
 ----------------------------------------------------------------------
 -- step by step
 ----------------------------------------------------------------------
-d.Tokens = 0
 PS.SetIntroDone(me)
 play(0.2)
-check(d.Path.step == 1, "the intro ends: step 1 (" .. tostring(d.Path.step) .. ")")
-check(d.Tokens >= 1, "with no token, step 1 hands you one for the spin")
+check(d.Path.step == 1 and steps[1].Id == "Colosseum", "the intro ends: step 1, the Colosseum (" .. tostring(d.Path.step) .. ")")
 
 -- out of order: nothing
 local coins = d.Coins
-PS.PathEvent(me, "Beat")
+PS.PathEvent(me, "Spin")
 PS.PathEvent(me, "Equip")
+PS.PathEvent(me, "Clear")
 check(d.Path.step == 1 and d.Coins == coins, "doing a later step first moves nothing and pays nothing")
+-- (the old Spire steps are gone: entering a floor or beating Oozark is no step)
+PS.PathEvent(me, "Enter")
+PS.RecordBossKill(me, 1)
+play(0.1)
+check(d.Path.step == 1 and d.Coins == coins, "the Spire and Oozark aren't on the path any more")
 
 -- a client can't push it along
-local ok = ask("PathEvent", "Spin")
+local ok = ask("PathEvent", "Colosseum")
 check(not ok and d.Path.step == 1, "there's no remote to push the path along")
 
--- 1. spin (for real, at the Arcade)
+-- 1. into the Colosseum (ColosseumService tells the path when you arrive)
+PS.PathEvent(me, "Colosseum")
+play(0.1)
+check(d.Path.step == 2, "in the Colosseum: on to step 2 (" .. tostring(d.Path.step) .. ")")
+check(d.Coins == coins + (steps[1].Reward.Coins or 0), "step 1's reward (" .. d.Coins - coins .. ")")
+coins = d.Coins
+PS.PathEvent(me, "Colosseum")
+check(d.Path.step == 2 and d.Coins == coins, "going in again pays nothing more")
+
+-- 2. the Colosseum cleared (ColosseumService.FinishRun tells the path)
+d.Tokens = 0
+PS.PathEvent(me, "Clear")
+play(0.2)
+check(d.Path.step == 3, "the Colosseum cleared: on to step 3 (" .. tostring(d.Path.step) .. ")")
+check(d.Tokens >= 1, "with no token, the spin step hands you one")
+
+-- 3. spin (for real, at the Arcade)
+coins = d.Coins
 ok = ask("ArcadeRoll", { machine = "Slime", count = 1 })
 play(0.2)
 check(ok, "the spin happens")
-check(d.Path.step == 2, "spinning: on to step 2 (" .. tostring(d.Path.step) .. ")")
-check(d.Coins == coins + (steps[1].Reward.Coins or 0), "step 1's reward (" .. d.Coins - coins .. ")")
--- a second spin doesn't pay step 1 again
+check(d.Path.step == 4, "spinning: on to step 4 (" .. tostring(d.Path.step) .. ")")
+check(d.Coins == coins + (steps[3].Reward.Coins or 0), "step 3's reward (" .. d.Coins - coins .. ")")
+-- a second spin doesn't pay again
 coins = d.Coins
 d.Tokens = math.max(d.Tokens, 1)
 play(0.6)
 ask("ArcadeRoll", { machine = "Slime", count = 1 })
 play(0.2)
-check(d.Path.step == 2 and d.Coins == coins, "spinning again pays nothing more")
+check(d.Path.step == 4 and d.Coins == coins, "spinning again pays nothing more")
 
--- 2. equip (any weapon you own)
+-- 4. equip (any weapon you own)
 local held
 for id in pairs(d.Weapons.own) do
 	local def = Config.Weapons.List[id]
@@ -255,35 +276,19 @@ for id in pairs(d.Weapons.own) do
 end
 ok = ask("EquipWeapon", held)
 play(0.2)
-check(ok and d.Path.step == 3, "equipping: on to step 3 (" .. tostring(d.Path.step) .. ")")
+check(ok and d.Path.step == 5, "equipping: on to step 5 (" .. tostring(d.Path.step) .. ")")
 
--- 3. a quest (PickQuest tells the path; here, straight from the server side)
+-- 5. a quest (PickQuest tells the path; here, straight from the server side)
+local tokens
+tokens, coins = d.Tokens, d.Coins
 PS.PathEvent(me, "Quest")
 play(0.1)
-check(d.Path.step == 4, "a quest picked: on to step 4")
-
--- 4. the Spire (SpireService.OnArrive tells the path)
-PS.PathEvent(me, "Enter")
-play(0.1)
-check(d.Path.step == 5, "in the Spire: on to step 5")
-
--- 5. Oozark beaten (on Normal)
-local tokens = d.Tokens
-coins = d.Coins
-PS.RecordBossKill(me, 2)
-play(0.1)
-check(d.Path.step == 5 and not d.Path.done, "beating another floor's boss isn't step 5")
-PS.RecordBossKill(me, 1, "Nightmare")
-play(0.1)
-check(not d.Path.done, "...nor floor 1 on a harder tier")
-tokens, coins = d.Tokens, d.Coins
-PS.RecordBossKill(me, 1)
-play(0.1)
-check(d.Path.done, "Oozark beaten: the path is done")
+check(d.Path.done, "a quest picked: the path is done")
 check(d.Tokens >= tokens + (P.Done.Tokens or 0), "the path's Done reward: tokens (" .. d.Tokens - tokens .. ")")
 check(d.Coins >= coins + (steps[5].Reward.Coins or 0) + (P.Done.Coins or 0), "and coins (" .. d.Coins - coins .. ")")
 local after = d.Coins
-PS.PathEvent(me, "Beat")
+PS.PathEvent(me, "Quest")
+PS.PathEvent(me, "Colosseum")
 check(d.Coins == after, "done is done: nothing more")
 
 ----------------------------------------------------------------------
@@ -303,10 +308,8 @@ end
 -- DEV: New Player Path
 ----------------------------------------------------------------------
 do
-	d.Tokens = 0
 	local ok2, msg = ask("DevPath")
 	check(ok2 and d.Path.step == 1 and not d.Path.done, "DEV: the path starts again from step 1 (" .. tostring(msg) .. ")")
-	check(d.Tokens >= 1, "with a token to spin")
 end
 
 for _, e in ipairs(M.errors) do

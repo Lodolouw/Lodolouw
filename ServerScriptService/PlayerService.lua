@@ -609,6 +609,14 @@ end
 ----------------------------------------------------------------------
 local function markDirty(player)
 	dirty[player] = true
+	-- (the new player path's step, for screens that only need that - the
+	-- Spire menu opens on the Colosseum while it's the step: SpireClient)
+	local profile = profiles[player]
+	local P = profile and profile.data.Path
+	local step = P and not P.done and Config.Path and Config.Path.Steps[P.step]
+	if player.Parent then
+		player:SetAttribute("PathStep", step and step.Id or nil)
+	end
 end
 
 local function notify(player, text, kind)
@@ -844,8 +852,9 @@ end
 
 ----------------------------------------------------------------------
 -- THE NEW PLAYER PATH (Config.Path). Other services tell it what just
--- happened - PathEvent(player, "Spin" / "Equip" / "Quest" / "Enter" /
--- "Beat") - and it only counts if it's the step you're on: the server saw
+-- happened - PathEvent(player, "Colosseum" / "Clear" / "Spin" / "Equip" /
+-- "Quest", or "Enter" (a Spire floor) / "Beat" (Oozark) for a path that uses
+-- them) - and it only counts if it's the step you're on: the server saw
 -- it happen, so nothing a client says can skip a step or claim its reward.
 ----------------------------------------------------------------------
 local function payPath(player, r)

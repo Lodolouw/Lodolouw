@@ -307,6 +307,23 @@ check(travelled[1] == "colosseum", "TRAIN asks to go in")
 check(string.find(toasts(), "Stand at the Spire's doors", 1, true) ~= nil, "the server's no shows as a toast (" .. toasts() .. ")")
 travelAnswer = { true }
 wait(3)
+-- on the new player path's Colosseum steps it opens on the Colosseum, not a floor
+Menus.close()
+hrp.CFrame = CFrame.new(DOORS + Vector3.new(0, 0, 40))
+wait(0.3)
+me:SetAttribute("PathStep", "Colosseum")
+hrp.CFrame = CFrame.new(DOORS)
+wait(0.3)
+detail = find("Detail")
+check(Menus.current() == "Spire" and textOf("BossName", detail) == "The Colosseum", "the new player path: it opens on the Colosseum (" .. textOf("BossName", detail) .. ")")
+me:SetAttribute("PathStep", nil)
+Menus.close()
+hrp.CFrame = CFrame.new(DOORS + Vector3.new(0, 0, 40))
+wait(0.3)
+hrp.CFrame = CFrame.new(DOORS)
+wait(0.3)
+detail = find("Detail")
+check(textOf("BossName", detail) ~= "The Colosseum", "off the path: back to opening on your floor (" .. textOf("BossName", detail) .. ")")
 
 ----------------------------------------------------------------------
 -- in a party: only the leader picks
