@@ -323,6 +323,7 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 		end
 	end
 	hum:TakeDamage(amount)
+	st.lastHurt = os.clock() -- (health comes back after a while untouched: the Heartbeat below)
 	send(player, "Hurt", amount, fromPosition, knockback, quiet == true)
 	return true
 end
@@ -499,7 +500,7 @@ end
 -- The enemy your punch lands on: the closest one in reach that's in front
 -- of you (within a cone round the way your character is facing). Punching
 -- the air hits nothing.
-local PUNCH_CONE = math.cos(math.rad(55))
+local PUNCH_CONE = math.cos(math.rad(70)) -- (generous: a punch roughly at it lands)
 -- Can this player hit this target? (A Colosseum dummy belongs to one player.)
 local function mine(model, player)
 	local owner = model:GetAttribute("Owner")
@@ -2195,6 +2196,14 @@ function CombatService.Start(playerService)
 		for player, st in pairs(fighters) do
 			if not st.drinking and now - st.lastSpend >= CC.StaminaRegenDelay and st.stamina < CC.MaxStamina then
 				st.stamina = math.min(CC.MaxStamina, st.stamina + CC.StaminaRegen * dt)
+			end
+			-- a breather: not hit for a while, health slowly comes back
+			local RG = CC.Regen
+			if RG and now - (st.lastHurt or 0) >= RG.Delay then
+				local h = charParts(player)
+				if h and h.Health > 0 and h.Health < h.MaxHealth then
+					h.Health = math.min(h.MaxHealth, h.Health + h.MaxHealth * RG.Rate * dt)
+				end
 			end
 			-- (where they are, for movedFairly: the last half second or so)
 			local _, r = charParts(player)

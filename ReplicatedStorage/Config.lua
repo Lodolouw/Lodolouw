@@ -2853,9 +2853,9 @@ Config.Bosses = {
 ----------------------------------------------------------------------
 Config.Combat = {
 	MaxStamina = 100,
-	StaminaRegen = 34, -- per second
-	StaminaRegenDelay = 0.8, -- seconds after spending before it refills
-	PunchCost = 8,
+	StaminaRegen = 45, -- per second
+	StaminaRegenDelay = 0.55, -- seconds after spending before it refills
+	PunchCost = 6,
 	PunchInterval = 0.42, -- fastest you can punch (seconds)
 	PunchLock = 0.42, -- each punch commits you: you can't move or punch again for this long
 	PunchRollCancel = 0.25, -- ...but after this much of it you can roll out of the punch
@@ -2865,8 +2865,8 @@ Config.Combat = {
 	-- it is also where tracking stops and you are committed. -- studs from you to the enemy's surface
 	RollCost = 20,
 	JumpCost = 14, -- jumping in an arena costs stamina too; below this you can't jump
-	RollCooldown = 0.55,
-	RollInvincible = 0.5, -- seconds of invincibility from the moment you roll
+	RollCooldown = 0.45,
+	RollInvincible = 0.6, -- seconds of invincibility from the moment you roll
 	-- The roll takes about 0.46s in all (the hop, the dash through the air and
 	-- the landing), so half a second covers you from the floor and back again.
 	RollSpeed = 62, -- studs/second
@@ -2878,8 +2878,14 @@ Config.Combat = {
 	-- whole climb friendly - people like winning)
 	BossDamage = 0.75,
 	BossHealth = 0.85,
-	FlaskDrinkTime = 0.9, -- seconds to drink (you're slowed and can't attack)
-	FlaskWalkSpeed = 6,
+	FlaskDrinkTime = 0.7, -- seconds to drink (you're slowed and can't attack)
+	FlaskWalkSpeed = 10,
+	-- not hit for Delay seconds in a fight: your health comes back, Rate of
+	-- your max health a second (a breather between attacks)
+	Regen = { Delay = 6, Rate = 0.02 },
+	-- a punch without lock-on turns you to the nearest enemy this close (studs
+	-- to its middle), so swings don't whiff past it
+	AutoFace = 18,
 	-- Your own sounds: names of Sounds in SoundService (capitals and spaces don't
 	-- matter) and how loud each plays. Getting hurt is the one you must never miss.
 	PlayerSounds = {

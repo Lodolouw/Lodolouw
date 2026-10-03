@@ -1159,6 +1159,23 @@ local function tryPunch()
 		end
 		CombatAction:FireServer("Punch", lockTarget, comboSwing)
 	else
+		-- not locked on: turn to the nearest enemy in reach, so the swing
+		-- doesn't whiff past it (Config.Combat.AutoFace)
+		local near = K.nearestFoe and K.nearestFoe()
+		local ok, cf = pcall(function()
+			return near and near:GetPivot()
+		end)
+		if ok and cf then
+			local flat = Vector3.new(cf.X - hrp.Position.X, 0, cf.Z - hrp.Position.Z)
+			if flat.Magnitude > 0.5 and flat.Magnitude <= (CC.AutoFace or 0) then
+				local cm = manager(char)
+				if cm then
+					cm.FacingDirection = flat.Unit
+				end
+				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat.Unit)
+				savedFacing = flat.Unit -- (held for the swing)
+			end
+		end
 		CombatAction:FireServer("Punch", nil, comboSwing)
 	end
 	if swingDef and not kind.UsePunch then
@@ -2691,6 +2708,9 @@ local function nearestTarget(except)
 	end
 	return best
 end
+K.nearestFoe = function()
+	return nearestTarget(nil)
+end -- (for a punch without lock-on: tryPunch, above, turns to it)
 
 -- TIDY HEALTH BARS. When enemies bunch up, their bars piled on top of each
 -- other into an unreadable mess. Now only the one you're fighting (the one
