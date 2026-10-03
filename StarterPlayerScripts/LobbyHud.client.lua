@@ -484,6 +484,31 @@ do
 	end
 	ui.playBonus, ui.playButton = bonus("Playtime", "Playtime", 1, string.format("+%d%% XP for every %d minutes you stay in this server (up to +%d%%).", R.Playtime.PerStep, R.Playtime.StepMinutes, R.Playtime.Max))
 	ui.friendBonus, ui.friendButton = bonus("Friends", "Friends", 2, string.format("+%d%% XP for each Roblox friend in this server with you (up to +%d%%) - more if they're VIP.", R.Friends.PerFriend, R.Friends.Max))
+	-- (a touch screen: Roblox's jump button has the bottom-right corner - 70
+	-- pixels across on a small screen, 120 on a big one, 95 / 170 in from
+	-- the right - so the bonuses step to its left, a little higher)
+	local function placeBonuses()
+		local UIS = game:GetService("UserInputService")
+		local cam = workspace.CurrentCamera
+		local sc = root:FindFirstChildOfClass("UIScale")
+		local s = math.max(sc and sc.Scale or 1, 0.05)
+		if UIS and UIS.TouchEnabled and not UIS.KeyboardEnabled and cam then
+			local vs = cam.ViewportSize
+			local jumpLeft = math.min(vs.X, vs.Y) <= 500 and 95 or 170
+			local x = -(jumpLeft + 10) / s
+			bonuses.Position = UDim2.new(1, x, 1, -78)
+			tip.Parent.Position = UDim2.new(1, x, 1, -164)
+		else
+			bonuses.Position = UDim2.new(1, -20, 1, -58)
+			tip.Parent.Position = UDim2.new(1, -20, 1, -144)
+		end
+	end
+	placeBonuses()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			task.defer(placeBonuses) -- (after the screen's own scale has followed)
+		end)
+	end
 end
 
 ----------------------------------------------------------------------

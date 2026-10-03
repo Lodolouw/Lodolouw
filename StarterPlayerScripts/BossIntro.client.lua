@@ -788,25 +788,56 @@ local LINES = {
 -- edge nearest it, its tail tucked away. It never covers the boss bar. Last
 -- words stay where they were said (the boss may be melting, falling or
 -- flying off by then).
+--
+-- On a small screen (a phone) the whole bubble shrinks with it, like the boss
+-- bar does (Config.ScreenFit), and it keeps out of a phone's notch.
 local INK = RGB(24, 20, 37)
 local TAIL = 12 -- (how far the tail reaches: the bubble's point is its tip)
 local EDGE = 3 -- (the box's ink edge)
 local MAX_W = 320 -- (the words wrap past this)
-local BOTTOM_SAFE, SIDE = 110, 12 -- (the bottom of your screen, its sides: kept clear)
-local topSafe = 150 -- (under the boss bar: worked out when the bubble's made)
-local talkGui, bubble, box, words, tag, tagText, pop
+local BOTTOM_SAFE, SIDE = 110, 12 -- (the bottom of your screen - your heart - and its sides: kept clear)
+local topInset = 36 -- (Roblox's top bar - the boss bar sits under it: measured when the bubble's made)
+local talkGui, fitFrame, fitScale, safeGui, bubble, box, words, tag, tagText, pop
 local tails = {} -- down / left / right: which way it points
 local speaking = nil -- the line up now: { model, spot (last words' fixed spot), last }
 
+-- how big the bubble is drawn on this screen (1: full size; a phone: about 0.6)
+local function talkFit(screen)
+	return Config.screenFit and Config.screenFit(screen) or 1
+end
+
+-- how far the boss bar reaches down your screen (it shrinks on a small
+-- screen too - BossClient: 58 pixels under Roblox's top bar, 46 tall)
+local function barBottom(fit)
+	return topInset + (58 + 46 + 10) * fit
+end
+
 local function buildTalk()
 	pcall(function()
-		-- (the boss bar sits 58 pixels under Roblox's top bar, 46 tall)
-		topSafe = game:GetService("GuiService"):GetGuiInset().Y + 58 + 46 + 10
+		topInset = game:GetService("GuiService"):GetGuiInset().Y
 	end)
-	talkGui = new("ScreenGui", { Name = "BossTalk", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, Enabled = false }, playerGui)
+	-- (under the fight buttons - CombatClient's screen is 10 - so they're
+	-- never hidden by it, over the boss bar and the rest of the screen)
+	talkGui = new("ScreenGui", { Name = "BossTalk", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 8, Enabled = false }, playerGui)
 	talkGui:SetAttribute("RetroSkip", true)
+	-- (the whole screen, a phone's notch and all: the bubble goes where the
+	-- camera draws the boss's head, and the camera counts from the screen's
+	-- corner. It keeps itself out of the notch: see safeSide)
+	pcall(function()
+		talkGui.ScreenInsets = Enum.ScreenInsets.None
+	end)
+	-- (and the part of the screen clear of the notch, measured: an empty
+	-- screen Roblox keeps inside it)
+	safeGui = new("ScreenGui", { Name = "BossTalkSafe", ResetOnSpawn = false, IgnoreGuiInset = true }, playerGui)
+	pcall(function()
+		safeGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	end)
+	-- everything's drawn in here, shrunk to fit the screen: its numbers are
+	-- the bubble's own pixels (the screen's, divided by the fit)
+	fitFrame = new("Frame", { Name = "Fit", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, talkGui)
+	fitScale = new("UIScale", { Scale = 1 }, fitFrame)
 	-- (placed by its point - the tip of its tail - with the box beside that)
-	bubble = new("Frame", { Name = "Bubble", BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 0) }, talkGui)
+	bubble = new("Frame", { Name = "Bubble", BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 0) }, fitFrame)
 	pop = new("UIScale", { Scale = 1 }, bubble)
 	box = new("Frame", {
 		Name = "Box",
@@ -912,12 +943,12 @@ local function colorOf(model)
 	return (def and def.Color) or RGB(254, 174, 52)
 end
 
--- how big the box is, inside its ink edge (laid out by Roblox a frame late:
--- until then, a guess from the words)
+-- how big the box is, inside its ink edge, in the bubble's own pixels (laid
+-- out by Roblox a frame late: until then, a guess from the words)
 local function boxSize()
 	local s = box.AbsoluteSize
 	if s and s.X > 1 then
-		local k = math.max(pop.Scale, 0.05) -- (not shrunk by its pop-in)
+		local k = math.max(pop.Scale, 0.05) * math.max(fitScale.Scale, 0.05) -- (not shrunk by its pop-in, or the fit)
 		return s.X / k, s.Y / k
 	end
 	local n = utf8.len(words.Text) or #words.Text
@@ -947,7 +978,29 @@ local function pointing(which)
 	end
 end
 
--- every frame while it talks: by its head, kept on your screen
+-- how much of each side of the screen a phone's notch (or its rounded
+-- corners) takes, in screen pixels (0 on a computer)
+local function safeSide(screen)
+	local inner = safeGui and safeGui.AbsoluteSize
+	if typeof(inner) == "Vector2" and inner.X > screen.X * 0.5 and inner.X <= screen.X then
+		return (screen.X - inner.X) / 2
+	end
+	return 0
+end
+
+-- how far the fight buttons reach out of the bottom-right corner on a touch
+-- screen (CombatClient's ring: Config.Touch), in screen pixels (0: no buttons)
+local function buttonsReach(screen)
+	local UIS = game:GetService("UserInputService")
+	if not (UIS and UIS.TouchEnabled and not UIS.KeyboardEnabled) or not Config.touchScale then
+		return 0
+	end
+	return ((Config.Touch and Config.Touch.Reach) or 340) * Config.touchScale(screen)
+end
+
+-- every frame while it talks: by its head, kept on your screen (and out of
+-- the fight buttons' corner on a phone). Worked out in the bubble's own
+-- pixels: the screen's, divided by how much it's shrunk
 local function placeBubble()
 	local line = speaking
 	local spot = line.spot or headOf(line.model)
@@ -958,6 +1011,12 @@ local function placeBubble()
 	end
 	local cam = workspace.CurrentCamera
 	local screen = cam and cam.ViewportSize
+	local fit = screen and talkFit(screen) or 1
+	if fitScale.Scale ~= fit then
+		fitScale.Scale = fit
+		fitFrame.Size = UDim2.fromScale(1 / fit, 1 / fit)
+	end
+	local topSafe = barBottom(fit) / fit -- (under the boss bar)
 	if not (screen and spot) then
 		-- (no camera, or nothing to hang it on: it waits near the top)
 		bubble.Position = UDim2.new(0.5, 0, 0, topSafe + 90)
@@ -966,31 +1025,40 @@ local function placeBubble()
 		pointing(nil)
 		return
 	end
-	local vw, vh = screen.X, screen.Y
+	local vw, vh = screen.X / fit, screen.Y / fit
+	local margin = SIDE + safeSide(screen) / fit
 	local w, h = boxSize()
-	local lowest = vh - BOTTOM_SAFE
-	local function keepX(cx)
-		local a = SIDE + EDGE + w / 2
-		return math.clamp(cx, a, math.max(a, vw - a))
+	local lowest = (screen.Y - BOTTOM_SAFE) / fit -- (your heart's down there: real pixels)
+	local reach = buttonsReach(screen) / fit
+	-- (`bottom`: how low the box comes - low enough to meet the buttons'
+	-- corner, it stays to the left of it)
+	local function keepX(cx, bottom)
+		local a = margin + EDGE + w / 2
+		local b = vw - a
+		if reach > 0 and bottom > vh - reach then
+			b = math.min(b, vw - reach - SIDE - EDGE - w / 2)
+		end
+		return math.clamp(cx, a, math.max(a, b))
 	end
 	local function keepY(cy)
 		local a = topSafe + EDGE + h / 2
 		return math.clamp(cy, a, math.max(a, lowest - h / 2))
 	end
 	local p = cam:WorldToViewportPoint(spot)
-	local x, y = p.X, p.Y
+	local x, y = p.X / fit, p.Y / fit
 	local seen = p.Z > 0 and x >= 0 and x <= vw and y <= lowest
 	if seen and y - TAIL - h - EDGE >= topSafe then
 		-- room over its head: the box on top, the tail pointing down at it
-		local cx = keepX(x)
+		local cx = keepX(x, y - TAIL)
 		bubble.Position = UDim2.fromOffset(x, y)
 		box.AnchorPoint = Vector2.new(0.5, 1)
 		box.Position = UDim2.fromOffset(cx - x, -TAIL)
 		pointing(math.abs(cx - x) <= w / 2 - 14 and "down" or nil)
 	elseif seen and y >= 0 then
 		-- its head's up by the boss bar: the box beside it, pointing at it
-		local toRight = x + TAIL + w + EDGE + SIDE <= vw or x < vw / 2
 		local cy = keepY(y)
+		local room = (reach > 0 and cy + h / 2 > vh - reach) and (vw - reach - SIDE) or (vw - margin)
+		local toRight = x + TAIL + w + EDGE <= room or x < vw / 2
 		bubble.Position = UDim2.fromOffset(x, y)
 		box.AnchorPoint = Vector2.new(toRight and 0 or 1, 0.5)
 		box.Position = UDim2.fromOffset(toRight and TAIL or -TAIL, cy - y)
@@ -1001,7 +1069,8 @@ local function placeBubble()
 			local side = cam.CFrame.RightVector:Dot(spot - cam.CFrame.Position)
 			x, y = side >= 0 and vw or 0, vh * 0.45
 		end
-		bubble.Position = UDim2.fromOffset(keepX(x), keepY(y))
+		local cy = keepY(y)
+		bubble.Position = UDim2.fromOffset(keepX(x, cy + h / 2), cy)
 		box.AnchorPoint = Vector2.new(0.5, 0.5)
 		box.Position = UDim2.fromOffset(0, 0)
 		pointing(nil)

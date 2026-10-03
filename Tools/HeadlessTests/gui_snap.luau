@@ -2,7 +2,8 @@
 -- Prints what a ScreenGui draws right now, for render_gui.py to paint: every
 -- visible box, border, word and 3D window, where it lands on a SW x SH
 -- screen - with Size / Position / AnchorPoint, UIScale, Rotation, UICorner,
--- UIStroke, UIGradient, UIPadding, UIListLayout and UIGridLayout worked out
+-- UIStroke, UIGradient, UIPadding, UIListLayout, UIGridLayout and
+-- AutomaticSize worked out
 -- the way Roblox does (near enough for a picture). One JSON object a line
 -- after a "SNAP caption" line.
 --   local snap = require("./gui_snap")
@@ -134,6 +135,55 @@ local function gradientOf(obj)
 	return { keys = keys, rot = tonumber(g.Rotation) or 0 }
 end
 
+-- a UIPadding's four sides on a frame `w` x `h` (left, right, top, bottom)
+local function padOf(obj, w, h)
+	local pad = childOf(obj, "UIPadding")
+	if not pad then
+		return 0, 0, 0, 0
+	end
+	local s, o = udim(pad.PaddingLeft)
+	local l = s * w + o
+	s, o = udim(pad.PaddingRight)
+	local r = s * w + o
+	s, o = udim(pad.PaddingTop)
+	local t = s * h + o
+	s, o = udim(pad.PaddingBottom)
+	return l, r, t, s * h + o
+end
+
+-- how big an AutomaticSize object grows: round its children (their pixel
+-- sizes and places) and its padding, or round its words (a guess at their
+-- width) - near enough for a picture
+local function autoSize(obj, w, h)
+	local n = obj.AutomaticSize and obj.AutomaticSize.Name or "None"
+	local ax, ay = n == "X" or n == "XY", n == "Y" or n == "XY"
+	if not (ax or ay) then
+		return w, h
+	end
+	local l, r, t, b = padOf(obj, w, h)
+	local cw, ch = 0, 0
+	if TEXT[obj.ClassName] and (obj.Text or "") ~= "" then
+		local size = tonumber(obj.TextSize) or 14
+		cw, ch = (utf8.len(obj.Text) or #obj.Text) * size * 0.62, size * 1.2
+	end
+	for _, c in ipairs(obj:GetChildren()) do
+		if GUI[c.ClassName] and c.Visible ~= false then
+			local z, p = c.Size, c.Position
+			local sw, sh = autoSize(c, z and z.X.Offset or 0, z and z.Y.Offset or 0)
+			local x = (p and p.X.Offset or 0) - v2(c.AnchorPoint, 1, 0) * sw
+			local y = (p and p.Y.Offset or 0) - v2(c.AnchorPoint, 2, 0) * sh
+			cw, ch = math.max(cw, x + sw), math.max(ch, y + sh)
+		end
+	end
+	if ax then
+		w = math.max(w, cw + l + r)
+	end
+	if ay then
+		h = math.max(h, ch + t + b)
+	end
+	return w, h
+end
+
 return function(root, caption, SW, SH)
 	SW, SH = SW or 1280, SH or 720
 	if caption then -- (nil: more of the snapshot before, e.g. a second ScreenGui under it)
@@ -224,20 +274,27 @@ return function(root, caption, SW, SH)
 			end, w = SW, h = SH }
 		else
 			local P = frameOf(obj.Parent)
+			-- (a UIPadding on the parent: its children live inside the padding)
+			local pl, pr, pt, pb = 0, 0, 0, 0
+			if obj.Parent ~= root then
+				pl, pr, pt, pb = padOf(obj.Parent, P.w, P.h)
+			end
+			local CW, CH = P.w - pl - pr, P.h - pt - pb
 			if not P.laid then
 				P.laid = true
-				layout(obj.Parent, P.w, P.h)
+				layout(obj.Parent, CW, CH)
 			end
 			local w, h, apx, apy, ax, ay
 			local lay = laidOut[obj]
 			if lay then
-				apx, apy, w, h, ax, ay = lay[1], lay[2], lay[3], lay[4], 0, 0
+				apx, apy, w, h, ax, ay = pl + lay[1], pt + lay[2], lay[3], lay[4], 0, 0
 			else
 				local size, pos = obj.Size, obj.Position
-				w = size and (P.w * size.X.Scale + size.X.Offset) or 0
-				h = size and (P.h * size.Y.Scale + size.Y.Offset) or 0
-				apx = pos and (P.w * pos.X.Scale + pos.X.Offset) or 0
-				apy = pos and (P.h * pos.Y.Scale + pos.Y.Offset) or 0
+				w = size and (CW * size.X.Scale + size.X.Offset) or 0
+				h = size and (CH * size.Y.Scale + size.Y.Offset) or 0
+				w, h = autoSize(obj, w, h)
+				apx = pl + (pos and (CW * pos.X.Scale + pos.X.Offset) or 0)
+				apy = pt + (pos and (CH * pos.Y.Scale + pos.Y.Offset) or 0)
 				ax, ay = v2(obj.AnchorPoint, 1, 0), v2(obj.AnchorPoint, 2, 0)
 			end
 			local sc = childOf(obj, "UIScale")

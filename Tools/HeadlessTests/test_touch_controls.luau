@@ -4,8 +4,11 @@
 -- a fight on a touch screen: ATTACK is the big button in the corner, and
 -- JUMP (Roblox's own button, moved here), ROLL, the ability, the potion and
 -- LOCK sit round it - every one on the screen, none on top of another, all
--- big enough for a thumb; and the jump button goes back where Roblox had it
--- after the fight. Also checks a tap on the world can't punch on a phone.
+-- big enough for a thumb, measured the way the screen really draws them
+-- (our buttons sit in the HUD's root, shrunk to half size on a phone;
+-- Roblox's jump button doesn't); and the jump button goes back where Roblox
+-- had it after the fight. Also checks a tap on the world can't punch on a
+-- phone.
 --   luau test_touch_controls.luau
 local M = require("./rbxmock")
 local S = require("./sources")
@@ -57,19 +60,28 @@ jump.AnchorPoint = Vector2.new(0, 0)
 jump.Parent = tcf
 local cam = Instance.new("Camera")
 local ws = { CurrentCamera = cam }
+-- the HUD root's scale, as CombatClient's updateScale sets it
+local uiScale = Instance.new("UIScale")
+local function rootScale(vs)
+	return math.clamp(vs.Y / 1000, 0.5, 1.1)
+end
 
 local env = M.env({ Vector2 = Vector2 })
-local chunk = "local UserInputService, workspace, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn = ...\nlocal K = {}\n"
+local Config = M.load(S.Config, "Config", M.env({}))()
+local chunk = "local UserInputService, workspace, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn, uiScale, Config = ...\nlocal K = {}\n"
 	.. string.sub(src, a, b) .. "\nreturn placeTouch, K.TOUCH_LAYOUT"
-local placeTouch = M.load(chunk, "CombatClient (the phone layout)", env)(UIS, ws, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn)
+local placeTouch = M.load(chunk, "CombatClient (the phone layout)", env)(UIS, ws, playerGui, combatUI, attackBtn, rollBtn, flaskBtn, lockBtn, uiScale, Config)
 
--- where a button really is on a screen (its box, in pixels)
-local function rect(btn, vs)
-	local p, s, ap = btn.Position, btn.Size, btn.AnchorPoint or Vector2.new(0, 0)
-	local w, h = s.X.Scale * vs.X + s.X.Offset, s.Y.Scale * vs.Y + s.Y.Offset
-	local x = p.X.Scale * vs.X + p.X.Offset - ap.X * w
-	local y = p.Y.Scale * vs.Y + p.Y.Offset - ap.Y * h
-	return { x = x, y = y, w = w, h = h }
+-- where a button really is on a screen (its box, in pixels). Ours are laid
+-- out in the root, which is 1/s of the screen and drawn s times as big.
+local function rect(btn, vs, s)
+	s = s or 1
+	local W, H = vs.X / s, vs.Y / s
+	local p, z, ap = btn.Position, btn.Size, btn.AnchorPoint or Vector2.new(0, 0)
+	local w, h = z.X.Scale * W + z.X.Offset, z.Y.Scale * H + z.Y.Offset
+	local x = p.X.Scale * W + p.X.Offset - ap.X * w
+	local y = p.Y.Scale * H + p.Y.Offset - ap.Y * h
+	return { x = x * s, y = y * s, w = w * s, h = h * s }
 end
 local function overlap(r, q)
 	return r.x < q.x + q.w and q.x < r.x + r.w and r.y < q.y + q.h and q.y < r.y + r.h
@@ -84,12 +96,14 @@ local SCREENS = {
 for _, scr in ipairs(SCREENS) do
 	local name, vs = scr[1], scr[2]
 	cam.ViewportSize = vs
+	local s = rootScale(vs)
+	uiScale.Scale = s
 	placeTouch(true)
 	local all = { Attack = attackBtn, Roll = rollBtn, Flask = flaskBtn, Lock = lockBtn, Ability = abilityBtn, Jump = jump }
 	local inside, apart, thumb = true, true, true
 	local rects = {}
 	for key, btn in pairs(all) do
-		local r = rect(btn, vs)
+		local r = rect(btn, vs, btn == jump and 1 or s)
 		rects[key] = r
 		inside = inside and r.x >= 4 and r.y >= 40 and r.x + r.w <= vs.X - 4 and r.y + r.h <= vs.Y - 4
 		thumb = thumb and r.w >= 48
@@ -108,6 +122,17 @@ for _, scr in ipairs(SCREENS) do
 	local at = rects.Attack
 	check(at.w >= math.max(rects.Roll.w, rects.Jump.w) and at.x + at.w > vs.X * 0.85 and at.y + at.h > vs.Y * 0.8,
 		name .. ": ATTACK is the biggest, in the bottom-right corner")
+	-- one arc: Roblox's jump button the same size as ROLL and SKILL, and ATTACK
+	-- as big on the screen as the layout says (not shrunk with the HUD)
+	check(math.abs(rects.Jump.w - rects.Roll.w) < 1 and math.abs(rects.Jump.w - rects.Ability.w) < 1,
+		string.format("%s: JUMP, ROLL and SKILL are one size (%.0f, %.0f, %.0f)", name, rects.Jump.w, rects.Roll.w, rects.Ability.w))
+	check(at.w >= 96, string.format("%s: ATTACK is a good thumb's size on the screen (%.0f px)", name, at.w))
+	local jr, ar = rects.Jump, rects.Attack
+	local gap = (ar.x + ar.w / 2) - (jr.x + jr.w / 2)
+	check(math.abs(jr.y + jr.h / 2 - (ar.y + ar.h / 2)) < 1 and gap > ar.w / 2 and gap < ar.w * 1.4,
+		string.format("%s: JUMP sits right beside ATTACK (%.0f px left of it)", name, gap))
+	local text = attackBtn.TextSize * s
+	check(text >= 36, string.format("%s: ATTACK's picture is big on the screen too (%.0f px)", name, text))
 end
 placeTouch(false)
 check(jump.Position == UDim2.new(1, -170, 1, -210) and jump.Size == UDim2.fromOffset(120, 120),

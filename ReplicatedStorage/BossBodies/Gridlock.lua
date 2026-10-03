@@ -51,6 +51,7 @@ local serverNow, clamp, lerp, smooth, easeOutBack, spring, flat
 local fxFolder, newPart, placeDisc, newRing, placeRing, removeRing, burst
 local kick, playSound, findSound, addTelegraph, shockRing, at, SLOT_NAMES, myRoot
 local bigText, shout
+local underBar = function() end -- (BossClient's kit.underBar)
 
 local Poses, Starts, SlotSpawns = {}, {}, {}
 Body.Poses, Body.Starts, Body.SlotSpawns = Poses, Starts, SlotSpawns
@@ -90,6 +91,11 @@ function Body.init(kit)
 	kick, playSound, findSound = kit.kick, kit.playSound, kit.findSound
 	addTelegraph, shockRing, at, SLOT_NAMES, myRoot = kit.addTelegraph, kit.shockRing, kit.at, kit.SLOT_NAMES, kit.myRoot
 	bigText, shout = kit.bigText, kit.shout
+	underBar = function(frame)
+		if kit.underBar then
+			kit.underBar(frame)
+		end
+	end
 	pcall(function()
 		PIXEL_FONT = Font.new("rbxasset://fonts/families/PressStart2P.json")
 	end)
@@ -2682,6 +2688,7 @@ local function buildHud()
 	holder.Size = UDim2.new(0, 320, 0, 18)
 	holder.BackgroundTransparency = 1
 	holder.Parent = gui
+	underBar(holder) -- (it moves and shrinks with the boss bar on a small screen)
 	local bar = Instance.new("Frame")
 	bar.Name = "Bar"
 	bar.Position = UDim2.new(0, 0, 0.5, -5)

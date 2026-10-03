@@ -108,7 +108,8 @@ step(0.5)
 local TAIL, EDGE, TOP_SAFE, SIDE = 12, 3, 150, 12
 local function parts()
 	local talk = gui:FindFirstChild("BossTalk")
-	local bubble = talk and talk:FindFirstChild("Bubble")
+	local fit = talk and talk:FindFirstChild("Fit") -- (everything's in here, shrunk to fit the screen)
+	local bubble = fit and fit:FindFirstChild("Bubble")
 	local box = bubble and bubble:FindFirstChild("Box")
 	return talk, bubble, box, box and box:FindFirstChild("Words"), box and box:FindFirstChild("Tag")
 end
@@ -175,6 +176,10 @@ if not (talk and bubble and box and words and tag) then
 	return
 end
 check(talk.IgnoreGuiInset == true and talk:GetAttribute("RetroSkip") == true, "the bubble's screen should line up with the camera's, and keep its own look")
+check(talk.ScreenInsets == M.Enum.ScreenInsets.None, "the bubble's screen should be the whole screen, notch and all (the camera counts from its corner)")
+local fitFrame = talk:FindFirstChild("Fit")
+local fitScale = fitFrame and fitFrame:FindFirstChildOfClass("UIScale")
+check(fitScale and math.abs(fitScale.Scale - 1) < 1e-6, "on a computer's screen the bubble should be full size: " .. tostring(fitScale and fitScale.Scale))
 local ex, ey = screenOf(head + Vector3.new(0, 1.2, 0))
 local x, y = tip()
 check(math.abs(x - ex) < 0.5 and math.abs(y - ey) < 0.5, string.format("the tail's tip should be just over his head: at %.1f,%.1f, want %.1f,%.1f", x, y, ex, ey))
@@ -268,6 +273,56 @@ RunService.RenderStepped:Fire(1 / 60) -- (a frame with his measurement gone stal
 ex, ey = screenOf(root.Position + Vector3.new(0, 4.25 / 2 + 1.2, 0))
 x, y = tip()
 check(math.abs(x - ex) < 0.5 and math.abs(y - ey) < 0.5, "unmeasured, it should hang over his Root")
+
+-- 11) on a phone (844 x 390): the whole bubble shrinks with the screen, its
+-- tail's tip still just over his head, the box under the (smaller) boss bar
+-- and clear of your heart at the bottom
+step(6)
+cam.ViewportSize = { X = 844, Y = 390 }
+head = Vector3.new(0, 16.8, 0)
+boss:SetAttribute("State", "Dormant")
+boss:SetAttribute("State", "Waking")
+step(2.8)
+local fit = Config.screenFit({ X = 844, Y = 390 })
+check(talk.Enabled and fitScale.Scale == fit and fit < 0.7, "on a phone the bubble should be drawn smaller: " .. tostring(fitScale.Scale))
+check(fitFrame.Size.X.Scale > 1.4 and math.abs(fitFrame.Size.X.Scale - 1 / fit) < 1e-6, "...in a frame that still covers the whole screen")
+ex, ey = screenOf(head + Vector3.new(0, 1.2, 0))
+x, y = tip()
+check(math.abs(x * fit - ex) < 0.5 and math.abs(y * fit - ey) < 0.5, string.format("on a phone the tail's tip should still be just over his head: at %.1f,%.1f, want %.1f,%.1f", x * fit, y * fit, ex, ey))
+local barBottom = 36 + (58 + 46 + 10) * fit -- (the boss bar shrinks on a phone too)
+local function boxBottom()
+	local _, bubble, box, words = parts()
+	local n = utf8.len(words.Text)
+	local h = math.ceil(n / 32) * 20 + 23
+	local yy = bubble.Position.Y.Offset + box.Position.Y.Offset
+	local _, ay = anchor(box)
+	return yy + (1 - ay) * h
+end
+check(boxTop() * fit >= barBottom - 0.5, string.format("on a phone the box should stay under the boss bar: its top at %.1f, the bar's bottom %.1f", boxTop() * fit, barBottom))
+check(boxBottom() * fit <= 390 - 110 + 0.5, "on a phone the box should stay clear of your heart: its bottom at " .. boxBottom() * fit)
+-- (his head off the side: the box waits at the edge, all of it on the screen)
+head = Vector3.new(400, 12, -10)
+step(0.1)
+local _, bub, bx, wd = parts()
+local n = utf8.len(wd.Text)
+local w = math.min(n, 32) * 10 + 24
+local right = (bub.Position.X.Offset + bx.Position.X.Offset + w / 2) * fit
+check(right <= 844 - 4, "on a phone the box should stay on the screen at the edge: its right side at " .. right)
+-- (a touch screen: the fight buttons fill the bottom-right corner - with his
+-- head over on the right, the box stays to the left of them)
+M.services.UserInputService = { TouchEnabled = true, KeyboardEnabled = false }
+local reach = Config.Touch.Reach * Config.touchScale({ X = 844, Y = 390 })
+head = Vector3.new(34, 9, 0)
+step(0.1)
+ex, ey = screenOf(head + Vector3.new(0, 1.2, 0))
+_, bub, bx, wd = parts()
+n = utf8.len(wd.Text)
+w = math.min(n, 32) * 10 + 24
+local ax = anchor(bx)
+right = (bub.Position.X.Offset + bx.Position.X.Offset + (1 - ax) * w) * fit
+check(ex > 844 - reach and right <= 844 - reach + 0.5,
+	string.format("on a phone the box should keep clear of the fight buttons: its right side at %.0f, the buttons from %.0f (his head at %.0f)", right, 844 - reach, ex))
+M.services.UserInputService = nil
 
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))

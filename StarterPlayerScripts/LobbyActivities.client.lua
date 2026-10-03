@@ -497,6 +497,14 @@ tracker.Name = "ColosseumHud"
 tracker.ResetOnSpawn = false
 tracker.Enabled = false
 tracker.Parent = player:WaitForChild("PlayerGui")
+-- everything on it is drawn in here, which shrinks on a small screen (a
+-- phone) like the boss bar does - Config.ScreenFit (see syncTracker)
+local trackerRoot = Instance.new("Frame")
+trackerRoot.Name = "Fit"
+trackerRoot.BackgroundTransparency = 1
+trackerRoot.Size = UDim2.fromScale(1, 1)
+trackerRoot.Parent = tracker
+Instance.new("UIScale").Parent = trackerRoot
 
 local box = Instance.new("Frame")
 box.Name = "QuestTab"
@@ -507,7 +515,7 @@ box.AnchorPoint = Vector2.new(1, 0.5)
 box.Position = UDim2.new(1, -16, 0.42, 0)
 box.Size = UDim2.fromOffset(270, 172)
 box.Visible = false -- (taken off the screen, at the user's ask: the quest still pays when a run is cleared, and the CLEARED screen says what it paid)
-box.Parent = tracker
+box.Parent = trackerRoot
 local boxEdge = Instance.new("UIStroke")
 boxEdge.Color = RGB(255, 255, 255)
 boxEdge.Thickness = 3
@@ -564,7 +572,7 @@ trainBox.AnchorPoint = Vector2.new(1, 0.5)
 trainBox.Position = UDim2.new(1, -16, 0.42, 0) -- (where the quest box was)
 trainBox.Size = UDim2.fromOffset(270, 86)
 trainBox.Visible = false
-trainBox.Parent = tracker
+trainBox.Parent = trackerRoot
 local trainEdge = Instance.new("UIStroke")
 trainEdge.Color = RGB(255, 255, 255)
 trainEdge.Thickness = 3
@@ -585,7 +593,7 @@ waveBox.BorderSizePixel = 0
 waveBox.AnchorPoint = Vector2.new(0.5, 0)
 waveBox.Position = UDim2.new(0.5, 0, 0, 12)
 waveBox.Size = UDim2.fromOffset(200, 34)
-waveBox.Parent = tracker
+waveBox.Parent = trackerRoot
 local waveEdge = Instance.new("UIStroke")
 waveEdge.Color = RGB(255, 255, 255)
 waveEdge.Thickness = 3
@@ -593,7 +601,7 @@ waveEdge.Parent = waveBox
 local waveLabel = label(waveBox, "WAVE 1", UDim2.new(1, -16, 1, -8), UDim2.fromOffset(8, 4), RGB(255, 255, 255))
 
 -- a big line across the middle of the screen (WAVE 3 / QUEST COMPLETE!)
-local banner = label(tracker, "", UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.26, 0), GOLD)
+local banner = label(trackerRoot, "", UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.26, 0), GOLD)
 banner.Visible = false
 local bannerStroke = Instance.new("UIStroke")
 bannerStroke.Thickness = 3
@@ -664,7 +672,7 @@ streakBox.AnchorPoint = Vector2.new(0, 0)
 streakBox.Position = UDim2.new(0.5, 112, 0, 12)
 streakBox.Size = UDim2.fromOffset(150, 34)
 streakBox.Visible = false
-streakBox.Parent = tracker
+streakBox.Parent = trackerRoot
 local streakEdge = Instance.new("UIStroke")
 streakEdge.Color = GOLD
 streakEdge.Thickness = 3
@@ -741,6 +749,16 @@ end
 
 local function syncTracker()
 	tracker.Enabled = player:GetAttribute("Colosseum") == true
+	-- (a phone: it all shrinks with the screen, and the training box sits on
+	-- the left, clear of the fight buttons in the bottom-right corner)
+	local cam = workspace.CurrentCamera
+	local fit = (cam and Config.screenFit) and Config.screenFit(cam.ViewportSize) or 1
+	trackerRoot:FindFirstChildOfClass("UIScale").Scale = fit
+	trackerRoot.Size = UDim2.fromScale(1 / fit, 1 / fit)
+	local UIS = game:GetService("UserInputService")
+	local touch = UIS ~= nil and UIS.TouchEnabled == true and not UIS.KeyboardEnabled
+	trainBox.AnchorPoint = Vector2.new(touch and 0 or 1, 0.5)
+	trainBox.Position = touch and UDim2.new(0, 16, 0.42, 0) or UDim2.new(1, -16, 0.42, 0)
 end
 player:GetAttributeChangedSignal("Colosseum"):Connect(syncTracker)
 syncTracker()
@@ -1092,18 +1110,35 @@ do
 	gui:SetAttribute("RetroSkip", true)
 	gui.Parent = player:WaitForChild("PlayerGui")
 
+	-- (on a small screen - a phone - it shrinks with the screen and moves up,
+	-- like the Spire's boss bar: Config.ScreenFit)
+	local fitRoot = Instance.new("Frame")
+	fitRoot.Name = "Fit"
+	fitRoot.BackgroundTransparency = 1
+	fitRoot.Size = UDim2.fromScale(1, 1)
+	fitRoot.Parent = gui
+	local fitScale = Instance.new("UIScale")
+	fitScale.Parent = fitRoot
 	local holder = Instance.new("Frame")
 	holder.AnchorPoint = Vector2.new(0.5, 0)
 	holder.Position = UDim2.new(0.5, 0, 0, 58)
 	holder.Size = UDim2.new(0.5, 0, 0, 46)
 	holder.BackgroundTransparency = 1
-	holder.Parent = gui
+	holder.Parent = fitRoot
 	local limit = Instance.new("UISizeConstraint")
 	limit.MinSize = Vector2.new(300, 46)
 	limit.MaxSize = Vector2.new(720, 46)
 	limit.Parent = holder
 	local pop = Instance.new("UIScale")
 	pop.Parent = holder
+	local function fitBar()
+		local cam = workspace.CurrentCamera
+		local fit = (cam and Config.screenFit) and Config.screenFit(cam.ViewportSize) or 1
+		fitScale.Scale = fit
+		fitRoot.Size = UDim2.fromScale(1 / fit, 1 / fit)
+		limit.MinSize = Vector2.new(300 * fit, 46 * fit) -- (it holds whichever way Roblox fits the two together)
+	end
+	fitBar()
 
 	local function pixelText(str, size, pos, color, align)
 		local l = Instance.new("TextLabel")
@@ -1184,6 +1219,7 @@ do
 		chipShare = shown
 		levelLabel.Text = "LV " .. tostring(m:GetAttribute("Level") or "?")
 		nameLabel.TextColor3 = GOLD
+		fitBar() -- (the screen may have changed)
 		gui.Enabled = true
 		-- (the bar pops in)
 		task.spawn(function()

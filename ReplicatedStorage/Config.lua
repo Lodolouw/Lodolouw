@@ -1105,6 +1105,33 @@ Config.Retro = {
 	},
 }
 
+-- SMALL SCREENS (a phone): the boss bar, the bosses' speech bubbles and the
+-- Colosseum's wave and training boxes are drawn full size from Height x
+-- Width screen pixels up, and shrink with a smaller screen - never below Min
+-- (the rest of the screen - your heart, the menus - shrinks the same way,
+-- by its height: see Hud). screenFit(screen) is that size (1 = full size).
+Config.ScreenFit = { Height = 720, Width = 1100, Min = 0.6 }
+function Config.screenFit(screen)
+	local F = Config.ScreenFit or {}
+	if not (screen and screen.X and screen.Y and screen.X > 0 and screen.Y > 0) then
+		return 1
+	end
+	return math.clamp(math.min(screen.Y / (F.Height or 720), screen.X / (F.Width or 1100)), F.Min or 0.6, 1)
+end
+
+-- THE FIGHT BUTTONS on a touch screen (CombatClient's phone layout: ATTACK
+-- in the bottom-right corner, JUMP, ROLL, the skill, the potion and LOCK in a
+-- ring round it) are drawn this much bigger or smaller with the screen: its
+-- short side over Size, between Min and Max (a phone: about 0.85). Reach is
+-- how far the ring goes from the corner, in pixels at full size (the boss's
+-- speech bubble keeps clear of it).
+Config.Touch = { Size = 460, Min = 0.8, Max = 1.35, Reach = 340 }
+function Config.touchScale(screen)
+	local T = Config.Touch or {}
+	local short = (screen and screen.X and screen.Y) and math.min(screen.X, screen.Y) or 390
+	return math.clamp(short / (T.Size or 460), T.Min or 0.8, T.Max or 1.35)
+end
+
 -- THE HEART: your health on screen, as red liquid inside a pixel heart
 -- (ReplicatedStorage/Vitals draws it, for Hud).
 Config.Heart = {
@@ -1115,6 +1142,11 @@ Config.Heart = {
 	Drops = 36, -- drops spilled per whole heart lost (a hit spills at least 3...)
 	MaxDrops = 12, -- ...and at most this many
 	Low = 0.25, -- below this much health it beats and its outline blinks red
+	-- on a small screen (a phone) it's drawn a bit bigger than the rest, so
+	-- your health is easy to read: as big as on a screen this many pixels
+	-- tall, but never more than MaxBoost times bigger
+	MinScreen = 700,
+	MaxBoost = 1.5,
 }
 
 -- In a fight, either side of the heart (ReplicatedStorage/Vitals): your

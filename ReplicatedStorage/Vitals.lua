@@ -242,6 +242,34 @@ function Vitals.start(opts)
 	local GAP = V.Gap or 2 * PX -- space between the heart and the bolt / potion
 	local BASE_Y = -66 -- where the bottom of the heart sits (above the level bar)
 
+	-- All of it hangs in here: the same size as `root`, and on a small screen
+	-- (a phone, where the whole screen is drawn small) a bit bigger than the
+	-- rest, so your health is still easy to read - never smaller than on a
+	-- screen Heart.MinScreen pixels tall, up to Heart.MaxBoost times bigger.
+	-- It grows from the middle of the bottom, so everything stays in place.
+	local holder = own(create("Frame", {
+		Name = "Vitals",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = root,
+	}))
+	local boost = create("UIScale", { Name = "SmallScreen", Scale = 1, Parent = holder })
+	local function fitHolder()
+		local cam = workspace.CurrentCamera
+		local vh = cam and cam.ViewportSize and cam.ViewportSize.Y or 0
+		if vh > 0 then
+			local hud = math.clamp(vh / 1000, 0.5, 1.1) -- (how big Hud draws the screen)
+			boost.Scale = math.clamp(math.min(H.MinScreen or 700, 1000) / 1000 / hud, 1, H.MaxBoost or 1.5)
+		end
+	end
+	fitHolder()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitHolder)
+	end
+	root = holder
+
 	local function pixel(parent, x, y, color, z)
 		return own(create("Frame", {
 			BorderSizePixel = 0,
@@ -537,11 +565,16 @@ function Vitals.start(opts)
 	local COUNT_W = 48
 	local function placeAll()
 		local a = smooth(appear)
-		local key = string.format("%.3f|%.1f|%.1f|%.1f", a, pot.liftX, pot.liftY, boltShake)
+		-- (on a touch screen the fight buttons crowd the bottom right: in a
+		-- fight your Power steps off the screen - the level bar still shows it)
+		local UIS = game:GetService("UserInputService")
+		local crowded = a > 0.5 and UIS ~= nil and UIS.TouchEnabled == true and not UIS.KeyboardEnabled
+		local key = string.format("%.3f|%.1f|%.1f|%.1f|%s", a, pot.liftX, pot.liftY, boltShake, tostring(crowded))
 		if key == placed then
 			return
 		end
 		placed = key
+		powerText.Visible = not crowded
 		local mid = BASE_Y - HH / 2
 		local potX = -(HW / 2 + GAP + PW / 2)
 		local countRight = -(HW / 2 + GAP + PW + 4)

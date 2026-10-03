@@ -917,6 +917,50 @@ sizeLimit.MaxSize = Vector2.new(780, 46)
 sizeLimit.MinSize = Vector2.new(300, 46)
 sizeLimit.Parent = barHolder
 
+-- On a small screen (a phone) the bar shrinks with the screen and moves up
+-- under Roblox's top bar (Config.ScreenFit) - and so does anything a boss
+-- hangs under it (kit.underBar: Kaze's ki meter, Gridlock's progress bar,
+-- Revvington's clock), so they stay together
+local barFit = { under = {}, scale = Instance.new("UIScale") }
+barFit.scale.Parent = barHolder
+function barFit.apply()
+	local cam = workspace.CurrentCamera
+	local fit = (cam and Config.screenFit) and Config.screenFit(cam.ViewportSize) or 1
+	barFit.fit = fit
+	barFit.scale.Scale = fit
+	barHolder.Position = UDim2.new(0.5, 0, 0, 58 * fit)
+	barHolder.Size = UDim2.new(0.52 / fit, 0, 0, 46) -- (as wide on the screen as ever)
+	sizeLimit.MinSize = Vector2.new(300 * fit, 46 * fit) -- (it holds whichever way Roblox fits the two together)
+	for frame, u in pairs(barFit.under) do
+		if frame.Parent then
+			u.scale.Scale = fit
+			frame.Position = UDim2.new(u.pos.X.Scale, u.pos.X.Offset, u.pos.Y.Scale, u.pos.Y.Offset * fit)
+			frame.Size = UDim2.new(u.size.X.Scale / fit, u.size.X.Offset, u.size.Y.Scale, u.size.Y.Offset)
+			if u.limit then
+				u.limit.MinSize = Vector2.new(u.min.X * fit, u.min.Y * fit)
+			end
+		else
+			barFit.under[frame] = nil
+		end
+	end
+end
+-- kit.underBar(frame): a frame of a boss's own HUD, anchored at its top
+-- middle just under the bar (y = 101 on a big screen), that moves and shrinks
+-- with it
+function kit.underBar(frame)
+	if barFit.under[frame] then
+		return
+	end
+	local limit = frame:FindFirstChildOfClass("UISizeConstraint")
+	barFit.under[frame] = { scale = Instance.new("UIScale"), pos = frame.Position, size = frame.Size, limit = limit, min = limit and limit.MinSize }
+	barFit.under[frame].scale.Parent = frame
+	barFit.apply()
+end
+barFit.apply()
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(barFit.apply)
+end
+
 local barName = Instance.new("TextLabel")
 barName.BackgroundTransparency = 1
 barName.Size = UDim2.new(1, -90, 0, 24)
@@ -1101,6 +1145,22 @@ winSub.TextStrokeTransparency = 0.5
 winSub.RichText = true
 winSub.Text = ""
 winSub.Parent = winBand
+-- (a phone: the band's words shrink with the screen, like the boss bar - it
+-- stays right across it)
+do
+	local scale = Instance.new("UIScale")
+	scale.Parent = winBand
+	local function fitWin()
+		local cam = workspace.CurrentCamera
+		local fit = (cam and Config.screenFit) and Config.screenFit(cam.ViewportSize) or 1
+		scale.Scale = fit
+		winBand.Size = UDim2.new(1 / fit, 0, 0, 170)
+	end
+	fitWin()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitWin)
+	end
+end
 
 local victoryAt = 0 -- when the last victory sting started (the music gets out of its way)
 local function victory(floorId, gained, firstClear)

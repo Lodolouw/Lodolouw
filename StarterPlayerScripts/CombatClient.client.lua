@@ -195,8 +195,9 @@ local lockBtn = roundButton("LockButton", "LOCK", UDim2.new(1, -170, 1, -293), 6
 -- the big button in the corner (hold it to keep swinging); round it in an
 -- arc JUMP (Roblox's own button, moved here while you fight and put back
 -- after), ROLL and the weapon's ability; further out the potion and LOCK.
--- { angle (degrees round ATTACK, 0 = right, 90 = up), distance, size }, all
--- scaled to the screen.
+-- { angle (degrees round ATTACK, 0 = right, 90 = up), distance, size }, in
+-- screen pixels, all scaled to the screen (Config.Touch - a phone: about
+-- 0.85, so JUMP is the size Roblox makes it there).
 K.TOUCH_CENTER = 100
 K.TOUCH_LAYOUT = {
 	Attack = { 0, 0, 124 },
@@ -212,11 +213,20 @@ end
 local function touchScale()
 	local cam = workspace.CurrentCamera
 	local vs = cam and cam.ViewportSize or Vector2.new(844, 390)
-	return math.clamp(math.min(vs.X, vs.Y) / 400, 0.8, 1.35)
+	if Config.touchScale then
+		return Config.touchScale(vs)
+	end
+	return math.clamp(math.min(vs.X, vs.Y) / 460, 0.8, 1.35)
 end
-local function touchSpot(spec, k)
+-- where a button goes and how big. Our buttons sit in the HUD's root, which
+-- is shrunk to fit the screen (`s`: see updateScale - half size on a phone),
+-- so their numbers are divided by it to come out at real screen pixels, the
+-- same as Roblox's jump button (not in the root: s = 1)
+local function touchSpot(spec, k, s)
+	s = s or 1
 	local a, r = math.rad(spec[1]), spec[2] * k
-	return UDim2.new(1, -K.TOUCH_CENTER * k + math.cos(a) * r, 1, -K.TOUCH_CENTER * k - math.sin(a) * r), UDim2.fromOffset(spec[3] * k, spec[3] * k)
+	return UDim2.new(1, (-K.TOUCH_CENTER * k + math.cos(a) * r) / s, 1, (-K.TOUCH_CENTER * k - math.sin(a) * r) / s),
+		UDim2.fromOffset(spec[3] * k / s, spec[3] * k / s)
 end
 local function jumpButton()
 	local tg = playerGui:FindFirstChild("TouchGui")
@@ -226,23 +236,29 @@ end
 local jumpHome = nil -- where Roblox had the jump button (put back after the fight)
 local function placeTouch(fighting)
 	local k = touchScale()
+	local s = math.max(uiScale.Scale or 1, 0.05) -- (the root's: see touchSpot)
 	for btn, key in pairs({ [attackBtn] = "Attack", [rollBtn] = "Roll", [flaskBtn] = "Flask", [lockBtn] = "Lock" }) do
-		local pos, size = touchSpot(K.TOUCH_LAYOUT[key], k)
-		if btn.Position ~= pos then
+		local pos, size = touchSpot(K.TOUCH_LAYOUT[key], k, s)
+		if btn.Position ~= pos or btn.Size ~= size then
 			btn.Position, btn.Size = pos, size
 		end
 	end
 	local ability = combatUI:FindFirstChild("AbilityButton")
 	if ability then
-		local pos, size = touchSpot(K.TOUCH_LAYOUT.Ability, k)
-		if ability.Position ~= pos then
+		local pos, size = touchSpot(K.TOUCH_LAYOUT.Ability, k, s)
+		if ability.Position ~= pos or ability.Size ~= size then
 			ability.Position, ability.Size = pos, size
 		end
+		ability.TextSize = math.floor(20 * k / s)
+		local cd = ability:FindFirstChildOfClass("TextLabel") -- (its cooldown)
+		if cd then
+			cd.TextSize = math.floor(26 * k / s)
+		end
 	end
-	attackBtn.TextSize = math.floor(46 * k)
-	rollBtn.TextSize = math.floor(20 * k)
-	lockBtn.TextSize = math.floor(16 * k)
-	flaskBtn.TextSize = math.floor(26 * k)
+	attackBtn.TextSize = math.floor(46 * k / s)
+	rollBtn.TextSize = math.floor(20 * k / s)
+	lockBtn.TextSize = math.floor(16 * k / s)
+	flaskBtn.TextSize = math.floor(26 * k / s)
 	-- Roblox's jump button joins the arc while you fight (it puts it back
 	-- itself if the screen turns, so this is checked again now and then)
 	local jb = jumpButton()

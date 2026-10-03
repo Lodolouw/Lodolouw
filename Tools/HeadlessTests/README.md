@@ -170,7 +170,7 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   him move by move, then a camel, a meerkat, a vulture and a lizard close up).
   (`render_snaps.py` reads a picture's own field of view from an 8th number on
   its SNAP line, if there is one.)
-- `test_touch_controls.luau` - THE PHONE LAYOUT (CombatClient's placeTouch) on four phone/tablet sizes: ATTACK big in the corner, JUMP (Roblox's, moved in and put back after), ROLL, SKILL, POTION and LOCK round it - all on screen, none overlapping (by their square tap boxes), thumb-sized; a tap on the world can't punch on a phone
+- `test_touch_controls.luau` - THE PHONE LAYOUT (CombatClient's placeTouch) on four phone/tablet sizes, measured the way the screen really draws them (our buttons sit in the HUD's root, drawn at half size on a phone; Roblox's jump button doesn't): ATTACK big in the corner, JUMP (Roblox's, moved in and put back after), ROLL, SKILL, POTION and LOCK round it - all on screen, none overlapping (by their square tap boxes), thumb-sized, JUMP the same size as ROLL and SKILL and right beside ATTACK; a tap on the world can't punch on a phone
 - `test_arena_horizon.luau` - THE HORIZON (ArenaAmbience): in every arena the far distance melts into that arena's own sky (at least `Config.Spire.Horizon`'s Density/Offset/Haze, in its own colour), and the lobby's air comes back exactly when you leave
 - `test_gridlock_music.luau` - Gridlock's song: round 1 his theme, round 2 the harder version, and one not uploaded yet falls back (Round2Music -> Music -> FallbackMusic); the songs are exactly 96 bars at his Bpm
 - `test_gridlock.luau` - GRIDLOCK (floor 6) on the real Final Beat
@@ -286,7 +286,10 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
   sideways, when there's no room up there; at the nearest edge (tail tucked
   away) with the head off the top, off a side or behind you; never over the
   boss bar; last words stay where they were said; the old box's "* " is
-  gone; the tag carries the boss's name in its colour.
+  gone; the tag carries the boss's name in its colour. On a phone (844 x
+  390) the whole bubble shrinks with the screen (Config.ScreenFit), its tip
+  still on the head, under the smaller boss bar, clear of your heart, on
+  the screen at the edge, and on a touch screen clear of the fight buttons.
 - `talk_snaps.luau` + `render_talk.py` - the speech bubbles' preview
   (`Docs/talk_preview.png`): each boss woken by a pretend player and seen
   through the lock-on camera (CombatClient's own sums), its wake line in the
@@ -555,13 +558,22 @@ computer with no Roblox at all, so bugs get caught before you paste anything.
 - `gui_snap.luau` + `render_gui.py` - PICTURES OF A SCREEN (any ScreenGui):
   `gui_snap` prints what a ScreenGui draws right now (boxes, borders,
   gradients, words, clipping, with UIScale / UIListLayout / UIGridLayout /
-  UIPadding worked out), and `render_gui.py` paints the snapshots in a grid
-  with captions (`--bg` a picture of the world behind, `--font` the game's
-  FredokaOne if you have it, `--pixel` Press Start 2P for words in Roblox's
-  "Arcade" pixel font - the window look's titles and buttons). The Arcade's:
-  `luau test_arcade_client.luau -a snaps > s.txt`, then `python3 render_gui.py
-  s.txt ../../Docs/arcade_screens.png --bg inside.png --font FredokaOne.ttf
-  --pixel PressStart2P.ttf`.
+  UIPadding / AutomaticSize worked out), and `render_gui.py` paints the
+  snapshots in a grid with captions (`--size` the screen they were taken on
+  - 1280x720, or a phone's 844x390 -, `--bg` a picture of the world behind,
+  `--font` the game's FredokaOne if you have it, `--pixel` Press Start 2P
+  for words in Roblox's "Arcade" pixel font - the window look's titles and
+  buttons). The Arcade's: `luau test_arcade_client.luau -a snaps > s.txt`,
+  then `python3 render_gui.py s.txt ../../Docs/arcade_screens.png --bg
+  inside.png --font FredokaOne.ttf --pixel PressStart2P.ttf`.
+- `phone_snaps.luau` - PICTURES OF A PHONE'S SCREEN: the real Hud,
+  LobbyHud, CombatClient, BossClient and BossIntro on a touch phone (844 x
+  390, or `-a WxH`), with Roblox's jump button where it puts it: the lobby,
+  a fight with a weapon (the touch buttons, the heart), and a boss awake and
+  talking (its bar, its speech bubble). `luau phone_snaps.luau > s.txt`,
+  then `python3 render_gui.py s.txt out.png --size 844x390 --cols 1`
+  (`Docs/phone_before_after.png` was made from two runs: before and after
+  the phone fixes).
 - `test_intro.luau` - THE INTRO end to end: a brand-new player joins, the
   real PlayerService, CombatService and IntroService run Oozlet's fight and
   the real IntroClient draws it, on a little lobby (the plaza, the fountain,

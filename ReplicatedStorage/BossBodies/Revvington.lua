@@ -62,6 +62,7 @@ local serverNow, clamp, lerp, smooth, easeOut, easeOutBack, spring, flat
 local fxFolder, newPart, placeDisc, newRing, placeRing, onFloor, removeRing, burst
 local kick, playSound, findSound, soundGroup, addTelegraph, shockRing, at, SLOT_NAMES, myRoot
 local bigText, shout
+local underBar = function() end -- (BossClient's kit.underBar)
 
 local Poses, Starts, SlotSpawns = {}, {}, {}
 Body.Poses, Body.Starts, Body.SlotSpawns = Poses, Starts, SlotSpawns
@@ -98,6 +99,11 @@ function Body.init(kit)
 	kick, playSound, findSound, soundGroup = kit.kick, kit.playSound, kit.findSound, kit.soundGroup
 	addTelegraph, shockRing, at, SLOT_NAMES, myRoot = kit.addTelegraph, kit.shockRing, kit.at, kit.SLOT_NAMES, kit.myRoot
 	bigText, shout = kit.bigText, kit.shout
+	underBar = function(frame)
+		if kit.underBar then
+			kit.underBar(frame)
+		end
+	end
 	pcall(function()
 		PIXEL_FONT = Font.new("rbxasset://fonts/families/PressStart2P.json")
 	end)
@@ -2217,6 +2223,7 @@ local function buildClock()
 	label.TextStrokeColor3 = INK
 	label.Text = ""
 	label.Parent = gui
+	underBar(label) -- (it moves and shrinks with the boss bar on a small screen)
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	clock = { gui = gui, label = label }
 end

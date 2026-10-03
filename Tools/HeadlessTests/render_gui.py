@@ -1,6 +1,6 @@
 """Paints screens (ScreenGuis) from a test's snapshots (gui_snap.luau): each
 SNAP is one panel - its boxes, borders, gradients and words where the game
-puts them on a 1280x720 screen - laid out in a grid with captions.
+puts them on a 1280x720 screen (or --size) - laid out in a grid with captions.
 
     luau test_arcade_client.luau -a snaps > snaps.txt
     python3 render_gui.py snaps.txt ../../Docs/arcade_screens.png \
@@ -12,6 +12,7 @@ puts them on a 1280x720 screen - laid out in a grid with captions.
                  that uses it; the game font if not given
   --extra FILE "CAPTION"   one more panel: a ready-made picture
   --only N,M     just those snapshots (1 = the first)
+  --size WxH     the screen they were taken on (1280x720; a phone: 844x390)
 A ViewportFrame with a "SnapImage" attribute gets that weapon's picture from
 Docs/weapons/<pack>.png (the Slime pack's so far).
 """
@@ -20,6 +21,7 @@ import json
 import os
 
 import math
+import re
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
@@ -36,9 +38,10 @@ ap.add_argument("--panel", type=int, default=800)  # each panel's width in the p
 ap.add_argument("--title", default="")
 ap.add_argument("--extra", nargs=2, action="append", default=[])
 ap.add_argument("--only", default="")
+ap.add_argument("--size", default="1280x720")  # the screen the snapshots were taken on (a phone: 844x390)
 args = ap.parse_args()
 
-SW, SH = 1280, 720
+SW, SH = (int(v) for v in args.size.lower().split("x"))
 SS = 2  # drawn this much bigger, then shrunk (smooth edges)
 BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT = args.font if args.font and os.path.exists(args.font) else BOLD
@@ -235,7 +238,8 @@ def draw_text(layer, item):
     size = item.get("size")
     size = size * SS if size is not None else None
     main = PIXEL if item.get("f") in PIXEL_FONTS else FONT
-    fsize, lines = fit(item["s"], box, size, item.get("wrap", False), main)
+    words = re.sub(r"</?(font|b|i|u|s|stroke|br)\b[^>]*>", "", item["s"])  # (RichText's tags aren't words)
+    fsize, lines = fit(words, box, size, item.get("wrap", False), main)
     line_h = fsize * 1.05
     total = line_h * len(lines)
     ya = item.get("ya", "C")
