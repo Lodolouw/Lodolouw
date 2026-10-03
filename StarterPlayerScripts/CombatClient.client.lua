@@ -1029,7 +1029,7 @@ end
 local function releasePunchLock()
 	punchLockUntil = 0
 	local hum = charParts()
-	if hum and savedWalkSpeed and hum.WalkSpeed == 0 then
+	if hum and savedWalkSpeed and hum.WalkSpeed < savedWalkSpeed then
 		hum.WalkSpeed = savedWalkSpeed
 	end
 	savedWalkSpeed = nil
@@ -1044,7 +1044,8 @@ local function commitToPunch(now, recovery)
 	if not savedWalkSpeed and hum.WalkSpeed > 0 then
 		savedWalkSpeed = hum.WalkSpeed
 	end
-	hum.WalkSpeed = 0
+	-- (slowed, not stopped: you can still drift out of the way mid-swing)
+	hum.WalkSpeed = (savedWalkSpeed or 0) * (CC.PunchMoveSpeed or 0)
 	punchStartedAt = now
 	punchLockUntil = now + CC.PunchLock * recovery
 	task.delay(CC.PunchLock * recovery, function()

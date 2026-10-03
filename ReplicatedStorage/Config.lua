@@ -2856,9 +2856,10 @@ Config.Combat = {
 	StaminaRegen = 45, -- per second
 	StaminaRegenDelay = 0.55, -- seconds after spending before it refills
 	PunchCost = 6,
-	PunchInterval = 0.42, -- fastest you can punch (seconds)
-	PunchLock = 0.42, -- each punch commits you: you can't move or punch again for this long
-	PunchRollCancel = 0.25, -- ...but after this much of it you can roll out of the punch
+	PunchInterval = 0.34, -- fastest you can punch (seconds)
+	PunchLock = 0.34, -- each punch commits you: you can't punch again for this long...
+	PunchMoveSpeed = 0.45, -- ...and you only slow down (this share of your speed), you don't stop dead
+	PunchRollCancel = 0.12, -- ...and after this much of it you can roll out of the punch
 	PunchRange = 8,
 	PunchContact = 0.45, -- how far into a swing the fist actually lands (share of
 	-- PunchLock). Damage, the camera and the sound all happen at this moment, and
@@ -2945,7 +2946,7 @@ Config.Combat = {
 	Combo = {
 		Window = 0.85, -- punch again within this of the last one to continue the string
 		Steps = { 1, 1.3, 1.7 }, -- how far each swing carries you (x the base step)
-		Recovery = { 1, 1, 1.6 }, -- how long each swing leaves you committed (x PunchLock)
+		Recovery = { 1, 1, 1.35 }, -- how long each swing leaves you committed (x PunchLock)
 		Buffer = 0.3, -- a press this close to the end of a swing is queued, not lost
 	}, -- the practice slime takes about this many hits at the recommended level
 }

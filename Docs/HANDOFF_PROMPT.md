@@ -718,6 +718,7 @@ I asked for a full client-exploit audit: remote abuse, economy duplication, tele
 - **Every Spire boss** hits x0.75 and has x0.85 health on every tier (`Config.Combat.BossDamage` / `BossHealth`); the bosses' own numbers stay as designed.
 - **Survival**: 4 flasks a trip, each healing 50% (`Flasks`, `FlaskHeal`), drunk in 0.7s at walking pace 10; a roll costs 20 stamina (`RollCost`).
 - **Friendlier combat** (`Config.Combat`): rolls are untouchable for 0.6s and ready again after 0.45s; stamina refills at 45/s after 0.55s and a punch costs 6; not hit for 6s in any fight, health comes back at 2% a second (`Regen`); a punch without lock-on turns you to the nearest enemy within 18 studs (`AutoFace`), and the server's punch cone is 70 degrees either side.
+- **Looser punches**: a punch commits you for 0.34s (`PunchLock`/`PunchInterval`, was 0.42), the finisher 1.35x that (was 1.6x), you only slow to 45% speed instead of stopping (`PunchMoveSpeed`), and you can roll out after 0.12s (`PunchRollCancel`, was 0.25). Weapons share the slow-not-stop and the roll cancel.
 
 ### Other things I asked about
 - **Claude plans and effort:** use a high effort setting for careful restructures (like the boss split), and medium for small tweaks. Don't ask for huge multi-feature jobs in one go.

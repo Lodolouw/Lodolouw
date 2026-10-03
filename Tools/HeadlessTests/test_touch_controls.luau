@@ -123,6 +123,9 @@ check(string.find(src, "if not processed or input.KeyCode == Enum.KeyCode.Button
 	"a middle click always locks on")
 check(string.find(src, "Middle click: lock on", 1, true) ~= nil and string.find(src, "Tab: lock on", 1, true) == nil,
 	"the controls hint says Middle click: lock on")
+-- a punch slows you down rather than stopping you dead (Config.Combat.PunchMoveSpeed)
+check(string.find(src, "hum.WalkSpeed = (savedWalkSpeed or 0) * (CC.PunchMoveSpeed or 0)", 1, true) ~= nil,
+	"a punch only slows you, you can still drift out of the way")
 
 if fails == 0 then
 	print("PASS test_touch_controls")
