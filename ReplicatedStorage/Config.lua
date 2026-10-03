@@ -3890,11 +3890,11 @@ end
 --   SpireConqueror     beating the Spire's top floor (floor 10)
 ----------------------------------------------------------------------
 Config.Badges = {
-	Welcome = 3162828158323873,
+	Welcome = 3809307888110612,
 	SlimeSlayer = 2388240712321974,
 	FirstSpin = 2441787687313271,
 	ColosseumChampion = 3910121594326082,
-	OozarkDown = 0,
+	OozarkDown = 3162828158323873,
 	SpireConqueror = 0,
 }
 
