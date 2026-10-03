@@ -2584,7 +2584,8 @@ local function reveal()
 		cam.CFrame = from
 		cam.CameraType = Enum.CameraType.Custom
 		if hum.Parent then
-			hum.WalkSpeed = walkWas
+			-- (back to the lobby's speed: what we saved may have been the fight's)
+			hum.WalkSpeed = math.max(walkWas, Config.walkSpeedFor(player, nil))
 		end
 		blink(false, 0.35)
 	else

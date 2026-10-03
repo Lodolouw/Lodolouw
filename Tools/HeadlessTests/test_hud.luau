@@ -151,6 +151,21 @@ if dev then
 	check(table.find(asked, "DevGive:Tokens") ~= nil, "which asks the server for them")
 end
 
+-- the lobby's speed: anything that left you slow (a fight's speed, a
+-- cutscene's stop) is put right on the next frame - but never in a fight
+do
+	local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
+	hum.Health, hum.MaxHealth = 100, 100
+	hum.WalkSpeed = 20
+	RunService.Heartbeat:Fire(1 / 60)
+	check(hum.WalkSpeed == Config.BaseWalkSpeed, "in the lobby you're back to the lobby's speed (" .. tostring(hum.WalkSpeed) .. ")")
+	me:SetAttribute("Colosseum", true)
+	hum.WalkSpeed = 20
+	RunService.Heartbeat:Fire(1 / 60)
+	check(hum.WalkSpeed == 20, "but a fight keeps its own speed")
+	me:SetAttribute("Colosseum", nil)
+end
+
 for _, e in ipairs(M.errors) do
 	print("ERROR " .. tostring(e))
 end

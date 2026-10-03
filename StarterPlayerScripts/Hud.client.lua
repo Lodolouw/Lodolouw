@@ -1109,6 +1109,24 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+-- In the lobby (no fight, no intro) you're never slower than the lobby's
+-- speed: if anything left you with a fight's speed or a cutscene's stop
+-- (a roll or a punch that ended as you left, the intro's look at the Spire),
+-- it's put right on the next frame. Only ever raised - never slowed.
+RunService.Heartbeat:Connect(function()
+	if player:GetAttribute("SpireFloor") or player:GetAttribute("Colosseum") or player:GetAttribute("Intro") then
+		return
+	end
+	local hum = characterBits()
+	if not hum or hum.Health <= 0 then
+		return
+	end
+	local want = Config.walkSpeedFor(player, nil)
+	if hum.WalkSpeed < want then
+		hum.WalkSpeed = want
+	end
+end)
+
 ----------------------------------------------------------------------
 -- Run animation
 ----------------------------------------------------------------------
