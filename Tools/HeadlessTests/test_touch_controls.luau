@@ -118,6 +118,11 @@ check(string.find(src, "if input.UserInputType == Enum.UserInputType.Touch and t
 	"on a phone a tap on the world doesn't throw a punch")
 check(string.find(src, "attackBtn.InputBegan:Connect", 1, true) ~= nil and string.find(src, "attackBtn.Visible = on and touch", 1, true) ~= nil,
 	"the ATTACK button swings, and shows in every fight on a phone")
+-- the middle mouse button locks on even when Roblox marks the click as handled
+check(string.find(src, "if not processed or input.KeyCode == Enum.KeyCode.ButtonR3 or input.UserInputType == Enum.UserInputType.MouseButton3 then\n\t\t\ttoggleLock()", 1, true) ~= nil,
+	"a middle click always locks on")
+check(string.find(src, "Middle click: lock on", 1, true) ~= nil and string.find(src, "Tab: lock on", 1, true) == nil,
+	"the controls hint says Middle click: lock on")
 
 if fails == 0 then
 	print("PASS test_touch_controls")

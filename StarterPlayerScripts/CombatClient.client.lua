@@ -10,7 +10,7 @@
 	  * Shift  (gamepad B)   dodge roll - a quick dash; you're invincible for a
 	                         moment at the start of it
 	  * R  (gamepad Y)       drink a healing flask
-	  * Tab / middle click   lock on to an enemy, like Elden Ring: the camera
+	  * Middle click / Tab   lock on to an enemy, like Elden Ring: the camera
 	    (right stick click)  frames it and you always face it; press again
 	                         to let go
 	  * Q / E                while locked on: switch to the next enemy to the
@@ -161,7 +161,7 @@ local hints = create("TextLabel", {
 	Size = UDim2.fromOffset(720, 22),
 	BackgroundTransparency = 1,
 	Font = K.BOLD,
-	Text = "Click: punch     Shift: dodge roll     Space: jump     R: flask     Tab: lock on     Q / E: switch target",
+	Text = "Click: punch     Shift: dodge roll     Space: jump     R: flask     Middle click: lock on     Q / E: switch target",
 	TextSize = 18,
 	TextColor3 = RGB(220, 225, 235),
 	TextTransparency = 0.15,
@@ -2192,7 +2192,7 @@ do
 	end
 
 	local HINT_FISTS = hints.Text
-	local HINT_WEAPON = "Click: swing     F: ability     Shift: dodge roll     Space: jump     R: flask     Tab: lock on"
+	local HINT_WEAPON = "Click: swing     F: ability     Shift: dodge roll     Space: jump     R: flask     Middle click: lock on"
 	RunService.RenderStepped:Connect(function(dt)
 		-- the impact frame: a white flash and speed lines, gone in a blink
 		local k = (os.clock() - impactAt) / 0.22
@@ -3177,8 +3177,11 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if not active then
 		return
 	end
+	-- LOCK ON: the middle mouse button (or Tab, or the right stick click).
+	-- (A middle click always counts - Roblox can mark it as already handled
+	-- though nothing on screen uses it; Tab only when you're not typing.)
 	if input.KeyCode == Enum.KeyCode.Tab or input.KeyCode == Enum.KeyCode.ButtonR3 or input.UserInputType == Enum.UserInputType.MouseButton3 then
-		if not processed or input.KeyCode == Enum.KeyCode.ButtonR3 then
+		if not processed or input.KeyCode == Enum.KeyCode.ButtonR3 or input.UserInputType == Enum.UserInputType.MouseButton3 then
 			toggleLock()
 		end
 		return
