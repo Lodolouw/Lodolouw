@@ -720,6 +720,9 @@ I asked for a full client-exploit audit: remote abuse, economy duplication, tele
 - **Friendlier combat** (`Config.Combat`): rolls are untouchable for 0.6s and ready again after 0.45s; stamina refills at 45/s after 0.55s and a punch costs 6; not hit for 6s in any fight, health comes back at 2% a second (`Regen`); a punch without lock-on turns you to the nearest enemy within 18 studs (`AutoFace`), and the server's punch cone is 70 degrees either side.
 - **Looser punches**: a punch commits you for 0.34s (`PunchLock`/`PunchInterval`, was 0.42), the finisher 1.35x that (was 1.6x), you only slow to 45% speed instead of stopping (`PunchMoveSpeed`), and you can roll out after 0.12s (`PunchRollCancel`, was 0.25). Weapons share the slow-not-stop and the roll cancel.
 
+### Badges
+- Six, kept small: Welcome (join), Slime Slayer (beat Oozlet), First Spin, Colosseum Champion (clear it), Oozark Down (floor 1, any tier), Spire Conqueror (floor 10). Pictures in `Docs/badges` (made by `Tools/Icons/badge_icons.py`, the Game Pass pictures' look). Make each badge on create.roblox.com and paste its ID into `Config.Badges` (0 = not given yet). The server gives them: `PlayerService.AwardBadge(player, key)` (never waits or fails loudly; once a session), called from PlayerService (join, RecordBossKill), IntroService, ArcadeService and ColosseumService. Tested in test_path.
+
 ### Other things I asked about
 - **Claude plans and effort:** use a high effort setting for careful restructures (like the boss split), and medium for small tweaks. Don't ask for huge multi-feature jobs in one go.
 - **Sounds:** you can't make audio. Hook sounds by name in SoundService and tell me the names.

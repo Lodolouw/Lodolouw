@@ -1751,6 +1751,9 @@ function ColosseumService.FinishRun(s)
 	if PlayerService and PlayerService.PathEvent then
 		task.defer(PlayerService.PathEvent, player, "Clear") -- (the new player path: the Colosseum cleared)
 	end
+	if PlayerService and PlayerService.AwardBadge then
+		PlayerService.AwardBadge(player, "ColosseumChampion")
+	end
 end
 
 -- Pays the quest (BEAT 5 WAVES) at this run's difficulty. Gives back what it paid.

@@ -219,6 +219,9 @@ local function roll(player, d, arg)
 	if PlayerService and PlayerService.PathEvent then
 		task.defer(PlayerService.PathEvent, player, "Spin") -- (the new player path's first step)
 	end
+	if PlayerService and PlayerService.AwardBadge then
+		PlayerService.AwardBadge(player, "FirstSpin")
+	end
 	return true, {
 		machine = machineId,
 		results = results,

@@ -233,6 +233,19 @@ check(d.Path.step == 1 and d.Coins == coins, "doing a later step (or an old one)
 local ok = ask("PathEvent", "Spin")
 check(not ok and d.Path.step == 1, "there's no remote to push the path along")
 
+-- (badges: a pretend BadgeService records what's given)
+local awarded = {}
+M.services.BadgeService = {
+	UserHasBadgeAsync = function(_, userId, id)
+		return awarded[id] == userId
+	end,
+	AwardBadge = function(_, userId, id)
+		awarded[id] = userId
+		return true
+	end,
+}
+Config.Badges.FirstSpin, Config.Badges.OozarkDown, Config.Badges.SpireConqueror = 111, 222, 333
+
 -- 1. spin (for real, at the Arcade): the weapon goes straight into your hand
 me:SetAttribute("Weapon", nil)
 ok = ask("ArcadeRoll", { machine = "Slime", count = 1 })
@@ -250,6 +263,17 @@ ask("ArcadeRoll", { machine = "Slime", count = 1 })
 play(0.2)
 check(d.Path.step == 2 and d.Coins == coins, "spinning again pays nothing more")
 check(me:GetAttribute("Weapon") == held, "and doesn't swap your weapon")
+
+play(0.1)
+check(awarded[111] == me.UserId, "the first spin gives the First Spin badge")
+check(awarded[222] == nil, "and nothing else")
+PS.RecordBossKill(me, 1, "Nightmare")
+PS.RecordBossKill(me, #Config.Spire.Floors)
+play(0.1)
+check(awarded[222] == me.UserId and awarded[333] == me.UserId, "beating Oozark and the top floor give theirs")
+Config.Badges.ColosseumChampion = 0
+PS.AwardBadge(me, "ColosseumChampion")
+check(awarded[0] == nil, "a badge not made yet (ID 0) is never given")
 
 -- 2. into the Colosseum (ColosseumService tells the path when you arrive)
 PS.PathEvent(me, "Colosseum")

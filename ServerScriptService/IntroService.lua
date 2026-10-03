@@ -586,6 +586,9 @@ local function win(S)
 	-- (done AFTER the chest pays: that starts the new player path, whose spin
 	-- step hands out a token only if you've none - the chest's is the one)
 	PlayerService.SetIntroDone(S.player)
+	if PlayerService.AwardBadge then
+		PlayerService.AwardBadge(S.player, "SlimeSlayer")
+	end
 	send(S, "Win")
 	local V = I.Reveal or {}
 	task.wait(V.Delay or 2.8)

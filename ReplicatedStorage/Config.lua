@@ -3877,6 +3877,27 @@ end
 -- the game crashes halfway (see ShopService). Nothing here makes you
 -- stronger in a fight: tokens, time, luck, tickets and looks only.
 ----------------------------------------------------------------------
+----------------------------------------------------------------------
+-- BADGES: make each one on create.roblox.com (your game -> Engagement ->
+-- Badges; the pictures are in Docs/badges) and paste its ID here. 0 = not
+-- made yet: it's simply not given. The server gives them (PlayerService.
+-- AwardBadge), at the moment each one is earned:
+--   Welcome            joining the game
+--   SlimeSlayer        beating Oozlet, the intro's slime
+--   FirstSpin          the first spin at the Arcade
+--   ColosseumChampion  clearing the Colosseum (all 5 waves)
+--   OozarkDown         beating Oozark, floor 1 (any tier)
+--   SpireConqueror     beating the Spire's top floor (floor 10)
+----------------------------------------------------------------------
+Config.Badges = {
+	Welcome = 0,
+	SlimeSlayer = 0,
+	FirstSpin = 0,
+	ColosseumChampion = 0,
+	OozarkDown = 0,
+	SpireConqueror = 0,
+}
+
 Config.Shop = {
 	-- DEVELOPER PRODUCTS (bought again and again). Gift = can be bought for
 	-- another player in the server (the gift button). (The Tokens tab works

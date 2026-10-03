@@ -799,6 +799,31 @@ function PlayerService.AddTokens(player, amount, why)
 	end
 end
 
+-- BADGES (Config.Badges): give `key`'s badge, if it's been made (an ID set)
+-- and they haven't got it. Never waits, never fails loudly: Roblox's badge
+-- service can be slow or down (and Studio can't give badges at all).
+local badgeAsked = setmetatable({}, { __mode = "k" }) -- [player] = { [key] = true }
+function PlayerService.AwardBadge(player, key)
+	local id = Config.Badges and Config.Badges[key]
+	if type(id) ~= "number" or id <= 0 or not player.Parent then
+		return
+	end
+	local asked = badgeAsked[player] or {}
+	badgeAsked[player] = asked
+	if asked[key] then
+		return -- (once a session is plenty)
+	end
+	asked[key] = true
+	task.spawn(function()
+		pcall(function()
+			local BadgeService = game:GetService("BadgeService")
+			if not BadgeService:UserHasBadgeAsync(player.UserId, id) then
+				BadgeService:AwardBadge(player.UserId, id)
+			end
+		end)
+	end)
+end
+
 -- A boss on `floorId` died with this player in the arena. Returns true if it
 -- was their first time beating it (BossService pays a bigger reward for that).
 function PlayerService.RecordBossKill(player, floorId, tierId)
@@ -813,6 +838,13 @@ function PlayerService.RecordBossKill(player, floorId, tierId)
 	d.Cleared[key] = before + 1
 	if floorId == 1 and (tierId == nil or tierId == "Normal") then
 		task.defer(PlayerService.PathEvent, player, "Beat")
+	end
+	-- badges: Oozark, and the Spire's top floor
+	if floorId == 1 then
+		PlayerService.AwardBadge(player, "OozarkDown")
+	end
+	if floorId == #Config.Spire.Floors then
+		PlayerService.AwardBadge(player, "SpireConqueror")
 	end
 	showCleared(player, d)
 	-- a boss's first clear pays a bundle of Arcade Tokens (a harder tier's:
@@ -1293,6 +1325,7 @@ local function onPlayerAdded(player)
 	end
 
 	markDirty(player)
+	PlayerService.AwardBadge(player, "Welcome")
 	if not ok then
 		notify(player, "Couldn't load saved data - progress this session won't be saved.", "bad")
 	end
