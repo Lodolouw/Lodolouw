@@ -48,7 +48,7 @@ Config.Colosseum = {
 	-- floor. While you're below its recommended level, everything in here pays
 	-- PerLevel more XP for each level you're short (coins stay the same), up
 	-- to Max more (1 = double). (Config.colosseumCatchUp)
-	CatchUp = { PerLevel = 0.15, Max = 1 },
+	CatchUp = { PerLevel = 0.25, Max = 2 }, -- (under the next floor's level: +25% XP per level short, up to +200%)
 	Center = Vector3.new(-2600, 0, 0), -- well away from the lobby and the Spire's arenas
 	Radius = 82, -- how far out dummies can go: right up to the foot of the stands, so nowhere is safe
 	-- (the way in is the Spire menu's ground floor, at the Spire's doors: the
@@ -83,7 +83,7 @@ Config.Colosseum = {
 	Music = { "Colosseum Song" },
 	MusicVolume = 0.45,
 
-	HitsToKill = 4, -- punches a dummy takes from a player at its level
+	HitsToKill = 3, -- punches a dummy takes from a player at its level
 	WaveSize = { 3, 7 }, -- dummies in the first wave, and the most in one wave
 	WaveBreak = 2.5, -- seconds between waves
 
@@ -139,7 +139,7 @@ Config.Colosseum = {
 		-- between your level and the next, and coins + coins per level
 		ClearBonus = { Power = 0.5, Coins = { 150, 15 } },
 		name = "Giant Straw King",
-		health = 10, -- about 40 punches at your level
+		health = 10, -- about 30 punches at your level
 		reward = 15, -- pays as much as 15 straw dummies
 		scale = 2.3, -- how big he's built (a straw dummy is 1)
 		IntroTime = 2.8, -- seconds he stands and shows off before the fight starts
@@ -238,7 +238,8 @@ Config.Colosseum = {
 	--   angry   the King is ANGRY from the start (faster, two shockwaves...)
 	--   color   the colour it shows in on the screen
 	Difficulties = {
-		{ id = "Normal", name = "NORMAL", health = 1, damage = 1, extra = 0, pace = 1, reward = 1, color = Color3.fromRGB(99, 199, 77) },
+		-- (Normal is the friendly one: softer hits and dummies that go down quicker)
+		{ id = "Normal", name = "NORMAL", health = 0.85, damage = 0.7, extra = 0, pace = 1, reward = 1, color = Color3.fromRGB(99, 199, 77) },
 		{ id = "Hard", name = "HARD", health = 1.4, damage = 1.5, extra = 1, pace = 0.85, reward = 2, color = Color3.fromRGB(247, 118, 34) },
 		{ id = "Nightmare", name = "NIGHTMARE", health = 2, damage = 2, extra = 2, pace = 0.7, reward = 3.5, angry = true, color = Color3.fromRGB(228, 59, 68) },
 	},
@@ -1268,7 +1269,7 @@ Config.Intro = {
 	Reward = {
 		Tokens = 1, -- the chest Oozlet drops holds your first Arcade Token (a spin at the Arcade)
 		Coins = 100,
-		Level = 3, -- you're at least this level after
+		Level = 5, -- you're at least this level after
 	},
 
 	-- The fight's music: the first of these Sounds that's in SoundService
@@ -2862,7 +2863,7 @@ Config.Combat = {
 	PunchContact = 0.45, -- how far into a swing the fist actually lands (share of
 	-- PunchLock). Damage, the camera and the sound all happen at this moment, and
 	-- it is also where tracking stops and you are committed. -- studs from you to the enemy's surface
-	RollCost = 24,
+	RollCost = 20,
 	JumpCost = 14, -- jumping in an arena costs stamina too; below this you can't jump
 	RollCooldown = 0.55,
 	RollInvincible = 0.5, -- seconds of invincibility from the moment you roll
@@ -2870,8 +2871,13 @@ Config.Combat = {
 	-- the landing), so half a second covers you from the floor and back again.
 	RollSpeed = 62, -- studs/second
 	RollTime = 0.28, -- how long the dash lasts
-	Flasks = 3, -- healing flasks per trip into the arena
-	FlaskHeal = 0.45, -- heals this share of your max health
+	Flasks = 4, -- healing flasks per trip into the arena
+	FlaskHeal = 0.5, -- heals this share of your max health
+	-- every Spire boss, on every tier: their hits x BossDamage, their health x
+	-- BossHealth (the bosses' own numbers stay as designed; this keeps the
+	-- whole climb friendly - people like winning)
+	BossDamage = 0.75,
+	BossHealth = 0.85,
 	FlaskDrinkTime = 0.9, -- seconds to drink (you're slowed and can't attack)
 	FlaskWalkSpeed = 6,
 	-- Your own sounds: names of Sounds in SoundService (capitals and spaces don't

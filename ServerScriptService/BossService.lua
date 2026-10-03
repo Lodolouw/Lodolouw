@@ -553,7 +553,7 @@ local function wake(E)
 	-- scaled up for every extra player here when it wakes
 	local rec = math.max(1, Config.powerForLevel((E.floorDef and E.floorDef.level) or 1))
 	local party = math.max(1, #fightersIn(E))
-	local maxHealth = math.floor(rec * def.HealthPunches * (1 + def.PartyScale * (party - 1)) * Config.spireTierHealth(E.floor, tier.id))
+	local maxHealth = math.floor(rec * def.HealthPunches * (1 + def.PartyScale * (party - 1)) * Config.spireTierHealth(E.floor, tier.id) * ((Config.Combat and Config.Combat.BossHealth) or 1))
 	E.model:SetAttribute("MaxHealth", maxHealth)
 	E.model:SetAttribute("Health", maxHealth)
 	E.model:SetAttribute("MinHealth", math.floor(maxHealth * def.PhaseAt)) -- the phase shield

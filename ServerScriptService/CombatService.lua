@@ -305,6 +305,10 @@ function CombatService.DamagePlayer(player, amount, fromPosition, knockback, qui
 	if floorId and player:GetAttribute("SpireTier") and Config.spireTierDamage then
 		amount = amount * Config.spireTierDamage(floorId, player:GetAttribute("SpireTier"))
 	end
+	-- every Spire boss hits a little softer than its own numbers (Config.Combat.BossDamage)
+	if floorId then
+		amount = amount * (CC.BossDamage or 1)
+	end
 	-- your level's defence takes a share off every hit
 	amount = amount * (1 - levelOf(player).Defense / 100)
 	-- a hit that would finish you in a boss fight: a REVIVE ticket (the shop's)
