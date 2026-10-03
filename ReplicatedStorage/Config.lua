@@ -3891,7 +3891,7 @@ end
 ----------------------------------------------------------------------
 Config.Badges = {
 	Welcome = 3162828158323873,
-	SlimeSlayer = 0,
+	SlimeSlayer = 2388240712321974,
 	FirstSpin = 2441787687313271,
 	ColosseumChampion = 3910121594326082,
 	OozarkDown = 0,
