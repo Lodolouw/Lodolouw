@@ -289,6 +289,11 @@ local function travel(player, action, floorId, tierId)
 				local name = below and below.boss and string.match(below.boss, "^[^,]+") or "the floor below"
 				return false, "Defeat " .. name .. " first" .. (tier.id ~= "Normal" and (" on " .. tier.name) or "") .. "."
 			end
+			-- and its level reached (train up in the Colosseum)
+			local need = Config.spireLevelLocked(player, floor.id, tier.id)
+			if need then
+				return false, "You need Lv " .. need .. " for this floor - train in the Colosseum!"
+			end
 		end
 		local entrance = firstTagged("SpireEntrance")
 		local doorPart = entrance and entrance.Parent

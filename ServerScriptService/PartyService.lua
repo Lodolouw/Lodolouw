@@ -216,11 +216,12 @@ function PartyService.PartyFor(player, floorId, tierId)
 				local cleared = Config.spireCleared(p)
 				unlocked = Config.spireTierOpen(cleared, tier.id)
 					and (not Config.Spire.RequirePrevious or floorId <= 1 or (cleared[tier.id] or 0) >= floorId - 1)
+					and not Config.spireLevelLocked(p, floorId, tier.id) -- (and their level reached)
 			end
 			if free(p) and hum and hum.Health > 0 and unlocked then
 				table.insert(group, p)
 			elseif not unlocked then
-				tell(p, "Your party went up without you - you haven't opened that floor yet.")
+				tell(p, "Your party went up without you - you haven't opened that floor yet (or reached its level).")
 			else
 				tell(p, "Your party went up the Spire without you (you were busy).")
 			end

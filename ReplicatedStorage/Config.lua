@@ -552,6 +552,9 @@ Config.Spire = {
 	RequirePrevious = true,
 	-- true = devs (Studio, the game's owner) can enter any floor, to test them
 	DevSkip = false,
+	-- each floor also stays locked until you reach its level (floor 1, Oozark:
+	-- Lv 15) - the Colosseum, the ground floor, is where you train up to it
+	LevelLock = true,
 	-- THE HORIZON: in every arena the far distance melts into that arena's own
 	-- sky (its Atmosphere colour), so the other islands - the lobby, the other
 	-- floors - are never seen, while the arena itself stays crisp. Density is
@@ -922,6 +925,26 @@ function Config.spireLevel(floorId, tierId)
 		return f and f.level or 1
 	end
 	return t.start + t.step * ((floorId or 1) - 1)
+end
+
+-- A player's level as the server keeps it (their leaderstats), for the
+-- Spire's level lock (Config.Spire.LevelLock)
+function Config.levelOf(player)
+	local ls = player and player:FindFirstChild("leaderstats")
+	local lv = ls and ls:FindFirstChild("Level")
+	return lv and lv.Value or 1
+end
+-- Is this floor (on this tier) still above the player's level? Returns the
+-- level it needs, or nil if they can go in.
+function Config.spireLevelLocked(player, floorId, tierId)
+	if not Config.Spire.LevelLock then
+		return nil
+	end
+	local need = Config.spireLevel(floorId, tierId)
+	if Config.levelOf(player) < need then
+		return need
+	end
+	return nil
 end
 
 -- a floor as it is on a tier: a copy with that tier's level (and its id)

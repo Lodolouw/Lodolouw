@@ -349,7 +349,8 @@ local function floorState(f)
 		return "beaten"
 	end
 	if myLevel() < levelFor(f) then
-		return "low"
+		-- (under its level: locked until you get there - Config.Spire.LevelLock)
+		return (Config.Spire.LevelLock and not devSkip()) and "level" or "low"
 	end
 	return "ready"
 end
@@ -358,6 +359,7 @@ local STATE_CHIP = {
 	locked = { "LOCKED", KC.Slate },
 	beaten = { "BEATEN", KC.Green },
 	low = { "TOO LOW", KC.Red },
+	level = { "LOCKED", KC.Red },
 	ready = { "READY", KC.Pink },
 }
 
@@ -409,8 +411,10 @@ local function drawDetail(holder, w, h, api)
 	if f then
 		state, lock = floorState(f)
 	end
-	local open = f == nil or (state ~= "sealed" and state ~= "locked")
-	local face = K.card(holder, { Name = "Detail", Size = UDim2.fromOffset(w, h), ZIndex = 7 }, f and (open and f.color or KC.Slate) or KC.Orange)
+	local open = f == nil or (state ~= "sealed" and state ~= "locked" and state ~= "level")
+	-- (a floor locked only by your level still shows its boss: it's what you're training for)
+	local shown = open or state == "level"
+	local face = K.card(holder, { Name = "Detail", Size = UDim2.fromOffset(w, h), ZIndex = 7 }, f and (shown and f.color or KC.Slate) or KC.Orange)
 	K.shine(face, 0.12).ZIndex = 8
 	local party = partyInfo()
 	local y = 18
@@ -445,14 +449,14 @@ local function drawDetail(holder, w, h, api)
 	end
 	local sc = STATE_CHIP[state]
 	K.chip(face, sc[1], sc[2], { Name = "State", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -20, 0, y), ZIndex = 9 })
-	local name = words(face, "BossName", open and f.boss or "Sealed", 46, 20, y + 42, -40, 104, { TextScaled = true })
+	local name = words(face, "BossName", shown and f.boss or "Sealed", 46, 20, y + 42, -40, 104, { TextScaled = true })
 	new("UITextSizeConstraint", { MaxTextSize = 46, MinTextSize = 22 }, name)
-	words(face, "Area", open and (f.area or "") or "", 26, 20, y + 150, -40, 32, { TextColor3 = KC.Yellow })
+	words(face, "Area", shown and (f.area or "") or "", 26, 20, y + 150, -40, 32, { TextColor3 = KC.Yellow })
 	-- the level it wants, and yours (under the blurb)
 	local row = math.min(h - 150, y + 188 + 120)
 	words(face, "Blurb", f.blurb or "", 21, 20, y + 188, -40, row - (y + 188) - 10)
 	local lv = myLevel()
-	local rec = K.chip(face, "RECOMMENDED LV " .. levelFor(f), KC.Ink, { Name = "Recommended", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
+	local rec = K.chip(face, (Config.Spire.LevelLock and "NEEDS LV " or "RECOMMENDED LV ") .. levelFor(f), KC.Ink, { Name = "Recommended", Position = UDim2.fromOffset(20, row), ZIndex = 9 })
 	K.chip(face, "YOU LV " .. lv, lv >= levelFor(f) and KC.Green or KC.Red, { Name = "You", Position = UDim2.new(0, 20 + rec.Size.X.Offset + 10, 0, row), ZIndex = 9 })
 	-- and what's in the way, or who's coming
 	local note = nil
@@ -466,13 +470,15 @@ local function drawDetail(holder, w, h, api)
 		note = "Your party of " .. party.count .. " comes with you."
 	elseif state == "low" then
 		note = "Too low! Train in the Colosseum first: it pays extra XP."
+	elseif state == "level" then
+		note = "Locked until Lv " .. levelFor(f) .. "! Train in the Colosseum to get there."
 	end
 	if note then
 		words(face, "Note", note, 18, 20, row + 38, -40, 26)
 	end
 	-- the buttons
 	local canGo = open and not (party and not party.leading)
-	local label = canGo and "ENTER" or (state == "locked" and "LOCKED" or (state == "sealed" and "SEALED" or "LEADER PICKS"))
+	local label = canGo and "ENTER" or (state == "locked" and "LOCKED" or (state == "level" and ("LV " .. levelFor(f))) or (state == "sealed" and "SEALED" or "LEADER PICKS"))
 	local enter = api.button(face, label, canGo and KC.Green or KC.Off, { Name = "Enter", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
 	enter.Active = canGo
 	if state == "locked" then
@@ -485,7 +491,7 @@ local function drawDetail(holder, w, h, api)
 		Menus.close()
 		task.spawn(travel, "enter", f.id, viewTier ~= "Normal" and viewTier or nil)
 	end)
-	if state == "low" then
+	if state == "low" or state == "level" then
 		local train = api.button(face, "TRAIN FIRST", KC.Gold, { Name = "TrainFirst", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -276, 1, -20), Size = UDim2.fromOffset(240, 62), ZIndex = 10 })
 		train.Activated:Connect(function()
 			task.spawn(trainNow)
@@ -534,10 +540,12 @@ local function drawCards(holder, across, api)
 	card(0, "GROUND FLOOR", "The Colosseum", "Training", KC.Orange, pct > 0 and ("+" .. pct .. "% XP") or "TRAIN", pct > 0 and KC.Green or KC.Blue, false)
 	for _, f in ipairs(Config.Spire.Floors) do
 		local state = floorState(f)
-		local reach = state ~= "sealed" and state ~= "locked"
+		local reach = state ~= "sealed" and state ~= "locked" and state ~= "level"
 		local chip, chipColor = nil, nil
 		if state == "beaten" then
 			chip, chipColor = "BEATEN", KC.Green
+		elseif state == "level" then
+			chip, chipColor = "LV " .. levelFor(f), KC.Red -- (the level it opens at)
 		elseif reach then
 			chip, chipColor = "LV " .. levelFor(f), state == "low" and KC.Red or KC.Pink
 		else

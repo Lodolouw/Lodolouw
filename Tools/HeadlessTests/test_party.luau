@@ -38,6 +38,14 @@ local function makePlayer(name, id)
 	char.PrimaryPart = root
 	char.Parent = workspace
 	p.Character = char
+	-- (level 20: past floor 1's level lock - Config.Spire.LevelLock)
+	local ls = Instance.new("Folder")
+	ls.Name = "leaderstats"
+	local lv = Instance.new("IntValue")
+	lv.Name = "Level"
+	lv.Value = 20
+	lv.Parent = ls
+	ls.Parent = p
 	table.insert(people, p)
 	M.players = table.clone(people)
 	return p
@@ -149,6 +157,15 @@ T += 40
 M.run(T)
 send(E, "Accept", B)
 check(E:GetAttribute("PartyLeader") == nil and string.find(lastSaid(E), "run out") ~= nil, "an old invite has run out: " .. lastSaid(E))
+
+-- the level lock: a member under a floor's level stays behind (floor 1: Lv 15)
+do
+	local Config = mount.require(mount.module("ReplicatedStorage/Config.lua"))
+	E.leaderstats.Level.Value = 5
+	check(Config.spireLevelLocked(E, 1, "Normal") == Config.spireLevel(1, "Normal"), "Lv 5 is locked out of floor 1 (needs Lv " .. Config.spireLevel(1, "Normal") .. ")")
+	E.leaderstats.Level.Value = 20
+	check(Config.spireLevelLocked(E, 1, "Normal") == nil, "Lv 20 can go in")
+end
 
 check(#M.errors == 0, "no errors (" .. #M.errors .. ")")
 for i = 1, math.min(3, #M.errors) do
