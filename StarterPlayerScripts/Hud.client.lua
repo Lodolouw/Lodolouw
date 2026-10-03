@@ -1109,6 +1109,27 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+-- GRIP (Config.Grip): every ground controller your character has gets
+-- quicker starts and stops, more friction and sharper turns, so moving fast
+-- feels planted instead of floaty. (Done once per controller; a new body or
+-- a controller added later gets it too.)
+do
+	local gripped = setmetatable({}, { __mode = "k" })
+	RunService.Heartbeat:Connect(function()
+		local G = Config.Grip
+		local c = G and cachedManager and cachedManager.Parent and cachedManager.ActiveController
+		if not (c and c:IsA("GroundController")) or gripped[c] then
+			return
+		end
+		gripped[c] = true
+		for prop, value in pairs(G) do
+			pcall(function()
+				c[prop] = value
+			end)
+		end
+	end)
+end
+
 -- In the lobby (no fight, no intro) you're never slower than the lobby's
 -- speed: if anything left you with a fight's speed or a cutscene's stop
 -- (a roll or a punch that ended as you left, the intro's look at the Spire),

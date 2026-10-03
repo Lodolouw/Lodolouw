@@ -608,7 +608,7 @@ function RewardService.BuildChest()
 		l.Parent = sign
 	end
 	line("COMMUNITY CHEST", 0, 0.55, Color3.fromRGB(254, 231, 97))
-	line("Join the community: " .. Config.rewardText(R.Group), 0.55, 0.4, Color3.new(1, 1, 1))
+	line("Join the community + like the game: " .. Config.rewardText(R.Group), 0.55, 0.4, Color3.new(1, 1, 1))
 	sign.Parent = lidMain
 	-- the walk-up box, between the chest and the path
 	local zone = part("AutoOpenZone", Vector3.new(14, 8, 7), CFrame.new(0, 4, -7), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, {

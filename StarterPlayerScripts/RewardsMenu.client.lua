@@ -291,7 +291,7 @@ Menus.define("Rewards", {
 local function chestPage(page, api)
 	local rw = rewardsOf(api.state)
 	local G = R.Group or {}
-	api.section("Join the community", rw.group and "Claimed - thanks for joining!" or "A free reward for members")
+	api.section("Join the community + like the game", rw.group and "Claimed - thanks for joining!" or "A free reward for members - and a like helps the game grow!")
 	local W = api.width
 	-- the big card: the chest bursting with treasure, what's in it, CLAIM
 	local block = api.block(262)
