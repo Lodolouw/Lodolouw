@@ -3255,8 +3255,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		tryPunch()
 		return
 	end
-	if processed and isPointer(input) and player:GetAttribute("Intro") then
-		-- (a click in the intro that something on screen took first: say what)
+	if processed and isPointer(input) and player:GetAttribute("Intro") and not touchMode() then
+		-- (a click in the intro that something on screen took first: say what.
+		-- Not on a phone: there a tap on ATTACK, ROLL or the joystick is meant
+		-- to land on the button)
 		pcall(function()
 			local p = input.Position
 			local names = {}
