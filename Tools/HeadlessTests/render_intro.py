@@ -39,6 +39,14 @@ for line in open(args.snaps):
             'words': words, 'color': tuple(int(float(v)) for v in color.split(',')), 'hint': hint,
             'bar': float(bar), 'arrow': np.array([float(v) for v in arrow.split(',')]) if arrow else None,
         }
+    elif line.startswith('JUICE ') and cur is not None:
+        # the combo counter, and the comic words popping off the slime
+        combo, word, pows = (line[6:].rstrip('\n').split('|') + ['', '', ''])[:3]
+        cur['juice'] = {'combo': combo, 'word': word, 'pows': []}
+        for item in filter(None, pows.split(';')):
+            text, col, pos = item.split('@')
+            cur['juice']['pows'].append((text, tuple(int(v) for v in col.split(',')),
+                                         np.array([float(v) for v in pos.split(',')])))
 
 # ----------------------------------------------------------------------
 # pixel letters (5 x 7)
@@ -75,6 +83,11 @@ FONT = {
     '2': [" ### ", "#   #", "    #", "   # ", "  #  ", " #   ", "#####"],
     '3': ["#####", "   # ", "  #  ", "   # ", "    #", "#   #", " ### "],
     '4': ["   # ", "  ## ", " # # ", "#  # ", "#####", "   # ", "   # "],
+    '5': ["#####", "#    ", "#### ", "    #", "    #", "#   #", " ### "],
+    '6': [" ### ", "#    ", "#    ", "#### ", "#   #", "#   #", " ### "],
+    '7': ["#####", "    #", "   # ", "  #  ", "  #  ", "  #  ", "  #  "],
+    '8': [" ### ", "#   #", "#   #", " ### ", "#   #", "#   #", " ### "],
+    '9': [" ### ", "#   #", "#   #", " ####", "    #", "    #", " ### "],
     '!': ["  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "     ", "  #  "],
     '.': ["     ", "     ", "     ", "     ", "     ", "     ", "  #  "],
     "'": ["  #  ", "  #  ", " #   ", "     ", "     ", "     ", "     "],
@@ -341,6 +354,21 @@ def overlay(img, snap, to_screen, caption):
                     if c == '#':
                         X0, Y0 = ax + (rx - 3.5) * p, ay + (ry - 2) * p
                         d.rectangle([X0, Y0, X0 + p - 1, Y0 + p - 1], fill=YELLOW)
+    j = snap.get('juice')
+    if j:
+        for text, col, pos in j['pows']:
+            at = to_screen(pos)
+            if at:
+                px = 5 if 'CRIT' in text else 4
+                tw = text_width(text, px)
+                pixel_text(d, text, at[0] - tw / 2, at[1] - 3.5 * px, px, col, shadow=INK)
+        if j['combo']:
+            px = 9
+            tw = text_width(j['combo'], px)
+            pixel_text(d, j['combo'], W * 0.84 - tw / 2, H * 0.36, px, YELLOW, shadow=PURPLE)
+            px = 3
+            tw = text_width(j['word'], px)
+            pixel_text(d, j['word'], W * 0.84 - tw / 2, H * 0.36 + 9 * 8, px, WHITE)
     # the caption strip
     d.rectangle([0, H - 30, W, H], fill=INK)
     pixel_text(d, caption, 12, H - 22, 2, WHITE, outline=None)
@@ -350,6 +378,7 @@ def overlay(img, snap, to_screen, caption):
 CAPTIONS = {
     'dark': '1  YOU WAKE UP IN THE DARK',
     'roll': '2  THE LESSON: ROLL OUT OF THE RED!',
+    'combo': '2B  EVERY PUNCH: POW! COINS! COMBO!',
     'reveal': '3  IT POPS - THE MIST ROLLS BACK',
     'spire': '4  THE SPIRE RISES: OOZARK AWAITS',
 }

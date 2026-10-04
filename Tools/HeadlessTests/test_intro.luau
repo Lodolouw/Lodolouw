@@ -294,6 +294,15 @@ local function ltm(p)
 end
 
 mount.runClient("StarterPlayerScripts/IntroClient.client.lua", me)
+-- the juice: comic words off the punches, the combo counter, the K.O.
+local juice = { pows = 0, crits = 0, combo = 0, ko = false }
+M.workspace.DescendantAdded:Connect(function(d)
+	if d.Name == "IntroPow" then
+		juice.pows += 1
+	elseif d.Name == "Word" and d.Parent and d.Parent.Name == "IntroPow" and d.Text == Config.Intro.Juice.Crit then
+		juice.crits += 1
+	end
+end)
 
 if MODE == "skip" then
 	step(3)
@@ -503,7 +512,9 @@ waitFor(function()
 	return workspace.IntroWorld:FindFirstChild("IntroChestLabel", true) ~= nil
 end, 2, "the chest to open")
 local chestText = workspace.IntroWorld:FindFirstChild("IntroChestLabel", true):FindFirstChildOfClass("TextLabel").Text
-assert(chestText == "+1 ARCADE TOKEN", "the token rises out of it: " .. chestText)
+assert(chestText == "+1 ARCADE TOKEN  +100 COINS", "the token and coins rise out of it: " .. chestText)
+assert(juice.pows >= Config.Intro.Oozlet.Health, "a comic word popped off every punch: " .. juice.pows)
+assert(juice.crits >= 2, "...with a CRITICAL!! every few: " .. juice.crits)
 
 ----------------------------------------------------------------------
 -- THE REVEAL

@@ -202,6 +202,10 @@ local FALLBACK = {
 	Chest = { "rbxasset://sounds/electronicpingshort.wav", 0.5, 1.2 },
 	Win = { "rbxasset://sounds/electronicpingshort.wav", 0.6, 1 },
 	Awaits = { "rbxasset://sounds/snap.mp3", 0.8, 0.35 },
+	Ding = { "rbxasset://sounds/electronicpingshort.wav", 0.35, 1.6 },
+	Crit = { "rbxasset://sounds/snap.mp3", 0.9, 0.8 },
+	Jackpot = { "rbxasset://sounds/electronicpingshort.wav", 0.6, 0.8 },
+	Coins = { "rbxasset://sounds/electronicpingshort.wav", 0.4, 2 },
 }
 local soundCache = {}
 local function play(key, volume, pitch)
@@ -2166,6 +2170,242 @@ end
 -- The chest Oozlet drops: out of the sky, bounce, bounce... and it bursts open
 -- (your first Arcade Token is in it)
 ----------------------------------------------------------------------
+----------------------------------------------------------------------
+-- THE JUICE: every punch on Oozlet feels like a jackpot - a comic POW!
+-- popping off it, coins spraying out, a ding that climbs higher with each
+-- hit, a COMBO counter that grows and goes rainbow, and every few hits a
+-- CRITICAL!! - then a K.O. that floods the screen with confetti
+-- (Config.Intro.Juice; all of it only on this screen, it changes nothing)
+----------------------------------------------------------------------
+local Juice = {}
+do
+	local J = I.Juice or {}
+	local WORDS = J.Words or { "POW!", "BAM!", "WHAM!", "SMACK!", "BONK!", "SPLAT!", "KAPOW!", "THWACK!" }
+	local CRIT_EVERY = J.CritEvery or 4
+	local RAINBOW = { C.red, C.gold, C.yellow, C.green, C.sky, C.plum, C.pink }
+	local combo, comboFrame, comboNum, comboWord, comboPop = 0, nil, nil, nil, nil
+	local lastWord = 0
+
+	local function screenText(parent, name, text, color, size)
+		local t = Instance.new("TextLabel")
+		t.Name = name
+		t.BackgroundTransparency = 1
+		t.TextScaled = true
+		t.Text = text
+		t.TextColor3 = color
+		t.TextStrokeColor3 = C.ink
+		t.TextStrokeTransparency = 0
+		t.Size = size
+		pixelText(t)
+		t.Parent = parent
+		return t
+	end
+
+	function Juice.init()
+		combo, lastWord = 0, 0
+		-- the COMBO counter, right of the middle of the screen
+		comboFrame = Instance.new("Frame")
+		comboFrame.Name = "Combo"
+		comboFrame.BackgroundTransparency = 1
+		comboFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+		comboFrame.Position = UDim2.fromScale(0.84, 0.42)
+		comboFrame.Size = UDim2.fromScale(0.2, 0.2)
+		comboFrame.Rotation = -8
+		comboFrame.Visible = false
+		comboFrame.ZIndex = 5
+		comboFrame.Parent = gui
+		local ratio = Instance.new("UIAspectRatioConstraint")
+		ratio.AspectRatio = 1.4
+		ratio.Parent = comboFrame
+		comboPop = Instance.new("UIScale")
+		comboPop.Parent = comboFrame
+		comboNum = screenText(comboFrame, "Count", "x1", C.yellow, UDim2.fromScale(1, 0.7))
+		comboWord = screenText(comboFrame, "Word", "COMBO!", C.white, UDim2.fromScale(1, 0.28))
+		comboWord.Position = UDim2.fromScale(0, 0.7)
+	end
+
+	-- a comic word bursting off the slime, spinning up and away
+	local function popWord(at, text, color, big)
+		if not (world and at) then
+			return
+		end
+		local anchor = newPart("PowAnchor", C.white, nil, 1)
+		anchor.Size = V3(0.2, 0.2, 0.2)
+		anchor.CFrame = CFrame.new(at)
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "IntroPow"
+		bb.Size = UDim2.fromOffset(big and 300 or 190, big and 110 or 70)
+		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
+		bb:SetAttribute("RetroSkip", true)
+		bb.Adornee = anchor
+		bb.Parent = anchor
+		local t = screenText(bb, "Word", text, color, UDim2.fromScale(1, 1))
+		t.TextStrokeTransparency = 0
+		local sc = Instance.new("UIScale")
+		sc.Parent = t
+		local side = rng:NextNumber(-1, 1)
+		local spin = rng:NextNumber(-18, 18)
+		local t0 = os.clock()
+		local life = big and 1.1 or 0.75
+		addFx(function(now)
+			local k = (now - t0) / life
+			if k >= 1 then
+				return false
+			end
+			-- a big pop, then it drifts up and to the side as it fades
+			sc.Scale = (k < 0.12 and (0.4 + 1.6 * (k / 0.12)) or (2 - 0.9 * easeOut((k - 0.12) / 0.3))) * (big and 1.2 or 1)
+			bb.StudsOffset = V3(side * 3 * k, 1.5 + 4 * easeOut(k), 0)
+			t.Rotation = spin + side * 20 * k
+			t.TextTransparency = clamp01((k - 0.6) / 0.4)
+			t.TextStrokeTransparency = clamp01((k - 0.6) / 0.4)
+			return true
+		end, function()
+			anchor:Destroy()
+		end)
+	end
+
+	-- a punch landed: `h` health left
+	function Juice.hit(h, at)
+		combo = combo + 1
+		local n = combo
+		local crit = n % CRIT_EVERY == 0 or (h <= 0)
+		at = at or Oz.top()
+		-- the comic word (never the same one twice in a row)
+		local i = rng:NextInteger(1, #WORDS)
+		if i == lastWord then
+			i = i % #WORDS + 1
+		end
+		lastWord = i
+		local color = RAINBOW[(n - 1) % #RAINBOW + 1]
+		if crit then
+			popWord(at and at + V3(0, 1, 0), J.Crit or "CRITICAL!!", C.red, true)
+		else
+			popWord(at, WORDS[i], color, false)
+		end
+		-- coins spray out of it (more every hit)
+		if at then
+			local floorY = (Oz.position() or at).Y
+			spawnBits(at, math.min(6 + n, 18), { C.yellow, C.gold, C.yellow, C.white }, 26 + n, 0.42, 1, 1.1, floorY)
+			if crit then
+				spawnBits(at, 14, RAINBOW, 34, 0.5, 1.2, 1.3, floorY)
+				shockRing(V3(at.X, floorY, at.Z), 1.5, 9, 0.3, C.yellow, floorY + 0.3)
+			end
+		end
+		-- the ding climbs a note higher with every punch (a scale up)
+		local SCALE = { 1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2 }
+		local step = (n - 1) % #SCALE + 1
+		local octave = math.floor((n - 1) / #SCALE)
+		play("Ding", crit and 1 or 0.7, SCALE[step] * (octave > 0 and 1.06 ^ octave or 1))
+		if crit then
+			play("Crit", 0.9, 1)
+		end
+		-- the screen feels it
+		kick(math.min(0.3 + n * 0.05, 0.9) * (crit and 1.6 or 1), crit and 6 or 2)
+		if gui and gui:FindFirstChild("Flash") then
+			gui.Flash.BackgroundTransparency = crit and 0.55 or 0.88
+			tween(gui.Flash, crit and 0.3 or 0.12, { BackgroundTransparency = 1 })
+		end
+		-- the COMBO counter
+		if comboFrame then
+			comboFrame.Visible = n >= 2
+			comboNum.Text = "x" .. n
+			comboWord.Text = n >= 10 and "INSANE!!" or n >= 7 and "UNSTOPPABLE!" or n >= 4 and "ON FIRE!" or "COMBO!"
+			comboPop.Scale = crit and 2 or 1.6
+		end
+	end
+
+	-- every frame: the counter settles from its pop, and goes rainbow once it's big
+	function Juice.step(dt)
+		if not comboFrame or not comboFrame.Visible then
+			return
+		end
+		local now = os.clock()
+		comboPop.Scale = 1 + (comboPop.Scale - 1) * math.exp(-dt * 10) + 0.04 * math.sin(now * 9)
+		local col = combo >= 4 and RAINBOW[math.floor(now * 12) % #RAINBOW + 1] or C.yellow
+		comboNum.TextColor3 = col
+		comboFrame.Rotation = -8 + math.sin(now * 3) * 3
+	end
+
+	-- K.O.: the slime's gone - a white flash, K.O.!! slammed across the
+	-- screen, rings of every colour and a storm of confetti and coins
+	function Juice.ko(at)
+		if gui and gui:FindFirstChild("Flash") then
+			gui.Flash.BackgroundTransparency = 0
+			tween(gui.Flash, 0.6, { BackgroundTransparency = 1 })
+		end
+		play("Jackpot", 0.8, 1)
+		play("Coins", 0.9, 1)
+		kick(1.6, 10)
+		if gui then
+			local ko = screenText(gui, "KO", J.KO or "K.O.!!", C.yellow, UDim2.fromScale(0.7, 0.24))
+			ko.AnchorPoint = Vector2.new(0.5, 0.5)
+			ko.Position = UDim2.fromScale(0.5, 0.48)
+			ko.ZIndex = 12
+			local sc = Instance.new("UIScale")
+			sc.Parent = ko
+			local sub = screenText(gui, "KOCombo", combo .. " HIT COMBO!", C.white, UDim2.fromScale(0.5, 0.07))
+			sub.AnchorPoint = Vector2.new(0.5, 0)
+			sub.Position = UDim2.fromScale(0.5, 0.61)
+			sub.ZIndex = 12
+			local t0 = os.clock()
+			addFx(function(now)
+				local t = now - t0
+				if t > 2.6 then
+					return false
+				end
+				-- slams down from huge, wobbles, then fades away
+				sc.Scale = t < 0.15 and (4 - 3 * easeOut(t / 0.15)) or (1 + 0.12 * wobble(t - 0.15, 18, 4))
+				ko.Rotation = math.sin(t * 7) * 4
+				ko.TextColor3 = RAINBOW[math.floor(t * 14) % #RAINBOW + 1]
+				local fade = clamp01((t - 2) / 0.6)
+				ko.TextTransparency, ko.TextStrokeTransparency = fade, fade
+				sub.TextTransparency, sub.TextStrokeTransparency = fade, fade
+				sub.Visible = t > 0.3
+				return true
+			end, function()
+				ko:Destroy()
+				sub:Destroy()
+			end)
+		end
+		if comboFrame then
+			comboFrame.Visible = false
+		end
+		if at then
+			local floorY = at.Y
+			local mid = at + V3(0, SIZE * 0.5, 0)
+			-- three waves of confetti and coins, and rings of colour
+			for wave = 0, 2 do
+				task.delay(wave * 0.18, function()
+					if not world then
+						return
+					end
+					spawnBits(mid, 30, RAINBOW, 40 + wave * 6, 0.45, 1.4, 2, floorY)
+					spawnBits(mid, 18, { C.yellow, C.gold }, 30, 0.5, 1.8, 1.8, floorY)
+					shockRing(V3(at.X, floorY, at.Z), 1.5, 10 + wave * 5, 0.5, RAINBOW[wave * 2 + 1], floorY + 0.3 + wave * 0.05)
+				end)
+			end
+		end
+	end
+
+	-- the chest opens: a fountain of coins pours out of it for a moment
+	function Juice.fountain(at, floorY)
+		play("Coins", 0.8, 1.1)
+		local t0 = os.clock()
+		local nextAt = t0
+		addFx(function(now)
+			if now - t0 > 1.4 then
+				return false
+			end
+			if now >= nextAt then
+				nextAt = now + 0.07
+				spawnBits(at, 5, { C.yellow, C.gold, C.yellow, C.white }, 22, 0.4, 2.2, 1.5, floorY)
+			end
+			return true
+		end)
+	end
+end
+
 local function dropChest(at)
 	local parts = {}
 	local function add(name, color, material, transparency)
@@ -2249,13 +2489,14 @@ local function dropChest(at)
 				spawnBits(at + V3(0, Hb + 0.4, 0), 22, { C.yellow, C.gold, C.white }, 30, 0.4, 1.4, 1.4, ground)
 				glow.Transparency = 0.45
 				tween(glow, 1.4, { Transparency = 1 })
+				Juice.fountain(at + V3(0, Hb + 0.4, 0), ground)
 				-- its name rises out of it
 				local anchor = add("ChestLabelAnchor", C.white, nil, 1)
 				anchor.Size = V3(0.2, 0.2, 0.2)
 				anchor.CFrame = CFrame.new(at + V3(0, Hb + 1.5, 0))
 				label = Instance.new("BillboardGui")
 				label.Name = "IntroChestLabel"
-				label.Size = UDim2.fromOffset(420, 44)
+				label.Size = UDim2.fromOffset(520, 50)
 				label.AlwaysOnTop = true
 				label.LightInfluence = 0
 				label:SetAttribute("RetroSkip", true)
@@ -2266,7 +2507,8 @@ local function dropChest(at)
 				text.Size = UDim2.fromScale(1, 1)
 				text.TextScaled = true
 				local tokens = (I.Reward and I.Reward.Tokens) or 1
-				text.Text = "+" .. tokens .. (tokens == 1 and " ARCADE TOKEN" or " ARCADE TOKENS")
+				local coins = (I.Reward and I.Reward.Coins) or 0
+				text.Text = "+" .. tokens .. (tokens == 1 and " ARCADE TOKEN" or " ARCADE TOKENS") .. (coins > 0 and ("  +" .. coins .. " COINS") or "")
 				text.TextColor3 = C.yellow
 				text.TextStrokeColor3 = C.ink
 				text.TextStrokeTransparency = 0
@@ -2276,6 +2518,8 @@ local function dropChest(at)
 			open = easeOut((now - openAt) / 0.3)
 			if label then
 				label.StudsOffset = V3(0, 3 * easeOut((now - openAt) / 1.2), 0)
+				-- (it throbs, so you can't miss what you won)
+				label.Size = UDim2.fromOffset(520 * (1 + 0.08 * math.abs(math.sin((now - openAt) * 5))), 50)
 			end
 		end
 		placeAll(y, open)
@@ -2632,6 +2876,7 @@ local function runIntro()
 	gui.Parent = playerGui
 	Words.init()
 	Bar.init()
+	Juice.init()
 
 	-- the dark
 	Dark.hideWorld()
@@ -2662,6 +2907,7 @@ local function runIntro()
 		Arrow.hide()
 		Bar.set(h, select(2, Oz.health()))
 		Words.jolt(1)
+		Juice.hit(h)
 		if not Words.done() then
 			-- punched before the words were all up: they snap in, BOOM and all,
 			-- and stay a moment before the next words
@@ -2694,6 +2940,7 @@ local function runIntro()
 	end)
 	Oz.on("Burst", function(at)
 		Words.burst()
+		Juice.ko(at)
 		Bar.hide()
 		Music.stop()
 		local ground = at
@@ -2758,6 +3005,7 @@ local function runIntro()
 			Arrow.step(Oz.top(), now)
 			Words.step(dt)
 			Bar.step(dt)
+			Juice.step(dt)
 			Music.step(dt)
 			RollPulse.step(now)
 			stepBits(dt)

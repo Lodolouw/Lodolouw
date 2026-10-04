@@ -272,6 +272,20 @@ local function snap(name, eye, look)
 	local top = workspace.IntroWorld and workspace.IntroWorld:FindFirstChild("ArrowAnchor")
 	realPrint(string.format("SCREEN %s|%s|%s|%s|%s", esc(words), color, esc(hint), tostring(bar),
 		top and string.format("%.2f,%.2f,%.2f", top.Position.X, top.Position.Y, top.Position.Z) or ""))
+	-- the juice: the combo counter, and the comic words still on screen
+	local combo = ig and ig:FindFirstChild("Combo")
+	local pows = {}
+	for _, d in ipairs(workspace.IntroWorld and workspace.IntroWorld:GetDescendants() or {}) do
+		if d.Name == "IntroPow" and d.Adornee then
+			local t = d:FindFirstChild("Word")
+			if t and (t.TextTransparency or 0) < 0.9 then
+				local p = d.Adornee.Position + (d.StudsOffset or Vector3.new(0, 0, 0))
+				local c = t.TextColor3
+				table.insert(pows, string.format("%s@%d,%d,%d@%.2f,%.2f,%.2f", esc(t.Text), c.R * 255 + 0.5, c.G * 255 + 0.5, c.B * 255 + 0.5, p.X, p.Y, p.Z))
+			end
+		end
+	end
+	realPrint(string.format("JUICE %s|%s|%s", (combo and combo.Visible) and string.upper(combo.Count.Text) or "", (combo and combo.Visible) and combo.Word.Text or "", table.concat(pows, ";")))
 	realPrint("ENDSNAP")
 end
 
@@ -330,8 +344,16 @@ eye, look = behind(hold + Vector3.new(0, 6, 0), 17, 2)
 look = hold + Vector3.new(0, 6.5, 0)
 snap("roll", eye, look)
 
--- 3. roll, and beat it
+-- 3. roll, and beat it - a picture mid-combo on the way (the 8th punch: a CRITICAL!!)
 CombatAction:FireServer("Roll")
+local maxHp = model:GetAttribute("MaxHealth") or 12
+waitFor(function()
+	return (model:GetAttribute("Health") or maxHp) <= maxHp - 8
+end, 60, punchIt)
+step(0.12)
+local at = model.Hitbox.Position
+eye, look = behind(at + Vector3.new(0, 2, 0), 13, 5)
+snap("combo", eye, at + Vector3.new(0, 3, 0))
 waitFor(function()
 	return model:GetAttribute("Mood") == "Popped"
 end, 60, punchIt)

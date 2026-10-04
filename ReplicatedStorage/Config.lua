@@ -1331,6 +1331,19 @@ Config.Intro = {
 		Chest = { "Reward Pop" }, -- the chest landing and opening
 		Win = { "Quest Complete" },
 		Awaits = { "Boss Wake" }, -- the Spire appearing
+		Ding = { "Coin Ding", "Coin Pickup" }, -- every punch (a note higher each time)
+		Crit = { "Boss Break" }, -- a CRITICAL!! punch
+		Jackpot = { "Jackpot Legendary", "Quest Complete" }, -- K.O.!!
+		Coins = { "Coin Rain", "Coin Spill" }, -- coins pouring out (the K.O., the chest)
+	},
+
+	-- THE JUICE (IntroClient): a comic word off every punch, coins spraying,
+	-- a COMBO counter, a CRITICAL!! every few hits, and a K.O. to end it
+	Juice = {
+		Words = { "POW!", "BAM!", "WHAM!", "SMACK!", "BONK!", "SPLAT!", "KAPOW!", "THWACK!" },
+		CritEvery = 4, -- every 4th punch is a CRITICAL!! (and the last one)
+		Crit = "CRITICAL!!",
+		KO = "K.O.!!",
 	},
 }
 
