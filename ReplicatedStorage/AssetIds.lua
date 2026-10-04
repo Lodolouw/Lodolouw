@@ -298,6 +298,9 @@ return {
 		Toe_Ouch = 122640399708197,
 		Undo_Rewind = 115529848338645,
 		Vine_Burst = 105863710118526,
+		Colosseum_Theme = 96386191093630,
+		Straw_King_Stomp = 89515438404309,
+		Victory_Fanfare = 79463346894874,
 	},
 	Icons = {
 		AcidScythe = 92186964822893,
