@@ -15,6 +15,10 @@ API key, so nothing has to be published by hand:
 - the Arcade's music and sounds (`Tools/Sounds/out/arcade/*.ogg`, made by
   `Tools/Sounds/arcade_sfx.py`): its song, the spin's build-up, the
   heartbeat, the landings and the jackpots
+- the Colosseum's song, the boss victory fanfare and the Straw King's stomp
+  (`Tools/Sounds/out/colosseum/*.ogg`, made by `Tools/Sounds/colosseum_sfx.py`:
+  "Colosseum Theme", "Victory Fanfare", "Straw King Stomp" - they replace
+  Toolbox sounds that were private, so Roblox played them silently)
 - the weapons' icons (`Tools/Weapons/out/icons/*.png`, made by
   `Tools/Weapons/make_icons.py`), as decals - the Arcade and the Weapons panel
   show them (a brand-new decal can take a little while to pass Roblox's

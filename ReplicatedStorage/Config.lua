@@ -85,7 +85,7 @@ Config.Colosseum = {
 	CrowdVolume = 0.25,
 	-- the music while you farm (the King's own song takes over in his fight;
 	-- the lobby's music steps aside while you're in there)
-	Music = { "Colosseum Song" },
+	Music = { "Colosseum Theme", "Colosseum Song" }, -- (Colosseum Theme: ours, Tools/Sounds/colosseum_sfx.py)
 	MusicVolume = 0.45,
 
 	HitsToKill = 3, -- punches a dummy takes from a player at its level
@@ -213,12 +213,12 @@ Config.Colosseum = {
 		-- there, so he borrows the Spire bosses' sounds until you add his own.
 		Sounds = {
 			Horn = { "Boss Wave Horn" }, -- when the BOSS WAVE banner comes up
-			Land = { "Straw King Land", "Boss Slam" }, -- landing from a leap
+			Land = { "Straw King Stomp", "Straw King Land", "Boss Slam" }, -- landing from a leap
 			Roar = { "Straw King Roar", "Boss Wake" }, -- his entrance, and when he gets angry
 			Spin = { "Straw King Spin", "Boss Wave" }, -- the whirlwind
 			Summon = { "Straw King Summon", "Boss Wail" }, -- calling his minions
 			Death = { "Straw King Death", "Boss Death" },
-			Victory = { "Victory Is Ours (a) Sting" }, -- you beat him
+			Victory = { "Victory Fanfare", "Victory Is Ours (a) Sting" }, -- you beat him
 		},
 		Music = { "Straw King Song", "Straw King Music", "Straw King Theme", "Slime boss song" }, -- plays during his fight
 		MusicVolume = 0.6,
@@ -1310,7 +1310,7 @@ Config.Intro = {
 	},
 
 	-- The fight's music: the first of these Sounds that's in SoundService
-	Music = { "Oozlet Song", "Slime boss song", "Colosseum Song" },
+	Music = { "Oozlet Song", "Slime boss song", "Colosseum Theme", "Colosseum Song" },
 	MusicVolume = 0.45,
 	-- Its sounds: the first name on each list that's in SoundService (capitals
 	-- and spaces don't matter). If none of them is there, a built-in Roblox
@@ -1389,7 +1389,7 @@ Config.Bosses = {
 		Music = "Slime boss song",
 		MusicVolume = 0.8, -- (louder than the default boss music level)
 		-- played over the banner when it dies
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 
 		-- Sound ids for the fight. Blank ones play nothing rather than erroring.
 		-- The fight's sounds: names of Sounds in SoundService (capitals and spaces
@@ -1542,7 +1542,7 @@ Config.Bosses = {
 		Round2Music = "SANDWORMSONG",
 		MusicVolume = 0.8,
 		Round2MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		-- a breeze in round 1; the power-up whips up a sandstorm (ArenaAmbience)
 		Weather = "Sandstorm",
 
@@ -1685,7 +1685,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Burrowmore Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear", -- no acid rain here, and no sandstorm
 
 		-- His sounds: add Sounds with these names to SoundService whenever you
@@ -1842,7 +1842,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Kaze Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear",
 
 		-- His sounds: add Sounds with these names to SoundService whenever you
@@ -1976,7 +1976,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Revvington Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear",
 
 		-- His sounds: add Sounds with these names to SoundService whenever you
@@ -2156,7 +2156,7 @@ Config.Bosses = {
 		FallbackMusic = "Gridlock Song",
 		MusicVolume = 1.2, -- (his songs are mixed softer than most: turned up to match)
 		Round2MusicVolume = 1.2,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear",
 
 		-- His sounds: add Sounds with these names to SoundService whenever you
@@ -2292,7 +2292,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Kongo Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear",
 
 		-- His sounds: add Sounds with these names to SoundService whenever you
@@ -2443,7 +2443,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Petalina Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear",
 
 		-- Her sounds: add Sounds with these names to SoundService whenever you
@@ -2604,7 +2604,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Scribble Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		Weather = "Clear",
 
 		-- His sounds: add Sounds with these names to SoundService whenever you
@@ -2836,7 +2836,7 @@ Config.Bosses = {
 		-- (until you do, Oozark's plays instead)
 		Music = "Gavelgrunt Song",
 		MusicVolume = 0.8,
-		VictorySound = "Victory Is Ours (a) Sting",
+		VictorySound = "Victory Fanfare",
 		VictoryName = "King Gavelgrunt",
 		Weather = "Clear",
 

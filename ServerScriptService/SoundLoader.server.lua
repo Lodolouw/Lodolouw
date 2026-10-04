@@ -4,7 +4,9 @@
 	Puts the uploaded sound effects (their ids: ReplicatedStorage/
 	AssetIds.Sounds - the weapons', made by Tools/Sounds/weapon_sfx.py, and
 	the Arcade's music and sounds, made by Tools/Sounds/arcade_sfx.py, and
-	floors 7-10's boss sounds, made by Tools/Sounds/boss_sfx.py) into
+	floors 7-10's boss sounds, made by Tools/Sounds/boss_sfx.py, and the
+	Colosseum's song, the victory fanfare and the Straw King's stomp, made by
+	Tools/Sounds/colosseum_sfx.py) into
 	SoundService when the game starts, each under the name the game plays it
 	by ("Goo_Splat" -> a Sound called "Goo Splat"). A Sound already there with
 	that name (added by hand) is left alone.

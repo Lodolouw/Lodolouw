@@ -4,6 +4,8 @@
 #   * the weapons' sound effects  (Tools\Sounds\out\weapons\<name>.ogg)
 #   * the Arcade's music and sounds  (Tools\Sounds\out\arcade\<name>.ogg)
 #   * floors 7-10's boss sounds  (Tools\Sounds\out\bosses\<name>.ogg)
+#   * the Colosseum's song, the victory fanfare and the Straw King's stomp
+#     (Tools\Sounds\out\colosseum\<name>.ogg)
 #   * the weapons' icons  (Tools\Weapons\out\icons\<key>.png, as decals)
 #   * the living coin and token's pictures  (Tools\Icons\out\money\<name>.png, as decals)
 #   * the menus' pixel icons  (Tools\Icons\out\ui\<name>.png, as decals called UI_<name>)
@@ -39,7 +41,7 @@ if (Test-Path $anims) {
         $items += [pscustomobject]@{ Kind = 'Animation'; Key = $_.BaseName; Path = $_.FullName; Type = 'model/x-rbxm' }
     }
 }
-foreach ($folder in @('Sounds\out\weapons', 'Sounds\out\arcade', 'Sounds\out\bosses')) {
+foreach ($folder in @('Sounds\out\weapons', 'Sounds\out\arcade', 'Sounds\out\bosses', 'Sounds\out\colosseum')) {
     $sounds = Join-Path $tools $folder
     if (Test-Path $sounds) {
         Get-ChildItem $sounds -Filter *.ogg | Sort-Object Name | ForEach-Object {

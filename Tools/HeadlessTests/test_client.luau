@@ -87,7 +87,7 @@ local function addSound(name)
 	snd.Volume = 0.5
 	snd.Parent = SoundService
 end
-for _, n in ipairs({ "Boss Slam", "Boss Wake", "Boss Wail", "Boss Wave", "Boss Death", "Slime boss song", "Victory Is Ours (a) Sting", "UI Blip", "mario pipe" }) do
+for _, n in ipairs({ "Boss Slam", "Boss Wake", "Boss Wail", "Boss Wave", "Boss Death", "Slime boss song", "Victory Is Ours (a) Sting", "Victory Fanfare", "UI Blip", "mario pipe" }) do
 	addSound(n)
 end
 local MUSIC = (Config.Audio and Config.Audio.Music) or 1 -- (the lobby music's normal volume)
@@ -359,7 +359,7 @@ assert(not clear.Enabled, "closes when you leave")
 -- THE COLOSSEUM'S SOUNDS: dummy sounds on "Sfx", the horn, cheers, reward pops,
 -- the quest, and the farming music + crowd while inside (lobby music ducked)
 for _, n in ipairs({ "Dummy Land", "Dummy Slam", "Dummy poof", "Brute Charge", "Hay Throw", "Hay Landing", "Shield Clang",
-	"Cursed Blink", "Wave Horn", "Crowd Cheer", "Reward Pop", "Quest Complete", "Colosseum Crowd", "Colosseum Song" }) do
+	"Cursed Blink", "Wave Horn", "Crowd Cheer", "Reward Pop", "Quest Complete", "Colosseum Crowd", "Colosseum Song", "Colosseum Theme", "Straw King Stomp" }) do
 	addSound(n)
 end
 local mark = #played
