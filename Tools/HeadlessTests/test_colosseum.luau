@@ -40,6 +40,7 @@ env = M.env({
 	end,
 })
 Config = M.load(S.Config, "Config", env)()
+Config.Colosseum.Picker = true -- (the difficulty scenarios pick one: as if the picker were back)
 local C = Config.Colosseum
 local K = C.King
 

@@ -181,6 +181,9 @@ end
 -- The difficulty the player picked (Config.Colosseum.Difficulties): the
 -- next run uses it. (Normal if it isn't open to them.)
 local function pickedDifficulty(player)
+	if Config.Colosseum.Picker == false then
+		return Config.colosseumDifficulty(nil) -- (no picker in the game: Normal)
+	end
 	local d = PlayerService.GetData(player)
 	local col = d and d.Colosseum
 	local id = col and col.pick

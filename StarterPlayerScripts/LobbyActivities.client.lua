@@ -1470,60 +1470,6 @@ do
 	-- A row of buttons, one per difficulty, filling `parent`. Returns a
 	-- function that paints them: the picked one in its colour with a white
 	-- border, the other open ones dark with their colour, locked ones grey.
-	function Difficulty.row(parent, say)
-		local list = Difficulty.list()
-		local buttons = {}
-		local gap = 0.03
-		local w = (1 - gap * (#list - 1)) / math.max(1, #list)
-		for i, def in ipairs(list) do
-			local b = Instance.new("TextButton")
-			b.Name = "Difficulty" .. def.id
-			b.Font = FONT
-			b.TextScaled = true
-			b.BorderSizePixel = 0
-			b.AutoButtonColor = true
-			b.Size = UDim2.fromScale(w, 1)
-			b.Position = UDim2.fromScale((i - 1) * (w + gap), 0)
-			b.Parent = parent
-			local edge = Instance.new("UIStroke")
-			edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			edge.Thickness = 3
-			edge.Parent = b
-			local pad = Instance.new("UIPadding")
-			pad.PaddingTop = UDim.new(0.12, 0)
-			pad.PaddingBottom = UDim.new(0.12, 0)
-			pad.PaddingLeft = UDim.new(0.06, 0)
-			pad.PaddingRight = UDim.new(0.06, 0)
-			pad.Parent = b
-			b.Activated:Connect(function()
-				Difficulty.choose(def.id, say)
-			end)
-			buttons[i] = { button = b, edge = edge, def = def }
-		end
-		return function()
-			local picked = Difficulty.picked()
-			for _, it in ipairs(buttons) do
-				local def, b = it.def, it.button
-				if not Difficulty.unlocked(def.id) then
-					b.Text = def.name .. " (LOCKED)"
-					b.BackgroundColor3 = RGB(38, 43, 68)
-					b.TextColor3 = GREY
-					it.edge.Color = RGB(90, 105, 136)
-				elseif def.id == picked then
-					b.Text = def.name
-					b.BackgroundColor3 = def.color
-					b.TextColor3 = RGB(255, 255, 255)
-					it.edge.Color = RGB(255, 255, 255)
-				else
-					b.Text = def.name
-					b.BackgroundColor3 = def.color:Lerp(RGB(24, 20, 37), 0.72)
-					b.TextColor3 = def.color
-					it.edge.Color = def.color
-				end
-			end
-		end
-	end
-
 	Remotes:WaitForChild("StateUpdate").OnClientEvent:Connect(function(data)
 		if type(data) == "table" and type(data.Colosseum) == "table" then
 			colData = data.Colosseum
@@ -1532,92 +1478,80 @@ do
 	end)
 end
 
--- COLOSSEUM CLEARED: the King fell on the last wave of a run. Your time,
--- your best, how many runs you've cleared, the quest's reward, the day's
--- first-clear bonus, a harder difficulty if this clear opened it - and a
--- choice: the difficulty for the next run, then RUN AGAIN (healed, flasks
--- refilled, back to wave 1) or LEAVE.
--- (Styled by RetroUI like the quest menu: a black box with a white border.)
+-- COLOSSEUM CLEARED: the King fell on the last wave of a run. In the new
+-- menus' window look (WindowKit): your time and your best, how many runs
+-- you've cleared, what the quest and the day's first clear paid - and RUN
+-- AGAIN (healed, flasks refilled, back to wave 1) or LEAVE.
 local ClearScreen = {}
 do
+	local K = require(ReplicatedStorage:WaitForChild("WindowKit"))
+	local KC = K.COLORS
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "ColosseumClear"
 	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
 	gui.Enabled = false
 	gui.DisplayOrder = 7
+	gui:SetAttribute("RetroSkip", true) -- (it has the new look: RetroUI leaves it alone)
 	gui.Parent = player:WaitForChild("PlayerGui")
-
-	local panel = Instance.new("Frame")
-	panel.Name = "ClearPanel"
-	panel.BackgroundColor3 = RGB(24, 20, 37)
-	panel.BorderSizePixel = 0
-	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromScale(0.44, 0.7)
-	panel.Parent = gui
-	local aspect = Instance.new("UIAspectRatioConstraint")
-	aspect.AspectRatio = 1.12
-	aspect.Parent = panel
-	local edge = Instance.new("UIStroke")
-	edge.Color = RGB(255, 255, 255)
-	edge.Thickness = 4
-	edge.Parent = panel
-
-	label(panel, "COLOSSEUM CLEARED!", UDim2.fromScale(0.9, 0.1), UDim2.fromScale(0.05, 0.03), GOLD)
-	local diffLabel = label(panel, "", UDim2.fromScale(0.6, 0.05), UDim2.fromScale(0.2, 0.13), GREEN)
-
-	-- the lines about the run, one under another (empty ones take no room)
-	local lines = Instance.new("Frame")
-	lines.Name = "Lines"
-	lines.BackgroundTransparency = 1
-	lines.Position = UDim2.fromScale(0.05, 0.195)
-	lines.Size = UDim2.fromScale(0.9, 0.43)
-	lines.Parent = panel
-	local layout = Instance.new("UIListLayout")
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0.015, 0)
-	layout.Parent = lines
-	local function line(order, height, color)
-		local l = label(lines, "", UDim2.fromScale(1, height), UDim2.new(), color)
-		l.LayoutOrder = order
-		return l
+	-- (drawn at one size and scaled to the screen, like the other menus)
+	local root = Instance.new("Frame")
+	root.Name = "Root"
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromScale(1, 1)
+	root.Parent = gui
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = root
+	local function fit()
+		local cam = workspace.CurrentCamera
+		if cam then
+			local sc = math.clamp(cam.ViewportSize.Y / 1000, 0.5, 1.1)
+			uiScale.Scale = sc
+			root.Size = UDim2.fromScale(1 / sc, 1 / sc)
+		end
 	end
-	local timeLabel = line(1, 0.17, RGB(255, 255, 255))
-	local bestLabel = line(2, 0.14, GREY)
-	local clearsLabel = line(3, 0.12, GREY)
-	local questLabelC = line(4, 0.13, GREEN)
-	local bonusLabel = line(5, 0.13, GOLD)
-	local unlockLabel = line(6, 0.14, RED)
+	fit()
 
-	label(panel, "NEXT RUN:", UDim2.fromScale(0.9, 0.04), UDim2.fromScale(0.05, 0.635), GREY)
-	local statusLine = label(panel, "", UDim2.fromScale(0.9, 0.045), UDim2.fromScale(0.05, 0.775), RGB(255, 255, 255))
+	local W, H = 600, 470
+	local win = K.window(root, {
+		Name = "ClearPanel",
+		Title = "COLOSSEUM CLEARED!",
+		Color = KC.Gold,
+		Buttons = false,
+		BarHeight = 46,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(W, H),
+	})
+	local body = win.frame
+	local top = win.top + 18
+
+	-- your time, big, with your best under it
+	local timeBox = K.panel(body, { Name = "Time", Position = UDim2.fromOffset(24, top), Size = UDim2.fromOffset(W - 48, 118), ZIndex = 3 })
+	local timeLabel = K.label(timeBox, { Name = "TimeText", Font = K.TITLE_FONT, Position = UDim2.fromOffset(16, 14), Size = UDim2.new(1, -32, 0, 50), ZIndex = 4 })
+	local bestLabel = K.label(timeBox, { Name = "Best", Font = K.TITLE_FONT, TextColor3 = KC.Muted, Position = UDim2.fromOffset(16, 74), Size = UDim2.new(1, -32, 0, 26), ZIndex = 4 })
+	local clearsLabel = K.label(body, { Name = "Clears", TextColor3 = KC.Muted, Position = UDim2.fromOffset(24, top + 128), Size = UDim2.fromOffset(W - 48, 26), ZIndex = 3 })
+
+	-- what it paid
+	local payBox = K.panel(body, { Name = "Rewards", Position = UDim2.fromOffset(24, top + 164), Size = UDim2.fromOffset(W - 48, 118), ZIndex = 3 }, KC.Green, 32)
+	K.label(payBox, { Text = "REWARDS", Font = K.TITLE_FONT, TextColor3 = KC.White, TextStrokeTransparency = 0, Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -24, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5 })
+	local questLabelC = K.label(payBox, { Name = "Quest", TextColor3 = KC.Ink, Position = UDim2.fromOffset(14, 44), Size = UDim2.new(1, -28, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+	local bonusLabel = K.label(payBox, { Name = "Bonus", TextColor3 = KC.Ink, Position = UDim2.fromOffset(14, 78), Size = UDim2.new(1, -28, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 })
+
+	local statusLine = K.label(body, { Name = "Status", TextColor3 = KC.Red, Position = UDim2.fromOffset(24, H - 104), Size = UDim2.fromOffset(W - 48, 22), ZIndex = 3 })
 	local function say(text, color)
 		statusLine.Text = text
-		statusLine.TextColor3 = color or RGB(255, 255, 255)
+		statusLine.TextColor3 = color or KC.Red
 	end
-	local rowFrame = Instance.new("Frame")
-	rowFrame.Name = "DifficultyRow"
-	rowFrame.BackgroundTransparency = 1
-	rowFrame.Position = UDim2.fromScale(0.05, 0.68)
-	rowFrame.Size = UDim2.fromScale(0.9, 0.085)
-	rowFrame.Parent = panel
-	local paintRow = Difficulty.row(rowFrame, say)
-	Difficulty.onChange(paintRow)
 
 	local busy = false
 	local function button(text, color, x, action)
-		local b = Instance.new("TextButton")
-		b.Name = action
-		b.Text = text
-		b.Font = FONT
-		b.TextScaled = true
-		b.TextColor3 = RGB(255, 255, 255)
-		b.BackgroundColor3 = color
-		b.BorderSizePixel = 0
-		b.AutoButtonColor = true
-		b.Size = UDim2.fromScale(0.38, 0.12)
-		b.Position = UDim2.fromScale(x, 0.84)
-		b.Parent = panel
+		local b = K.button(body, text, color, {
+			Name = action,
+			Position = UDim2.fromOffset(x, H - 76),
+			Size = UDim2.fromOffset((W - 48 - 24) / 2, 56),
+			ZIndex = 4,
+		})
 		b.Activated:Connect(function()
 			if busy then
 				return
@@ -1629,17 +1563,17 @@ do
 			end)
 			busy = false
 			if not ok then
-				say("Couldn't reach the server.", RED)
+				say("Couldn't reach the server.")
 			elseif done then
 				gui.Enabled = false
 			else
-				say(tostring(msg or ""), RED)
+				say(tostring(msg or ""))
 			end
 		end)
 		return b
 	end
-	button("RUN AGAIN", RGB(62, 137, 72), 0.07, "ColosseumAgain")
-	button("LEAVE", RGB(162, 38, 51), 0.55, "ColosseumLeave")
+	button("RUN AGAIN", KC.Green, 24, "ColosseumAgain")
+	button("LEAVE", KC.Red, 24 + (W - 48 - 24) / 2 + 24, "ColosseumLeave")
 
 	local function set(l, text)
 		l.Text = text or ""
@@ -1651,26 +1585,19 @@ do
 		if type(info) ~= "table" then
 			return
 		end
-		local D = Config.colosseumDifficulty(info.diff)
-		set(diffLabel, D.name)
-		diffLabel.TextColor3 = D.color
+		fit()
 		set(timeLabel, "TIME  " .. Difficulty.clock(info.time))
 		if info.newBest then
 			set(bestLabel, "NEW BEST TIME!")
-			bestLabel.TextColor3 = GOLD
+			bestLabel.TextColor3 = KC.Gold
 		elseif info.best then
 			set(bestLabel, "BEST  " .. Difficulty.clock(info.best))
-			bestLabel.TextColor3 = GREY
+			bestLabel.TextColor3 = KC.Muted
 		else
 			set(bestLabel, "")
 		end
-		if info.wins then
-			set(clearsLabel, D.name .. " RUNS CLEARED: " .. Config.format(info.wins))
-		elseif info.clears then
-			set(clearsLabel, "RUNS CLEARED: " .. Config.format(info.clears))
-		else
-			set(clearsLabel, "")
-		end
+		local runs = info.clears or info.wins
+		set(clearsLabel, runs and ("RUNS CLEARED: " .. Config.format(runs)) or "")
 		if info.questPower then
 			set(questLabelC, "QUEST COMPLETE!  +" .. Config.format(info.questPower) .. " XP  +" .. Config.format(info.questCoins or 0) .. " coins")
 		else
@@ -1681,16 +1608,18 @@ do
 		else
 			set(bonusLabel, "")
 		end
-		local U = info.unlocked and Config.colosseumDifficulty(info.unlocked)
-		if U and U.id == info.unlocked then
-			set(unlockLabel, U.name .. " UNLOCKED!")
-			unlockLabel.TextColor3 = U.color -- (it flashes, so you see it's there to pick)
-		else
-			set(unlockLabel, "")
+		-- (the rewards box fits what was paid - and steps aside if nothing was)
+		local rows = 0
+		for _, l in ipairs({ questLabelC, bonusLabel }) do
+			if l.Visible then
+				l.Position = UDim2.fromOffset(14, 44 + rows * 34)
+				rows = rows + 1
+			end
 		end
+		payBox.Visible = rows > 0
+		payBox.Size = UDim2.fromOffset(W - 48, 48 + rows * 34)
 		statusLine.Text = ""
 		busy = false
-		paintRow()
 		showing = showing + 1
 		local mine = showing
 		-- (a moment after he falls, so his banner and confetti get their turn)
@@ -1700,16 +1629,11 @@ do
 				if info.questPower then
 					KingHud.sfx("Quest") -- (the quest's done: its fanfare as the screen opens)
 				end
-				-- a new best time, and a newly opened difficulty, flash
+				-- a new best time flashes
 				local flip = false
-				while (info.newBest or unlockLabel.Visible) and gui.Enabled and showing == mine do
+				while info.newBest and gui.Enabled and showing == mine do
 					flip = not flip
-					if info.newBest then
-						bestLabel.TextColor3 = flip and RGB(255, 255, 255) or GOLD
-					end
-					if unlockLabel.Visible and U then
-						unlockLabel.TextColor3 = flip and RGB(255, 255, 255) or U.color
-					end
+					bestLabel.TextColor3 = flip and KC.Magenta or KC.Gold
 					task.wait(0.35)
 				end
 			end

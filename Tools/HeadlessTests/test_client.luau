@@ -21,19 +21,28 @@ configModule.Parent = ReplicatedStorage
 local arenasModule = Instance.new("ModuleScript")
 arenasModule.Name = "Arenas"
 arenasModule.Parent = ReplicatedStorage
+-- (the menus' window look: the Colosseum's CLEARED screen uses it)
+local windowKitModule = Instance.new("ModuleScript")
+windowKitModule.Name = "WindowKit"
+windowKitModule.Parent = ReplicatedStorage
 local Config, Arenas
+local mount
 local env = M.env({
 	require = function(mod)
 		if mod == configModule then
 			return Config
 		elseif mod == arenasModule then
 			return Arenas
+		elseif mount and mount.pathOf[mod] then
+			return mount.require(mod) -- (WindowKit and the modules it uses)
 		end
 		error("require of unknown module " .. tostring(mod))
 	end,
 })
 Config = M.load(S.Config, "Config", env)()
 Arenas = M.load(S.files["ReplicatedStorage/Arenas.lua"], "Arenas", env)()
+mount = require("./mount")(M, S)
+mount.cache[configModule] = Config
 local K = Config.Colosseum.King
 
 -- the local player
@@ -622,14 +631,15 @@ assert(leaveCheck.Enabled, "...until you step away and back")
 walkTo(IN_ARENA)
 root.CFrame = CFrame.new(-2600, 3, 0)
 
--- THE CLEARED SCREEN on Hard: the quest's pay, a newly opened difficulty, and
--- the difficulty buttons for the next run
-remotes.StateUpdate.OnClientEvent:Fire({ Quests = { day = 0, list = {} }, Colosseum = { clears = 2, pick = "Hard", wins = { Normal = 1, Hard = 1 }, bests = { Normal = 150.5, Hard = 201 } } })
+-- THE CLEARED SCREEN in the window look: the quest's pay, your runs - and no
+-- difficulty buttons any more (there's no picker in the game)
+remotes.StateUpdate.OnClientEvent:Fire({ Quests = { day = 0, list = {} }, Colosseum = { clears = 2, pick = "Normal", wins = { Normal = 2 }, bests = { Normal = 150.5 } } })
 table.clear(asked)
 local questMark = #played
-fire("RunClear", { time = 201, best = 201, newBest = true, clears = 2, wins = 1, diff = "Hard", questPower = 83790, questCoins = 2700, unlocked = "Nightmare" })
+fire("RunClear", { time = 201, best = 201, newBest = true, clears = 2, wins = 2, diff = "Normal", questPower = 83790, questCoins = 2700 })
 step(3.5)
 assert(clear.Enabled, "the clear screen opens")
+assert(clear:GetAttribute("RetroSkip") == true and clear:FindFirstChild("Root") and clear.Root:FindFirstChild("ClearPanel"), "in the new window look")
 local ctexts = {}
 for _, d in ipairs(clear:GetDescendants()) do
 	if (d.ClassName == "TextLabel" or d.ClassName == "TextButton") and d.Visible ~= false and d.Text ~= "" then
@@ -637,11 +647,14 @@ for _, d in ipairs(clear:GetDescendants()) do
 	end
 end
 local call = table.concat(ctexts, " | ")
-print("clear screen (Hard): " .. call)
-assert(string.find(call, "HARD RUNS CLEARED: 1", 1, true), "runs cleared on Hard")
-assert(string.find(call, "QUEST COMPLETE!  +83,790 XP  +2,700 coins", 1, true) or string.find(call, "QUEST COMPLETE!", 1, true), "the quest's pay")
-assert(string.find(call, "NIGHTMARE UNLOCKED!", 1, true), "the newly opened difficulty")
-assert(string.find(call, "NEXT RUN:", 1, true), "the difficulty row")
+print("clear screen: " .. call)
+if ({ ... })[1] == "snaps" then -- (a picture of it: render_gui.py)
+	require("./gui_snap")(clear, "COLOSSEUM CLEARED|the new window look", 1280, 720)
+end
+assert(string.find(call, "COLOSSEUM CLEARED!", 1, true), "its title")
+assert(string.find(call, "RUNS CLEARED: 2", 1, true), "runs cleared")
+assert(string.find(call, "QUEST COMPLETE!", 1, true), "the quest's pay")
+assert(not string.find(call, "NEXT RUN", 1, true) and not string.find(call, "HARD", 1, true), "no difficulty buttons")
 local fanfare = false
 for i = questMark + 1, #played do
 	if played[i] == "Quest Complete" then
@@ -649,11 +662,6 @@ for i = questMark + 1, #played do
 	end
 end
 assert(fanfare, "the quest's fanfare plays as the screen opens")
-find(clear, "DifficultyNightmare").Activated:Fire()
-step(0.2)
-assert(asked[1] == "ColosseumDifficulty:Nightmare", "the clear screen's buttons pick the next run's difficulty: " .. tostring(asked[1]))
-local nmButton = find(clear, "DifficultyNightmare")
-assert(nmButton.BackgroundColor3 == Config.colosseumDifficulty("Nightmare").color, "the picked one lights up in its colour")
 player:SetAttribute("Colosseum", nil)
 step(0.1)
 

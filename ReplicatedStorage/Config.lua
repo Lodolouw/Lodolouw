@@ -242,6 +242,10 @@ Config.Colosseum = {
 	--           quest, and the first clear of the day
 	--   angry   the King is ANGRY from the start (faster, two shockwaves...)
 	--   color   the colour it shows in on the screen
+	-- Picker = false: there's no way to pick a difficulty in the game (the
+	-- CLEARED screen's buttons are gone), so every run is the first one,
+	-- Normal - even for someone whose save still says Hard
+	Picker = false,
 	Difficulties = {
 		-- (Normal is the friendly one: softer hits and dummies that go down quicker)
 		{ id = "Normal", name = "NORMAL", health = 0.85, damage = 0.7, extra = 0, pace = 1, reward = 1, color = Color3.fromRGB(99, 199, 77) },
