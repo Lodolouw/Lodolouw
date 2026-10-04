@@ -263,6 +263,26 @@ do
 	guideBtn.Activated:Connect(function()
 		player:SetAttribute("GuideOff", (not player:GetAttribute("GuideOff")) or nil)
 	end)
+	ui.guideBtn = guideBtn
+	-- THE NEW PLAYER PATH's big button (Config.Path's Go): no walking across
+	-- a big new lobby straight after the slime - SPIN! opens the Arcade
+	-- menu, FIGHT! goes straight into the Colosseum (SpireClient listens on
+	-- ReplicatedStorage.ColosseumGo; the server lets you in from anywhere
+	-- while it's your path step)
+	local goBtn = K.button(face, "FIGHT!", C.Green, { Name = "GoNow", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Size = UDim2.fromOffset(150, 58), Visible = false, ZIndex = 6 })
+	goBtn.TextScaled = true
+	ui.goBtn = goBtn
+	goBtn.Activated:Connect(function()
+		local g = ui.goalData
+		if not (g and g.go) then
+			return
+		end
+		local name = g.place == "Arcade" and "ArcadeOpen" or "ColosseumGo"
+		local signal = ReplicatedStorage:FindFirstChild(name)
+		if signal and signal:IsA("BindableEvent") then
+			signal:Fire()
+		end
+	end)
 	-- THE NEW PLAYER PATH's progress: a pip per step under the card (lit up
 	-- to the one you're on) - and an arrow that bobs beside a lobby button
 	-- when that's where the step is (the BAG)
@@ -450,6 +470,7 @@ do
 	ui.boostXP = K.chip(boosts, "2X XP", C.Pink, { Name = "XP", LayoutOrder = 1, Visible = false })
 	ui.boostCoins = K.chip(boosts, "2X COINS", C.Gold, { Name = "Coins", LayoutOrder = 2, Visible = false })
 	ui.boostLuck = K.chip(boosts, "LUCK", C.Green, { Name = "Luck", LayoutOrder = 3, Visible = false })
+	ui.boosts = boosts
 
 	local bonuses = new("Frame", {
 		Name = "Bonuses",
@@ -459,6 +480,7 @@ do
 		Size = UDim2.fromOffset(150, 76),
 	}, root)
 	new("UIListLayout", { Padding = UDim.new(0, 10), FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }, bonuses)
+	ui.bonuses = bonuses
 	local tip = K.card(root, { Name = "BonusTip", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -20, 1, -144), Size = UDim2.fromOffset(330, 70), Visible = false, ZIndex = 8 })
 	local tipText = K.label(tip, { Text = "", TextWrapped = true, Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 1, -12), ZIndex = 10 })
 	local function bonus(name, icon, order, words)
@@ -545,7 +567,7 @@ local function nextGoal(d)
 		if open == "Bag" and not Menus.defs.Bag then
 			open = "Weapons"
 		end
-		return { text = s.Text, sub = s.Sub, icon = s.Icon, place = s.Place, open = open, point = s.Point, path = at, total = #steps }
+		return { text = s.Text, sub = s.Sub, icon = s.Icon, place = s.Place, open = open, point = s.Point, go = s.Go, path = at, total = #steps }
 	end
 	local q = type(d.Quests) == "table" and d.Quests or {}
 	local list = type(q.list) == "table" and q.list or {}
@@ -729,7 +751,21 @@ local function tick()
 	local list = type(q.list) == "table" and q.list or {}
 	local picked = q.pick and list[q.pick]
 	local def = picked and Config.QuestById[picked.id]
-	ui.quest.Visible = #list > 0
+	-- (on the new player path the lobby stays quiet: just the goal, its
+	-- button and Settings - the shop, bag, quests, gifts and bonuses come
+	-- out once the path is done, so a new player isn't swamped)
+	local g = ui.goalData
+	local quiet = g ~= nil and g.path ~= nil
+	ui.buttons.Visible = not quiet or g.point ~= nil
+	for _, name in ipairs({ "Gift", "Rewards", "Party" }) do
+		local b = ui.corner:FindFirstChild(name)
+		if b then
+			b.Visible = not quiet
+		end
+	end
+	ui.bonuses.Visible = not quiet
+	ui.boosts.Visible = not quiet
+	ui.quest.Visible = #list > 0 and not quiet
 	ui.questTime.Text = "NEW IN " .. clock(Config.nextQuestTime() - os.time())
 	ui.questReward.Text = "+" .. Config.Quests.Tokens
 	if not def then
@@ -761,12 +797,25 @@ local function tick()
 	ui.playBonus.Text = "+" .. (player:GetAttribute("PlayBonus") or 0) .. "%"
 	ui.friendBonus.Text = "+" .. (player:GetAttribute("FriendBonus") or 0) .. "%"
 	-- the goal card
-	local g = ui.goalData
 	ui.goal.Visible = g ~= nil
 	if g then
 		ui.goalText.Text = g.text
 		ui.goalSub.Text = g.sub or ""
 		ui.goalOpen = g.open
+		ui.goBtn.Visible = g.go ~= nil
+		ui.goBtn.Text = g.go or ""
+		ui.guideBtn.Visible = g.go == nil
+		ui.goalFar.Visible = g.go == nil
+		-- (the text makes room for the button; on the path the card is the
+		-- one thing to look at, so it's full size)
+		local textW = g.go and -250 or -190
+		ui.goalText.Size = UDim2.new(1, textW, 0, 30)
+		ui.goalSub.Size = UDim2.new(1, textW, 0, 20)
+		ui.goalKicker.Size = UDim2.new(1, textW, 0, 18)
+		ui.goalBase = g.path and 1.05 or 0.8
+		if not ui.goalPopping then
+			ui.goalScale.Scale = ui.goalBase
+		end
 		-- the path: its step on the card, the pips, and a pop when it moves on
 		ui.goalKicker.Text = g.path and ("NEW PLAYER PATH  ·  STEP " .. g.path .. " OF " .. g.total) or "NEXT GOAL"
 		ui.goalKicker.TextColor3 = g.path and C.Pink or C.Muted
@@ -775,9 +824,11 @@ local function tick()
 			pip.BackgroundColor3 = (g.path and i < g.path) and C.Green or (i == g.path and C.Yellow or C.Off)
 		end
 		if g.path and ui.lastPathStep and g.path ~= ui.lastPathStep then
-			ui.goalScale.Scale = 1
+			ui.goalPopping = true
+			ui.goalScale.Scale = ui.goalBase * 1.25
 			task.delay(0.18, function()
-				ui.goalScale.Scale = 0.8
+				ui.goalPopping = nil
+				ui.goalScale.Scale = ui.goalBase
 			end)
 		end
 		ui.lastPathStep = g.path

@@ -359,7 +359,11 @@ local function travel(player, action, floorId, tierId)
 		end
 		local entrance = firstTagged("SpireEntrance")
 		local doorPart = entrance and entrance.Parent
-		if not (doorPart and doorPart:IsA("BasePart")) or (root.Position - doorPart.Position).Magnitude > Config.Spire.EnterRange then
+		-- (on the new player path it's one tap from anywhere in the lobby:
+		-- the goal card's FIGHT! button - no long walk to the doors)
+		local pathStep = player:GetAttribute("PathStep")
+		local onPath = pathStep == "Colosseum" or pathStep == "Clear"
+		if not onPath and (not (doorPart and doorPart:IsA("BasePart")) or (root.Position - doorPart.Position).Magnitude > Config.Spire.EnterRange) then
 			return false, "Stand at the Spire's doors to enter."
 		end
 		lastTravel[player] = now

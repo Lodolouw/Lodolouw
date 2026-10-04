@@ -303,16 +303,42 @@ do
 	check(trailPointsTo(zones.Arcade), "...and the trail leads to the Arcade")
 	local pips = find(root, "PathPips")
 	check(pips and pips.Visible, "the path's pips show")
+	-- no walking: a big SPIN! button on the card opens the Arcade, and the
+	-- lobby stays quiet (no shop / bag / quest / gift buttons) till it's done
+	local goBtn = find(find(root, "NextGoal"), "GoNow")
+	check(goBtn and goBtn.Visible and goBtn.Text == "SPIN!", "step 1: a SPIN! button on the card")
+	local before = arcadeOpened
+	goBtn.Activated:Fire()
+	check(arcadeOpened == before + 1, "...and tapping it opens the Arcade menu")
+	arcadeOpened = before
+	check(not find(root, "Buttons").Visible and not find(root, "Quest").Visible and not find(root, "Bonuses").Visible, "on the path the lobby's buttons and cards hide")
+	local corner = find(root, "Corner")
+	check(not corner:FindFirstChild("Gift").Visible and not corner:FindFirstChild("Rewards").Visible, "...and the corner's gift and rewards")
 	if SNAPS then
 		snapGui(lobby, "THE NEW PLAYER PATH|step 1 of 3 on the goal card: spin the slime's token", 1280, 720)
 	end
 	send({ Quests = quests, Power = Config.powerForLevel(lv), Path = { step = 2, done = false } })
 	check(goalText() == steps[2].Text and trailPointsTo(zones.Spire), "step 2: the Colosseum, at the Spire's doors")
+	check(goBtn.Visible and goBtn.Text == "FIGHT!", "step 2: a FIGHT! button")
+	local went = 0
+	local cgo = ReplicatedStorage:FindFirstChild("ColosseumGo")
+	if not cgo then
+		cgo = Instance.new("BindableEvent")
+		cgo.Name = "ColosseumGo"
+		cgo.Parent = ReplicatedStorage
+	end
+	local c2 = cgo.Event:Connect(function()
+		went += 1
+	end)
+	goBtn.Activated:Fire()
+	check(went == 1, "...that goes straight into the Colosseum")
+	c2:Disconnect()
 	send({ Quests = quests, Power = Config.powerForLevel(lv), Path = { step = 3, done = false } })
 	check(goalText() == steps[3].Text and trailPointsTo(zones.Spire), "step 3: clear it")
 	send({ Quests = quests, Power = Config.powerForLevel(lv), Path = { step = 3, done = true } })
 	check(goalText() ~= steps[3].Text and string.find(kicker(), "STEP") == nil, "the path done: back to the usual goals (" .. tostring(goalText()) .. ")")
 	check(not (pips and pips.Visible), "and no pips")
+	check(not goBtn.Visible and find(root, "Buttons").Visible and find(find(root, "Corner"), "Gift").Visible, "and the lobby's buttons are back, the big button gone")
 end
 
 -- walking up to it: the trail goes

@@ -660,6 +660,19 @@ trainNow = function()
 		showMessage(ok and (reason or "You can't go in right now.") or "Something went wrong.")
 	end
 end
+-- (the lobby's goal card has a FIGHT! button for the new player path: it
+-- fires ReplicatedStorage.ColosseumGo, no walk to the Spire's doors needed)
+do
+	local go = ReplicatedStorage:FindFirstChild("ColosseumGo")
+	if not go then
+		go = Instance.new("BindableEvent")
+		go.Name = "ColosseumGo"
+		go.Parent = ReplicatedStorage
+	end
+	go.Event:Connect(function()
+		task.spawn(trainNow)
+	end)
+end
 
 ----------------------------------------------------------------------
 -- In the arena: a Leave button, and a check at the fog gate (in the new

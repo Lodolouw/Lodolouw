@@ -643,6 +643,9 @@ local function run(S)
 end
 
 local function start(player)
+	if PlayerService and PlayerService.Funnel then
+		PlayerService.Funnel(player, "Intro") -- (the onboarding funnel's first step)
+	end
 	local m = Instance.new("Model")
 	m.Name = "Oozlet_" .. player.UserId
 	local box = Instance.new("Part")

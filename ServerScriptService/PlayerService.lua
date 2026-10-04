@@ -867,11 +867,28 @@ function PlayerService.RecordBossKill(player, floorId, tierId)
 	return before == 0
 end
 
+-- THE ONBOARDING FUNNEL (Creator Hub > Analytics > Funnels): where new
+-- players stop in their first minutes. Roblox keeps each step once per
+-- player, so replays don't count twice. (Config.Path steps come after the
+-- first two: 3 Spin, 4 Colosseum, 5 Clear)
+local FUNNEL = { Intro = 1, Slime = 2, Spin = 3, Colosseum = 4, Clear = 5 }
+local FUNNEL_NAMES = { Intro = "Intro started", Slime = "Slime beaten", Spin = "First spin", Colosseum = "Colosseum entered", Clear = "Colosseum cleared" }
+function PlayerService.Funnel(player, id)
+	local step = FUNNEL[id]
+	if not step then
+		return
+	end
+	pcall(function()
+		game:GetService("AnalyticsService"):LogOnboardingFunnelStepEvent(player, step, FUNNEL_NAMES[id])
+	end)
+end
+
 -- Oozlet (the intro) has been beaten: saved, so it never comes back
 function PlayerService.SetIntroDone(player)
 	local profile = profiles[player]
 	if profile then
 		profile.data.IntroDone = true
+		PlayerService.Funnel(player, "Slime")
 		-- (the intro's over: the new player path starts)
 		local P = profile.data.Path
 		if P and not P.done and P.step == 0 then
@@ -939,6 +956,7 @@ function PlayerService.PathEvent(player, id)
 	if not step or step.Id ~= id then
 		return
 	end
+	PlayerService.Funnel(player, id)
 	payPath(player, step.Reward or {})
 	P.step = P.step + 1
 	if P.step > #steps then

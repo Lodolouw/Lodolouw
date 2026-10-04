@@ -3674,10 +3674,12 @@ Config.Path = {
 	Steps = {
 		-- the first 15 minutes, straight after the slime: spin the token it
 		-- dropped (the weapon goes straight into your hand), then one full
-		-- Colosseum run. After that the usual goals take over.
-		{ Id = "Spin", Text = "Spin your token at the Arcade", Sub = "Oozlet's token wins your first weapon!", Icon = "Arcade", Place = "Arcade", Reward = { Coins = 100 } },
-		{ Id = "Colosseum", Text = "Fight in the Colosseum", Sub = "Walk to the Spire's doors and pick THE COLOSSEUM", Icon = "Weapons", Place = "Spire", Reward = { Coins = 100 } },
-		{ Id = "Clear", Text = "Clear the Colosseum", Sub = "Beat all 5 waves - the Straw King comes last!", Icon = "Bosses", Place = "Spire", Reward = { Coins = 300 } },
+		-- Colosseum run. After that the usual goals take over. Go: the goal
+		-- card's big button for the step (no walking: SPIN! opens the Arcade
+		-- menu, FIGHT! goes straight into the Colosseum)
+		{ Id = "Spin", Text = "Spin for your first weapon", Sub = "Oozlet dropped a token - tap SPIN!", Icon = "Arcade", Place = "Arcade", Go = "SPIN!", Reward = { Coins = 100 } },
+		{ Id = "Colosseum", Text = "Fight in the Colosseum", Sub = "Tap FIGHT! to jump straight in", Icon = "Weapons", Place = "Spire", Go = "FIGHT!", Reward = { Coins = 100 } },
+		{ Id = "Clear", Text = "Clear the Colosseum", Sub = "Beat all 5 waves - the Straw King comes last!", Icon = "Bosses", Place = "Spire", Go = "FIGHT!", Reward = { Coins = 300 } },
 	},
 	Done = { Tokens = 2, Coins = 500 }, -- for finishing the whole path
 }
