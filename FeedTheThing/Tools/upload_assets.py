@@ -17,6 +17,8 @@ Needs these environment variables (GitHub: repository secrets):
     ROBLOX_CREATOR_ID   your user id (or the group id)
     ROBLOX_CREATOR_TYPE "user" (default) or "group"
 --ci: without a key, just say so and stop (no error).
+--ids-only: no uploading (no key needed), just write the ids in uploaded.json
+into the game's files.
 
 Only new or changed files are uploaded (hashes and ids are kept in
 Tools/uploaded.json). A changed model becomes a new version of the same
@@ -47,6 +49,7 @@ API = "https://apis.roblox.com/assets/v1"
 
 DRY_RUN = "--dry-run" in sys.argv
 CI = "--ci" in sys.argv
+IDS_ONLY = "--ids-only" in sys.argv
 
 # what gets uploaded: (file, asset type, content type, where its id goes)
 FILES = [
@@ -159,7 +162,21 @@ def summary(lines):
             f.write("\n".join(lines) + "\n")
 
 
+def load_record():
+    if os.path.exists(RECORD):
+        with open(RECORD) as f:
+            return json.load(f)
+    return {}
+
+
 def main():
+    if IDS_ONLY:
+        record = load_record()
+        for rel, _, _, (target, field) in FILES:
+            known = record.get(rel)
+            if known and not write_id(target, field, known["assetId"]):
+                print(f"  ! couldn't find '{field} = ...' in {os.path.relpath(target, GAME)}")
+        return
     key = os.environ.get("ROBLOX_API_KEY", "").strip()
     creator_id = os.environ.get("ROBLOX_CREATOR_ID", "").strip()
     creator_type = (os.environ.get("ROBLOX_CREATOR_TYPE") or "user").strip().lower()
@@ -172,10 +189,7 @@ def main():
         sys.exit(message)
     creator = {"groupId": creator_id} if creator_type == "group" else {"userId": creator_id}
 
-    record = {}
-    if os.path.exists(RECORD):
-        with open(RECORD) as f:
-            record = json.load(f)
+    record = load_record()
     report, failed = ["### Roblox assets", "", "| File | Asset id | |", "|---|---|---|"], []
     for rel, asset_type, content_type, (target, field) in FILES:
         path = os.path.join(GAME, rel)

@@ -35,7 +35,7 @@ jobs:
       ROBLOX_CREATOR_ID: ${{ secrets.ROBLOX_CREATOR_ID }}
       ROBLOX_CREATOR_TYPE: ${{ vars.ROBLOX_CREATOR_TYPE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Upload new or changed sounds and models
         run: python3 FeedTheThing/Tools/upload_assets.py --ci
@@ -50,7 +50,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           files="FeedTheThing/ReplicatedStorage/Config.lua FeedTheThing/ReplicatedStorage/SoundSheet.lua FeedTheThing/Tools/uploaded.json"
           for attempt in 1 2 3; do
-            git add $files
+            for f in $files; do
+              if [ -e "$f" ]; then git add "$f"; fi
+            done
             if git diff --cached --quiet; then
               echo "No new ids to save."
               exit 0
@@ -60,13 +62,13 @@ jobs:
               exit 0
             fi
             # someone pushed in the meantime: start from their latest and
-            # write the ids there (nothing is uploaded twice: the record says
-            # what's already up)
+            # write the ids there (if they changed a sound or model too,
+            # their own push uploads it next)
             cp FeedTheThing/Tools/uploaded.json "$RUNNER_TEMP/uploaded.json"
             git fetch -q --depth=1 origin "$BRANCH"
             git reset -q --hard FETCH_HEAD
             cp "$RUNNER_TEMP/uploaded.json" FeedTheThing/Tools/uploaded.json
-            python3 FeedTheThing/Tools/upload_assets.py --ci || true
+            python3 FeedTheThing/Tools/upload_assets.py --ids-only
           done
           echo "::error::Couldn't save the asset ids to $BRANCH"
           exit 1
