@@ -314,7 +314,7 @@ def main():
             failed.append(rel)
             continue
         record[rel] = {"sha256": digest, "assetId": asset_id}
-        with open(RECORD, "w") as f:
+        with open(RECORD, "w", newline="\n") as f:
             json.dump(record, f, indent=2, sort_keys=True)
             f.write("\n")
         uploaded += 1
