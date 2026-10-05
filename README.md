@@ -1,3 +1,6 @@
+> **Also in this repo:** *Feed the Thing in the Basement*, a new grow/idle game.
+> Design: `Docs/FeedTheThing/DESIGN.md` · Prototype + setup: `FeedTheThing/README.md`
+
 # Boss Grow — Starter Lobby
 
 A "+1 to grow" style Roblox lobby, built entirely from scripts (no imported

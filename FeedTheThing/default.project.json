@@ -1,0 +1,29 @@
+{
+  "name": "FeedTheThing",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Config": { "$path": "ReplicatedStorage/Config.lua" },
+      "Rules": { "$path": "ReplicatedStorage/Rules.lua" },
+      "Looks": { "$path": "ReplicatedStorage/Looks.lua" },
+      "UI": { "$path": "ReplicatedStorage/UI.lua" }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Main": { "$path": "ServerScriptService/Main.server.lua" },
+      "DataService": { "$path": "ServerScriptService/DataService.lua" },
+      "WorldBuilder": { "$path": "ServerScriptService/WorldBuilder.lua" },
+      "GameService": { "$path": "ServerScriptService/GameService.lua" }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "World": { "$path": "StarterPlayerScripts/World.client.lua" },
+        "Toss": { "$path": "StarterPlayerScripts/Toss.client.lua" },
+        "Hud": { "$path": "StarterPlayerScripts/Hud.client.lua" }
+      }
+    }
+  }
+}

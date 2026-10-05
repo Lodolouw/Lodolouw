@@ -7,7 +7,7 @@ This is the single source of truth: paste it into a new chat to continue.
 
 ## Status
 
-All 8 sections are decided. Numbers come from an economy simulation (`economy_sim.py`, see #3) and live in `FeedTheThing/ReplicatedStorage/Config.lua`, so tuning after the ad test is a one-file job.
+All 8 sections are decided. **Prototype v0.1 (the 5-day test build) is in `FeedTheThing/`; see its README to set it up.** Numbers come from an economy simulation (`economy_sim.py`, see #3) and live in `FeedTheThing/ReplicatedStorage/Config.lua`, so tuning after the ad test is a one-file job.
 
 | # | Section | Status |
 |---|---|---|
@@ -241,7 +241,7 @@ Once a day (resets at midnight UTC, countdown shown), the Thing craves one food 
 - **Feedback:**
   - Release: whoosh, the food spins through the air in an arc (0.35 s).
   - GOOD: it drops in. CHOMP, the lid squashes, crumbs fly, "+24" coins pop up and fly to the counter.
-  - PERFECT: an arm shoots out and catches it mid-air. "PERFECT!" in gold, sparkles, a tiny screen shake, a phone buzz, a ★ in the belly slot.
+  - PERFECT: an arm shoots out and catches it mid-air. "PERFECT!" in gold, sparkles, a tiny screen shake, and a gold ring around that belly slot.
   - Craving hit: the bubble pops, "×3", and the combo counter rises with a higher pitch each step.
 - **Tapping the craving bubble** selects that food, so you don't have to hunt through the basket.
 
@@ -288,7 +288,7 @@ Each size also adds +1% to every mutation chance.
 - **Welcome back:** offline coins + Collect.
 - **Yard full:** Sell new one / Swap with weakest.
 - **Thinglet card** (tap a Thinglet): name, rarity, mutation, coins/s, growth, Sell.
-- **Shop:** 6 seeds, stock, price, odds, "Restock in 2:31". Locked seeds show "???" until you can afford one. A second tab, ✨ **Style**, holds the Robux cosmetics.
+- **Shop:** all 6 seeds with stock, price, odds and "New stock in 2:31". (The mystery lives in the dex, not the shop: players need to see their next goal.) The ✨ **Style** tab for Robux cosmetics arrives with week 3.
 - **Upgrades:** More plots, More yard space, the Thing's growth bar.
 - **Dex:** 8 × 4 grid, silhouettes + hints.
 
@@ -346,3 +346,6 @@ The calendar assumes building Oct 5–18, an ad test mid-build, and **launch ~Oc
 | 10-05 | Friend bonus +10% per friend (max +30%) at launch | Cheap; feeds the co-play signal |
 | 10-05 | Style shop (cosmetics) moved into launch week 3 | Spend days count toward recommendations and the 500 engaged players |
 | 10-05 | 8-player servers, plots in a ring | Phone performance with up to 16 Thinglets per yard |
+| 10-05 | Prototype: the server decides, clients draw (plants, Thing, Thinglets drawn locally from plot attributes) | Smooth animation on phones, light server |
+| 10-05 | Weather and shop stock come from the clock + UserId | Every server agrees; rejoining can't re-roll stock |
+| 10-05 | Server allows a toss every 0.12 s (client waits 0.22 s) | Network jitter never eats a toss the player saw land |
