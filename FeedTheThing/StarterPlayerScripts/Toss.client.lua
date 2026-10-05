@@ -161,6 +161,9 @@ local padIcon = UI.viewport(pad, nil, { Size = UDim2.fromScale(0.78, 0.78), Posi
 local padCount = UI.label(pad, {
 	Size = UDim2.new(1, 0, 0, 28), Position = UDim2.new(0, 0, 1, -30), Text = "", ZIndex = 3,
 })
+local padEmpty = UI.label(pad, {
+	Size = UDim2.fromScale(0.86, 0.5), Position = UDim2.fromScale(0.07, 0.25), Text = "Pick\nfruit!", ZIndex = 4, Visible = false,
+})
 local padHint = UI.label(pad, {
 	Size = UDim2.new(1, 40, 0, 26), Position = UDim2.new(0, -20, 0, -30), Text = "", ZIndex = 3,
 	TextColor3 = UI.Colors.Dim, Visible = false,
@@ -356,6 +359,7 @@ local function refreshBasket()
 		selectFood(selected)
 	end
 	padCount.Text = selected and ("x" .. count(selected)) or ""
+	padEmpty.Visible = selected == nil
 	return #foods
 end
 
@@ -374,7 +378,7 @@ bellyAnchor.Parent = workspace
 local bellyGui = UI.new("BillboardGui", {
 	Name = "Belly",
 	Adornee = bellyAnchor,
-	Size = UDim2.fromScale(14, 7),
+	Size = UDim2.fromScale(18, 9),
 	LightInfluence = 0,
 	AlwaysOnTop = true,
 	MaxDistance = 90,

@@ -409,6 +409,16 @@ function Rules.short(n)
 	return text .. SUFFIXES[tier]
 end
 
+-- Coins per second: one decimal while it's small (0.3), short after (1.2K)
+function Rules.rate(n)
+	n = n or 0
+	if n < 10 then
+		local text = string.format("%.1f", math.floor(n * 10) / 10)
+		return (string.gsub(text, "%.0$", ""))
+	end
+	return Rules.short(n)
+end
+
 -- "2:05"
 function Rules.clock(seconds)
 	seconds = math.max(0, math.floor(seconds))

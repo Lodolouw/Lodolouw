@@ -410,7 +410,7 @@ local function refreshThinglet(t, serverNow)
 		t.model:ScaleTo(height)
 	end
 	t.tag.gui.StudsOffsetWorldSpace = Vector3.new(0, t.height * (t.record.kind == "Moonmoth" and 1.5 or 1.05) + 1.4, 0)
-	t.tag.income.Text = "+" .. Rules.short(Rules.income(t.record, serverNow)) .. "/s"
+	t.tag.income.Text = "+" .. Rules.rate(Rules.income(t.record, serverNow)) .. "/s"
 	local progress = Rules.progress(t.record, serverNow)
 	t.tag.bar.Visible = progress < 1
 	t.tag.fill.Size = UDim2.fromScale(progress, 1)
@@ -729,17 +729,47 @@ local defaultLight = {
 }
 local snowPart = nil
 
+-- Weather keeps the game bright: it tints the world and adds particles
+-- (a dark night made everything muddy, especially on phones).
+local moonPart = nil
+local weatherOffset = Vector3.new(0, 40, 0) -- where the particle sheet floats, from the camera
+
+local function followerEmitter(props, offset)
+	local part = Instance.new("Part")
+	part.Name = "WeatherParticles"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Transparency = 1
+	part.Size = Vector3.new(160, 1, 160)
+	part.Parent = visuals
+	local emitter = Instance.new("ParticleEmitter")
+	for key, value in pairs(props) do
+		(emitter :: any)[key] = value
+	end
+	emitter.Parent = part
+	weatherOffset = offset
+	return part
+end
+
 local function setWeather(id)
 	if snowPart then
 		snowPart:Destroy()
 		snowPart = nil
 	end
-	-- the server sets Lighting once; remember it before we change it
-	if id == "" then
-		local sky = Lighting:FindFirstChildOfClass("Sky")
-		if sky then
-			sky.MoonAngularSize = 11
+	if moonPart then
+		moonPart:Destroy()
+		moonPart = nil
+	end
+	local grade = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+	local function tint(color)
+		if grade then
+			tween(grade, 3, { TintColor = color })
 		end
+	end
+	if id == "" then
+		tint(Color3.fromRGB(255, 255, 255))
 		tween(Lighting, 3, {
 			ClockTime = defaultLight.ClockTime,
 			Brightness = defaultLight.Brightness,
@@ -747,40 +777,45 @@ local function setWeather(id)
 			Ambient = defaultLight.Ambient,
 		})
 	elseif id == "FullMoon" then
-		local sky = Lighting:FindFirstChildOfClass("Sky")
-		if sky then
-			sky.MoonAngularSize = 30 -- a big moon (the default is 11)
-		end
-		tween(Lighting, 3, {
-			ClockTime = 0,
-			Brightness = 1.2,
-			OutdoorAmbient = Color3.fromRGB(110, 95, 170),
-			Ambient = Color3.fromRGB(90, 80, 140),
-		})
+		-- a magic purple afternoon with a giant moon and glowing motes rising
+		tint(Color3.fromRGB(232, 218, 255))
+		tween(Lighting, 3, { OutdoorAmbient = Color3.fromRGB(185, 165, 215) })
+		local moon = Instance.new("Part")
+		moon.Name = "Moon"
+		moon.Shape = Enum.PartType.Ball
+		moon.Size = Vector3.new(160, 160, 160)
+		moon.Anchored = true
+		moon.CanCollide = false
+		moon.CanQuery = false
+		moon.CanTouch = false
+		moon.CastShadow = false
+		moon.Material = Enum.Material.Neon
+		moon.Color = Color3.fromRGB(235, 225, 255)
+		moon.Position = Vector3.new(700, 520, -700)
+		moon.Parent = visuals
+		moonPart = moon
+		snowPart = followerEmitter({
+			Color = ColorSequence.new(Color3.fromRGB(200, 150, 255), Color3.fromRGB(150, 255, 190)),
+			LightEmission = 1,
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.2, 0.4), NumberSequenceKeypoint.new(1, 0) }),
+			Rate = 45,
+			Lifetime = NumberRange.new(4, 6),
+			Speed = NumberRange.new(1.5, 3),
+			SpreadAngle = Vector2.new(25, 25),
+			EmissionDirection = Enum.NormalId.Top,
+		}, Vector3.new(0, -8, 0))
 	elseif id == "Snow" then
-		tween(Lighting, 3, {
-			ClockTime = defaultLight.ClockTime,
-			Brightness = 1.8,
-			OutdoorAmbient = Color3.fromRGB(170, 190, 220),
-		})
-		local part = Instance.new("Part")
-		part.Name = "Snow"
-		part.Anchored = true
-		part.CanCollide = false
-		part.CanQuery = false
-		part.Transparency = 1
-		part.Size = Vector3.new(160, 1, 160)
-		part.Parent = visuals
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
-		emitter.Size = NumberSequence.new(0.35)
-		emitter.Rate = 160
-		emitter.Lifetime = NumberRange.new(5, 7)
-		emitter.Speed = NumberRange.new(8, 12)
-		emitter.SpreadAngle = Vector2.new(15, 15)
-		emitter.EmissionDirection = Enum.NormalId.Bottom
-		emitter.Parent = part
-		snowPart = part
+		tint(Color3.fromRGB(228, 242, 255))
+		tween(Lighting, 3, { OutdoorAmbient = Color3.fromRGB(185, 200, 225) })
+		snowPart = followerEmitter({
+			Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)),
+			Size = NumberSequence.new(0.35),
+			Rate = 160,
+			Lifetime = NumberRange.new(5, 7),
+			Speed = NumberRange.new(8, 12),
+			SpreadAngle = Vector2.new(15, 15),
+			EmissionDirection = Enum.NormalId.Bottom,
+		}, Vector3.new(0, 40, 0))
 	end
 end
 
@@ -808,7 +843,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local camPos = camera.CFrame.Position
 	local clock = os.clock()
 	if snowPart then
-		snowPart.CFrame = CFrame.new(camPos + Vector3.new(0, 40, 0))
+		snowPart.CFrame = CFrame.new(camPos + weatherOffset)
 	end
 
 	local heads = {}

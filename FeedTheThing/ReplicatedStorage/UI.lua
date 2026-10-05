@@ -159,6 +159,14 @@ ICONS.cart = function(c)
 	shape(c, at(0.38, 0.8, 0.17, 0.17, 0, INK), nil, ROUND)
 	shape(c, at(0.74, 0.8, 0.17, 0.17, 0, INK), nil, ROUND)
 end
+ICONS.sprout = function(c)
+	-- a seedling in a flower pot (the seed shop)
+	shape(c, at(0.5, 0.42, 0.08, 0.36, 0, Color3.fromRGB(90, 200, 60)), 2, ROUND)
+	shape(c, at(0.33, 0.3, 0.32, 0.18, -30, Color3.fromRGB(120, 230, 80)), 2.5, ROUND)
+	shape(c, at(0.67, 0.24, 0.34, 0.19, 30, Color3.fromRGB(120, 230, 80)), 2.5, ROUND)
+	local pot = shape(c, at(0.5, 0.74, 0.56, 0.36, 0, Color3.fromRGB(225, 120, 60)), 2.5, UDim.new(0.18, 0))
+	shape(pot, at(0.5, 0.12, 1.12, 0.3, 0, Color3.fromRGB(240, 145, 80)), 2.5, UDim.new(0.3, 0))
+end
 ICONS.book = function(c)
 	for _, side in ipairs({ -1, 1 }) do
 		local page = shape(c, at(0.5 + side * 0.19, 0.5, 0.36, 0.62, side * 7), 2.5, UDim.new(0.12, 0))

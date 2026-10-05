@@ -285,7 +285,7 @@ local function makePanel(name, title, width, height, headerColor)
 		frame.Visible = false
 		openPanel = nil
 	end)
-	UI.icon(close, "x", { Size = UDim2.fromScale(0.7, 0.7), Position = UDim2.fromScale(0.15, 0.15) })
+	close.Text = "X"
 	local body = UI.new("ScrollingFrame", {
 		Name = "Body", Position = UDim2.fromOffset(12, 80), Size = UDim2.new(1, -24, 1, -92),
 		BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 8,
@@ -601,7 +601,7 @@ local function refreshDaily()
 end
 
 -- the buttons themselves
-sideButton("Shop", "Shop", 1, "cart", C.Green, true, function()
+sideButton("Shop", "Shop", 1, "sprout", C.Green, true, function()
 	showPanel("Shop")
 	refreshShop()
 end)
@@ -658,7 +658,7 @@ local function showCard(info)
 	local growLine = UI.label(box, { Size = UDim2.new(1, -30, 0, 24), Position = UDim2.fromOffset(15, 260), Text = "", TextColor3 = C.Dim, ZIndex = 42 })
 	local function refresh()
 		local t = serverNow()
-		incomeLine.Text = string.format("+%s/s now  (+%s/s grown)", Rules.short(Rules.income(record, t)), Rules.short(Rules.fullIncome(record)))
+		incomeLine.Text = string.format("+%s/s now  (+%s/s grown)", Rules.rate(Rules.income(record, t)), Rules.rate(Rules.fullIncome(record)))
 		local progress = Rules.progress(record, t)
 		if progress >= 1 then
 			growLine.Text = "Fully grown!"
@@ -1042,7 +1042,7 @@ StateRemote.OnClientEvent:Connect(function(newState)
 	if first then
 		displayCoins = state.coins
 	end
-	incomeLabel.Text = "+" .. Rules.short(state.income or 0) .. "/s"
+	incomeLabel.Text = "+" .. Rules.rate(state.income or 0) .. "/s"
 	refreshHints()
 	if openPanel == "Shop" then
 		refreshShop()

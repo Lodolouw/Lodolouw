@@ -330,7 +330,7 @@ local function buildSign(cf, folder)
 	gui.Name = "OwnerSign"
 	gui.Size = UDim2.fromScale(20, 5)
 	gui.LightInfluence = 0
-	gui.MaxDistance = 260
+	gui.MaxDistance = 200
 	gui.Adornee = anchor
 	gui.Parent = anchor
 
@@ -498,6 +498,10 @@ function WorldBuilder.setSign(i, title, subtitle, userId)
 	plot.sign.title.Text = title
 	plot.sign.sub.Text = subtitle or ""
 	userId = userId or 0
+	local gui = plot.sign.title.Parent
+	if gui and gui:IsA("BillboardGui") then
+		gui.Enabled = userId > 0
+	end
 	if userId == plot.userId then
 		return
 	end
