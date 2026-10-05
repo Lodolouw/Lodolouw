@@ -1,0 +1,5 @@
+# Rojo, downloaded by serve.bat
+.tools/
+# places built with rojo build
+*.rbxl
+*.rbxlx

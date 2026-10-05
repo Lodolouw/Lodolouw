@@ -320,6 +320,15 @@ end
 -- API
 ----------------------------------------------------------------------
 function WorldBuilder.build()
+	-- a new place comes with a Baseplate and a SpawnLocation: they would
+	-- cover the hatch pits and spawn people in the wrong spot, so clear them
+	-- (only while the game runs - your saved place keeps them)
+	for _, child in ipairs(workspace:GetChildren()) do
+		if (child.Name == "Baseplate" and child:IsA("BasePart")) or child:IsA("SpawnLocation") then
+			child:Destroy()
+		end
+	end
+
 	worldFolder = workspace:FindFirstChild("World")
 	if worldFolder then
 		worldFolder:Destroy()

@@ -25,38 +25,31 @@ Like your last game, everything is built from scripts: there are no imported mes
 
 Rebirth, the Style (Robux cosmetics) shop, NPC egg raids, likes, trading and events. See the roadmap in the design doc.
 
-## Setting it up in Studio
+## Setting it up in Studio (with Rojo)
 
-1. Make a new **Baseplate** place and **delete the Baseplate** part (the game makes its own ground).
-2. Create these scripts with exactly these names and parents, and paste each file in:
+You need this branch's files on your PC first (fetch the branch in GitHub Desktop, or download the ZIP).
+
+1. **Start Rojo:** double-click **`FeedTheThing/serve.bat`**. The first time, it downloads Rojo 7.4.4 (the same version as your Studio plugin) into `FeedTheThing/.tools`. Leave the black window open while you work.
+2. **In Studio:** open a new **Baseplate** place. In the Rojo panel, press **Connect** (it's already set to `localhost` and port `34872`), then **Accept**. All 11 scripts appear in the right places:
 
 ```
-ReplicatedStorage/
-  Config.lua               → ModuleScript "Config"
-  Rules.lua                → ModuleScript "Rules"
-  Looks.lua                → ModuleScript "Looks"
-  UI.lua                   → ModuleScript "UI"
-
-ServerScriptService/
-  Main.server.lua          → Script "Main"
-  DataService.lua          → ModuleScript "DataService"
-  WorldBuilder.lua         → ModuleScript "WorldBuilder"
-  GameService.lua          → ModuleScript "GameService"
-
-StarterPlayer/StarterPlayerScripts/
-  World.client.lua         → LocalScript "World"
-  Toss.client.lua          → LocalScript "Toss"
-  Hud.client.lua           → LocalScript "Hud"
+ReplicatedStorage        Config, Rules, Looks, UI          (ModuleScripts)
+ServerScriptService      Main (Script); DataService, WorldBuilder, GameService (ModuleScripts)
+StarterPlayerScripts     World, Toss, Hud                  (LocalScripts)
 ```
-
-   If you use **Rojo**, `default.project.json` does all of this for you.
 
 3. **Game Settings:**
    - Places → Max Players: **8** (one plot per player).
-   - To test saving in Studio: publish the place, then turn on Security → **Enable Studio Access to API Services**. Without it the game still runs, it just starts fresh each time, and the Output says so once.
+   - To test saving: publish the place, then turn on Security → **Enable Studio Access to API Services**. Without it the game still runs, it just starts fresh each time, and the Output says so once.
 4. Press **Play**. The Output should say `Feed the Thing in the Basement is running.`
+   - The Baseplate and SpawnLocation are removed automatically while playing, and your saved place keeps them.
+   - If something is misnamed, `Main` names the exact script that broke instead of failing silently.
 
-If something is misnamed, `Main` names the exact script and line that broke instead of failing silently.
+While Rojo is connected, any change to a file in `FeedTheThing/` shows up in Studio straight away. Save the place in Studio (File → Save) as usual. Rojo only manages the scripts, not the rest of your place.
+
+**Not using Rojo?** Create the scripts above by hand with exactly those names and paste each file in (`*.server.lua` = Script, `*.client.lua` = LocalScript, other `.lua` = ModuleScript).
+
+**Already use Rokit?** Run `rokit install` in `FeedTheThing/`, then `rojo serve`.
 
 ### Sounds (optional)
 
