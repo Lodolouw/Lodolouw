@@ -4,13 +4,23 @@ Feed the Thing in the Basement - every sound effect, made from scratch in code
 
     python make_sounds.py          (needs: pip install numpy scipy soundfile)
 
-Writes one .ogg per sound next to this file. The names match the ones the
-game plays (UI.sound("Chomp") etc). Upload them (Asset Manager > bulk import,
-or Tools/upload_assets.py with an Open Cloud key) and put the ids in
-Config.Sounds.
+Writes, next to this file:
+    <Name>.ogg        one file per sound (to listen to, or to import by hand)
+    SoundSheet.ogg    all of them in one file, with a little silence between
+and ReplicatedStorage/SoundSheet.lua, which says where each sound starts
+and stops in the sheet. The game plays every sound from the one sheet, so
+all 18 cost a single audio upload (Roblox allows 10 a month without ID
+verification). Tools/upload_assets.py uploads the sheet and fills in its id.
+
+Files only get rewritten when their sound really changed (the Ogg encoder
+never writes the same bytes twice, so that's checked on the raw audio, in
+sources.json): no needless re-uploads.
 """
 
+import hashlib
+import json
 import os
+import zlib
 
 import numpy as np
 import soundfile as sf
@@ -18,7 +28,10 @@ from scipy.signal import butter, lfilter
 
 RATE = 44100
 HERE = os.path.dirname(os.path.abspath(__file__))
-rng = np.random.default_rng(7)
+SHEET_LUA = os.path.join(HERE, "..", "ReplicatedStorage", "SoundSheet.lua")
+SOURCES = os.path.join(HERE, "sources.json")
+GAP = 0.3  # seconds of silence between sounds in the sheet
+rng = np.random.default_rng(7)  # each sound gets its own seed (see main)
 
 
 # ---------------------------------------------------------------------------
@@ -116,16 +129,22 @@ def echo(x, delay=0.11, feedback=0.35, taps=4):
     return pad if len(pad) > len(out) else out
 
 
-def save(name, x, peak=0.9):
+def finish(x, peak=0.9):
+    """Centred, a quick fade at the end, loudest point at `peak`."""
     x = np.asarray(x, dtype=float)
     x = x - np.mean(x)
     fade = min(len(x), int(0.01 * RATE))
     x[-fade:] *= np.linspace(1, 0, fade)
     m = np.max(np.abs(x)) or 1
-    x = x / m * peak
-    path = os.path.join(HERE, name + ".ogg")
+    return x / m * peak
+
+
+def pcm_hash(x):
+    return hashlib.sha256((np.clip(x, -1, 1) * 32767).astype(np.int16).tobytes()).hexdigest()
+
+
+def write_ogg(path, x):
     sf.write(path, x.astype(np.float32), RATE, format="OGG", subtype="VORBIS")
-    print(f"  {name:10s} {len(x) / RATE:4.2f}s")
 
 
 NOTE = {n: 440 * 2 ** ((i - 9) / 12) for i, n in enumerate(["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"])}
@@ -266,13 +285,73 @@ def poof():
     return place((0, puff), (0, sparkle))
 
 
+# sharp clicks overshoot when encoded: keep them a little quieter so they don't clip
+PEAK = {"Crack": 0.75}
+
 SOUNDS = {
     "Click": click, "Pop": pop, "Coin": coin, "Chomp": chomp, "Throw": throw, "Perfect": perfect,
     "Combo": combo, "Crack": crack, "Hatch": hatch, "HatchRare": hatch_rare, "SizeUp": size_up,
     "Buy": buy, "Burp": burp, "Error": error, "Announce": announce, "Honk": honk, "Thud": thud, "Poof": poof,
 }
 
-if __name__ == "__main__":
+def write_sheet_lua(regions):
+    lines = [
+        "-- Made by Sounds/make_sounds.py: where each sound starts and stops (seconds)",
+        "-- in Sounds/SoundSheet.ogg, every sound in one file. Don't edit by hand.",
+        "-- Id is filled in by Tools/upload_assets.py (0 = not uploaded yet).",
+        "return {",
+        "\tId = 0,",
+        "\tSounds = {",
+    ]
+    for name, (a, b) in regions.items():
+        lines.append(f"\t\t{name} = {{ {a:.3f}, {b:.3f} }},")
+    lines += ["\t},", "}", ""]
+    with open(SHEET_LUA, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines))
+
+
+def main():
+    global rng
+    sources = {}
+    if os.path.exists(SOURCES):
+        with open(SOURCES) as f:
+            sources = json.load(f)
     print("Sounds:")
+    made = {}
     for name, make in SOUNDS.items():
-        save(name, make())
+        rng = np.random.default_rng(zlib.crc32(name.encode()))  # changing one sound leaves the rest alone
+        x = finish(make(), PEAK.get(name, 0.9))
+        made[name] = x
+        digest = pcm_hash(x)
+        path = os.path.join(HERE, name + ".ogg")
+        if sources.get(name) == digest and os.path.exists(path):
+            print(f"  {name:10s} {len(x) / RATE:4.2f}s  unchanged")
+            continue
+        write_ogg(path, x)
+        sources[name] = digest
+        print(f"  {name:10s} {len(x) / RATE:4.2f}s  written")
+
+    # the sheet: every sound in a row, with silence between
+    gap = np.zeros(int(GAP * RATE))
+    parts, regions, at = [gap], {}, len(gap)
+    for name, x in made.items():
+        regions[name] = (max(0.0, at / RATE - 0.01), (at + len(x)) / RATE + 0.02)
+        parts += [x, gap]
+        at += len(x) + len(gap)
+    sheet = np.concatenate(parts)
+    digest = pcm_hash(sheet)
+    path = os.path.join(HERE, "SoundSheet.ogg")
+    if sources.get("SoundSheet") == digest and os.path.exists(path) and os.path.exists(SHEET_LUA):
+        print(f"SoundSheet.ogg {len(sheet) / RATE:.1f}s  unchanged")
+    else:
+        write_ogg(path, sheet)
+        write_sheet_lua(regions)
+        sources["SoundSheet"] = digest
+        print(f"SoundSheet.ogg {len(sheet) / RATE:.1f}s  written (and ReplicatedStorage/SoundSheet.lua)")
+    with open(SOURCES, "w") as f:
+        json.dump(sources, f, indent=2, sort_keys=True)
+        f.write("\n")
+
+
+if __name__ == "__main__":
+    main()

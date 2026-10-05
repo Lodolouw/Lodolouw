@@ -314,10 +314,12 @@ Config.World = {
 }
 
 ----------------------------------------------------------------------
--- Uploaded assets. Tools/upload_assets.py fills these in (or paste ids in
--- by hand). 0 = not uploaded yet.
---   Sounds: made by Sounds/make_sounds.py. A Sound with the same name in
---   SoundService wins over these (handy for trying other sounds).
+-- Uploaded assets. Tools/upload_assets.py fills in the ids (it runs by
+-- itself on GitHub after every push, see the README). 0 = not uploaded yet.
+--   Sounds: made by Sounds/make_sounds.py and played from one sound sheet
+--   (see SoundSheet.lua). Here you set each one's volume. To swap one for
+--   another sound, put that sound's id here (or a Sound with the same name
+--   in SoundService).
 --   Map / Props: the Blender models; the game loads them by itself, so you
 --   don't need to import them into Studio.
 ----------------------------------------------------------------------

@@ -52,16 +52,36 @@ While Rojo is connected, any change to a file in `FeedTheThing/` shows up in Stu
 
 **Already use Rokit?** Run `rokit install` in `FeedTheThing/`, then `rojo serve`.
 
-### Sounds and Blender models: uploading
+### Sounds and Blender models: uploaded automatically
 
-All the sound effects are original. `Sounds/make_sounds.py` makes them as `.ogg` files in `FeedTheThing/Sounds`. The Blender models are the `.fbx` files in `Blender/Export`. The game finds both through the ids in `Config.Sounds` and `Config.AssetIds`.
+All the sound effects are original. `Sounds/make_sounds.py` makes them, and also packs all of them into one file, `Sounds/SoundSheet.ogg`, so they cost a single audio upload instead of 18 (Roblox allows 10 audio uploads a month without ID verification). The Blender models are the `.fbx` files in `Blender/Export`.
 
-- **With an Open Cloud API key** (recommended): run `python3 FeedTheThing/Tools/upload_assets.py`. It uploads everything new or changed and writes the ids into `Config.lua`. After that, the map and props load by themselves, so there's nothing to import in Studio.
-- **By hand:**
-  1. In Asset Manager, use **Bulk Import** on the `.ogg` files.
-  2. Right-click each one, choose **Copy ID**, and paste it into `Config.Sounds`.
-  3. For the models, use **Import 3D**: name the map `Map` and put it in **ServerStorage**; name the props `Assets` and put them in **ReplicatedStorage**.
-- A Sound you place in SoundService with the same name (`Chomp`, `Coin`...) overrides the uploaded one, which is handy for trying other sounds.
+**After every push, GitHub uploads whatever is new or changed and commits the asset ids back to the branch** (`.github/workflows/upload-roblox-assets.yml`). Pull in GitHub Desktop, Rojo syncs the ids, and the game loads the sounds, map and props by itself. There's nothing to import in Studio.
+
+One-time setup:
+1. **Make an API key.** Go to [create.roblox.com/dashboard/credentials](https://create.roblox.com/dashboard/credentials) → **Create API Key**.
+   - Add the **Assets** API with **Read** and **Write**.
+   - Set the IP address to `0.0.0.0/0`, since GitHub's computers change IP.
+   - Pick an expiry date. Copy the key; it's only shown once.
+2. **Find your Roblox user id.** It's the number in your profile's web address.
+3. **Add both to GitHub.** On GitHub, open the repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add:
+   - `ROBLOX_API_KEY` = the key
+   - `ROBLOX_CREATOR_ID` = your user id
+
+   For a game owned by a group, use the group's id instead, and also add a **variable** (not a secret) `ROBLOX_CREATOR_TYPE` = `group`.
+4. **Start the first upload.** Push anything, or go to **Actions** → **Upload Roblox assets** → **Run workflow**. That button shows up once the workflow is on the main branch.
+
+Good to know:
+- **The game must be owned by the same account (or group) as the uploads.** Otherwise Roblox won't let it load the map and props.
+- **New uploads go through Roblox's moderation.** They can take a few minutes to show up.
+- **A changed model keeps its id** (it gets a new version). A changed sound sheet gets a new id, which the upload writes in for you.
+- **Each run's page under Actions lists what it uploaded, with links.**
+- **Running it by hand works too.** With the two values set as environment variables, run `python3 FeedTheThing/Tools/upload_assets.py`.
+- **A Sound you place in SoundService with the same name (`Chomp`, `Coin`...) overrides the uploaded one.** That's handy for trying other sounds. So does putting a sound's id in `Config.Sounds`.
+- **No key?** Import by hand instead:
+  - Map: **Import 3D**, name it `Map`, put it in **ServerStorage**.
+  - Props: **Import 3D**, name them `Assets`, put them in **ReplicatedStorage**.
+  - Sounds: import `SoundSheet.ogg` and paste its id into `ReplicatedStorage/SoundSheet.lua`.
 
 ## Test it like a new player
 

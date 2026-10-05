@@ -13,9 +13,12 @@ local UI = {}
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+local ContentProvider = game:GetService("ContentProvider")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local SoundSheet = require(ReplicatedStorage:WaitForChild("SoundSheet"))
 
 UI.Font = Config.Font
 -- the chunky, bright "simulator" look: saturated colours, thick black outlines
@@ -350,24 +353,52 @@ function UI.setViewportModel(viewport, model, yaw)
 end
 
 ----------------------------------------------------------------------
--- Sounds by name (only if you've added them to SoundService)
+-- Sounds by name. Where a sound comes from, first match wins:
+--   1. a Sound with that name in SoundService (put there by hand)
+--   2. its own uploaded id in Config.Sounds
+--   3. its slice of the sound sheet (every sound in one uploaded file,
+--      see SoundSheet and Sounds/make_sounds.py)
 ----------------------------------------------------------------------
 local soundTemplates = {}
+local function makeTemplate(name)
+	local info = Config.Sounds and Config.Sounds[name]
+	local own = info and info.id and info.id > 0
+	local slice = SoundSheet.Sounds[name]
+	if not own and not (slice and SoundSheet.Id > 0) then
+		return nil -- not uploaded yet
+	end
+	local template = Instance.new("Sound")
+	template.Name = name
+	template.Volume = info and info.volume or 0.5
+	if own then
+		template.SoundId = "rbxassetid://" .. info.id
+	else
+		template.SoundId = "rbxassetid://" .. SoundSheet.Id
+		template.PlaybackRegionsEnabled = true
+		template.PlaybackRegion = NumberRange.new(slice[1], slice[2])
+	end
+	return template
+end
+
+-- load the sheet straight away, so the first sounds aren't late
+if RunService:IsClient() and SoundSheet.Id > 0 then
+	task.spawn(function()
+		local sheet = Instance.new("Sound")
+		sheet.SoundId = "rbxassetid://" .. SoundSheet.Id
+		pcall(ContentProvider.PreloadAsync, ContentProvider, { sheet })
+	end)
+end
+
 function UI.sound(name, volume, pitch)
 	local template = SoundService:FindFirstChild(name)
 	if not template or not template:IsA("Sound") then
-		-- not placed by hand: use the uploaded one from Config.Sounds
 		template = soundTemplates[name]
-		local info = Config.Sounds and Config.Sounds[name]
-		if not template and info and info.id and info.id > 0 then
-			template = Instance.new("Sound")
-			template.Name = name
-			template.SoundId = "rbxassetid://" .. info.id
-			template.Volume = info.volume or 0.5
-			soundTemplates[name] = template
-		end
 		if not template then
-			return
+			template = makeTemplate(name)
+			if not template then
+				return
+			end
+			soundTemplates[name] = template
 		end
 	end
 	local sound = template:Clone()

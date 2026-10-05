@@ -1,0 +1,72 @@
+# Uploads Feed the Thing's sounds and Blender models to Roblox after every
+# push, and commits the new asset ids back to the branch. Only new or changed
+# files are uploaded (see FeedTheThing/Tools/upload_assets.py).
+#
+# One-time setup, in the repository's Settings > Secrets and variables >
+# Actions > New repository secret:
+#   ROBLOX_API_KEY     an Open Cloud API key with Assets: Read + Write
+#   ROBLOX_CREATOR_ID  your Roblox user id (or the group's id)
+# For a group-owned game, also add a *variable* ROBLOX_CREATOR_TYPE = group.
+# Without the secrets, it just says so and stops.
+
+name: Upload Roblox assets
+
+on:
+  push:
+    paths:
+      - "FeedTheThing/**"
+      - ".github/workflows/upload-roblox-assets.yml"
+  workflow_dispatch:
+
+# one run at a time per branch, so two runs never upload the same thing
+concurrency:
+  group: roblox-assets-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+      ROBLOX_CREATOR_ID: ${{ secrets.ROBLOX_CREATOR_ID }}
+      ROBLOX_CREATOR_TYPE: ${{ vars.ROBLOX_CREATOR_TYPE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload new or changed sounds and models
+        run: python3 FeedTheThing/Tools/upload_assets.py --ci
+
+      # runs even if one upload failed, so the ones that worked are kept
+      - name: Save the new asset ids to the branch
+        if: ${{ !cancelled() }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          files="FeedTheThing/ReplicatedStorage/Config.lua FeedTheThing/ReplicatedStorage/SoundSheet.lua FeedTheThing/Tools/uploaded.json"
+          for attempt in 1 2 3; do
+            git add $files
+            if git diff --cached --quiet; then
+              echo "No new ids to save."
+              exit 0
+            fi
+            git commit -q -m "Roblox asset ids from the upload"
+            if git push origin "HEAD:$BRANCH"; then
+              exit 0
+            fi
+            # someone pushed in the meantime: start from their latest and
+            # write the ids there (nothing is uploaded twice: the record says
+            # what's already up)
+            cp FeedTheThing/Tools/uploaded.json "$RUNNER_TEMP/uploaded.json"
+            git fetch -q --depth=1 origin "$BRANCH"
+            git reset -q --hard FETCH_HEAD
+            cp "$RUNNER_TEMP/uploaded.json" FeedTheThing/Tools/uploaded.json
+            python3 FeedTheThing/Tools/upload_assets.py --ci || true
+          done
+          echo "::error::Couldn't save the asset ids to $BRANCH"
+          exit 1

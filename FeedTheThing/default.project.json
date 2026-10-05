@@ -18,6 +18,9 @@
       },
       "Assets": {
         "$path": "ReplicatedStorage/Assets.lua"
+      },
+      "SoundSheet": {
+        "$path": "ReplicatedStorage/SoundSheet.lua"
       }
     },
     "ServerScriptService": {
