@@ -395,6 +395,7 @@ Rebirth, Halloween event, NPC egg raids, trading, Robux cosmetics (see #8).
 | 10-05 | Buying seeds sends a delivery truck (made in Blender) that lobs the package onto your lawn; the plant appears when it lands | Turns a menu click into a fun, visible moment everyone on the street sees |
 | 10-05 | The truck comes out of a tunnel at the west end and fades into one at the east end (the old arch became the east tunnel) | No trucks popping in and out of thin air; it has somewhere to come from and go to |
 | 10-05 | Sounds and Blender models upload with one double-click (upload.bat asks for the key and user id); all sounds ship as one sound sheet | No manual importing; one audio upload instead of 18 fits Roblox's 10-a-month limit |
+| 10-05 | Thinglets and the egg are made in Blender: smooth, flat-coloured pieces named by role (Body, Eye, Accent, Glow) instead of textures | Big readable faces; the Frozen, Glowing and Gold looks can still recolour them; the block-built versions stay as the fallback |
 | 10-05 | Sound effects are made in code (`Sounds/make_sounds.py`) and uploaded with an Open Cloud key | 100% original (no licence or copyright risk), easy to tweak and re-upload |
 | 10-05 | Uploaded models load by asset id (InsertService) | No manual Studio import after every change |
 | 10-05 | Prototype: the server decides, clients draw (plants, Thing, Thinglets drawn locally from plot attributes) | Smooth animation on phones, light server |

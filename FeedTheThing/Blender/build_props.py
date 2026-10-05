@@ -1,6 +1,7 @@
 """
 Feed the Thing in the Basement - props made in Blender: the seed delivery
-truck and the seed package it throws onto your lawn.
+truck, the seed package it throws onto your lawn, and the Thinglets and
+their egg (build_creatures.py).
 
 Run:  blender --background --python build_props.py   (or: python build_props.py)
 Writes Props.blend, Export/FeedTheThing_Props.fbx and Previews/props_*.jpg.
@@ -19,6 +20,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 
+import build_creatures as C  # noqa: E402
 import build_map as K  # noqa: E402
 from build_map import at, new_mesh  # noqa: E402
 
@@ -102,12 +104,14 @@ def main():
     textures = {"palette": K.save_palette()}
     build_truck(0)
     build_package(30)
+    C.build_all(50)  # the Thinglets and the egg, x = 50 to 66
     # a bit of ground for the previews
     floor = new_mesh("PreviewFloor", texture="studs_lawn", tile=8)
-    floor.box(at(15, -0.25, 0), (80, 0.5, 40), faces={"top"})
+    floor.box(at(35, -0.25, 0), (120, 0.5, 40), faces={"top"})
     textures["studs_lawn"] = K.stud_texture("studs_lawn", (135, 225, 55))
     print("Objects:")
     K.build_objects(textures)
+    C.finish()
     floor_obj = bpy.data.objects["PreviewFloor"]
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(K.HERE, "Props.blend"))
     # export everything except the preview floor
@@ -124,6 +128,8 @@ def main():
         K.render_preview("props_truck", (-13, 9, -14), (0, 3.5, 0), lens=35)
         K.render_preview("props_truck_side", (16, 6, 6), (0, 4, 1), lens=35)
         K.render_preview("props_package", (25, 4, -5), (30, 1.2, 0), lens=45)
+        for i, x in enumerate((52, 58, 64)):  # three at a time
+            K.render_preview(f"creatures_{i + 1}", (x, 1.5, -5.6), (x, 0.55, 0), lens=40)
 
 
 if __name__ == "__main__":

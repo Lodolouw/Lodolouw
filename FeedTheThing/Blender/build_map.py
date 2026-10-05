@@ -867,7 +867,7 @@ def build_objects(textures):
         obj = bpy.data.objects.new(m.name, mesh)
         bpy.context.scene.collection.objects.link(obj)
         marker = m.name.startswith("Map") or m.name.endswith("_Origin") or m.name.endswith("_MarkX")
-        if "Glow_" in m.name or marker:
+        if "Glow_" in m.name or marker or m.texture is None:
             key = m.name  # no texture: the game colours these itself
             if key not in materials:
                 materials[key] = make_material(key, None)

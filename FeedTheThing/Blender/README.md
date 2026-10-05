@@ -12,6 +12,22 @@
 | `Textures/` | Stud textures (grass, lawn, sidewalk, plaza, wall) + one colour palette |
 | `Previews/` | Renders of the map |
 
+## The props and the Thinglets
+
+`build_props.py` makes `Export/FeedTheThing_Props.fbx`: the delivery truck, the seed package, and (from `build_creatures.py`) the 8 Thinglets and their egg. `upload.bat` uploads it and the game loads it by itself.
+
+![Thinglets](Previews/creatures_1.jpg)
+![Thinglets](Previews/creatures_2.jpg)
+![Thinglets](Previews/creatures_3.jpg)
+
+Each creature is a few smooth, single-colour objects named `<Kind>_<Role>_<RRGGBB>`, for example `Blorp_Body_E84A4A`. The game colours each one from its name. The roles:
+- **Body** takes the Frozen, Glowing and Gold looks.
+- **Eye** (eyes, mouth, blush) never changes.
+- **Accent** (leaves, spots) glows when the Thinglet is Glowing.
+- **Glow** always glows.
+
+To change a creature, edit its function in `build_creatures.py`, run `python build_props.py`, then run `upload.bat`.
+
 ## Import it into Studio
 
 1. Open the **Avatar** tab (or File menu) and choose **Import 3D**. Pick `Export/FeedTheThing_Map.fbx`.

@@ -9,8 +9,9 @@
 	named <Prop>_<Part> (Truck_Body, Truck_WheelFL, Package_Box...) plus two
 	marker blocks per prop, <Prop>_Origin and <Prop>_MarkX, 10 studs apart.
 	Assets.get("Truck") puts a prop together from those: the right size, the
-	right way round (facing -Z), its base at its pivot. Parts named ...Glow_RRGGBB
-	glow in that colour.
+	right way round (facing -Z), its base at its pivot. Parts named
+	<Prop>_<Role>_<RRGGBB> (the Thinglets) get that colour and a "Role"
+	attribute (Body, Eye, Accent); Role Glow glows in that colour.
 
 	Not there at all? Assets.get returns nil and the game
 	uses a simple stand-in built from blocks (see Looks).
@@ -82,11 +83,18 @@ local function build(name)
 			part.CanCollide = false
 			part.CanTouch = false
 			part.CanQuery = false
-			local hex = string.match(d.Name, "Glow_(%x%x%x%x%x%x)")
-			if hex then
-				part.Material = Enum.Material.Neon
+			-- <Role>_<RRGGBB>: one flat colour (creatures). Role Glow = glowing Neon.
+			local role, hex = string.match(part.Name, "^(%a+)_(%x%x%x%x%x%x)")
+			if role then
 				part.Color = Color3.fromHex(hex)
-				part.CastShadow = false
+				part.Material = Enum.Material.SmoothPlastic
+				if role == "Glow" then
+					part.Material = Enum.Material.Neon
+					part.CastShadow = false
+					role = "Accent"
+				end
+				part:SetAttribute("Role", role)
+				part.Name = role
 			end
 			part.Parent = model
 		end

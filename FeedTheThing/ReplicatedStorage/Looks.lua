@@ -1,8 +1,10 @@
 --[[
 	Looks  (ModuleScript, parent: ReplicatedStorage, name: "Looks")
 
-	Builds every model in the game from plain Parts - no imported meshes:
-	fruit, plants, Thinglets, eggs and the Thing's eyes, arms, teeth and horns.
+	Builds every model in the game: fruit, plants, Thinglets, eggs and the
+	Thing's eyes, arms, teeth and horns. Thinglets and eggs come from the
+	Blender art when it's loaded (see Assets); everything else, and the
+	stand-ins until then, is built from plain Parts.
 	The clients use it to draw the world, and the HUD uses it for icons.
 
 	Thinglets are built 1 stud tall, standing on their "Root" part, facing -Z.
@@ -14,6 +16,17 @@ local Looks = {}
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+
+-- the Assets module (not an old props import that might share its name)
+local function moduleNamed(name)
+	for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+		if child.Name == name and child:IsA("ModuleScript") then
+			return child
+		end
+	end
+	return ReplicatedStorage:WaitForChild(name)
+end
+local Assets = require(moduleNamed("Assets"))
 
 local WHITE = Color3.fromRGB(255, 255, 255)
 local BLACK = Color3.fromRGB(25, 20, 30)
@@ -399,11 +412,46 @@ THINGLET.LilThing = function(b)
 	b:add(blob(Vector3.new(0.12, 0.45, 0.12), Config.Thing.SkinColor), CFrame.new(0.42, 0.5, -0.05) * CFrame.Angles(0, 0, -0.9), "Body", "Arm")
 end
 
+-- The Blender version of a creature or the egg (FeedTheThing/Blender/
+-- build_creatures.py, loaded with the props), or nil if it isn't there yet
+local function fromBlender(name, welded)
+	local model = Assets.get(name)
+	if not model or not model.PrimaryPart then
+		return nil
+	end
+	local root = model.PrimaryPart
+	model:SetAttribute("Blender", true)
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") and p ~= root then
+			p.CanQuery = true -- so you can tap it
+			p.CastShadow = false
+			if welded then
+				p.Anchored = false
+				p.Massless = true
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = root
+				weld.Part1 = p
+				weld.Parent = p
+			end
+		end
+	end
+	return model
+end
+
+-- Is the Blender art loaded? (until then, the block-built stand-ins are used)
+function Looks.hasBlenderArt()
+	return Assets.get("Blorp") ~= nil
+end
+
 function Looks.thinglet(kind, mutationId, welded)
-	local b = newBuilder(kind)
-	local build = THINGLET[kind] or THINGLET.Blorp
-	build(b)
-	local model = b:finish(welded ~= false)
+	local model = fromBlender(THINGLET[kind] and kind or "Blorp", welded ~= false)
+	if not model then
+		local b = newBuilder(kind)
+		local build = THINGLET[kind] or THINGLET.Blorp
+		build(b)
+		model = b:finish(welded ~= false)
+	end
+	model.Name = kind
 	Looks.applyMutation(model, mutationId)
 	model:SetAttribute("Kind", kind)
 	return model
@@ -427,8 +475,17 @@ end
 -- Egg (1 stud tall), speckled in its rarity colour
 ----------------------------------------------------------------------
 function Looks.egg(rarity)
-	local b = newBuilder("Egg")
 	local color = Config.Rarities[rarity] and Config.Rarities[rarity].color or WHITE
+	local model = fromBlender("Egg", true)
+	if model then
+		for _, p in ipairs(model:GetDescendants()) do
+			if p:IsA("BasePart") and p:GetAttribute("Role") == "Accent" then
+				p.Color = color -- the spots, in the rarity's colour
+			end
+		end
+		return model
+	end
+	local b = newBuilder("Egg")
 	b:add(blob(Vector3.new(0.78, 1, 0.78), Color3.fromRGB(250, 245, 230)), CFrame.new(0, 0.5, 0), "Body", "Shell")
 	for i, offset in ipairs({ Vector3.new(0.2, 0.6, -0.3), Vector3.new(-0.25, 0.4, -0.27), Vector3.new(0.05, 0.25, -0.36), Vector3.new(-0.1, 0.78, -0.22) }) do
 		b:add(ball(0.12 + (i % 2) * 0.05, color), CFrame.new(offset), "Accent", "Spot")

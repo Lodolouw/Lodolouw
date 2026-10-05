@@ -665,6 +665,30 @@ plotsFolder.ChildAdded:Connect(function(folder)
 	setupPlot(folder)
 end)
 
+-- The Blender Thinglets load a moment after the game starts: once they're
+-- there, swap out any block-built stand-ins
+task.spawn(function()
+	for _ = 1, 60 do
+		if Looks.hasBlenderArt() then
+			for _, p in pairs(plots) do
+				local stale = false
+				for id, t in pairs(p.thinglets) do
+					if not t.model:GetAttribute("Blender") then
+						t.model:Destroy()
+						p.thinglets[id] = nil
+						stale = true
+					end
+				end
+				if stale then
+					updateYard(p)
+				end
+			end
+			return
+		end
+		task.wait(3)
+	end
+end)
+
 local function myPlot()
 	for _, p in pairs(plots) do
 		if p.folder:GetAttribute("Owner") == player.UserId then
