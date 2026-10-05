@@ -351,7 +351,11 @@ local function buySeed(cropId, replace)
 	end
 	if result.ok then
 		UI.sound("Buy")
-		toast(result.msg, C.Good, 2.5)
+		toast(result.msg, C.Good, 3)
+		-- close the shop so you can watch the delivery truck pull up
+		if openPanel == "Shop" then
+			showPanel("Shop")
+		end
 	else
 		UI.sound("Error", 0.6)
 		toast(result.msg, C.Bad, 2.5)

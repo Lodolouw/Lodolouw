@@ -114,6 +114,14 @@ for k, c in enumerate(HOUSE_COLORS):
 for k, c in enumerate(ROOF_COLORS):
     PALETTE[f"roof{k + 1}"] = c
     PALETTE[f"roof{k + 1}_dark"] = tuple(int(v * 0.75) for v in c)
+# colours for the props (build_props.py). Added after the others, so the
+# map's swatches never move.
+PALETTE.update({
+    "truck_red": (230, 55, 50), "truck_red_dark": (170, 35, 35), "cargo": (255, 245, 225),
+    "cargo_stripe": (80, 200, 70), "tire": (35, 35, 40), "hub": (200, 205, 215), "chrome": (225, 230, 240),
+    "cardboard": (205, 150, 90), "cardboard_dark": (165, 115, 65), "tape": (235, 205, 140),
+    "roof_light": (255, 170, 40), "headlight": (255, 245, 200),
+})
 
 SWATCH = 32
 PAL_N = 16  # 16 x 16 swatches of 32 px = a 512 px image (big swatches don't bleed at a distance)
@@ -764,8 +772,9 @@ def build_objects(textures):
         mesh.validate()
         obj = bpy.data.objects.new(m.name, mesh)
         bpy.context.scene.collection.objects.link(obj)
-        if m.name.startswith("Glow_") or m.name.startswith("Map"):
-            key = m.name
+        marker = m.name.startswith("Map") or m.name.endswith("_Origin") or m.name.endswith("_MarkX")
+        if "Glow_" in m.name or marker:
+            key = m.name  # no texture: the game colours these itself
             if key not in materials:
                 materials[key] = make_material(key, None)
         else:
@@ -773,7 +782,7 @@ def build_objects(textures):
             if key not in materials:
                 materials[key] = make_material(key, textures[key])
         mesh.materials.append(materials[key])
-        if m.name.startswith("Map"):
+        if marker:
             obj.hide_render = True
         print(f"  {m.name:16s} {m.triangles():6d} triangles")
         assert m.triangles() < 20000, m.name + " has too many triangles for one Roblox MeshPart"
@@ -871,4 +880,5 @@ def main():
         render_preview("stand", (-150, 10, 0), (-205, 6, 0), lens=30)
 
 
-main()
+if __name__ == "__main__":
+    main()

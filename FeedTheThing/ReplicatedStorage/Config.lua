@@ -311,4 +311,21 @@ Config.World = {
 	Studs = true, -- studs on top of the ground, roofs and walls (the stud look)
 }
 
+----------------------------------------------------------------------
+-- Seed deliveries: buy a seed and a truck leaves the seed stand, drives
+-- down the street, stops at your plot and lobs the package onto your lawn.
+-- The seed is planted the moment the package bursts open.
+----------------------------------------------------------------------
+Config.Delivery = {
+	StartX = -178, -- leaves from in front of the seed stand (west end)
+	EndX = 190, -- and drives off east, under the arch, in a puff of smoke
+	Lane = 6, -- how far from the road's middle it drives (on your side)
+	Speed = 75, -- average studs per second (it zooms off and brakes hard)
+	Brake = 0.5, -- seconds stopped before the throw
+	Throw = 1.1, -- seconds the package flies
+	Open = 1.0, -- bounce, burst open, the seed flies into the planter
+	Gap = 1.2, -- seconds between trucks to the same house
+	LandAt = Vector3.new(0, 0, -36), -- where the package lands (plot-local, the front lawn)
+}
+
 return Config

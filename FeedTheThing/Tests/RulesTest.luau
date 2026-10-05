@@ -159,6 +159,18 @@ check("rate whole", Rules.rate(1), "1")
 check("rate tens", Rules.rate(12.7), "12")
 check("rate big", Rules.rate(1500), "1.5K")
 check("clock", Rules.clock(125), "2:05")
+
+-- plots and deliveries
+local x1, z1, side1 = Rules.plotSpot(1)
+check("plot 1 is north of the street", side1, 1)
+check("plot 1 faces the road from the north", z1 > 0, true)
+local _, z2, side2 = Rules.plotSpot(2)
+check("plot 2 is across the street", side2 == -1 and z2 < 0, true)
+check("plots 1 and 2 face each other", x1, (Rules.plotSpot(2)))
+local near, far = Rules.deliveryTimes(5), Rules.deliveryTimes(7) -- west end vs east end
+check("the far end takes longer", far.total > near.total, true)
+check("timeline in order", near.drive < near.throwAt and near.throwAt < near.landAt and near.landAt < near.total, true)
+check("a delivery takes a few seconds", far.total > 3 and far.total < 10, true)
 check("clock hours", Rules.clock(3725), "1:02:05")
 
 print(string.format("%d passed, %d failed", passed, failed))

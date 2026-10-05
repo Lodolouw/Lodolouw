@@ -146,7 +146,9 @@ local function publishPlants(s)
 		for _, mutation in ipairs(plant.fruit) do
 			table.insert(letters, MUT_LETTER[mutation] or "N")
 		end
-		list[i] = { c = plant.crop, f = table.concat(letters) }
+		-- a = when its delivery lands (clients hide it until then)
+		local arriving = plant.arrive and plant.arrive > now() and plant.arrive or nil
+		list[i] = { c = plant.crop, f = table.concat(letters), a = arriving }
 	end
 	plotFolders[s.plot]:SetAttribute("Plants", HttpService:JSONEncode(list))
 end
@@ -614,14 +616,20 @@ function actions.buySeed(s, cropId, replace)
 	end
 
 	data.coins -= crop.seed
-	data.plants[spot] = { crop = crop.id, fruit = {}, timer = 0 }
+	-- a delivery truck brings it: the plant starts growing when the package lands
+	local t = now()
+	local start = math.max(t, s.deliveryFreeAt or 0)
+	s.deliveryFreeAt = start + Config.Delivery.Gap
+	local times = Rules.deliveryTimes(s.plot)
+	data.plants[spot] = { crop = crop.id, fruit = {}, timer = 0, arrive = start + times.total }
 	data.shop.bought[crop.id] = (data.shop.bought[crop.id] or 0) + 1
 	publishPlants(s)
+	remotes.Fx:FireAllClients({ type = "delivery", plot = s.plot, spot = spot, crop = crop.id, start = start })
 	if refreshDaily(s) then
 		markDirty(s)
 	end
 	markDirty(s)
-	return { ok = true, msg = crop.name .. " planted!" }
+	return { ok = true, msg = "Your " .. crop.name .. " seeds are on their way!" }
 end
 
 function actions.buyPlot(s)
@@ -747,8 +755,12 @@ end
 
 local function growPlants(s, dt)
 	local changed = false
+	local t = now()
 	for _, plant in ipairs(s.data.plants) do
 		local crop = Rules.crop(plant.crop)
+		if plant.arrive and plant.arrive > t then
+			continue -- still on the delivery truck
+		end
 		if crop and #plant.fruit < Config.Garden.FruitCap then
 			plant.timer += dt
 			if plant.timer >= crop.regrow then

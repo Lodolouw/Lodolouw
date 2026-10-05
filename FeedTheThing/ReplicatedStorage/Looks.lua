@@ -437,6 +437,49 @@ function Looks.egg(rarity)
 end
 
 ----------------------------------------------------------------------
+-- Stand-ins for the Blender props (used until FeedTheThing_Props.fbx is
+-- imported as ReplicatedStorage.Assets). Same names and layout: facing -Z,
+-- base at the pivot, wheels named Wheel*.
+----------------------------------------------------------------------
+function Looks.truck()
+	local b = newBuilder("Truck")
+	local red, cream = Color3.fromRGB(230, 55, 50), Color3.fromRGB(255, 245, 225)
+	b:add(part({ Size = Vector3.new(5.4, 0.9, 11.2), Color = Color3.fromRGB(35, 35, 40) }), CFrame.new(0, 1.9, 0.3), "Body", "Chassis")
+	b:add(part({ Size = Vector3.new(6, 4.8, 3.8), Color = red }), CFrame.new(0, 4.3, -3.8), "Body", "Cab")
+	b:add(blob(Vector3.new(5.9, 2.8, 1.8), red), CFrame.new(0, 3.1, -5.5), "Body", "Nose")
+	b:add(part({ Size = Vector3.new(4.8, 2, 0.3), Color = Color3.fromRGB(150, 210, 255), Material = Enum.Material.Glass }), CFrame.new(0, 5.2, -5.72), "Body", "Windshield")
+	b:add(part({ Size = Vector3.new(6.2, 6, 7.6), Color = cream }), CFrame.new(0, 5, 2.4), "Body", "Cargo")
+	b:add(part({ Size = Vector3.new(6.3, 0.7, 7.7), Color = Color3.fromRGB(80, 200, 70) }), CFrame.new(0, 2.65, 2.4), "Body", "Stripe")
+	b:add(part({ Size = Vector3.new(6.4, 0.9, 0.8), Color = Color3.fromRGB(225, 230, 240) }), CFrame.new(0, 1.6, -6.25), "Body", "Bumper")
+	b:add(part({ Size = Vector3.new(2.4, 0.5, 1), Color = Color3.fromRGB(255, 170, 40), Material = Enum.Material.Neon }), CFrame.new(0, 6.95, -3.8), "Accent", "RoofLight")
+	for name, offset in pairs({ FL = Vector3.new(-2.85, 1.55, -3.8), FR = Vector3.new(2.85, 1.55, -3.8), BL = Vector3.new(-2.95, 1.55, 3.6), BR = Vector3.new(2.95, 1.55, 3.6) }) do
+		b:add(part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.1, 3.1, 3.1), Color = Color3.fromRGB(35, 35, 40) }), CFrame.new(offset), "Body", "Wheel" .. name)
+	end
+	return b:finish(false)
+end
+
+function Looks.package()
+	local b = newBuilder("Package")
+	b:add(part({ Size = Vector3.new(2.6, 2.4, 2.6), Color = Color3.fromRGB(205, 150, 90) }), CFrame.new(0, 1.2, 0), "Body", "Box")
+	b:add(part({ Size = Vector3.new(2.62, 0.05, 0.6), Color = Color3.fromRGB(235, 205, 140) }), CFrame.new(0, 2.42, 0), "Body", "Tape")
+	return b:finish(false)
+end
+
+-- A little seed packet in the crop's colour (flies from the package into the planter)
+function Looks.seedPacket(cropId)
+	local color = Color3.fromRGB(120, 200, 80)
+	for _, crop in ipairs(Config.Crops) do
+		if crop.id == cropId then
+			color = crop.color
+		end
+	end
+	local b = newBuilder("SeedPacket")
+	b:add(part({ Size = Vector3.new(1.3, 1.7, 0.15), Color = Color3.fromRGB(250, 248, 240) }), CFrame.new(0, 0.85, 0), "Body", "Paper")
+	b:add(ball(0.8, color), CFrame.new(0, 0.95, -0.12), "Body", "Picture")
+	return b:finish(false)
+end
+
+----------------------------------------------------------------------
 -- The Thing (client side, per plot). Returns a model plus the moving
 -- parts so the client can animate them. `hatchCF` is the centre of the
 -- hatch at ground level; the opening is Config.Thing.Sizes[size].hole wide.

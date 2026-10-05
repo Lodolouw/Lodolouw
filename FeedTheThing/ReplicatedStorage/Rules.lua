@@ -433,13 +433,30 @@ end
 -- along X through the middle of the map). Its LookVector points at the
 -- road, so plot-local -Z is the front lawn and +Z is the house.
 ----------------------------------------------------------------------
-function Rules.plotCFrame(i)
+-- plot i's centre (x, z) and which side of the street it's on (1 north, -1 south)
+function Rules.plotSpot(i)
 	local w = Config.World
 	local entry = w.PlotOrder[i] or w.PlotOrder[1]
 	local side, column = entry[1], entry[2]
 	local x = (column - (w.PlotsPerSide + 1) / 2) * w.PlotSpacing
 	local z = side * (w.RoadWidth / 2 + w.SidewalkWidth + w.FrontYard + w.PlotDepth / 2)
+	return x, z, side
+end
+
+function Rules.plotCFrame(i)
+	local x, z = Rules.plotSpot(i)
 	return CFrame.lookAt(Vector3.new(x, 0, z), Vector3.new(x, 0, 0))
+end
+
+-- A seed delivery's timeline for plot i, in seconds after the truck sets off.
+-- The server plants the seed at `total`; every client plays the same show.
+function Rules.deliveryTimes(i)
+	local d = Config.Delivery
+	local x = Rules.plotSpot(i)
+	local drive = math.max(0.6, (x - d.StartX) / d.Speed)
+	local throwAt = drive + d.Brake
+	local landAt = throwAt + d.Throw
+	return { drive = drive, throwAt = throwAt, landAt = landAt, total = landAt + d.Open }
 end
 
 return Rules

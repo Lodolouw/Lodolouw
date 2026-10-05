@@ -23,6 +23,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Rules = require(ReplicatedStorage:WaitForChild("Rules"))
 local Looks = require(ReplicatedStorage:WaitForChild("Looks"))
 local UI = require(ReplicatedStorage:WaitForChild("UI"))
+local Assets = require(ReplicatedStorage:WaitForChild("Assets"))
 
 local remoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local HarvestedRemote = remoteFolder:WaitForChild("Harvested") :: RemoteEvent
@@ -98,7 +99,8 @@ local function placeFruit(plant, index, cropId, letter)
 	return fruit
 end
 
-local function updatePlants(p)
+local updatePlants -- (it schedules itself for deliveries)
+function updatePlants(p)
 	local list = decode(p.folder:GetAttribute("Plants"))
 	for spot = 1, #W.PlantSpots do
 		local entry = list[spot]
@@ -108,16 +110,43 @@ local function updatePlants(p)
 				plant.model:Destroy()
 				p.plants[spot] = nil
 			end
+		elseif type(entry.a) == "number" and entry.a > now() then
+			-- still on the delivery truck: show it when the package lands
+			if plant then
+				plant.model:Destroy()
+				p.plants[spot] = nil
+			end
+			task.delay(entry.a - now() + 0.05, function()
+				updatePlants(p)
+			end)
 		else
 			if not plant or plant.crop ~= entry.c then
 				if plant then
 					plant.model:Destroy()
 				end
 				local model = Looks.plant(entry.c)
-				model:PivotTo(p.cf * CFrame.new(W.PlantSpots[spot] + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, spot * 1.3, 0))
+				local spotCF = p.cf * CFrame.new(W.PlantSpots[spot] + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, spot * 1.3, 0)
+				model:PivotTo(spotCF)
 				model.Parent = p.root
 				plant = { crop = entry.c, model = model, fruit = {} }
 				p.plants[spot] = plant
+				if p.ready then
+					-- a new plant springs up out of the dirt
+					task.spawn(function()
+						local steps = 12
+						for step = 1, steps do
+							if not model.Parent then
+								return
+							end
+							local k = step / steps
+							model:ScaleTo(math.max(0.05, k) * (1 + math.sin(k * math.pi) * 0.35))
+							task.wait(1 / 30)
+						end
+						if model.Parent then
+							model:ScaleTo(1)
+						end
+					end)
+				end
 			end
 			local letters = type(entry.f) == "string" and entry.f or ""
 			for index = 1, Config.Garden.FruitCap do
@@ -551,6 +580,7 @@ local function setupPlot(folder)
 	buildThing(p)
 	updatePlants(p)
 	updateYard(p)
+	p.ready = true
 	folder:GetAttributeChangedSignal("Plants"):Connect(function()
 		updatePlants(p)
 	end)
@@ -590,8 +620,187 @@ end
 ----------------------------------------------------------------------
 -- Messages from the server and the other client scripts
 ----------------------------------------------------------------------
+----------------------------------------------------------------------
+-- Seed deliveries: the truck, the throw, the bounce, the burst
+----------------------------------------------------------------------
+local function poof(position, color, amount)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(1, 1, 1)
+	holder.Position = position
+	holder.Parent = visuals
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color = ColorSequence.new(color or Color3.fromRGB(255, 255, 255))
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+	emitter.Speed = NumberRange.new(6, 14)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Lifetime = NumberRange.new(0.4, 0.8)
+	emitter.Drag = 4
+	emitter.Rate = 0
+	emitter.Parent = holder
+	emitter:Emit(amount or 20)
+	task.delay(1.2, function()
+		holder:Destroy()
+	end)
+end
+
+local function easeOut(u)
+	return 1 - (1 - u) * (1 - u)
+end
+
+local function arc(from, to, k, height)
+	return from:Lerp(to, k) + Vector3.new(0, math.sin(k * math.pi) * height, 0)
+end
+
+local function runDelivery(payload)
+	local p = plots[payload.plot]
+	local spot = W.PlantSpots[payload.spot]
+	if not p or not spot or type(payload.start) ~= "number" then
+		return
+	end
+	local D = Config.Delivery
+	local times = Rules.deliveryTimes(payload.plot)
+	local plotX, _, side = Rules.plotSpot(payload.plot)
+	local laneZ = side * D.Lane
+	local start = payload.start
+	if now() - start > times.total then
+		return -- joined too late to see it
+	end
+	if start > now() then
+		task.wait(start - now())
+	end
+
+	local truck = Assets.get("Truck") or Looks.truck()
+	local wheels = {}
+	for _, d in ipairs(truck:GetDescendants()) do
+		if d:IsA("BasePart") and string.find(d.Name, "Wheel") then
+			table.insert(wheels, { part = d, offset = d.CFrame })
+		end
+	end
+	-- exhaust puffs out of the back
+	local puff = Instance.new("ParticleEmitter")
+	puff.Color = ColorSequence.new(Color3.fromRGB(220, 220, 230))
+	puff.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 1.6) })
+	puff.Transparency = NumberSequence.new(0.2, 1)
+	puff.Lifetime = NumberRange.new(0.5, 0.8)
+	puff.Rate = 12
+	puff.Speed = NumberRange.new(2, 3)
+	puff.EmissionDirection = Enum.NormalId.Back
+	puff.Parent = truck.PrimaryPart
+	truck.Parent = visuals
+
+	local landCF = p.cf * CFrame.new(D.LandAt)
+	local spotPos = (p.cf * CFrame.new(spot + Vector3.new(0, 1, 0))).Position
+	local driveOffAt = times.throwAt + 0.5
+	local package, packageStart, honked, landed, opened, packet = nil, nil, false, false, false, nil
+	local lastX, spin = D.StartX, 0
+	local connection
+	connection = RunService.RenderStepped:Connect(function(dt)
+		local t = now() - start
+		-- the truck: zoom off, brake hard at the plot, then drive away
+		local x, lean = plotX, 0
+		if t < times.drive then
+			local u = t / times.drive
+			x = D.StartX + (plotX - D.StartX) * easeOut(u)
+			if u > 0.65 then
+				lean = math.sin((u - 0.65) / 0.35 * math.pi) * 0.14 -- the nose dips as it brakes
+			end
+		elseif t < driveOffAt then
+			local settle = t - times.drive
+			lean = -math.sin(math.min(1, settle / 0.35) * math.pi) * 0.05 -- and rocks back
+			if not honked then
+				honked = true
+				UI.sound("Honk", 0.8)
+				floatingText(Vector3.new(plotX, 10, laneZ), "HONK!", Color3.fromRGB(255, 220, 60), 40, 4)
+			end
+		else
+			local u = t - driveOffAt
+			x = plotX + 30 * u * u + 8 * u
+		end
+		local speed = dt > 0 and (x - lastX) / dt or 0
+		lastX = x
+		spin += speed * dt / 1.55
+		local bob = math.sin(t * 18) * 0.05 * math.min(1, math.abs(speed) / 30)
+		local truckCF = CFrame.lookAt(Vector3.new(x, 0.2 + bob, laneZ), Vector3.new(x + 1, 0.2 + bob, laneZ)) * CFrame.Angles(-lean, 0, 0)
+		if truck.Parent then
+			truck:PivotTo(truckCF)
+			for _, w in ipairs(wheels) do
+				w.part.CFrame = truckCF * w.offset * CFrame.Angles(-spin, 0, 0)
+			end
+			if x > D.EndX then
+				poof(truckCF.Position + Vector3.new(0, 4, 0), Color3.fromRGB(230, 230, 240), 30)
+				truck:Destroy()
+			end
+		end
+
+		-- the package: thrown off the back in a big lazy arc
+		if t >= times.throwAt and not package then
+			package = Assets.get("Package") or Looks.package()
+			package.Parent = visuals
+			packageStart = (truckCF * CFrame.new(0, 8.5, 2)).Position
+			UI.sound("Throw", 0.7, 0.8)
+		end
+		if package and not landed then
+			local k = math.clamp((t - times.throwAt) / D.Throw, 0, 1)
+			local position = arc(packageStart, landCF.Position, k, 16)
+			package:PivotTo(CFrame.new(position) * CFrame.Angles(k * 7, k * 3, k * 2))
+			if k >= 1 then
+				landed = true
+				UI.sound("Thud", 0.8)
+				poof(landCF.Position, Color3.fromRGB(200, 170, 120), 16)
+			end
+		end
+		if landed and not opened then
+			-- squash, bounce, wobble...
+			local since = t - times.landAt
+			local hop = since > 0.15 and since < 0.45 and math.sin((since - 0.15) / 0.3 * math.pi) * 1.6 or 0
+			local squash = since < 0.15 and (1 - math.sin(since / 0.15 * math.pi) * 0.35) or 1
+			package:PivotTo(landCF * CFrame.new(0, hop, 0) * CFrame.Angles(0, since * 2, math.sin(since * 30) * 0.08 * (1 - math.min(1, since))))
+			package:ScaleTo(math.max(0.3, squash))
+			-- ...then POP: it bursts and the seed packet flies into the planter
+			if since >= 0.55 then
+				opened = true
+				UI.sound("Poof", 0.8)
+				poof(landCF.Position + Vector3.new(0, 1.2, 0), Rules.crop(payload.crop) and Rules.crop(payload.crop).color or nil, 30)
+				package:Destroy()
+				packet = Looks.seedPacket(payload.crop)
+				packet.Parent = visuals
+			end
+		end
+		if packet then
+			local flyStart = times.landAt + 0.55
+			local k = math.clamp((t - flyStart) / (times.total - flyStart), 0, 1)
+			local position = arc(landCF.Position + Vector3.new(0, 1.2, 0), spotPos, k, 6)
+			packet:PivotTo(CFrame.new(position) * CFrame.Angles(0, k * 10, 0))
+			if k >= 1 then
+				poof(spotPos, Color3.fromRGB(150, 255, 120), 18)
+				UI.sound("Pop", 0.8, 1.2)
+				packet:Destroy()
+				packet = nil
+			end
+		end
+		if t > times.total + 4 then
+			connection:Disconnect()
+			if truck.Parent then
+				truck:Destroy()
+			end
+		end
+	end)
+end
+
 FxRemote.OnClientEvent:Connect(function(payload)
-	if type(payload) ~= "table" or payload.type ~= "chomp" then
+	if type(payload) ~= "table" then
+		return
+	end
+	if payload.type == "delivery" then
+		task.spawn(runDelivery, payload)
+		return
+	end
+	if payload.type ~= "chomp" then
 		return
 	end
 	local p = plots[payload.plot]
