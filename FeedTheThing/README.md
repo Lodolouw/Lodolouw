@@ -57,7 +57,7 @@ While Rojo is connected, any change to a file in `FeedTheThing/` shows up in Stu
 All the sound effects are original. `Sounds/make_sounds.py` makes them, and also packs all of them into one file, `Sounds/SoundSheet.ogg`, so they cost a single audio upload instead of 18 (Roblox allows 10 audio uploads a month without ID verification). The Blender models are the `.fbx` files in `Blender/Export`.
 
 **Double-click `upload.bat`** (next to `serve.bat`):
-1. **Paste your API key and press Enter.** It stays invisible while you paste.
+1. **Copy your API key (Ctrl+C) and press Enter.** It reads the key straight from the clipboard, so nothing shows on screen.
 2. **Type your Roblox user id.** It's the number in your profile's web address.
 3. **It uploads whatever is new or changed and writes the ids into the game's files.** Rojo puts them in Studio, and the game loads the sounds, map and props by itself, so there's nothing to import.
 4. **Commit and push in GitHub Desktop** so the ids are kept.

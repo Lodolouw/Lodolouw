@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -189,19 +190,49 @@ def remember(key, creator_id):
     print("To forget them: upload.bat forget")
 
 
+def read_clipboard():
+    """What's copied right now (Windows), or "" if that doesn't work."""
+    if os.name != "nt":
+        return ""
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard -Raw"],
+                             capture_output=True, text=True, timeout=30)
+        return (out.stdout or "").strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def looks_like_key(text):
+    return len(text) >= 20 and not any(c.isspace() for c in text)
+
+
+def ask_key():
+    if os.name != "nt":
+        print("Paste your Roblox API key and press Enter (it stays invisible).")
+        return getpass.getpass("  API key: ").strip()
+    # The Windows console can't paste into a hidden prompt, so the key is
+    # read straight from the clipboard: nothing to paste, nothing on screen.
+    print("Copy your Roblox API key (select it, Ctrl+C), then come back here and press Enter.")
+    input("  Press Enter when it's copied... ")
+    key = read_clipboard()
+    while not looks_like_key(key):
+        print("  That's not an API key on the clipboard. Copy the key and press Enter again,")
+        typed = input("  or paste it here (right-click) and press Enter: ").strip()
+        key = typed if typed else read_clipboard()
+        if typed:
+            os.system("cls")  # don't leave the key on the screen
+    return key
+
+
 def ask_credentials():
-    """The key and user id: saved on this computer, or typed in."""
+    """The key and user id: saved on this computer, or asked for."""
     key, creator_id = saved_credentials()
     if key and creator_id:
         print(f"Using the API key saved on this computer (ending in ...{key[-4:]}) and user id {creator_id}.")
         return key, creator_id, True
     print()
-    print("Paste your Roblox API key and press Enter.")
-    print("(It stays invisible while you paste, so it never shows up in a screenshot.)")
-    key = ""
-    while not key:
-        key = getpass.getpass("  API key: ").strip()
-    print(f"  Got it: {len(key)} characters, ending in ...{key[-4:]}")
+    key = ask_key()
+    print(f"  Got the key: {len(key)} characters, ending in ...{key[-4:]}")
     creator_id = input("Your Roblox user id (the number in your profile's web address): ").strip()
     while not creator_id.isdigit():
         creator_id = input("  Just the number, please: ").strip()
