@@ -137,13 +137,12 @@ local pad = UI.new("TextButton", {
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -8),
 	Size = UDim2.fromOffset(PAD, PAD),
-	BackgroundColor3 = UI.Colors.Panel,
+	BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 	Text = "",
 	AutoButtonColor = false,
 	Visible = false,
 }, stack)
-UI.corner(pad, UDim.new(1, 0))
-UI.stroke(pad, 4, UI.Colors.Stroke)
+UI.chunky(pad, nil, UDim.new(1, 0), 5)
 local padScale = UI.new("UIScale", { Scale = 1 }, pad)
 
 -- the pulsing ring around the pad
@@ -184,7 +183,7 @@ UI.new("UIListLayout", {
 	SortOrder = Enum.SortOrder.LayoutOrder,
 }, basketBar)
 
-local dailyLabel = UI.label(stack, {
+local dailyLabel = UI.number(stack, {
 	Name = "Daily",
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -PAD - 96),
@@ -194,7 +193,7 @@ local dailyLabel = UI.label(stack, {
 	Visible = false,
 })
 
-local comboLabel = UI.label(stack, {
+local comboLabel = UI.number(stack, {
 	Name = "Combo",
 	AnchorPoint = Vector2.new(0, 1),
 	Position = UDim2.new(0.5, PAD / 2 + 16, 1, -42),
@@ -204,7 +203,7 @@ local comboLabel = UI.label(stack, {
 	Text = "",
 })
 
-local bigText = UI.label(gui, {
+local bigText = UI.number(gui, {
 	Name = "Perfect",
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.36),
@@ -281,8 +280,8 @@ local padIconKey = nil
 local function selectFood(cropId)
 	selected = cropId
 	for id, b in pairs(basketButtons) do
-		b.stroke.Color = id == selected and UI.Colors.Gold or UI.Colors.Stroke
-		b.stroke.Thickness = id == selected and 5 or 3
+		b.stroke.Color = id == selected and Color3.fromRGB(255, 255, 255) or UI.Colors.Stroke
+		b.stroke.Thickness = id == selected and 4 or 3
 	end
 	local key = cropId and (cropId .. bestVariant(cropId)) or ""
 	if key == padIconKey then
@@ -308,13 +307,18 @@ local function refreshBasket()
 				Name = crop.id,
 				LayoutOrder = i,
 				Size = UDim2.fromOffset(62, 62),
-				BackgroundColor3 = UI.Colors.PanelLight,
+				BackgroundColor3 = Color3.fromRGB(40, 42, 50),
+				BackgroundTransparency = 0.25,
 				Text = "",
 				AutoButtonColor = false,
 				Visible = false,
 			}, basketBar)
-			UI.corner(button, UDim.new(0, 14))
+			UI.corner(button, UDim.new(0, 8))
 			local stroke = UI.stroke(button, 3)
+			UI.label(button, {
+				Size = UDim2.fromOffset(18, 16), Position = UDim2.fromOffset(4, 2), Text = tostring(i),
+				TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(220, 220, 230),
+			})
 			UI.viewport(button, Looks.fruit(crop.id, "", false), { Size = UDim2.fromScale(0.9, 0.9), Position = UDim2.fromScale(0.05, 0.02) })
 			local countLabel = UI.label(button, {
 				Size = UDim2.new(1, -4, 0, 22), Position = UDim2.new(0, 0, 1, -22),
@@ -688,17 +692,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		[Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3,
 		[Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6,
 	}
-	local n = numbers[input.KeyCode]
-	if n then
-		local i = 0
-		for _, crop in ipairs(Config.Crops) do
-			if count(crop.id) > 0 then
-				i += 1
-				if i == n then
-					selectFood(crop.id)
-				end
-			end
-		end
+	-- the number keys match the numbers on the basket slots
+	local crop = Config.Crops[numbers[input.KeyCode] or 0]
+	if crop and count(crop.id) > 0 then
+		selectFood(crop.id)
 	end
 end)
 

@@ -275,12 +275,17 @@ Each size also adds +1% to every mutation chance.
 
 | Where | What | When |
 |---|---|---|
-| Top centre | 💰 coins (big) + coins/s (small) | Always |
-| Left edge, middle | 3 big buttons: 🛒 **Shop**, 📖 **Dex**, ⬆️ **Upgrades** (red dot when something new is there) | Always |
-| Bottom centre | **Throw pad + basket bar** | Near your hatch |
+| Top centre | Title banner "Feed the Thing!"; announcements and weather show in it | Always |
+| Left, middle | 2 wide buttons: **Shop** (green, cart), **Index** (cyan, book), with a red "!" badge when something's new | Always |
+| Right, middle | 2 square buttons: **Daily** (red, egg) and **Upgrades** (orange, chevrons) | Always |
+| Bottom left | 💰 coins in big italic numbers + coins/s above | Always |
+| Bottom right | Weather timer: "Snow in 2m 31s" / "Full Moon! 1m 05s left" | Always (above the jump button on phones) |
+| Bottom centre | **Throw pad + basket hotbar** (numbered slots) | Near your hatch |
 | Over the hatch (3D) | Belly slots, prediction badge, craving bubble, mutation odds chips, combo | Near your hatch |
 | Over each Thinglet (3D) | Name, rarity colour, coins/s, growth bar while growing | Always |
-| Top, under coins | Server announcements and weather banner (auto-fade) | When they happen |
+| Over each plot gate (3D) | Owner's avatar, name, Thing size | Always |
+
+The style follows the genre's hits (Steal an Egg): saturated colours, thick black outlines, lit-from-the-top buttons, white text with black outlines, big italic numbers. Icons are drawn with UI frames (crisp at any size, no uploads needed).
 
 **Popups (one big button each where possible):**
 
@@ -290,7 +295,8 @@ Each size also adds +1% to every mutation chance.
 - **Thinglet card** (tap a Thinglet): name, rarity, mutation, coins/s, growth, Sell.
 - **Shop:** all 6 seeds with stock, price, odds and "New stock in 2:31". (The mystery lives in the dex, not the shop: players need to see their next goal.) The ✨ **Style** tab for Robux cosmetics arrives with week 3.
 - **Upgrades:** More plots, More yard space, the Thing's growth bar.
-- **Dex:** 8 × 4 grid, silhouettes + hints.
+- **Index** (the dex): 8 × 4 grid, silhouettes + hints.
+- **Daily:** today's craving, progress, the bonus egg, the offline and friend perks.
 
 Minimum tap target 64 px; text never under 18 px.
 
