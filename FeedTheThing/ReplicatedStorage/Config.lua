@@ -237,13 +237,33 @@ Config.Friends = {
 }
 
 ----------------------------------------------------------------------
--- The world. Plots stand in a ring round a plaza. Plot-local positions:
--- X = left/right, Z = towards the house (+) or towards the plaza (-).
+-- The world: a stud-style neighbourhood. One street runs down the middle
+-- (along X) with 4 plots on each side, every plot facing the road.
+-- Plot-local positions: X = left/right, Z = towards the house (+) or
+-- towards the road (-).
 ----------------------------------------------------------------------
 Config.World = {
 	Plots = 8,
-	RingRadius = 140, -- plaza centre to plot centre
-	PlazaRadius = 60,
+	PlotsPerSide = 4,
+	PlotSpacing = 80, -- plot centre to plot centre along the street
+	-- which plot is which: { side (1 = north, -1 = south), column 1-4 }.
+	-- The first players get the middle of the street, across from each other.
+	PlotOrder = {
+		{ 1, 2 }, { -1, 2 }, { 1, 3 }, { -1, 3 },
+		{ 1, 1 }, { -1, 1 }, { 1, 4 }, { -1, 4 },
+	},
+	RoadWidth = 24,
+	SidewalkWidth = 6,
+	FrontYard = 2, -- grass between the sidewalk and the plot
+	RoadPastPlots = 10, -- the road runs this far past the last plots...
+	PlazaLength = 50, -- ...then a plaza at each end (seed stand west, arch east)
+	PlazaHalfWidth = 40,
+	BackYard = 15, -- room behind the plots, before the wall
+	WallHeight = 24,
+	-- The map itself is a model made in Blender (FeedTheThing/Blender). These
+	-- numbers must match build_map.py; the game adds invisible floors and
+	-- walls to match it.
+
 	PlotWidth = 70,
 	PlotDepth = 100,
 	PitSize = 14, -- the hole under the hatch (big enough for size 5)
@@ -266,14 +286,29 @@ Config.World = {
 		Vector3.new(-8, 0, -28), Vector3.new(8, 0, -28), Vector3.new(-24, 0, -28), Vector3.new(24, 0, -28),
 		Vector3.new(-8, 0, -40), Vector3.new(8, 0, -40), Vector3.new(-24, 0, -40), Vector3.new(24, 0, -40),
 	},
+	-- bright, toy-like colours (the stud look)
 	HouseColors = {
-		Color3.fromRGB(255, 205, 210), Color3.fromRGB(200, 230, 255), Color3.fromRGB(255, 240, 190),
-		Color3.fromRGB(210, 245, 210), Color3.fromRGB(235, 215, 255), Color3.fromRGB(255, 220, 185),
-		Color3.fromRGB(200, 245, 240), Color3.fromRGB(245, 245, 245),
+		Color3.fromRGB(255, 120, 120), Color3.fromRGB(90, 170, 255), Color3.fromRGB(255, 200, 70),
+		Color3.fromRGB(120, 210, 120), Color3.fromRGB(190, 130, 255), Color3.fromRGB(255, 150, 70),
+		Color3.fromRGB(80, 210, 200), Color3.fromRGB(255, 140, 200),
 	},
-	Grass = Color3.fromRGB(110, 200, 90),
-	Lawn = Color3.fromRGB(125, 215, 100),
-	Dirt = Color3.fromRGB(120, 80, 50),
+	RoofColors = {
+		Color3.fromRGB(170, 40, 50), Color3.fromRGB(30, 80, 170), Color3.fromRGB(190, 110, 30),
+		Color3.fromRGB(40, 120, 60), Color3.fromRGB(100, 50, 160), Color3.fromRGB(170, 70, 30),
+		Color3.fromRGB(20, 110, 110), Color3.fromRGB(170, 50, 120),
+	},
+	Grass = Color3.fromRGB(110, 205, 45), -- the street's grass
+	Lawn = Color3.fromRGB(135, 225, 55), -- your plot (a little brighter)
+	Dirt = Color3.fromRGB(125, 80, 45),
+	Road = Color3.fromRGB(70, 72, 82),
+	RoadLine = Color3.fromRGB(255, 210, 50),
+	Sidewalk = Color3.fromRGB(205, 205, 210),
+	Fence = Color3.fromRGB(175, 95, 45),
+	FencePost = Color3.fromRGB(80, 55, 50),
+	WallA = Color3.fromRGB(225, 160, 95), -- the checkered wall round the map
+	WallB = Color3.fromRGB(200, 135, 75),
+	WallTop = Color3.fromRGB(90, 210, 40),
+	Studs = true, -- studs on top of the ground, roofs and walls (the stud look)
 }
 
 return Config

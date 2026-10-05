@@ -296,10 +296,11 @@ Minimum tap target 64 px; text never under 18 px.
 
 ### World layout
 
-- **8 players per server.** 8 plots in a ring around a small shared plaza (weather visible from everywhere).
-- **Each plot:** a little house at the back; the **hatch** in the lawn by the house wall; **garden beds** on both sides of the hatch (harvest → toss is a few steps); the **yard** lawn in front where Thinglets roam, open to the plaza so everyone sees them.
+- **Stud-style neighbourhood, made in Blender** (`FeedTheThing/Blender`). One street runs down the middle with **4 plots on each side**, all facing the road. Checkered stud walls surround the map, the seed stand sits at the west end, and the FEED THE THING arch stands at the east end.
+- **8 players per server.** The first players get the middle of the street, across from each other.
+- **Each plot:** the house at the back; the **hatch** pit in the lawn in front of it; **planter boxes** on both sides of the hatch (harvest → toss is a few steps); the **yard** lawn in front where Thinglets roam, behind an X-fence with a wide gate onto the sidewalk; a mailbox; and a floating sign with the owner's avatar and name.
 - **Spawn** right next to your own hatch.
-- StreamingEnabled on; ≤ 10 parts per Thinglet; particles only on mutated ones.
+- Collisions are invisible blocks made by the game, so mesh collisions never get in the way. StreamingEnabled on; ≤ 10 parts per Thinglet; particles only on mutated ones.
 
 ## 7. Thumbnail, icon and name
 
@@ -346,6 +347,7 @@ The calendar assumes building Oct 5–18, an ad test mid-build, and **launch ~Oc
 | 10-05 | Friend bonus +10% per friend (max +30%) at launch | Cheap; feeds the co-play signal |
 | 10-05 | Style shop (cosmetics) moved into launch week 3 | Spend days count toward recommendations and the 500 engaged players |
 | 10-05 | 8-player servers, plots in a ring | Phone performance with up to 16 Thinglets per yard |
+| 10-05 | Map rebuilt as a stud-style street neighbourhood, made in Blender (was a ring of plots built from parts) | The look players expect from the genre (Steal an Egg); easier to make pretty in Blender |
 | 10-05 | Prototype: the server decides, clients draw (plants, Thing, Thinglets drawn locally from plot attributes) | Smooth animation on phones, light server |
 | 10-05 | Weather and shop stock come from the clock + UserId | Every server agrees; rejoining can't re-roll stock |
 | 10-05 | Server allows a toss every 0.12 s (client waits 0.22 s) | Network jitter never eats a toss the player saw land |

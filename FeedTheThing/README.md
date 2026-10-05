@@ -41,7 +41,8 @@ StarterPlayerScripts     World, Toss, Hud                  (LocalScripts)
 3. **Game Settings:**
    - Places → Max Players: **8** (one plot per player).
    - To test saving: publish the place, then turn on Security → **Enable Studio Access to API Services**. Without it the game still runs, it just starts fresh each time, and the Output says so once.
-4. Press **Play**. The Output should say `Feed the Thing in the Basement is running.`
+4. **Import the map (made in Blender):** choose Import 3D, then `FeedTheThing/Blender/Export/FeedTheThing_Map.fbx`, then Import. Rename the new model to **`Map`** and drag it into **ServerStorage**. Its size and position don't matter, because the game lines it up. Details are in `FeedTheThing/Blender/README.md`.
+5. Press **Play**. The Output should say `Feed the Thing in the Basement is running.`
    - The Baseplate and SpawnLocation are removed automatically while playing, and your saved place keeps them.
    - If something is misnamed, `Main` names the exact script that broke instead of failing silently.
 

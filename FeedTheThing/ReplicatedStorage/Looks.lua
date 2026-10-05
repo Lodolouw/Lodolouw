@@ -447,53 +447,34 @@ function Looks.thing(sizeIndex, hatchCF)
 	local pit = Config.World.PitSize
 	local model = Instance.new("Model")
 	model.Name = "Thing"
-	local parts = { eyes = {}, pupils = {}, arms = {}, teeth = {} }
+	local parts = { eyes = {}, pupils = {}, arms = {}, teeth = {}, lidPlanks = {} }
 
 	local wood = Color3.fromRGB(140, 95, 60)
 	local darkWood = Color3.fromRGB(100, 65, 40)
 
-	-- grass to cover the pit around a smaller opening
-	local cover = (pit - hole) / 2
-	if cover > 0.01 then
-		local grass = Config.World.Lawn
-		local sides = {
-			{ Vector3.new(pit, 0.4, cover), Vector3.new(0, 0, -(hole / 2 + cover / 2)) },
-			{ Vector3.new(pit, 0.4, cover), Vector3.new(0, 0, hole / 2 + cover / 2) },
-			{ Vector3.new(cover, 0.4, hole), Vector3.new(-(hole / 2 + cover / 2), 0, 0) },
-			{ Vector3.new(cover, 0.4, hole), Vector3.new(hole / 2 + cover / 2, 0, 0) },
-		}
-		for _, s in ipairs(sides) do
-			local p = part({ Name = "Cover", Size = s[1], Color = grass, CanCollide = false, CanQuery = false })
-			p.CFrame = hatchCF * CFrame.new(s[2] + Vector3.new(0, -0.2, 0))
-			p.Parent = model
-		end
-	end
+	-- (the pit and its wooden frame are part of the Blender map; the opening
+	-- is always the full pit, and what's down there grows with the size)
 
-	-- the wooden frame round the opening
-	local frameW = 0.8
-	for _, s in ipairs({
-		{ Vector3.new(hole + frameW * 2, 0.6, frameW), Vector3.new(0, 0, -(hole / 2 + frameW / 2)) },
-		{ Vector3.new(hole + frameW * 2, 0.6, frameW), Vector3.new(0, 0, hole / 2 + frameW / 2) },
-		{ Vector3.new(frameW, 0.6, hole), Vector3.new(-(hole / 2 + frameW / 2), 0, 0) },
-		{ Vector3.new(frameW, 0.6, hole), Vector3.new(hole / 2 + frameW / 2, 0, 0) },
-	}) do
-		local p = part({ Name = "Frame", Size = s[1], Color = wood, Material = Enum.Material.Wood, CanQuery = false })
-		p.CFrame = hatchCF * CFrame.new(s[2] + Vector3.new(0, 0.1, 0))
-		p.Parent = model
-	end
-
-	-- the lid, hinged on the house side, standing open
-	local lid = part({ Name = "Lid", Size = Vector3.new(hole, 0.5, hole), Color = darkWood, Material = Enum.Material.WoodPlanks, CanQuery = false })
-	local hinge = hatchCF * CFrame.new(0, 0.4, hole / 2) -- the house-side edge of the opening
+	-- the cellar-door lid, hinged on the house side, lying open
+	local lid = part({ Name = "Lid", Size = Vector3.new(pit, 0.5, pit), Color = darkWood, Material = Enum.Material.WoodPlanks, CanQuery = false })
+	local hinge = hatchCF * CFrame.new(0, 0.6, pit / 2) -- the house-side edge of the opening, on top of the frame
 	parts.hinge = hinge
-	parts.lidOffset = CFrame.new(0, 0, -hole / 2) -- from the hinge to the lid's centre, when shut
-	parts.openAngle = 105 -- degrees; 0 = shut
+	parts.lidOffset = CFrame.new(0, 0, -pit / 2) -- from the hinge to the lid's centre, when shut
+	parts.openAngle = 150 -- degrees; 0 = shut. Open, it leans back towards the house
 	lid.CFrame = hinge * CFrame.Angles(math.rad(parts.openAngle), 0, 0) * parts.lidOffset
 	lid.Parent = model
 	parts.lid = lid
+	-- planks on the lid
+	for k = -2, 2 do
+		local plank = part({ Name = "LidPlank", Size = Vector3.new(0.3, 0.55, pit - 0.6), Color = wood, Material = Enum.Material.WoodPlanks, CanQuery = false })
+		plank:SetAttribute("LidOffset", k * pit / 5)
+		plank.CFrame = lid.CFrame * CFrame.new(k * pit / 5, 0.28, 0)
+		plank.Parent = model
+		table.insert(parts.lidPlanks, plank)
+	end
 
 	-- the darkness, so you can't see the bottom
-	local dark = part({ Name = "Dark", Size = Vector3.new(hole, 0.2, hole), Color = Config.Thing.PitColor, CanQuery = false, Transparency = 0.15 })
+	local dark = part({ Name = "Dark", Size = Vector3.new(pit - 0.2, 0.2, pit - 0.2), Color = Config.Thing.PitColor, CanQuery = false, Transparency = 0.15 })
 	dark.CFrame = hatchCF * CFrame.new(0, -3.2, 0)
 	dark.Parent = model
 

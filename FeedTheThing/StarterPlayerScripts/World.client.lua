@@ -114,7 +114,7 @@ local function updatePlants(p)
 					plant.model:Destroy()
 				end
 				local model = Looks.plant(entry.c)
-				model:PivotTo(p.cf * CFrame.new(W.PlantSpots[spot] + Vector3.new(0, 0.25, 0)) * CFrame.Angles(0, spot * 1.3, 0))
+				model:PivotTo(p.cf * CFrame.new(W.PlantSpots[spot] + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, spot * 1.3, 0))
 				model.Parent = p.root
 				plant = { crop = entry.c, model = model, fruit = {} }
 				p.plants[spot] = plant
@@ -166,7 +166,11 @@ local function buildThing(p)
 end
 
 local function setLid(thing, angle)
-	thing.parts.lid.CFrame = thing.parts.hinge * CFrame.Angles(math.rad(angle), 0, 0) * thing.parts.lidOffset
+	local lidCF = thing.parts.hinge * CFrame.Angles(math.rad(angle), 0, 0) * thing.parts.lidOffset
+	thing.parts.lid.CFrame = lidCF
+	for _, plank in ipairs(thing.parts.lidPlanks) do
+		plank.CFrame = lidCF * CFrame.new(plank:GetAttribute("LidOffset") or 0, 0.28, 0)
+	end
 end
 
 local function chomp(p, perfect)

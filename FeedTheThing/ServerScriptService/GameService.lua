@@ -161,7 +161,7 @@ end
 
 local function publishSign(s)
 	local size = Config.Thing.Sizes[s.size]
-	WorldBuilder.setSign(s.plot, s.player.DisplayName .. "'s Basement", "Size " .. s.size .. ": " .. size.name)
+	WorldBuilder.setSign(s.plot, s.player.DisplayName .. "'s Basement", "Size " .. s.size .. ": " .. size.name, s.player.UserId)
 end
 
 local function publishPlot(s)
@@ -185,7 +185,7 @@ local function clearPlot(i)
 	folder:SetAttribute("Plants", "[]")
 	folder:SetAttribute("Yard", "[]")
 	WorldBuilder.setPlotsOwned(i, 0)
-	WorldBuilder.setSign(i, "Free plot", "")
+	WorldBuilder.setSign(i, "Free plot", "", 0)
 end
 
 ----------------------------------------------------------------------

@@ -13,6 +13,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -903,6 +904,14 @@ local function refreshHints()
 	end
 	lastHatches = state.stats.hatches
 end
+
+-- the seed stand at the end of the street opens the shop too
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "SeedShopPrompt" and openPanel ~= "Shop" then
+		showPanel("Shop")
+		refreshShop()
+	end
+end)
 
 UI.on("PanelOpened", function(name)
 	if name == "Dex" then

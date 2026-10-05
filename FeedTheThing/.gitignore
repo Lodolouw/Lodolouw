@@ -3,3 +3,5 @@
 # places built with rojo build
 *.rbxl
 *.rbxlx
+# Blender backup files
+*.blend1

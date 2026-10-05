@@ -419,14 +419,17 @@ function Rules.clock(seconds)
 end
 
 ----------------------------------------------------------------------
--- Where plot `i` stands. Its LookVector points at the plaza, so plot-local
--- -Z is the front lawn and +Z is the house.
+-- Where plot `i` stands. Plots line both sides of the street (which runs
+-- along X through the middle of the map). Its LookVector points at the
+-- road, so plot-local -Z is the front lawn and +Z is the house.
 ----------------------------------------------------------------------
 function Rules.plotCFrame(i)
 	local w = Config.World
-	local angle = (i - 1) / w.Plots * math.pi * 2
-	local centre = Vector3.new(math.sin(angle) * w.RingRadius, 0, math.cos(angle) * w.RingRadius)
-	return CFrame.lookAt(centre, Vector3.new(0, 0, 0))
+	local entry = w.PlotOrder[i] or w.PlotOrder[1]
+	local side, column = entry[1], entry[2]
+	local x = (column - (w.PlotsPerSide + 1) / 2) * w.PlotSpacing
+	local z = side * (w.RoadWidth / 2 + w.SidewalkWidth + w.FrontYard + w.PlotDepth / 2)
+	return CFrame.lookAt(Vector3.new(x, 0, z), Vector3.new(x, 0, 0))
 end
 
 return Rules
