@@ -74,7 +74,7 @@ Good to know:
 - **A Sound you place in SoundService with the same name (`Chomp`, `Coin`...) overrides the uploaded one.** So does putting a sound's id in `Config.Sounds`.
 - **No key?** Import by hand instead:
   - Map: **Import 3D**, name it `Map`, put it in **ServerStorage**.
-  - Props: **Import 3D**, name them `Assets`, put them in **ReplicatedStorage**.
+  - Props: **Import 3D**, name them `Props`, put them in **ReplicatedStorage**.
   - Sounds: import `SoundSheet.ogg` and paste its id into `ReplicatedStorage/SoundSheet.lua`.
 
 ## Test it like a new player

@@ -23,7 +23,18 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Rules = require(ReplicatedStorage:WaitForChild("Rules"))
 local Looks = require(ReplicatedStorage:WaitForChild("Looks"))
 local UI = require(ReplicatedStorage:WaitForChild("UI"))
-local Assets = require(ReplicatedStorage:WaitForChild("Assets"))
+-- the Assets module (an old props import may also be called "Assets")
+local function waitForModule(name)
+	while true do
+		for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+			if child.Name == name and child:IsA("ModuleScript") then
+				return child
+			end
+		end
+		ReplicatedStorage.ChildAdded:Wait()
+	end
+end
+local Assets = require(waitForModule("Assets"))
 
 local remoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local HarvestedRemote = remoteFolder:WaitForChild("Harvested") :: RemoteEvent

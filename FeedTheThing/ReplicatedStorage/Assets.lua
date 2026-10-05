@@ -3,16 +3,16 @@
 
 	Props made in Blender (FeedTheThing/Blender/build_props.py), ready to use.
 
-	Import FeedTheThing/Blender/Export/FeedTheThing_Props.fbx into Studio,
-	name the model "Assets" and put it in ReplicatedStorage. Inside are parts
+	upload.bat uploads FeedTheThing/Blender/Export/FeedTheThing_Props.fbx and
+	the server loads it into ReplicatedStorage as "Props" (or import it by
+	hand, name it "Props" and put it in ReplicatedStorage). Inside are parts
 	named <Prop>_<Part> (Truck_Body, Truck_WheelFL, Package_Box...) plus two
 	marker blocks per prop, <Prop>_Origin and <Prop>_MarkX, 10 studs apart.
 	Assets.get("Truck") puts a prop together from those: the right size, the
 	right way round (facing -Z), its base at its pivot. Parts named ...Glow_RRGGBB
 	glow in that colour.
 
-	With Config.AssetIds.Props set, the server loads them by itself (no
-	import needed). Not there at all? Assets.get returns nil and the game
+	Not there at all? Assets.get returns nil and the game
 	uses a simple stand-in built from blocks (see Looks).
 ]]
 
@@ -24,13 +24,13 @@ local templates = {} -- [prop name] = Model
 local lastTry = {} -- [prop name] = when we last looked and didn't find it
 
 local function source()
-	local folder = ReplicatedStorage:FindFirstChild("Assets")
+	local folder = ReplicatedStorage:FindFirstChild("Props")
 	if folder then
 		return folder
 	end
-	-- still named after the file?
+	-- still named after the file (or an old import named "Assets")?
 	for _, child in ipairs(ReplicatedStorage:GetChildren()) do
-		if child:IsA("Model") and child:FindFirstChild("Truck_Origin", true) then
+		if not child:IsA("ModuleScript") and child:FindFirstChild("Truck_Origin", true) then
 			return child
 		end
 	end

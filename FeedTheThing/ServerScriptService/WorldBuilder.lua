@@ -114,16 +114,18 @@ local function loadAsset(id, label)
 end
 
 local function findMapTemplate()
-	if not ServerStorage:FindFirstChild("Map") then
-		local loaded = loadAsset(Config.AssetIds and Config.AssetIds.Map, "map")
-		if loaded then
-			loaded.Name = "Map"
-			loaded.Parent = ServerStorage
-		end
+	-- the uploaded map wins (upload.bat keeps it up to date), so an old
+	-- import lying around can't sneak in instead
+	local id = Config.AssetIds and Config.AssetIds.Map
+	local loaded = loadAsset(id, "map")
+	if loaded then
+		print("[WorldBuilder] Using the uploaded map (asset " .. id .. ")")
+		return loaded
 	end
 	for _, container in ipairs({ ServerStorage, ReplicatedStorage, workspace }) do
 		local map = container:FindFirstChild("Map")
 		if map and map:IsA("Model") then
+			print("[WorldBuilder] Using the imported map " .. map:GetFullName())
 			return map
 		end
 	end
@@ -131,11 +133,31 @@ local function findMapTemplate()
 	for _, container in ipairs({ ServerStorage, workspace }) do
 		for _, child in ipairs(container:GetChildren()) do
 			if child:IsA("Model") and child:FindFirstChild("MapOrigin", true) then
+				print("[WorldBuilder] Using the imported map " .. child:GetFullName())
 				return child
 			end
 		end
 	end
 	return nil
+end
+
+-- Copies of the map or props imported into Workspace by hand show up as a
+-- second, crooked map. Take them out of the game (only while it runs:
+-- the place itself is untouched) and say where they are.
+local LEFTOVER_MARKS = { "MapOrigin", "MapMarkX", "House1", "Plot1", "Arch", "TunnelEast", "Truck_Origin", "Truck_Body" }
+local function removeLeftovers()
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child ~= worldFolder and (child:IsA("Model") or child:IsA("Folder")) then
+			for _, mark in ipairs(LEFTOVER_MARKS) do
+				if child:FindFirstChild(mark, true) then
+					warn("[WorldBuilder] Took an old copy of the map out of this test: Workspace." .. child.Name
+						.. ". Delete it from Workspace in Studio so it's gone for good (the game loads the map by itself).")
+					child:Destroy()
+					break
+				end
+			end
+		end
+	end
 end
 
 local function markerPosition(model, name)
@@ -557,15 +579,29 @@ function WorldBuilder.build()
 	worldFolder.Name = "World"
 	worldFolder.Parent = workspace
 
-	-- the props (delivery truck...) for every client
-	if not ReplicatedStorage:FindFirstChild("Assets") then
-		local props = loadAsset(Config.AssetIds and Config.AssetIds.Props, "props")
-		if props then
-			props.Name = "Assets"
-			props.Parent = ReplicatedStorage
+	-- the props (delivery truck...) for every client, in ReplicatedStorage.Props.
+	-- The uploaded ones win over an import.
+	local props = loadAsset(Config.AssetIds and Config.AssetIds.Props, "props")
+	if props then
+		local imported = ReplicatedStorage:FindFirstChild("Props")
+		if imported then
+			imported:Destroy()
+		end
+		props.Name = "Props"
+		props.Parent = ReplicatedStorage
+	end
+	-- an old import named "Assets" clashes with the Assets module: rename it
+	for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+		if child.Name == "Assets" and not child:IsA("ModuleScript") then
+			if ReplicatedStorage:FindFirstChild("Props") then
+				child:Destroy()
+			else
+				child.Name = "Props"
+			end
 		end
 	end
 	hasMap = placeMap()
+	removeLeftovers()
 	if not hasMap then
 		warn("[WorldBuilder] No Blender map found, so you're seeing simple stand-in blocks. Import "
 			.. "FeedTheThing/Blender/Export/FeedTheThing_Map.fbx, name it \"Map\" and put it in ServerStorage (see the README).")
