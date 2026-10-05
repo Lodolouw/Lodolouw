@@ -212,6 +212,77 @@ local function placeMap()
 	return true
 end
 
+-- The pieces the map should have. Anything Roblox didn't import is listed
+-- in Output, so it's easy to see what went wrong.
+local MAP_PIECES = {
+	"Grass", "Lawn", "Road", "Sidewalk", "Plaza", "Wall", "WallTop", "StreetProps", "Trees", "Hedges",
+	"SeedStand", "TunnelEast", "TunnelWest", "TunnelSignEast", "TunnelSignWest", "House1", "Plot1",
+}
+local function checkMap(map)
+	local missing = {}
+	for _, name in ipairs(MAP_PIECES) do
+		local piece = map:FindFirstChild(name, true)
+		if not piece then
+			table.insert(missing, name)
+		elseif piece:IsA("BasePart") and piece.Transparency > 0 then
+			warn(string.format("[WorldBuilder] Map piece %s is see-through (Transparency %.2f)", name, piece.Transparency))
+		end
+	end
+	if #missing > 0 then
+		warn("[WorldBuilder] Roblox didn't import these map pieces: " .. table.concat(missing, ", "))
+	end
+	return missing
+end
+
+-- A tunnel built from blocks, for when the map came without its own: a
+-- dark hole in the wall that gets darker further in, and the sign above.
+local function buildTunnelStandIn(s, title, textColor)
+	local folder = Instance.new("Folder")
+	folder.Name = (s > 0 and "TunnelEast" or "TunnelWest") .. "StandIn"
+	folder.Parent = worldFolder
+	local half = W.TunnelRadius + 2.5 -- the hole in the wall
+	local height = W.WallHeight + 1
+	local base = Color3.fromRGB(150, 135, 175)
+	local bands = { { 0, 3, 0.55 }, { 3, 8, 0.35 }, { 8, 15, 0.2 }, { 15, 24, 0.1 }, { 24, 40, 0.04 } }
+	local function block(name, cf, size, color)
+		return part({
+			Name = name, CFrame = cf, Size = size, Color = color, Material = Enum.Material.SmoothPlastic,
+			CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false,
+		}, folder)
+	end
+	for _, band in ipairs(bands) do
+		local x = s * (MAP_X + (band[1] + band[2]) / 2)
+		local length = band[2] - band[1]
+		local color = Color3.new(base.R * band[3], base.G * band[3], base.B * band[3])
+		block("Roof", CFrame.new(x, height + 0.5, 0), Vector3.new(length, 1, half * 2 + 2), color)
+		block("Floor", CFrame.new(x, 0, 0), Vector3.new(length, 0.4, half * 2), color)
+		for _, side in ipairs({ 1, -1 }) do
+			block("Side", CFrame.new(x, height / 2, side * (half + 0.5)), Vector3.new(length, height, 1), color)
+		end
+	end
+	block("End", CFrame.new(s * (MAP_X + 40.5), height / 2, 0), Vector3.new(1, height + 1, half * 2 + 2), Color3.new(0, 0, 0))
+
+	local sign = block("Sign", CFrame.new(s * (MAP_X - 1), W.WallHeight + 4, 0), Vector3.new(1.4, 8, 47), Color3.fromRGB(75, 40, 110))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = s > 0 and Enum.NormalId.Left or Enum.NormalId.Right -- the side facing the street
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 20
+	gui.LightInfluence = 0
+	gui.Parent = sign
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Config.Font
+	label.Text = title
+	label.TextScaled = true
+	label.TextColor3 = textColor
+	label.Parent = gui
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0.18, 0)
+	padding.PaddingBottom = UDim.new(0.18, 0)
+	padding.Parent = label
+end
+
 ----------------------------------------------------------------------
 -- Floors, walls and blocks (invisible with the map, a stand-in without)
 ----------------------------------------------------------------------
@@ -498,6 +569,15 @@ function WorldBuilder.build()
 	if not hasMap then
 		warn("[WorldBuilder] No Blender map found, so you're seeing simple stand-in blocks. Import "
 			.. "FeedTheThing/Blender/Export/FeedTheThing_Map.fbx, name it \"Map\" and put it in ServerStorage (see the README).")
+	else
+		local map = worldFolder:FindFirstChild("Map")
+		local missing = map and checkMap(map) or {}
+		if table.find(missing, "TunnelEast") then
+			buildTunnelStandIn(1, "FEED THE THING", Color3.fromRGB(190, 255, 70))
+		end
+		if table.find(missing, "TunnelWest") then
+			buildTunnelStandIn(-1, "SEED EXPRESS", Color3.fromRGB(255, 215, 60))
+		end
 	end
 	local solids = buildSolids()
 	for i = 1, W.Plots do

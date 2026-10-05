@@ -788,7 +788,9 @@ def build_tunnel(s):
             inward = (-(xa + xb) / 2, TUNNEL_SPRING - (ya + yb) / 2, 0)
             tunnel.poly([P(xa, ya, za), P(xb, yb, za), P(xb, yb, zb), P(xa, ya, zb)], f"tunnel_wall{b}", out(inward))
         tunnel.poly([P(R, 0.2, za), P(-R, 0.2, za), P(-R, 0.2, zb), P(R, 0.2, zb)], f"tunnel_floor{b}", out((0, 1, 0)))
-    tunnel.poly([P(x, y, TUNNEL_DEPTH) for x, y in section], "tunnel_end", out((0, 0, -1)))
+    # the end, as triangles (no many-sided faces, in case Roblox's importer trips on them)
+    for (xa, ya), (xb, yb) in zip(section[1:], section[2:]):
+        tunnel.poly([P(*section[0], TUNNEL_DEPTH), P(xa, ya, TUNNEL_DEPTH), P(xb, yb, TUNNEL_DEPTH)], "tunnel_end", out((0, 0, -1)))
 
     # the sign over it
     width = 45
