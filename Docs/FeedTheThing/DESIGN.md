@@ -335,6 +335,44 @@ The calendar assumes building Oct 5–18, an ad test mid-build, and **launch ~Oc
 
 ---
 
+# Polish plan (from the first Studio playtest)
+
+The prototype works, but it still looks and feels generic. The plan below is in order of impact on the two numbers that matter: plays per click (the art) and whether people stay and come back (feel, clarity, goals).
+
+## Phase 1: fix what the screenshot shows (½ day)
+- Weather must not make the game dark. Full Moon becomes a purple tint with glowing particles instead of night. Snow stays bright.
+- Income under 1/s shows "+0/s". Show "+0.3/s".
+- When the basket is empty, the throw pad is a blank white circle. It should say "Pick fruit!" and point to the plants.
+- The red close button reads as "%", and the cart icon doesn't read as a cart. Redraw both, or use uploaded icons once the API key works.
+- The belly display over the hatch is small and hard to read. Make it bigger, with a clearer "Will hatch" label.
+- The fences and planters look heavy and dark. Use lighter wood and lower fences, so plots feel open, like Steal an Egg's.
+
+## Phase 2: real art for everything that's alive (3 to 4 days)
+- **Thinglets in Blender:** 8 creatures with big readable faces (eyes, mouth, blush), one clear silhouette each, and a simple idle animation (bounce, blink, wiggle). Keeping the 4 looks.
+- **The Thing:** proper eyes with lids, arms with hands, a grin. It should be the mascot people remember.
+- **Crops and plants:** 6 plants that visibly grow (sprout, then bush, then fruit), so the garden feels alive.
+- **Eggs:** one egg per rarity, plus a crack animation.
+
+## Phase 3: game feel (2 days)
+- **Sounds and music:** chomp, pop, coin, PERFECT, combo, crack, hatch and size-up, a cosy background loop, and a night version for events. This is the biggest "it feels finished" upgrade, and currently there is no sound at all.
+- **Toss:** the food is always on the pad, a fatter arc, a trail, and the Thing reacting every time (lick, squish, happy eyes). Coins fly from the hatch into the coin counter.
+- **Hatch reveal:** the biggest moment. Light rays, a rarity colour burst, confetti for Epic and up, and the creature hops into the yard.
+- **Thing size-up:** a 3-second event (the house shakes, the lid bursts open), with a server message for the big sizes.
+
+## Phase 4: always a next goal (2 days)
+- **Goal tracker** under the coins: one goal at a time ("Buy a Chili seed 48/50", "Hatch a Sizzle", "Grow your Thing to size 2"), each with a small reward. It covers the first 30 minutes, then hands over to the Index.
+- **Index rewards:** completing a creature's 4 looks gives a permanent +5% coins. This makes collecting matter.
+- **More upgrade tracks:** a bigger harvest radius, faster plant growth and a bigger PERFECT window. All bought with coins, never Robux.
+- **Free gift every 10 minutes of play** (a mutated fruit or coins). Fair, and it lengthens sessions.
+- **Daily login streak:** day 1 to day 7 rewards. Nothing is lost if you miss a day; the streak just restarts.
+
+## Phase 5: ad test (2 days)
+- Thumbnails and icon rendered in Blender (the 3 concepts from #7), then the ad test.
+- Measure plays per click, 60-second bounce, session length and day-1 retention, then decide what to fix next.
+
+## After launch
+Rebirth, Halloween event, NPC egg raids, trading, Robux cosmetics (see #8).
+
 # Decision log
 
 | Date | Decision | Why |
