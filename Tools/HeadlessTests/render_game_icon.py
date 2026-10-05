@@ -28,12 +28,16 @@ at its foot). The review sheet shows SHEET (F, G, H).
 
     python3 render_game_icon.py ... --thumbs all   (the game page thumbnails)
 
-THUMBNAILS (1920 x 1080, thumb_1.png, thumb_2.png and thumb_sheet.png): 1
+THUMBNAILS (1920 x 1080, thumb_1.png ... thumb_4.png and thumb_sheet.png): 1
 THE SPIRE (the tower in a storm, a boss on each floor's balcony - Oozark 1,
 Revvington 5, Kongo 7, King Gavelgrunt under FLOOR 10 - the noob at its
 foot, 10 BOSSES / CLIMB THE SPIRE), 2 THE FIGHT (King Gavelgrunt side on
 with the war-gavel raised over the cracked red zone, the noob diving out,
-DODGE IT!, his boss bar).
+DODGE IT!, his boss bar), 3 THE JACKPOT (an Arcade spin hitting a SECRET:
+Kong's Crown, the real weapon icons blown up, flying round it with coins,
+the noob gasping, SPIN FOR SECRET WEAPONS!), 4 ONE PUNCH K.O. (the noob's
+fist landing on Oozark: POW!, coins and slime flying, 12 HITS (the fight's
+own combo counter), K.O.!!, his bar nearly gone). check_thumbs.py checks them.
 Kaze, Burrowmore, Petalina, Scribble and Tuber are left off: their looks
 sit closest to the characters they parody (the handoff's Copyright rule).
 
@@ -1321,9 +1325,130 @@ def thumb_spire():
     return c.convert('RGB')
 
 
+WEAPON_ICONS = os.path.join(here, '..', 'Weapons', 'out', 'icons')
+
+
+def weapon(name, h, angle=0.0, glow=None, glow_r=30):
+    """A weapon's icon (the real model's picture), blown up with crisp pixels,
+    tilted, outlined and glowing."""
+    im = Image.open(os.path.join(WEAPON_ICONS, name + '.png')).convert('RGBA')
+    im = crop_to_content(im, pad=6)
+    k = h / im.height
+    im = im.resize((max(1, int(im.width * k)), int(h)), Image.NEAREST)
+    pad = int(glow_r * 2 + 20)
+    big = Image.new('RGBA', (im.width + pad * 2, im.height + pad * 2), (0, 0, 0, 0))
+    big.alpha_composite(im, (pad, pad))
+    if angle:
+        big = big.rotate(angle, resample=Image.NEAREST, expand=True)
+    return outlined(big, width=max(6, int(h * 0.02)), glow=glow, glow_r=glow_r)
+
+
+def coin(canvas, cx, cy, r):
+    """A chunky gold coin (the game's coins)."""
+    d = ImageDraw.Draw(canvas)
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(254, 174, 52, 255), outline=INK + (255,), width=max(3, int(r * 0.18)))
+    d.ellipse((cx - r * 0.66, cy - r * 0.66, cx + r * 0.66, cy + r * 0.66), fill=(254, 231, 97, 255))
+    d.rectangle((cx - r * 0.14, cy - r * 0.42, cx + r * 0.14, cy + r * 0.42), fill=(254, 174, 52, 255))
+
+
+def thumb_jackpot():
+    """THUMB 3, THE JACKPOT: the Arcade spin hitting a SECRET - Kong's Crown
+    (the gold sword) bursting out of a blaze of light, rarer weapons flying
+    round it, coins raining, the noob gasping; SPIN FOR / SECRET WEAPONS!"""
+    c = vgrad(TH, (70, 16, 110), (255, 90, 160), w=TW)
+    rays = rays_bg(TH, (0, 0, 0), (0, 0, 0), (255, 255, 255), n=28, center=(0.56, 0.5), ray_alpha=1.0, vignette=0, w=TW)
+    rm = Image.fromarray(((np.asarray(rays.convert('L')) > 128) * 70).astype(np.uint8))
+    rl = Image.new('RGBA', (TW, TH), (255, 225, 120, 0))
+    rl.putalpha(rm)
+    c.alpha_composite(rl)
+    soft_light(c, 1075, 540, 520, 420, (255, 236, 150), 1.0)
+    soft_light(c, 1075, 540, 260, 220, (255, 255, 235), 1.0)
+    # the other weapons, flying out round it (smaller, behind)
+    ring = [('NoQuarter', 300, 30, 760, 205), ('NitroKatana', 300, -28, 1450, 230), ('WheelieWrecker', 270, 18, 1520, 820), ('AcidScythe', 300, 8, 1660, 520)]
+    for (name, h, ang, x, y) in ring:
+        w_ = weapon(name, h, ang, glow=(255, 255, 255), glow_r=18)
+        place(c, w_, x - w_.width / 2, y - w_.height / 2)
+    # the jackpot itself
+    crown = weapon('KongsCrown', 760, -18, glow=(255, 214, 60), glow_r=60)
+    place(c, crown, 1075 - crown.width / 2, 540 - crown.height / 2)
+    rng = np.random.default_rng(5)
+    for _ in range(26):
+        x, y = rng.uniform(500, 1900), rng.uniform(20, 1060)
+        if abs(x - 1075) < 260 and abs(y - 540) < 300:
+            continue
+        coin(c, x, y, rng.uniform(16, 34))
+    for (x, y, r) in [(900, 250, 34), (1290, 330, 26), (1200, 820, 30), (860, 700, 22), (1600, 380, 24)]:
+        sparkle(c, x, y, r)
+    # the rarity tag
+    pop_text(c, 'SECRET!', 1075, 900, 120, top=(255, 255, 255), bottom=(255, 214, 60), angle=-3)
+    # the noob, amazed, bottom left
+    n = crop_to_content(noob_layer('shock', yaw=math.radians(28), size=900, fov=26, dist=18, rise=1.0, head=1.45))
+    n, npad = cut(n, 470)
+    n = outlined(punch_up(n, 1.15, 1.05), width=10, rim=(255, 255, 255), rim_dir=(1, -1), rim_w=6, glow=(255, 255, 255),
+                 glow_r=22)
+    place(c, n, 90, TH - n.height + npad + 10)
+    pop_text(c, 'SPIN FOR', 330, 150, 104, top=(255, 255, 255), bottom=(200, 225, 255), angle=4)
+    pop_text(c, 'SECRET', 330, 290, 150, top=(255, 245, 120), bottom=(255, 150, 30), angle=4)
+    pop_text(c, 'WEAPONS!', 330, 430, 120, top=(255, 245, 120), bottom=(255, 150, 30), angle=4)
+    return c.convert('RGB')
+
+
+def thumb_ko():
+    """THUMB 4, ONE PUNCH K.O.: the noob's fist landing on Oozark (the giant
+    slime king) - a huge impact star, POW!, coins spraying out of him, 12
+    HITS (the real fight's combo counter), K.O.!!, his bar all but empty."""
+    c = vgrad(TH, (20, 120, 220), (120, 230, 255), w=TW)
+    rays = rays_bg(TH, (0, 0, 0), (0, 0, 0), (255, 255, 255), n=24, center=(0.47, 0.55), ray_alpha=1.0, vignette=0, w=TW)
+    rm = Image.fromarray(((np.asarray(rays.convert('L')) > 128) * 60).astype(np.uint8))
+    rl = Image.new('RGBA', (TW, TH), (255, 255, 255, 0))
+    rl.putalpha(rm)
+    c.alpha_composite(rl)
+    # Oozark, big, on the right, knocked back a little (tilted)
+    ooz = crop_to_content(boss_layer('oozark', 'wake:1.0', at_h=7, dist=40, side=-8, rise=3, fov=40, size=1500, roll=-9))
+    ooz, opad = cut(ooz, 900)
+    ooz = outlined(punch_up(ooz, 1.3, 1.1), width=13, rim=(255, 255, 255), rim_dir=(1, -1), rim_w=8,
+                   glow=(255, 255, 255), glow_r=26)
+    ox = TW - ooz.width + 120
+    place(c, ooz, ox, TH - ooz.height + opad + 40)
+    # the noob punching in from the left
+    n = crop_to_content(noob_layer('punch', yaw=math.radians(86), turn=math.radians(-50), size=1200, fov=26, dist=18,
+                                   rise=1.5, head=1.45))
+    n, npad = cut(n, 640)
+    n = outlined(punch_up(n, 1.15, 1.05), width=11, rim=(255, 255, 255), rim_dir=(-1, -1), rim_w=6,
+                 glow=(255, 255, 255), glow_r=22)
+    nx, ny = 70, TH - n.height + npad + 30
+    hx, hy = nx + n.width * 0.86, ny + n.height * 0.36  # where the fist lands
+    soft_light(c, hx, hy, 260, 260, (255, 255, 220), 0.8)
+    star_burst(c, hx, hy, 230, 110, n=13, fill=(255, 255, 255), width=10, turn=0.2)
+    star_burst(c, hx, hy, 150, 74, n=13, fill=(255, 225, 70), outline=(255, 225, 70), width=1, turn=0.5)
+    star_burst(c, hx, hy, 72, 38, n=9, fill=(255, 140, 40), outline=(255, 140, 40), width=1, turn=0.1)
+    place(c, n, nx, ny)
+    # coins and slime bits spraying off the hit
+    rng = np.random.default_rng(11)
+    for _ in range(22):
+        a = rng.uniform(-1.3, 0.7)
+        r_ = rng.uniform(220, 640)
+        coin(c, hx + math.cos(a) * r_, hy + math.sin(a) * r_ * 0.8, rng.uniform(16, 34))
+    d = ImageDraw.Draw(c)
+    for _ in range(18):
+        a = rng.uniform(-1.4, 0.8)
+        r_ = rng.uniform(200, 560)
+        x, y, s_ = hx + math.cos(a) * r_, hy + math.sin(a) * r_ * 0.8, rng.uniform(14, 28)
+        d.rectangle((x - s_, y - s_, x + s_, y + s_), fill=(99, 199, 77, 255), outline=INK + (255,), width=4)
+    pop_text(c, 'POW!', hx - 40, hy - 290, 150, top=(255, 255, 255), bottom=(255, 225, 70), angle=-8)
+    # the combo counter, top right, rainbow letters
+    rainbow = [(228, 59, 68), (254, 174, 52), (254, 231, 97), (99, 199, 77), (44, 232, 245), (181, 80, 136)]
+    # (what a real fight's combo counter says: CombatClient's "12 HITS")
+    pop_text(c, '12', 1690, 160, 170, top=rainbow[2], bottom=rainbow[1], angle=-8)
+    pop_text(c, 'HITS!', 1690, 300, 96, top=(255, 255, 255), bottom=(200, 230, 255), angle=-8)
+    big_boss_bar(c, 'OOZARK', 0.06, TW / 2 - 140, 26, 1100, 40, 46)
+    pop_text(c, 'K.O.!!', hx + 330, hy + 230, 190, top=rainbow[2], bottom=rainbow[0], angle=8)
+    return c.convert('RGB')
+
+
 FIGHT_KING_H, FIGHT_KING_DX, FIGHT_KING_FEET, FIGHT_FLOOR_LOOK = 780, 500, 95, 7.4
-THUMBS = {'1': thumb_spire, '2': thumb_fight}
-THUMB_NAMES = {'1': 'THE SPIRE', '2': 'THE FIGHT'}
+THUMBS = {'1': thumb_spire, '2': thumb_fight, '3': thumb_jackpot, '4': thumb_ko}
+THUMB_NAMES = {'1': 'THE SPIRE', '2': 'THE FIGHT', '3': 'THE JACKPOT', '4': 'ONE PUNCH K.O.'}
 
 
 def thumb_sheet():
