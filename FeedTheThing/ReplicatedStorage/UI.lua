@@ -5,9 +5,8 @@
 	friendly buttons, 3D icons in ViewportFrames, sounds by name, and a tiny
 	message bus so the client scripts can talk to each other.
 
-	Sounds are optional. Put a Sound in SoundService with one of these names
-	and it plays: Chomp, Perfect, Coin, Pop, Throw, Combo, Crack, Hatch,
-	HatchRare, SizeUp, Buy, Click, Burp, Error, Announce.
+	Sounds come from Config.Sounds (uploaded ids). A Sound in SoundService
+	with the same name wins, so you can try other sounds without code.
 ]]
 
 local UI = {}
@@ -353,10 +352,23 @@ end
 ----------------------------------------------------------------------
 -- Sounds by name (only if you've added them to SoundService)
 ----------------------------------------------------------------------
+local soundTemplates = {}
 function UI.sound(name, volume, pitch)
 	local template = SoundService:FindFirstChild(name)
 	if not template or not template:IsA("Sound") then
-		return
+		-- not placed by hand: use the uploaded one from Config.Sounds
+		template = soundTemplates[name]
+		local info = Config.Sounds and Config.Sounds[name]
+		if not template and info and info.id and info.id > 0 then
+			template = Instance.new("Sound")
+			template.Name = name
+			template.SoundId = "rbxassetid://" .. info.id
+			template.Volume = info.volume or 0.5
+			soundTemplates[name] = template
+		end
+		if not template then
+			return
+		end
 	end
 	local sound = template:Clone()
 	if volume then

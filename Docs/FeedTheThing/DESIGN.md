@@ -392,6 +392,9 @@ Rebirth, Halloween event, NPC egg raids, trading, Robux cosmetics (see #8).
 | 10-05 | Style shop (cosmetics) moved into launch week 3 | Spend days count toward recommendations and the 500 engaged players |
 | 10-05 | 8-player servers, plots in a ring | Phone performance with up to 16 Thinglets per yard |
 | 10-05 | Map rebuilt as a stud-style street neighbourhood, made in Blender (was a ring of plots built from parts) | The look players expect from the genre (Steal an Egg); easier to make pretty in Blender |
+| 10-05 | Buying seeds sends a delivery truck (made in Blender) that lobs the package onto your lawn; the plant appears when it lands | Turns a menu click into a fun, visible moment everyone on the street sees |
+| 10-05 | Sound effects are made in code (`Sounds/make_sounds.py`) and uploaded with an Open Cloud key | 100% original (no licence or copyright risk), easy to tweak and re-upload |
+| 10-05 | Uploaded models load by asset id (InsertService) | No manual Studio import after every change |
 | 10-05 | Prototype: the server decides, clients draw (plants, Thing, Thinglets drawn locally from plot attributes) | Smooth animation on phones, light server |
 | 10-05 | Weather and shop stock come from the clock + UserId | Every server agrees; rejoining can't re-roll stock |
 | 10-05 | Server allows a toss every 0.12 s (client waits 0.22 s) | Network jitter never eats a toss the player saw land |

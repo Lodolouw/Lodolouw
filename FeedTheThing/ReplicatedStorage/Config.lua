@@ -312,6 +312,39 @@ Config.World = {
 }
 
 ----------------------------------------------------------------------
+-- Uploaded assets. Tools/upload_assets.py fills these in (or paste ids in
+-- by hand). 0 = not uploaded yet.
+--   Sounds: made by Sounds/make_sounds.py. A Sound with the same name in
+--   SoundService wins over these (handy for trying other sounds).
+--   Map / Props: the Blender models; the game loads them by itself, so you
+--   don't need to import them into Studio.
+----------------------------------------------------------------------
+Config.Sounds = {
+	Click = { id = 0, volume = 0.35 },
+	Pop = { id = 0, volume = 0.5 },
+	Coin = { id = 0, volume = 0.5 },
+	Chomp = { id = 0, volume = 0.7 },
+	Throw = { id = 0, volume = 0.45 },
+	Perfect = { id = 0, volume = 0.6 },
+	Combo = { id = 0, volume = 0.5 },
+	Crack = { id = 0, volume = 0.6 },
+	Hatch = { id = 0, volume = 0.6 },
+	HatchRare = { id = 0, volume = 0.7 },
+	SizeUp = { id = 0, volume = 0.7 },
+	Buy = { id = 0, volume = 0.55 },
+	Burp = { id = 0, volume = 0.6 },
+	Error = { id = 0, volume = 0.3 },
+	Announce = { id = 0, volume = 0.45 },
+	Honk = { id = 0, volume = 0.35 },
+	Thud = { id = 0, volume = 0.7 },
+	Poof = { id = 0, volume = 0.55 },
+}
+Config.AssetIds = {
+	Map = 0, -- Blender/Export/FeedTheThing_Map.fbx
+	Props = 0, -- Blender/Export/FeedTheThing_Props.fbx
+}
+
+----------------------------------------------------------------------
 -- Seed deliveries: buy a seed and a truck leaves the seed stand, drives
 -- down the street, stops at your plot and lobs the package onto your lawn.
 -- The seed is planted the moment the package bursts open.

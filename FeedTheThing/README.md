@@ -52,13 +52,16 @@ While Rojo is connected, any change to a file in `FeedTheThing/` shows up in Stu
 
 **Already use Rokit?** Run `rokit install` in `FeedTheThing/`, then `rojo serve`.
 
-### Sounds (optional)
+### Sounds and Blender models: uploading
 
-Sounds are played by name. Add a Sound to **SoundService** with any of these names and it plays (the Creator Store has free ones):
+All the sound effects are original. `Sounds/make_sounds.py` makes them as `.ogg` files in `FeedTheThing/Sounds`. The Blender models are the `.fbx` files in `Blender/Export`. The game finds both through the ids in `Config.Sounds` and `Config.AssetIds`.
 
-`Chomp`, `Perfect`, `Coin`, `Pop`, `Throw`, `Combo`, `Crack`, `Hatch`, `HatchRare`, `SizeUp`, `Buy`, `Click`, `Burp`, `Error`, `Announce`
-
-Chomp, Perfect, Coin, Pop and Hatch matter most for the feel.
+- **With an Open Cloud API key** (recommended): run `python3 FeedTheThing/Tools/upload_assets.py`. It uploads everything new or changed and writes the ids into `Config.lua`. After that, the map and props load by themselves, so there's nothing to import in Studio.
+- **By hand:**
+  1. In Asset Manager, use **Bulk Import** on the `.ogg` files.
+  2. Right-click each one, choose **Copy ID**, and paste it into `Config.Sounds`.
+  3. For the models, use **Import 3D**: name the map `Map` and put it in **ServerStorage**; name the props `Assets` and put them in **ReplicatedStorage**.
+- A Sound you place in SoundService with the same name (`Chomp`, `Coin`...) overrides the uploaded one, which is handy for trying other sounds.
 
 ## Test it like a new player
 

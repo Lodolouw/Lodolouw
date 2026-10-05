@@ -11,15 +11,17 @@
 	right way round (facing -Z), its base at its pivot. Parts named ...Glow_RRGGBB
 	glow in that colour.
 
-	Not imported yet? Assets.get returns nil and the game uses a simple
-	stand-in built from blocks (see Looks).
+	With Config.AssetIds.Props set, the server loads them by itself (no
+	import needed). Not there at all? Assets.get returns nil and the game
+	uses a simple stand-in built from blocks (see Looks).
 ]]
 
 local Assets = {}
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local templates = {} -- [prop name] = Model, or false if it isn't there
+local templates = {} -- [prop name] = Model
+local lastTry = {} -- [prop name] = when we last looked and didn't find it
 
 local function source()
 	local folder = ReplicatedStorage:FindFirstChild("Assets")
@@ -94,12 +96,14 @@ end
 
 -- A fresh copy of prop `name`, or nil if it hasn't been imported
 function Assets.get(name)
-	if templates[name] == nil then
+	if not templates[name] and os.clock() - (lastTry[name] or -100) > 5 then
+		lastTry[name] = os.clock()
 		local ok, result = pcall(build, name)
 		if not ok then
 			warn("[Assets] Couldn't put together '" .. name .. "': " .. tostring(result))
+		elseif result then
+			templates[name] = result
 		end
-		templates[name] = ok and result or false
 	end
 	local template = templates[name]
 	return template and template:Clone() or nil

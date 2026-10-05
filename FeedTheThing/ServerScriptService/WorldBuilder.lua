@@ -98,7 +98,29 @@ end
 ----------------------------------------------------------------------
 -- The Blender map
 ----------------------------------------------------------------------
+-- Uploaded models (Config.AssetIds) load by themselves, no Studio import needed
+local function loadAsset(id, label)
+	if not id or id <= 0 then
+		return nil
+	end
+	local ok, result = pcall(function()
+		return game:GetService("InsertService"):LoadAsset(id)
+	end)
+	if not ok then
+		warn("[WorldBuilder] Couldn't load the " .. label .. " (asset " .. id .. "): " .. tostring(result))
+		return nil
+	end
+	return result
+end
+
 local function findMapTemplate()
+	if not ServerStorage:FindFirstChild("Map") then
+		local loaded = loadAsset(Config.AssetIds and Config.AssetIds.Map, "map")
+		if loaded then
+			loaded.Name = "Map"
+			loaded.Parent = ServerStorage
+		end
+	end
 	for _, container in ipairs({ ServerStorage, ReplicatedStorage, workspace }) do
 		local map = container:FindFirstChild("Map")
 		if map and map:IsA("Model") then
@@ -461,6 +483,14 @@ function WorldBuilder.build()
 	worldFolder.Name = "World"
 	worldFolder.Parent = workspace
 
+	-- the props (delivery truck...) for every client
+	if not ReplicatedStorage:FindFirstChild("Assets") then
+		local props = loadAsset(Config.AssetIds and Config.AssetIds.Props, "props")
+		if props then
+			props.Name = "Assets"
+			props.Parent = ReplicatedStorage
+		end
+	end
 	hasMap = placeMap()
 	if not hasMap then
 		warn("[WorldBuilder] No Blender map found, so you're seeing simple stand-in blocks. Import "
