@@ -694,10 +694,6 @@ local function poof(position, color, amount)
 	end)
 end
 
-local function easeOut(u)
-	return 1 - (1 - u) * (1 - u)
-end
-
 local function arc(from, to, k, height)
 	return from:Lerp(to, k) + Vector3.new(0, math.sin(k * math.pi) * height, 0)
 end
@@ -721,12 +717,23 @@ local function runDelivery(payload)
 	end
 
 	local truck = Assets.get("Truck") or Looks.truck()
-	local wheels = {}
+	local wheels, parts = {}, {}
 	for _, d in ipairs(truck:GetDescendants()) do
-		if d:IsA("BasePart") and string.find(d.Name, "Wheel") then
-			table.insert(wheels, { part = d, offset = d.CFrame })
+		if d:IsA("BasePart") then
+			table.insert(parts, { part = d, transparency = d.Transparency })
+			if string.find(d.Name, "Wheel") then
+				table.insert(wheels, { part = d, offset = d.CFrame })
+			end
 		end
 	end
+	-- headlights, so it lights up the tunnel walls on its way in and out
+	local headlights = Instance.new("SpotLight")
+	headlights.Face = Enum.NormalId.Front
+	headlights.Angle = 70
+	headlights.Range = 28
+	headlights.Brightness = 0
+	headlights.Color = Color3.fromRGB(255, 240, 200)
+	headlights.Shadows = false
 	-- exhaust puffs out of the back
 	local puff = Instance.new("ParticleEmitter")
 	puff.Color = ColorSequence.new(Color3.fromRGB(220, 220, 230))
@@ -737,35 +744,48 @@ local function runDelivery(payload)
 	puff.Speed = NumberRange.new(2, 3)
 	puff.EmissionDirection = Enum.NormalId.Back
 	puff.Parent = truck.PrimaryPart
+	headlights.Parent = truck.PrimaryPart
+	local shown = -1
+	local function fade(visible)
+		-- out of (and into) the dark: the truck fades in and out
+		visible = math.floor(visible * 20 + 0.5) / 20
+		if visible == shown then
+			return
+		end
+		shown = visible
+		for _, entry in ipairs(parts) do
+			entry.part.Transparency = entry.transparency + (1 - entry.transparency) * (1 - visible)
+		end
+		puff.Enabled = visible > 0.6
+		headlights.Brightness = 3 * visible
+	end
+	fade(Rules.truckVisible(D.StartX))
 	truck.Parent = visuals
 
 	local landCF = p.cf * CFrame.new(D.LandAt)
 	local spotPos = (p.cf * CFrame.new(spot + Vector3.new(0, 1, 0))).Position
-	local driveOffAt = times.throwAt + 0.5
 	local package, packageStart, honked, landed, opened, packet = nil, nil, false, false, false, nil
 	local lastX, spin = D.StartX, 0
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
 		local t = now() - start
-		-- the truck: zoom off, brake hard at the plot, then drive away
-		local x, lean = plotX, 0
-		if t < times.drive then
-			local u = t / times.drive
-			x = D.StartX + (plotX - D.StartX) * easeOut(u)
+		-- the truck: out of the west tunnel, brake hard at the plot, then off
+		-- into the east tunnel
+		local x, phase, u = Rules.truckX(payload.plot, t)
+		local lean = 0
+		if phase == "drive" then
 			if u > 0.65 then
 				lean = math.sin((u - 0.65) / 0.35 * math.pi) * 0.14 -- the nose dips as it brakes
 			end
-		elseif t < driveOffAt then
-			local settle = t - times.drive
-			lean = -math.sin(math.min(1, settle / 0.35) * math.pi) * 0.05 -- and rocks back
+		elseif phase == "stop" then
+			lean = -math.sin(math.min(1, u / 0.35) * math.pi) * 0.05 -- and rocks back
 			if not honked then
 				honked = true
 				UI.sound("Honk", 0.8)
 				floatingText(Vector3.new(plotX, 10, laneZ), "HONK!", Color3.fromRGB(255, 220, 60), 40, 4)
 			end
 		else
-			local u = t - driveOffAt
-			x = plotX + 30 * u * u + 8 * u
+			lean = -math.sin(math.min(1, u / 0.5) * math.pi) * 0.04 -- it squats as it pulls away
 		end
 		local speed = dt > 0 and (x - lastX) / dt or 0
 		lastX = x
@@ -777,9 +797,9 @@ local function runDelivery(payload)
 			for _, w in ipairs(wheels) do
 				w.part.CFrame = truckCF * w.offset * CFrame.Angles(-spin, 0, 0)
 			end
-			if x > D.EndX then
-				poof(truckCF.Position + Vector3.new(0, 4, 0), Color3.fromRGB(230, 230, 240), 30)
-				truck:Destroy()
+			fade(Rules.truckVisible(x))
+			if x >= D.EndX then
+				truck:Destroy() -- gone, deep in the tunnel
 			end
 		end
 
@@ -829,10 +849,13 @@ local function runDelivery(payload)
 				packet = nil
 			end
 		end
-		if t > times.total + 4 then
+		if (t > times.total + 1 and not truck.Parent) or t > times.total + 20 then
 			connection:Disconnect()
 			if truck.Parent then
 				truck:Destroy()
+			end
+			if packet then
+				packet:Destroy()
 			end
 		end
 	end)

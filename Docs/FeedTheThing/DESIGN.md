@@ -302,7 +302,7 @@ Minimum tap target 64 px; text never under 18 px.
 
 ### World layout
 
-- **Stud-style neighbourhood, made in Blender** (`FeedTheThing/Blender`). One street runs down the middle with **4 plots on each side**, all facing the road. Checkered stud walls surround the map, the seed stand sits at the west end, and the FEED THE THING arch stands at the east end.
+- **Stud-style neighbourhood, made in Blender** (`FeedTheThing/Blender`). One street runs down the middle with **4 plots on each side**, all facing the road. Checkered stud walls surround the map. The road runs into a tunnel in the wall at each end: SEED EXPRESS in the west (the seed stand sits beside it) and FEED THE THING in the east.
 - **8 players per server.** The first players get the middle of the street, across from each other.
 - **Each plot:** the house at the back; the **hatch** pit in the lawn in front of it; **planter boxes** on both sides of the hatch (harvest → toss is a few steps); the **yard** lawn in front where Thinglets roam, behind an X-fence with a wide gate onto the sidewalk; a mailbox; and a floating sign with the owner's avatar and name.
 - **Spawn** right next to your own hatch.
@@ -393,6 +393,7 @@ Rebirth, Halloween event, NPC egg raids, trading, Robux cosmetics (see #8).
 | 10-05 | 8-player servers, plots in a ring | Phone performance with up to 16 Thinglets per yard |
 | 10-05 | Map rebuilt as a stud-style street neighbourhood, made in Blender (was a ring of plots built from parts) | The look players expect from the genre (Steal an Egg); easier to make pretty in Blender |
 | 10-05 | Buying seeds sends a delivery truck (made in Blender) that lobs the package onto your lawn; the plant appears when it lands | Turns a menu click into a fun, visible moment everyone on the street sees |
+| 10-05 | The truck comes out of a tunnel at the west end and fades into one at the east end (the old arch became the east tunnel) | No trucks popping in and out of thin air; it has somewhere to come from and go to |
 | 10-05 | Sound effects are made in code (`Sounds/make_sounds.py`) and uploaded with an Open Cloud key | 100% original (no licence or copyright risk), easy to tweak and re-upload |
 | 10-05 | Uploaded models load by asset id (InsertService) | No manual Studio import after every change |
 | 10-05 | Prototype: the server decides, clients draw (plants, Thing, Thinglets drawn locally from plot attributes) | Smooth animation on phones, light server |

@@ -60,6 +60,13 @@ ROAD_PAST_PLOTS = 10
 PLAZA_LENGTH = 50
 PLAZA_HALF_WIDTH = 40
 BACK_YARD = 15
+TUNNEL_R = 13          # a tunnel into the wall at each end of the street (Config.World.TunnelRadius)
+TUNNEL_SPRING = 9      # how high its straight sides go before the arch starts
+TUNNEL_DEPTH = 40      # how far it goes back into the dark
+TUNNEL_SEGMENTS = 9    # blocks round the arch
+TUNNEL_BANDS = [0, 2, 5, 9, 14, 21, 30, TUNNEL_DEPTH]   # it gets darker band by band
+TUNNEL_SHADES = [0.8, 0.55, 0.36, 0.22, 0.12, 0.06, 0.03]
+STAND_Z = -28          # the seed stand, beside the west tunnel (Config.World.StandZ)
 
 HALF_ROAD = ROAD_W / 2
 SIDEWALK_OUT = HALF_ROAD + SIDEWALK_W            # 18
@@ -122,6 +129,10 @@ PALETTE.update({
     "cardboard": (205, 150, 90), "cardboard_dark": (165, 115, 65), "tape": (235, 205, 140),
     "roof_light": (255, 170, 40), "headlight": (255, 245, 200),
 })
+# the tunnels' insides, fading to black
+PALETTE.update({f"tunnel_wall{k}": tuple(int(v * f) for v in (150, 135, 175)) for k, f in enumerate(TUNNEL_SHADES)})
+PALETTE.update({f"tunnel_floor{k}": tuple(int(v * f) for v in (66, 68, 78)) for k, f in enumerate(TUNNEL_SHADES)})
+PALETTE["tunnel_end"] = (3, 2, 5)
 
 SWATCH = 32
 PAL_N = 16  # 16 x 16 swatches of 32 px = a 512 px image (big swatches don't bleed at a distance)
@@ -435,15 +446,16 @@ def build_ground():
 
 def build_street():
     road = new_mesh("Road")
-    road.box(at(0, 0.05, 0), (ROAD_X * 2, 0.3, ROAD_W), "asphalt", faces={"top"})
+    # the road runs on across the plazas and into the tunnels in the end walls
+    road.box(at(0, 0.05, 0), (MAP_X * 2, 0.3, ROAD_W), "asphalt", faces={"top"})
     lines = new_mesh("RoadLines")
     # dashed yellow middle line, white edges, three crossings
-    x = -ROAD_X + 6
-    while x < ROAD_X - 6:
+    x = -MAP_X + 2
+    while x < MAP_X - 6:
         lines.box(at(x + 3, 0.21, 0), (6, 0.02, 0.7), "line_yellow", faces={"top"})
         x += 13
     for z in (-HALF_ROAD + 1, HALF_ROAD - 1):
-        lines.box(at(0, 0.21, z), (ROAD_X * 2 - 4, 0.02, 0.5), "line_white", faces={"top"})
+        lines.box(at(0, 0.21, z), (MAP_X * 2, 0.02, 0.5), "line_white", faces={"top"})
     for cx in (-ROAD_X + 8, 0, ROAD_X - 8):
         for k in range(7):
             z = -HALF_ROAD + 2.2 + k * 3.27
@@ -458,7 +470,9 @@ def build_street():
         x0 = s * ROAD_X
         x1 = s * (MAP_X - 1)
         cx, w = (x0 + x1) / 2, abs(x1 - x0)
-        plaza.box(at(cx, 0.0, 0), (w, 0.4, PLAZA_Z * 2), faces={"top", "+z", "-z", "-x" if s > 0 else "+x"})
+        for sz in (1, -1):  # either side of the road
+            cz, d = sz * (HALF_ROAD + PLAZA_Z) / 2, PLAZA_Z - HALF_ROAD
+            plaza.box(at(cx, 0.0, cz), (w, 0.4, d), faces={"top", "+z" if sz > 0 else "-z", "-x" if s > 0 else "+x"})
 
 
 def build_walls():
@@ -468,7 +482,25 @@ def build_walls():
     # inner faces of the four walls (the outside is never seen)
     for s in (1, -1):
         wall.box(at(0, WALL_H / 2, s * (MAP_Z + t / 2)), (MAP_X * 2 + t * 2, WALL_H, t), faces={"-z" if s > 0 else "+z"})
-        wall.box(at(s * (MAP_X + t / 2), WALL_H / 2, 0), (t, WALL_H, MAP_Z * 2), faces={"-x" if s > 0 else "+x"})
+        # the end walls, with a hole for the tunnel (the arch of blocks round it hides the edge)
+        f = tunnel_frame(s)
+        face = apply(f.rot, (0, 0, -1))
+        hole = TUNNEL_R + 2.5
+        for side in (1, -1):
+            wall.poly([f.point((side * hole, 0, 0)), f.point((side * MAP_Z, 0, 0)),
+                       f.point((side * MAP_Z, WALL_H, 0)), f.point((side * hole, WALL_H, 0))], outward=face)
+        rim = arch_points(hole)
+        for (xa, ya), (xb, yb) in zip(rim, rim[1:]):
+            pts = clean([(xa, min(ya, WALL_H)), (xb, min(yb, WALL_H)), (xb, WALL_H), (xa, WALL_H)])
+            if len(pts) >= 3:
+                wall.poly([f.point((x, y, 0)) for x, y in pts], outward=face)
+        # the tunnel behind the wall gets a grassy lid and sides, so it looks
+        # like solid ground from above (zoomed-out cameras peek over the wall)
+        hw, back, lid = TUNNEL_R + 4, TUNNEL_DEPTH + 1, WALL_H + 1.5
+        top.box(f * at(0, lid - 0.75, (t + 0.5 + back) / 2), (hw * 2, 1.5, back - t - 0.5), faces={"top"})
+        for side in (1, -1):
+            wall.box(f * at(side * hw, lid / 2, (t + back) / 2), (0.01, lid, back - t), faces={"+x" if side > 0 else "-x"})
+        wall.box(f * at(0, lid / 2, back), (hw * 2, lid, 0.01), faces={"+z"})
         top.box(at(0, WALL_H + 0.75, s * (MAP_Z + t / 2)), (MAP_X * 2 + t * 2 + 1, 1.5, t + 1), faces={"top", "-z" if s > 0 else "+z"})
         top.box(at(s * (MAP_X + t / 2), WALL_H + 0.75, 0), (t + 1, 1.5, MAP_Z * 2 + 1), faces={"top", "-x" if s > 0 else "+x"})
 
@@ -604,7 +636,7 @@ def build_plot(i, kit, houses):
 
 
 # ---------------------------------------------------------------------------
-# Street furniture, trees, the seed stand and the arch
+# Street furniture, trees, the seed stand and the tunnels
 # ---------------------------------------------------------------------------
 def build_props():
     props = new_mesh("StreetProps")
@@ -631,6 +663,8 @@ def build_props():
     # benches on the plazas
     for s in (1, -1):
         for bz in (-24, 24):
+            if s < 0 and bz == -24:
+                continue  # the seed stand is there
             b = at(s * (ROAD_X + 22), 0.2, bz, math.pi / 2 if s > 0 else -math.pi / 2)
             props.box(b * at(0, 1.4, 0), (5, 0.35, 1.6), "bench")
             props.box(b * at(0, 2.5, 0.7), (5, 1.2, 0.3), "bench")
@@ -666,7 +700,7 @@ def build_props():
 def build_seed_stand():
     stand = new_mesh("SeedStand")
     letters = new_mesh("SeedStandSign")
-    base = at(-(MAP_X - 16), 0.2, 0, -math.pi / 2)  # faces +X: down the street
+    base = at(-(MAP_X - 16), 0.2, STAND_Z, -math.pi / 2)  # faces +X: down the street
     stand.box(base * at(0, 1.8, 0), (16, 3.6, 4), "wood", keys={"top": "wood_dark"})
     stand.box(base * at(0, 3.7, 0), (16.6, 0.3, 4.6), "wood_dark")
     for sx in (-7.6, 7.6):
@@ -697,28 +731,86 @@ def build_seed_stand():
     stand.blob(base * at(0, 18.5, 1.2), (2.2, 0.6, 2.2), "leafy", detail=1)
 
 
-def build_arch():
-    arch = new_mesh("Arch")
-    letters = new_mesh("ArchSign")
-    eyes = new_mesh("Glow_D7FF5A")
-    base = at(ROAD_X + 4, 0.2, 0, math.pi / 2)  # faces -X: up the street
-    for sz in (-1, 1):
-        p = base * at(sz * (SIDEWALK_OUT + 2.5), 0, 0)
-        arch.box(p * at(0, 9, 0), (4, 18, 4), "pillar", keys={"top": "pillar_dark"})
-        arch.box(p * at(0, 0.6, 0), (5, 1.2, 5), "pillar_dark")
-        arch.box(p * at(0, 18.4, 0), (5, 0.8, 5), "pillar_dark")
-    width = (SIDEWALK_OUT + 2.5) * 2 + 4
-    arch.box(base * at(0, 22, 0), (width + 2, 7, 2), "sign_purple")
-    arch.box(base * at(0, 22, 0.3), (width + 3, 8, 1.4), "sign_purple_dark")
-    letters.text(base * at(3, 20.4, -1.1), "FEED THE THING", 3.8, 0.6, "letter_lime")
-    # a little hatch on the sign with two glowing eyes peeking out
-    hatch = base * at(-(width / 2) + 4.5, 22, -1.05)
-    arch.box(hatch, (5, 5, 0.2), "pit")
-    arch.box(hatch * at(0, 2.7, 0), (5.6, 0.5, 0.4), "wood")
-    arch.box(hatch * at(0, -2.7, 0), (5.6, 0.5, 0.4), "wood")
-    for sx in (-1, 1):
-        arch.box(hatch * at(sx * 2.7, 0, 0), (0.5, 5.6, 0.4), "wood")
-        eyes.blob(hatch * at(sx * 1.1, 0.2, -0.2), (1.2, 1.5, 0.6), "white", detail=1)
+def tunnel_frame(s):
+    """The tunnel in the east (s = 1) or west (s = -1) wall. Local -Z faces up
+    the street, z = 0 is the wall's face and the tunnel runs off into +Z."""
+    return at(s * MAP_X, 0, 0, s * math.pi / 2)
+
+
+def arch_points(r, n=TUNNEL_SEGMENTS):
+    """(x, y) round the top of a tunnel of radius r, from its right side to its left."""
+    return [(r * math.cos(math.pi * k / n), TUNNEL_SPRING + r * math.sin(math.pi * k / n)) for k in range(n + 1)]
+
+
+def clean(points):
+    """Drops repeated corners (so a squashed quad becomes a triangle)."""
+    out = []
+    for p in points:
+        if not out or abs(p[0] - out[-1][0]) > 1e-6 or abs(p[1] - out[-1][1]) > 1e-6:
+            out.append(p)
+    if len(out) > 1 and abs(out[0][0] - out[-1][0]) < 1e-6 and abs(out[0][1] - out[-1][1]) < 1e-6:
+        out.pop()
+    return out
+
+
+def build_tunnel(s):
+    """A tunnel into the end wall, where the seed truck comes and goes. The east
+    one wears the FEED THE THING sign (with the eyes peeking out of a hatch),
+    the west one the SEED EXPRESS sign."""
+    f = tunnel_frame(s)
+    out = lambda n: apply(f.rot, n)
+    P = lambda x, y, z: f.point((x, y, z))
+    name = "East" if s > 0 else "West"
+    tunnel = new_mesh("Tunnel" + name)
+    letters = new_mesh("TunnelSign" + name)
+    R = TUNNEL_R
+
+    # pillars either side of the opening
+    for side in (1, -1):
+        p = f * at(side * (R + 2), 0, -1.5)
+        tunnel.box(p * at(0, TUNNEL_SPRING / 2, 0), (4, TUNNEL_SPRING, 3), "pillar", keys={"top": "pillar_dark"})
+        tunnel.box(p * at(0, 0.6, 0), (5, 1.2, 3.6), "pillar_dark")
+    # the arch: chunky blocks in two colours
+    inner, outer = arch_points(R), arch_points(R + 3)
+    for k in range(TUNNEL_SEGMENTS):
+        key = "pillar" if k % 2 == 0 else "pillar_dark"
+        (xi0, yi0), (xi1, yi1) = inner[k], inner[k + 1]
+        (xo0, yo0), (xo1, yo1) = outer[k], outer[k + 1]
+        mid = math.pi * (k + 0.5) / TUNNEL_SEGMENTS
+        tunnel.poly([P(xi0, yi0, -2), P(xi1, yi1, -2), P(xo1, yo1, -2), P(xo0, yo0, -2)], key, out((0, 0, -1)))
+        tunnel.poly([P(xo0, yo0, -2), P(xo1, yo1, -2), P(xo1, yo1, 0), P(xo0, yo0, 0)], key, out((math.cos(mid), math.sin(mid), 0)))
+        tunnel.poly([P(xi0, yi0, -2), P(xi1, yi1, -2), P(xi1, yi1, 0), P(xi0, yi0, 0)], "pillar_dark", out((-math.cos(mid), -math.sin(mid), 0)))
+
+    # the inside: walls, roof and road, darker and darker the further in
+    section = [(R, 0)] + inner + [(-R, 0)]
+    for b, (za, zb) in enumerate(zip(TUNNEL_BANDS, TUNNEL_BANDS[1:])):
+        for (xa, ya), (xb, yb) in zip(section, section[1:]):
+            inward = (-(xa + xb) / 2, TUNNEL_SPRING - (ya + yb) / 2, 0)
+            tunnel.poly([P(xa, ya, za), P(xb, yb, za), P(xb, yb, zb), P(xa, ya, zb)], f"tunnel_wall{b}", out(inward))
+        tunnel.poly([P(R, 0.2, za), P(-R, 0.2, za), P(-R, 0.2, zb), P(R, 0.2, zb)], f"tunnel_floor{b}", out((0, 1, 0)))
+    tunnel.poly([P(x, y, TUNNEL_DEPTH) for x, y in section], "tunnel_end", out((0, 0, -1)))
+
+    # the sign over it
+    width = 45
+    sign_y = TUNNEL_SPRING + R + 3 + 3
+    tunnel.box(f * at(0, sign_y, -1.6), (width + 2, 7, 1.2), "sign_purple")
+    tunnel.box(f * at(0, sign_y, -0.9), (width + 3, 8, 1.4), "sign_purple_dark")
+    badge = f * at(-(width / 2) + 4.5, sign_y, -2.25)
+    if s > 0:
+        letters.text(f * at(3, sign_y - 1.6, -2.3), "FEED THE THING", 3.8, 0.6, "letter_lime")
+        # a little hatch with two glowing eyes peeking out
+        eyes = new_mesh("Glow_D7FF5A")
+        tunnel.box(badge, (5, 5, 0.2), "pit")
+        tunnel.box(badge * at(0, 2.7, 0), (5.6, 0.5, 0.4), "wood")
+        tunnel.box(badge * at(0, -2.7, 0), (5.6, 0.5, 0.4), "wood")
+        for sx in (-1, 1):
+            tunnel.box(badge * at(sx * 2.7, 0, 0), (0.5, 5.6, 0.4), "wood")
+            eyes.blob(badge * at(sx * 1.1, 0.2, -0.2), (1.2, 1.5, 0.6), "white", detail=1)
+    else:
+        letters.text(f * at(3, sign_y - 1.4, -2.3), "SEED EXPRESS", 3.4, 0.6, "letter_yellow")
+        # a big tomato for a logo
+        tunnel.blob(badge * at(0, -0.3, -0.3), (4.4, 4.0, 1.6), "tomato", detail=2)
+        tunnel.blob(badge * at(0, 1.8, -0.5), (2.4, 0.7, 1.0), "leafy", detail=1)
 
 
 def build_markers():
@@ -853,7 +945,8 @@ def main():
         build_plot(i, kit, house)
     build_props()
     build_seed_stand()
-    build_arch()
+    for s in (1, -1):
+        build_tunnel(s)
     build_markers()
     print("Objects:")
     build_objects(textures)
@@ -877,7 +970,9 @@ def main():
         render_preview("overview", (-250, 230, 250), (0, 0, 0), lens=22)
         render_preview("street", (-150, 14, 0), (100, 4, 0), lens=24)
         render_preview("plot", (-40, 30, -35), (-40, 3, 45), lens=22)
-        render_preview("stand", (-150, 10, 0), (-205, 6, 0), lens=30)
+        render_preview("stand", (-150, 12, 0), (-205, 8, -10), lens=26)
+        render_preview("tunnel", (140, 12, 6), (215, 12, 0), lens=26)
+        render_preview("tunnel_inside", (196, 5, 6), (240, 5, 6), lens=24)
 
 
 if __name__ == "__main__":

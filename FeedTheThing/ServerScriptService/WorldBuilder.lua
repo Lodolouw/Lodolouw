@@ -4,7 +4,7 @@
 	Puts the world together.
 
 	The map itself - the street, the plots, houses, fences, trees, the seed
-	stand and the arch - is a model made in Blender (FeedTheThing/Blender,
+	stand and the two tunnels - is a model made in Blender (FeedTheThing/Blender,
 	exported as FeedTheThing_Map.fbx). Import it into Studio, name it "Map"
 	and put it in ServerStorage (see the README). This script then:
 	  * lines it up by its three marker blocks (so the import's size and
@@ -42,8 +42,8 @@ local STREET_X = (W.PlotsPerSide - 1) / 2 * W.PlotSpacing + W.PlotWidth / 2
 local ROAD_X = STREET_X + W.RoadPastPlots
 local MAP_X = ROAD_X + W.PlazaLength
 local PLAZA_Z = W.PlazaHalfWidth
-local STAND_X = -(MAP_X - 16) -- the seed stand, facing down the street
-local ARCH_X = ROAD_X + 4
+local STAND_X = -(MAP_X - 16) -- the seed stand, facing down the street...
+local STAND_Z = W.StandZ -- ...beside the west tunnel
 
 -- where build_map.py put its three marker blocks
 local MARKERS = {
@@ -267,10 +267,13 @@ local function buildSolids()
 		solid("Wall", CFrame.new(s * (MAP_X + 2), h / 2, 0), Vector3.new(4, h, MAP_Z * 2 + 8), W.WallB, folder, false)
 	end
 
-	-- the seed stand's counter and the arch's pillars
-	solid("SeedStand", CFrame.new(STAND_X, 2, 0), Vector3.new(4, 3.6, 16), Color3.fromRGB(175, 100, 50), folder, false)
+	-- the seed stand's counter and the pillars either side of each tunnel
+	-- (the wall above stops anyone walking into a tunnel)
+	solid("SeedStand", CFrame.new(STAND_X, 2, STAND_Z), Vector3.new(4, 3.6, 16), Color3.fromRGB(175, 100, 50), folder, false)
 	for _, s in ipairs({ 1, -1 }) do
-		solid("ArchPillar", CFrame.new(ARCH_X, 9.2, s * (SIDEWALK_OUT + 2.5)), Vector3.new(4, 18, 4), Color3.fromRGB(225, 160, 95), folder, false)
+		for _, side in ipairs({ 1, -1 }) do
+			solid("TunnelPillar", CFrame.new(s * (MAP_X - 1.5), 4.5, side * (W.TunnelRadius + 2)), Vector3.new(3, 9, 4), Color3.fromRGB(225, 160, 95), folder, false)
+		end
 	end
 	return folder
 end
@@ -415,7 +418,7 @@ end
 
 local function buildShopPrompt()
 	local spot = part({
-		Name = "SeedShopSpot", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(STAND_X + 3.5, 3, 0),
+		Name = "SeedShopSpot", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(STAND_X + 3.5, 3, STAND_Z),
 		Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false,
 	}, worldFolder)
 	local prompt = Instance.new("ProximityPrompt")

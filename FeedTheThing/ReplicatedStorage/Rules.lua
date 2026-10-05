@@ -456,7 +456,47 @@ function Rules.deliveryTimes(i)
 	local drive = math.max(0.6, (x - d.StartX) / d.Speed)
 	local throwAt = drive + d.Brake
 	local landAt = throwAt + d.Throw
-	return { drive = drive, throwAt = throwAt, landAt = landAt, total = landAt + d.Open }
+	return { drive = drive, throwAt = throwAt, landAt = landAt, total = landAt + d.Open, leaveAt = throwAt + d.Leave }
+end
+
+-- 0..1 -> 0..1: drives at a steady speed, then brakes hard over the last 30%
+local CRUISE = 0.7
+function Rules.cruiseBrake(u)
+	u = math.clamp(u, 0, 1)
+	local v = 2 / (1 + CRUISE) -- the cruising speed that still gets there at u = 1
+	if u <= CRUISE then
+		return v * u
+	end
+	local w = u - CRUISE
+	return v * CRUISE + v * w - v * w * w / (2 * (1 - CRUISE))
+end
+
+-- Where the delivery truck to plot i is along the street (x), t seconds
+-- after it set off, and what it's doing: "drive" (u = 0..1 of the way),
+-- "stop" (u = seconds stopped) or "leave" (u = seconds since it pulled away)
+function Rules.truckX(i, t)
+	local d = Config.Delivery
+	local plotX = Rules.plotSpot(i)
+	local times = Rules.deliveryTimes(i)
+	if t < times.drive then
+		local u = math.max(0, t) / times.drive
+		return d.StartX + (plotX - d.StartX) * Rules.cruiseBrake(u), "drive", u
+	end
+	if t < times.leaveAt then
+		return plotX, "stop", t - times.drive
+	end
+	local u = t - times.leaveAt
+	local topAt = d.LeaveSpeed / d.PullAway
+	if u < topAt then
+		return plotX + 0.5 * d.PullAway * u * u, "leave", u
+	end
+	return plotX + 0.5 * d.PullAway * topAt * topAt + d.LeaveSpeed * (u - topAt), "leave", u
+end
+
+-- How much of the truck shows at x: 0 deep in a tunnel, 1 out on the street
+function Rules.truckVisible(x)
+	local d = Config.Delivery
+	return math.clamp(math.min(x - d.StartX, d.EndX - x) / d.Fade, 0, 1)
 end
 
 return Rules

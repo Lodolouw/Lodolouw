@@ -171,6 +171,43 @@ local near, far = Rules.deliveryTimes(5), Rules.deliveryTimes(7) -- west end vs 
 check("the far end takes longer", far.total > near.total, true)
 check("timeline in order", near.drive < near.throwAt and near.throwAt < near.landAt and near.landAt < near.total, true)
 check("a delivery takes a few seconds", far.total > 3 and far.total < 10, true)
+check("cruiseBrake starts at 0", Rules.cruiseBrake(0), 0)
+check("cruiseBrake ends at 1", math.abs(Rules.cruiseBrake(1) - 1) < 1e-9, true)
+check("cruiseBrake joins up smoothly", math.abs(Rules.cruiseBrake(0.7 - 1e-6) - Rules.cruiseBrake(0.7 + 1e-6)) < 1e-4, true)
+do
+	local D = Config.Delivery
+	local smooth, forward, previous = true, true, nil
+	for plot = 1, 8 do
+		local times = Rules.deliveryTimes(plot)
+		local plotX = Rules.plotSpot(plot)
+		check("truck " .. plot .. " starts in the west tunnel", (Rules.truckX(plot, 0)), D.StartX)
+		check("truck " .. plot .. " stops at its plot", math.abs(Rules.truckX(plot, times.drive) - plotX) < 1e-6, true)
+		check("truck " .. plot .. " is stopped for the throw", select(2, Rules.truckX(plot, times.throwAt)), "stop")
+		check("truck " .. plot .. " leaves after the throw", times.leaveAt > times.throwAt, true)
+		check("truck " .. plot .. " is gone in 15s", Rules.truckX(plot, 15) > D.EndX, true)
+		previous = nil
+		for k = 0, 1500 do
+			local x = Rules.truckX(plot, k / 100)
+			if previous then
+				if x < previous - 1e-9 then
+					forward = false
+				end
+				if x - previous > 1.2 then -- 120 studs a second at most
+					smooth = false
+				end
+			end
+			previous = x
+		end
+	end
+	check("the truck never backs up", forward, true)
+	check("the truck never jumps", smooth, true)
+	check("hidden deep in the west tunnel", Rules.truckVisible(D.StartX), 0)
+	check("hidden deep in the east tunnel", Rules.truckVisible(D.EndX), 0)
+	check("hidden past the end", Rules.truckVisible(D.EndX + 50), 0)
+	check("seen on the street", Rules.truckVisible(0), 1)
+	check("seen at the last plot", Rules.truckVisible(Rules.plotSpot(7) + 40), 1)
+	check("half faded in the tunnel mouth", Rules.truckVisible(D.EndX - D.Fade / 2), 0.5)
+end
 check("clock hours", Rules.clock(3725), "1:02:05")
 
 print(string.format("%d passed, %d failed", passed, failed))

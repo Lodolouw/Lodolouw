@@ -256,10 +256,12 @@ Config.World = {
 	SidewalkWidth = 6,
 	FrontYard = 2, -- grass between the sidewalk and the plot
 	RoadPastPlots = 10, -- the road runs this far past the last plots...
-	PlazaLength = 50, -- ...then a plaza at each end (seed stand west, arch east)
+	PlazaLength = 50, -- ...then a plaza at each end, and a tunnel into the wall at each end
 	PlazaHalfWidth = 40,
 	BackYard = 15, -- room behind the plots, before the wall
 	WallHeight = 24,
+	TunnelRadius = 13, -- the tunnels the delivery truck uses (half as wide as the opening)
+	StandZ = -28, -- the seed stand stands beside the west tunnel, on the south side
 	-- The map itself is a model made in Blender (FeedTheThing/Blender). These
 	-- numbers must match build_map.py; the game adds invisible floors and
 	-- walls to match it.
@@ -345,19 +347,25 @@ Config.AssetIds = {
 }
 
 ----------------------------------------------------------------------
--- Seed deliveries: buy a seed and a truck leaves the seed stand, drives
--- down the street, stops at your plot and lobs the package onto your lawn.
--- The seed is planted the moment the package bursts open.
+-- Seed deliveries: buy a seed and a truck comes out of the tunnel at the
+-- west end, drives down the street, stops at your plot and lobs the package
+-- onto your lawn, then drives off into the tunnel at the east end (under
+-- the FEED THE THING sign). The seed is planted the moment the package
+-- bursts open.
 ----------------------------------------------------------------------
 Config.Delivery = {
-	StartX = -178, -- leaves from in front of the seed stand (west end)
-	EndX = 190, -- and drives off east, under the arch, in a puff of smoke
+	StartX = -232, -- sets off inside the west tunnel...
+	EndX = 232, -- ...and is gone inside the east tunnel (the walls are at x = +-215)
+	Fade = 22, -- studs over which it fades in and out of the tunnels' darkness
 	Lane = 6, -- how far from the road's middle it drives (on your side)
-	Speed = 75, -- average studs per second (it zooms off and brakes hard)
+	Speed = 75, -- average studs per second on the way to you (it cruises, then brakes hard)
 	Brake = 0.5, -- seconds stopped before the throw
 	Throw = 1.1, -- seconds the package flies
 	Open = 1.0, -- bounce, burst open, the seed flies into the planter
 	Gap = 1.2, -- seconds between trucks to the same house
+	Leave = 0.5, -- seconds after the throw before it pulls away
+	PullAway = 60, -- how fast it speeds up as it leaves (studs per second, per second)
+	LeaveSpeed = 50, -- top speed leaving (slow enough to watch it vanish into the tunnel)
 	LandAt = Vector3.new(0, 0, -36), -- where the package lands (plot-local, the front lawn)
 }
 

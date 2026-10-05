@@ -2,7 +2,7 @@
 
 ![overview](Previews/overview.jpg)
 
-`build_map.py` builds the whole neighbourhood: the street, 8 plots with houses, fences, planters and hatch pits, trees, hedges, lamps, the seed stand and the FEED THE THING arch. It's a script, so the map can be rebuilt or changed any time.
+`build_map.py` builds the whole neighbourhood: the street, 8 plots with houses, fences, planters and hatch pits, trees, hedges, lamps, the seed stand and the two tunnels the delivery truck uses (SEED EXPRESS and FEED THE THING). It's a script, so the map can be rebuilt or changed any time.
 
 | File | What it is |
 |---|---|
@@ -28,6 +28,6 @@ Without a `Map`, the game shows plain stand-in blocks and prints a reminder in t
 - **Bigger changes:** edit `build_map.py` and run `blender --background --python build_map.py`. Plot positions and sizes must match `Config.World` in `ReplicatedStorage/Config.lua`.
 - Each object must stay under 20,000 triangles (Roblox's limit per mesh). The script checks this.
 
-Objects named `Glow_RRGGBB` (lamp bulbs, the arch's eyes) are turned into glowing Neon in that colour by the game.
+Objects named `Glow_RRGGBB` (lamp bulbs, the eyes on the FEED THE THING sign) are turned into glowing Neon in that colour by the game.
 
 The sign font is Fredoka One (SIL Open Font License, see `FredokaOne-LICENSE.txt`).
