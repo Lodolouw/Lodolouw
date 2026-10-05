@@ -120,7 +120,7 @@ local function buildPlaza()
 
 	-- lamps
 	for i = 1, 4 do
-		local angle = (i - 0.5) / 4 * math.pi * 2
+		local angle = (i - 1) / 4 * math.pi * 2 + math.pi / 8 -- between the paths, not on them
 		local at = Vector3.new(math.sin(angle), 0, math.cos(angle)) * (W.PlazaRadius - 6)
 		part({ Name = "LampPost", Size = Vector3.new(0.8, 10, 0.8), CFrame = CFrame.new(at + Vector3.new(0, 5, 0)), Color = Color3.fromRGB(60, 50, 70) }, folder)
 		part({ Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.new(2.4, 2.4, 2.4), CFrame = CFrame.new(at + Vector3.new(0, 10.6, 0)), Color = Color3.fromRGB(255, 235, 170), Material = Enum.Material.Neon }, folder)

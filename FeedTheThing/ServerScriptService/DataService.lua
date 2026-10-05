@@ -23,6 +23,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local store = nil
 local storeWarned = false
 local profiles = {} -- [player] = { data = ..., canSave = bool }
+local savesInFlight = 0 -- so a server shutting down waits for saves already started
 
 -- A brand new player's progress
 function DataService.newProfile()
@@ -70,6 +71,13 @@ local function reconcile(data)
 	return data
 end
 
+local function warnOnce(message)
+	if not storeWarned then
+		storeWarned = true
+		warn("[DataService] " .. message)
+	end
+end
+
 local function getStore()
 	if store then
 		return store
@@ -79,19 +87,15 @@ local function getStore()
 	end)
 	if ok then
 		store = result
+	else
+		warnOnce("Couldn't open the DataStore (" .. tostring(result) .. "). Playing without saving."
+			.. (RunService:IsStudio() and " Publish the place and turn on Game Settings > Security > Enable Studio Access to API Services." or ""))
 	end
 	return store
 end
 
 local function keyFor(player)
 	return "u_" .. player.UserId
-end
-
-local function warnOnce(message)
-	if not storeWarned then
-		storeWarned = true
-		warn("[DataService] " .. message)
-	end
 end
 
 -- Loads a player's data (yields). Returns the profile table.
@@ -138,11 +142,13 @@ function DataService.save(player)
 	end
 	profile.data.lastOnline = workspace:GetServerTimeNow()
 	local data = profile.data
+	savesInFlight += 1
 	local ok, err = pcall(function()
 		ds:UpdateAsync(keyFor(player), function()
 			return data
 		end)
 	end)
+	savesInFlight -= 1
 	if not ok then
 		warn("[DataService] Save failed for " .. player.Name .. ": " .. tostring(err))
 	end
@@ -169,17 +175,16 @@ function DataService.start()
 		end
 	end)
 	-- save everyone when the server closes
+	-- save everyone still here, and wait for saves already on their way
+	-- (the last player's leave-save is usually still running when an empty
+	-- server starts shutting down)
 	game:BindToClose(function()
-		local waiting = 0
-		for _, player in ipairs(Players:GetPlayers()) do
-			waiting += 1
-			task.spawn(function()
-				DataService.save(player)
-				waiting -= 1
-			end)
+		for player in pairs(profiles) do
+			task.spawn(DataService.save, player)
 		end
+		task.wait()
 		local started = os.clock()
-		while waiting > 0 and os.clock() - started < 25 do
+		while savesInFlight > 0 and os.clock() - started < 25 do
 			task.wait(0.1)
 		end
 	end)

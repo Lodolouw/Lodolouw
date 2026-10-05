@@ -361,6 +361,26 @@ local function sendYardFull(s)
 	})
 end
 
+-- Eggs waiting for room move into the yard as soon as there is room
+-- (after buying yard space, selling, or choosing). Asks again if any still wait.
+local function drainPending(s)
+	local data = s.data
+	local moved = false
+	while data.pending[1] and #data.yard < data.yardCap do
+		local record = table.remove(data.pending, 1)
+		record.slot = freeSlot(data)
+		table.insert(data.yard, record)
+		moved = true
+	end
+	if moved then
+		publishYard(s)
+		markDirty(s)
+	end
+	if data.pending[1] then
+		sendYardFull(s)
+	end
+end
+
 local function hatch(s, kind, mutation, source)
 	local data = s.data
 	local record = {
@@ -454,10 +474,15 @@ local function onToss(player, cropId, releaseTime)
 		remotes.TossResult:FireClient(player, { ok = false, reason = reason, food = cropId })
 	end
 
-	if t - s.lastTossAt < Config.Toss.MinInterval then
+	-- a small token bucket rather than a hard gap, so tosses that arrive
+	-- bunched up (a phone network catching up) still count
+	s.tossTokens = math.min(3, (s.tossTokens or 3) + (t - (s.tokensAt or t)) / Config.Toss.MinInterval)
+	s.tokensAt = t
+	if s.tossTokens < 1 then
 		reject("slow")
 		return
 	end
+	s.tossTokens -= 1
 	if #data.pending > 0 then
 		sendYardFull(s)
 		reject("Choose what to do with your new Thinglet first!")
@@ -627,6 +652,7 @@ function actions.buyYard(s)
 	end
 	data.coins -= price
 	data.yardCap += 1
+	drainPending(s)
 	markDirty(s)
 	return { ok = true, msg = "More room in the yard!" }
 end
@@ -639,6 +665,7 @@ function actions.sell(s, id)
 			data.coins += price
 			table.remove(data.yard, i)
 			publishYard(s)
+			drainPending(s)
 			markDirty(s)
 			return { ok = true, msg = "Sold for " .. Rules.short(price) .. " coins.", coins = price }
 		end
@@ -671,16 +698,7 @@ function actions.yardChoice(s, choice)
 	end
 	data.coins += price
 	table.remove(data.pending, 1)
-	-- the yard might have room again (or the next egg is waiting)
-	while data.pending[1] and #data.yard < data.yardCap do
-		local nextRecord = table.remove(data.pending, 1)
-		nextRecord.slot = freeSlot(data)
-		table.insert(data.yard, nextRecord)
-		publishYard(s)
-	end
-	if data.pending[1] then
-		sendYardFull(s)
-	end
+	drainPending(s) -- the yard might have room again, or the next egg is waiting
 	markDirty(s)
 	return { ok = true, msg = "+" .. Rules.short(price) .. " coins", coins = price }
 end
@@ -799,7 +817,10 @@ local function areFriends(a, b)
 		local ok, result = pcall(function()
 			return a:IsFriendsWith(b.UserId)
 		end)
-		friendCache[key] = ok and result == true
+		if not ok then
+			return false -- a web hiccup: don't remember it, ask again next time
+		end
+		friendCache[key] = result == true
 	end
 	return friendCache[key]
 end
@@ -917,9 +938,7 @@ local function onPlayerAdded(player)
 	if offline > 0 and away >= Config.Offline.ShowAfter then
 		notify(player, { type = "welcome", coins = offline, away = away })
 	end
-	if #data.pending > 0 then
-		sendYardFull(s)
-	end
+	drainPending(s)
 end
 
 local function onPlayerRemoving(player)
