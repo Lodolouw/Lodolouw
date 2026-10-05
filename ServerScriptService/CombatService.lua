@@ -626,7 +626,11 @@ function introMiss(player, root)
 			end
 		end
 	end
-	if seen == 0 then
+	-- (none left because it just popped - punches thrown in the K.O.
+	-- celebration while the chest drops - is fine: say nothing)
+	local folder = workspace:FindFirstChild("IntroOozlets")
+	local mineLeft = folder and folder:FindFirstChild("Oozlet_" .. player.UserId)
+	if seen == 0 and mineLeft and mineLeft:GetAttribute("Mood") ~= "Popped" then
 		warn("[CombatService] intro punch: no Oozlet of yours is registered as a target (UserId " .. tostring(player.UserId) .. ")")
 	end
 end
@@ -644,8 +648,11 @@ local function nearestTarget(root, player)
 				local centre = flat.Magnitude
 				local d = centre - radius
 				local dy = math.abs(cf.Y - root.Position.Y)
-				-- right up against it counts from any angle; otherwise it must be in front
-				local inFront = centre < 0.01 or d < 1 or facing:Dot(flat.Unit) >= PUNCH_CONE
+				-- right up against it counts from any angle; otherwise it must be in
+				-- front. (The intro's slime hops round you and a brand-new player
+				-- doesn't know to turn: close to it, any punch lands)
+				local close = introFight(player) and (CC.IntroAnyAngle or 4) or 1
+				local inFront = centre < 0.01 or d < close or facing:Dot(flat.Unit) >= PUNCH_CONE
 				if d <= CC.PunchRange and dy < 12 and inFront and d < bestDist and clearShot(root, model, cf) then
 					best, bestDist = model, d
 				end

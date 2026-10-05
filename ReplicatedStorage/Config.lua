@@ -2915,6 +2915,7 @@ Config.Combat = {
 	PunchMoveSpeed = 0.45, -- ...and you only slow down (this share of your speed), you don't stop dead
 	PunchRollCancel = 0.12, -- ...and after this much of it you can roll out of the punch
 	PunchRange = 8,
+	IntroAnyAngle = 4, -- the intro's slime: this close (studs to its edge) a punch lands facing any way
 	PunchContact = 0.45, -- how far into a swing the fist actually lands (share of
 	-- PunchLock). Damage, the camera and the sound all happen at this moment, and
 	-- it is also where tracking stops and you are committed. -- studs from you to the enemy's surface

@@ -907,10 +907,20 @@ task.delay(2, function()
 		add(K.Music)
 	end
 	add((Config.Retro and Config.Retro.TypeBlip) or "UI Blip") -- (his talking)
+	-- (what Roblox says about each one: only a real Failure means the sound
+	-- can't play - private, still in moderation, or deleted. A slow phone
+	-- just hasn't finished yet, and that's not worth a warning)
+	local fetch = {}
 	if #list > 0 then
 		pcall(function()
-			game:GetService("ContentProvider"):PreloadAsync(list)
+			game:GetService("ContentProvider"):PreloadAsync(list, function(id, status)
+				fetch[tostring(id)] = status
+			end)
 		end)
+	end
+	local function failed(snd)
+		local st = fetch[tostring(snd.SoundId)]
+		return st ~= nil and Enum.AssetFetchStatus and st == Enum.AssetFetchStatus.Failure
 	end
 
 	-- THE SOUND REPORT (in the Output window, F9 in game): for every sound
@@ -924,8 +934,10 @@ task.delay(2, function()
 			print("[Colosseum sounds] " .. label .. ': MISSING - add a Sound named "' .. wanted .. '" to SoundService')
 		elseif tostring(snd.SoundId or "") == "" then
 			warn("[Colosseum sounds] " .. label .. ': "' .. snd.Name .. '" has no SoundId - paste one in')
+		elseif failed(snd) then
+			warn("[Colosseum sounds] " .. label .. ': "' .. snd.Name .. '" (' .. tostring(snd.SoundId) .. ") DIDN'T LOAD - Roblox says it failed: private, still in moderation or deleted - pick a sound made by Roblox, or upload your own")
 		elseif not snd.IsLoaded or (tonumber(snd.TimeLength) or 0) <= 0 then
-			warn("[Colosseum sounds] " .. label .. ': "' .. snd.Name .. '" (' .. tostring(snd.SoundId) .. ") DIDN'T LOAD - probably private: pick a sound made by Roblox, or upload your own")
+			print("[Colosseum sounds] " .. label .. ': "' .. snd.Name .. '" still loading (a slow connection - it plays once it arrives)')
 		else
 			print("[Colosseum sounds] " .. label .. ': OK - "' .. snd.Name .. '" (' .. string.format("%.1f", tonumber(snd.TimeLength) or 0) .. "s)")
 		end

@@ -110,6 +110,23 @@ SoundService.ChildAdded:Connect(function(c)
 	end
 end)
 
+-- the sound report: only a sound Roblox says FAILED is warned about - one
+-- that's still loading (a slow phone) isn't (it was, falsely, in the live game)
+SoundService:FindFirstChild("Victory Fanfare").SoundId = "rbxassetid://111"
+SoundService:FindFirstChild("Boss Slam").SoundId = "rbxassetid://222"
+M.fetchStatus = function(id)
+	return id == "rbxassetid://111" and "Failure" or (id == "rbxassetid://222" and "Success" or nil)
+end
+local soundWarns = {}
+local baseWarn = env.warn
+env.warn = function(...)
+	local line = table.concat({ ... }, " ")
+	if string.find(line, "Colosseum sounds", 1, true) then
+		table.insert(soundWarns, line)
+	end
+	return baseWarn(...)
+end
+
 -- run both scripts
 task.spawn(M.load(S.LobbyActivities, "LobbyActivities", env))
 task.spawn(M.load(S.BossIntro, "BossIntro", env))
@@ -676,6 +693,15 @@ for n, c in pairs(counts) do
 end
 table.sort(list)
 print("sounds played: " .. table.concat(list, "  "))
+local fanfareWarned, slamWarned, loadingWarned = false, false, false
+for _, line in ipairs(soundWarns) do
+	fanfareWarned = fanfareWarned or string.find(line, "Victory Fanfare", 1, true) ~= nil
+	slamWarned = slamWarned or string.find(line, "Boss Slam", 1, true) ~= nil
+	loadingWarned = loadingWarned or string.find(line, "DIDN'T LOAD", 1, true) ~= nil and string.find(line, "Victory Fanfare", 1, true) == nil
+end
+assert(fanfareWarned, "a sound Roblox says failed is warned about")
+assert(not slamWarned, "a sound that loaded isn't")
+assert(not loadingWarned, "a sound that's only still loading (a slow phone) isn't warned about: " .. table.concat(soundWarns, " | "))
 print(string.format("ERRORS %d  warnings %d", #M.errors, M.warnings or 0))
 assert(#M.errors == 0, "errors in the client scripts")
 print("PASS")

@@ -1376,9 +1376,16 @@ M.services.TweenService = {
 }
 M.preloaded = {}
 M.services.ContentProvider = {
-	PreloadAsync = function(_, list)
+	PreloadAsync = function(_, list, done)
 		for _, a in ipairs(list) do
 			table.insert(M.preloaded, a)
+			-- (M.fetchStatus(contentId) -> an AssetFetchStatus name, for the callback)
+			if done and M.fetchStatus and type(a) == "table" and a.SoundId then
+				local st = M.fetchStatus(a.SoundId)
+				if st then
+					done(a.SoundId, M.Enum.AssetFetchStatus[st])
+				end
+			end
 		end
 	end,
 }

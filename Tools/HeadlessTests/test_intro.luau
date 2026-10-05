@@ -485,6 +485,17 @@ waitFor(function()
 	return model:GetAttribute("Action") == "Dizzy"
 end, 2, "it to be dizzy")
 assert(model:GetAttribute("Invulnerable") == false, "dizzy: hit it now")
+-- a brand-new player who hasn't turned round: close by, facing AWAY, the punch still lands
+do
+	local hpBefore = model:GetAttribute("Health")
+	local at = model.Hitbox.Position
+	local here = Vector3.new(at.X + 5, 3.8, at.Z)
+	myRoot.CFrame = CFrame.lookAt(here, here + Vector3.new(1, 0, 0))
+	lastPunch = T
+	CombatAction:FireServer("Punch", nil, 1)
+	step(0.5)
+	assert(model:GetAttribute("Health") < hpBefore, "a close punch facing away lands in the intro")
+end
 
 -- punch it down to half: it cracks
 waitFor(function()
