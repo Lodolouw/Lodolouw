@@ -136,7 +136,10 @@ function UI.fit(frame, width, height, margin)
 	update()
 	local camera = workspace.CurrentCamera
 	if camera then
-		camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+		local connection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+		frame.Destroying:Connect(function()
+			connection:Disconnect()
+		end)
 	end
 	return scale
 end

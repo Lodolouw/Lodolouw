@@ -484,7 +484,7 @@ function Looks.thing(sizeIndex, hatchCF)
 
 	-- the lid, hinged on the house side, standing open
 	local lid = part({ Name = "Lid", Size = Vector3.new(hole, 0.5, hole), Color = darkWood, Material = Enum.Material.WoodPlanks, CanQuery = false })
-	local hinge = hatchCF * CFrame.new(0, 0.4, hole / 2 + frameW)
+	local hinge = hatchCF * CFrame.new(0, 0.4, hole / 2) -- the house-side edge of the opening
 	parts.hinge = hinge
 	parts.lidOffset = CFrame.new(0, 0, -hole / 2) -- from the hinge to the lid's centre, when shut
 	parts.openAngle = 105 -- degrees; 0 = shut
@@ -551,7 +551,8 @@ function Looks.thing(sizeIndex, hatchCF)
 		local arm = blob(Vector3.new(hole * 0.09, hole * 0.6, hole * 0.09), Config.Thing.SkinColor, { Name = "Arm", CanQuery = false })
 		local side = (i % 2 == 1) and -1 or 1
 		local row = math.ceil(i / 2)
-		local hidden = hatchCF * CFrame.new(side * hole * (0.28 + row * 0.06), -hole * 0.5, -hole * 0.15 * row)
+		-- below the darkness (at -3.2), so not even the tip shows
+		local hidden = hatchCF * CFrame.new(side * hole * (0.28 + row * 0.06), -3.4 - hole * 0.3, -hole * 0.15 * row)
 		arm.CFrame = hidden
 		arm.Parent = model
 		parts.arms[i] = { part = arm, hidden = hidden, side = side }

@@ -217,7 +217,7 @@ local function armCatch(p, delay)
 		if not arm.part.Parent then
 			return
 		end
-		local up = p.hatchCF * CFrame.new(arm.side * hole * 0.15, hole * 0.35, -hole * 0.1) * CFrame.Angles(0, 0, -arm.side * 0.4)
+		local up = p.hatchCF * CFrame.new(arm.side * hole * 0.15, hole * 0.35, -hole * 0.1) * CFrame.Angles(0, 0, arm.side * 0.4)
 		tween(arm.part, 0.1, { CFrame = up }, Enum.EasingStyle.Back)
 		task.wait(0.22)
 		if arm.part.Parent then
@@ -631,8 +631,9 @@ HarvestedRemote.OnClientEvent:Connect(function(picked)
 		if spot then
 			for i = 1, #entry.fruit do
 				count += 1
+				local n = count
 				local letter = string.sub(entry.fruit, i, i)
-				local delay = count * 0.06
+				local delay = n * 0.06
 				task.delay(delay, function()
 					local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 					if not root or not root:IsA("BasePart") then
@@ -643,7 +644,7 @@ HarvestedRemote.OnClientEvent:Connect(function(picked)
 					local from = (p.cf * CFrame.new(spot + Vector3.new(0, 2, 0))).Position
 					fruit:PivotTo(CFrame.new(from))
 					fruit.Parent = visuals
-					UI.sound("Pop", 0.6, 1 + math.min(count, 10) * 0.05)
+					UI.sound("Pop", 0.6, 1 + math.min(n, 10) * 0.05)
 					local duration = 0.45
 					local start = os.clock()
 					while os.clock() - start < duration do
@@ -731,6 +732,10 @@ local function setWeather(id)
 	end
 	-- the server sets Lighting once; remember it before we change it
 	if id == "" then
+		local sky = Lighting:FindFirstChildOfClass("Sky")
+		if sky then
+			sky.MoonAngularSize = 11
+		end
 		tween(Lighting, 3, {
 			ClockTime = defaultLight.ClockTime,
 			Brightness = defaultLight.Brightness,
@@ -738,7 +743,10 @@ local function setWeather(id)
 			Ambient = defaultLight.Ambient,
 		})
 	elseif id == "FullMoon" then
-		Lighting.MoonAngularSize = 30
+		local sky = Lighting:FindFirstChildOfClass("Sky")
+		if sky then
+			sky.MoonAngularSize = 30 -- a big moon (the default is 11)
+		end
 		tween(Lighting, 3, {
 			ClockTime = 0,
 			Brightness = 1.2,

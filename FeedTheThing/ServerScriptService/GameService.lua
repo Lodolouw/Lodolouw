@@ -703,6 +703,11 @@ function actions.yardChoice(s, choice)
 	return { ok = true, msg = "+" .. Rules.short(price) .. " coins", coins = price }
 end
 
+function actions.askYardFull(s)
+	drainPending(s)
+	return { ok = true, msg = "" }
+end
+
 local function onAction(player, name, a, b)
 	local s = sessions[player]
 	if not s or not s.ready then

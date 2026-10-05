@@ -38,8 +38,11 @@ local state = nil
 local selected = nil -- crop id
 local lastThrow = 0
 local inRange = false
-local localSpent = {} -- [crop id] = tossed but the server hasn't confirmed yet
-local pendingTosses = {} -- in order: { landed = bool, result = table or nil }
+-- Tosses the latest State doesn't include yet, so the basket counts drop the
+-- moment you throw: { food, landed, result }. A toss leaves this list when
+-- it's rejected, or when a State arrives after its (accepted) result.
+local unconfirmed = {}
+local awaitingResult = {} -- the same entries, oldest first, until their TossResult arrives
 
 local VARIANTS = { "Gold", "Glowing", "Frozen", "Normal" }
 
@@ -71,7 +74,12 @@ local function count(cropId)
 	for _, n in pairs(state.basket[cropId]) do
 		total += n
 	end
-	return math.max(0, total - (localSpent[cropId] or 0))
+	for _, entry in ipairs(unconfirmed) do
+		if entry.food == cropId then
+			total -= 1
+		end
+	end
+	return math.max(0, total)
 end
 
 local function bestVariant(cropId)
@@ -98,19 +106,42 @@ end
 ----------------------------------------------------------------------
 -- Screen GUI: throw pad, basket bar, messages
 ----------------------------------------------------------------------
-local gui = UI.new("ScreenGui", { Name = "TossGui", ResetOnSpawn = false, IgnoreGuiInset = false, DisplayOrder = 5 }, playerGui)
+local gui = UI.new("ScreenGui", {
+	Name = "TossGui", ResetOnSpawn = false, IgnoreGuiInset = false, DisplayOrder = 5, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, playerGui)
 
 local PAD = 116
+local STACK_HEIGHT = 250
+-- the pad, the basket, the daily line and the combo sit in one stack at the
+-- bottom that shrinks on short screens (a phone in landscape is ~330 tall)
+local stack = UI.new("Frame", {
+	Name = "Stack",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -8),
+	Size = UDim2.fromOffset(520, STACK_HEIGHT),
+	BackgroundTransparency = 1,
+}, gui)
+local stackScale = UI.new("UIScale", { Scale = 1 }, stack)
+local function fitStack()
+	local camera = workspace.CurrentCamera
+	local height = camera and camera.ViewportSize.Y or 720
+	stackScale.Scale = math.clamp(height * 0.55 / STACK_HEIGHT, 0.6, 1)
+end
+fitStack()
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitStack)
+end
+
 local pad = UI.new("TextButton", {
 	Name = "Pad",
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -16),
+	Position = UDim2.new(0.5, 0, 1, -8),
 	Size = UDim2.fromOffset(PAD, PAD),
 	BackgroundColor3 = UI.Colors.Panel,
 	Text = "",
 	AutoButtonColor = false,
 	Visible = false,
-}, gui)
+}, stack)
 UI.corner(pad, UDim.new(1, 0))
 UI.stroke(pad, 4, UI.Colors.Stroke)
 local padScale = UI.new("UIScale", { Scale = 1 }, pad)
@@ -140,11 +171,11 @@ local padHint = UI.label(pad, {
 local basketBar = UI.new("Frame", {
 	Name = "Basket",
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -PAD - 34),
+	Position = UDim2.new(0.5, 0, 1, -PAD - 26),
 	Size = UDim2.fromOffset(6 * 70, 66),
 	BackgroundTransparency = 1,
 	Visible = false,
-}, gui)
+}, stack)
 UI.new("UIListLayout", {
 	FillDirection = Enum.FillDirection.Horizontal,
 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -153,20 +184,20 @@ UI.new("UIListLayout", {
 	SortOrder = Enum.SortOrder.LayoutOrder,
 }, basketBar)
 
-local dailyLabel = UI.label(gui, {
+local dailyLabel = UI.label(stack, {
 	Name = "Daily",
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -PAD - 104),
+	Position = UDim2.new(0.5, 0, 1, -PAD - 96),
 	Size = UDim2.fromOffset(360, 24),
 	TextColor3 = UI.Colors.Dim,
 	Text = "",
 	Visible = false,
 })
 
-local comboLabel = UI.label(gui, {
+local comboLabel = UI.label(stack, {
 	Name = "Combo",
 	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0.5, PAD / 2 + 16, 1, -50),
+	Position = UDim2.new(0.5, PAD / 2 + 16, 1, -42),
 	Size = UDim2.fromOffset(170, 44),
 	TextXAlignment = Enum.TextXAlignment.Left,
 	TextColor3 = UI.Colors.Gold,
@@ -189,8 +220,8 @@ end
 
 local messageLabel = UI.label(gui, {
 	Name = "Message",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -PAD - 140),
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
 	Size = UDim2.fromOffset(420, 34),
 	Text = "",
 	TextTransparency = 1,
@@ -562,15 +593,14 @@ local function throwFood()
 	local release = workspace:GetServerTimeNow()
 	local perfect = Rules.isPerfect(release)
 	lastThrow = os.clock()
-	localSpent[food] = (localSpent[food] or 0) + 1
+	local entry = { food = food, landed = false, result = nil }
+	table.insert(unconfirmed, entry)
+	table.insert(awaitingResult, entry)
 	refreshBasket()
 	TossRemote:FireServer(food, release)
 	UI.sound("Throw", 0.6)
 	padScale.Scale = 0.85
 	tween(padScale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
-
-	local entry = { landed = false, result = nil }
-	table.insert(pendingTosses, entry)
 
 	-- the food flies in an arc into the hatch
 	local fruit = Looks.fruit(food, mut, false)
@@ -607,14 +637,19 @@ TossResultRemote.OnClientEvent:Connect(function(result)
 		return
 	end
 	-- match it to the oldest toss still waiting for its answer
-	local entry = table.remove(pendingTosses, 1)
-	if result.food and localSpent[result.food] then
-		localSpent[result.food] = math.max(0, localSpent[result.food] - 1)
-	end
+	local entry = table.remove(awaitingResult, 1)
 	if not entry then
 		return
 	end
 	entry.result = result
+	if not result.ok then
+		-- rejected: the fruit is still yours
+		local i = table.find(unconfirmed, entry)
+		if i then
+			table.remove(unconfirmed, i)
+		end
+		refreshBasket()
+	end
 	if entry.landed then
 		showResult(result)
 	end
@@ -676,6 +711,12 @@ local function onState(newState)
 	end
 	state = newState
 	UI.state = newState
+	-- tosses already answered are counted in this State now
+	for i = #unconfirmed, 1, -1 do
+		if unconfirmed[i].result then
+			table.remove(unconfirmed, i)
+		end
+	end
 	refreshBasket()
 	refreshBelly()
 	local daily = state.daily

@@ -72,8 +72,12 @@ end
 ----------------------------------------------------------------------
 -- Screen
 ----------------------------------------------------------------------
-local gui = UI.new("ScreenGui", { Name = "Hud", ResetOnSpawn = false, IgnoreGuiInset = false, DisplayOrder = 10 }, playerGui)
-local overlayGui = UI.new("ScreenGui", { Name = "HudOverlay", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 20 }, playerGui)
+local gui = UI.new("ScreenGui", {
+	Name = "Hud", ResetOnSpawn = false, IgnoreGuiInset = false, DisplayOrder = 10, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, playerGui)
+local overlayGui = UI.new("ScreenGui", {
+	Name = "HudOverlay", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 20, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, playerGui)
 
 -- a simple drawn gold coin
 local function coinIcon(parent, size, position)
@@ -85,7 +89,7 @@ local function coinIcon(parent, size, position)
 	UI.stroke(coin, 2, Color3.fromRGB(150, 100, 20))
 	local inner = UI.new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.55, 0.55),
-		BackgroundColor3 = Color3.fromRGB(255, 230, 120),
+		BackgroundColor3 = Color3.fromRGB(255, 230, 120), ZIndex = 50,
 	}, coin)
 	UI.corner(inner, UDim.new(1, 0))
 	return coin
@@ -156,9 +160,20 @@ UI.on("Toast", toast)
 -- Left buttons
 ----------------------------------------------------------------------
 local leftBar = UI.new("Frame", {
-	Name = "Buttons", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.5, -20),
+	Name = "Buttons", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.45, 0),
 	Size = UDim2.fromOffset(84, 3 * 92), BackgroundTransparency = 1,
 }, gui)
+-- on short screens the buttons shrink, so they stay clear of the thumbstick
+local leftScale = UI.new("UIScale", { Scale = 1 }, leftBar)
+local function fitLeftBar()
+	local camera = workspace.CurrentCamera
+	local height = camera and camera.ViewportSize.Y or 720
+	leftScale.Scale = math.clamp(height * 0.6 / (3 * 92), 0.62, 1)
+end
+fitLeftBar()
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitLeftBar)
+end
 UI.new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, leftBar)
 
 local sideButtons = {}
@@ -191,6 +206,7 @@ local function makePanel(name, title, width, height)
 	local frame = UI.new("Frame", {
 		Name = name, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52),
 		Size = UDim2.fromOffset(width, height), BackgroundColor3 = C.Panel, Visible = false, ZIndex = 20,
+		Active = true, -- taps on the panel don't fall through to the throw pad
 	}, gui)
 	UI.corner(frame, UDim.new(0, 20))
 	UI.stroke(frame, 4)
@@ -599,6 +615,13 @@ local function showYardFull()
 	local back, box = modal(560, 330)
 	yardFullOpen = back
 	UI.label(box, { Size = UDim2.new(1, -30, 0, 40), Position = UDim2.fromOffset(15, 12), Text = "Your yard is full!", ZIndex = 42 })
+	-- "Later" closes it so you can buy yard space; tossing asks again
+	UI.button(box, "Later", {
+		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.fromOffset(100, 44), BackgroundColor3 = C.PanelLight, ZIndex = 43,
+	}, function()
+		back:Destroy()
+		yardFullOpen = nil
+	end)
 	UI.label(box, { Size = UDim2.new(1, -30, 0, 22), Position = UDim2.fromOffset(15, 52), Text = "Get more yard space in Upgrades.", TextColor3 = C.Dim, ZIndex = 42 })
 	local function side(x, title, kind, mut, buttonText, color, choice, rank)
 		UI.label(box, { Size = UDim2.fromOffset(250, 24), Position = UDim2.fromOffset(x, 84), Text = title, TextColor3 = C.Dim, ZIndex = 42 })
@@ -615,10 +638,16 @@ local function showYardFull()
 			local result = act("yardChoice", choice)
 			back:Destroy()
 			yardFullOpen = nil
-			yardFullInfo = nil
+			-- the server may already have asked about the next egg: keep that one
+			if result.ok and yardFullInfo == info then
+				yardFullInfo = nil
+			end
 			if result.ok and result.msg ~= "" then
 				UI.sound("Coin")
 				toast(result.msg, C.Gold, 2.5)
+			end
+			if yardFullInfo then
+				showYardFull()
 			end
 		end)
 	end
@@ -629,7 +658,13 @@ local function showYardFull()
 		side(290, "Weakest in your yard", info.weakestKind, info.weakestMut, "Swap it +" .. Rules.short(info.sellWeakest), C.Good, "swap", Rules.rarityRank(oldDef.rarity))
 	end
 end
-UI.on("ShowYardFull", showYardFull)
+UI.on("ShowYardFull", function()
+	if yardFullInfo then
+		showYardFull()
+	else
+		act("askYardFull") -- the server sends it again
+	end
+end)
 
 local function showSizeUp(size, name, grew)
 	local banner = UI.new("Frame", {
