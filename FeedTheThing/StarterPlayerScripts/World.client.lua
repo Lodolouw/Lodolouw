@@ -293,6 +293,27 @@ local function floatingText(position, text, color, size, rise)
 end
 UI.on("FloatingText", floatingText)
 
+-- a glowing ring that spreads out over the ground (PERFECT tosses)
+UI.on("Shockwave", function(position, color)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = color or Color3.fromRGB(255, 220, 60)
+	ring.Transparency = 0.2
+	ring.Size = Vector3.new(0.2, 4, 4)
+	ring.CFrame = CFrame.new(position + Vector3.new(0, 0.7, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+	ring.Parent = visuals
+	tween(ring, 0.45, { Size = Vector3.new(0.2, 26, 26), Transparency = 1 })
+	task.delay(0.5, function()
+		ring:Destroy()
+	end)
+end)
+
 local function burp(p, rarity)
 	local thing = p.thing
 	if not thing then
@@ -468,19 +489,44 @@ local function updateYard(p)
 				makeTag(t, mine)
 				refreshThinglet(t, now())
 				p.thinglets[r.id] = t
-				-- grow in from nothing
-				task.spawn(function()
-					for step = 1, 10 do
-						if not model.Parent then
-							return
+				if p.ready and mine then
+					-- just hatched: it hops out of the hatch to its spot in the yard
+					t.arriving = true
+					task.spawn(function()
+						local from = p.hatchCF * CFrame.new(0, 0, -9)
+						local to = home
+						local hops = 4
+						for hop = 1, hops do
+							local a = from:Lerp(to, (hop - 1) / hops)
+							local b = from:Lerp(to, hop / hops)
+							for step = 1, 12 do
+								if not model.Parent then
+									return
+								end
+								local k = step / 12
+								local position = a.Position:Lerp(b.Position, k) + Vector3.new(0, math.sin(k * math.pi) * (2 + t.height * 0.3), 0)
+								model.PrimaryPart.CFrame = CFrame.lookAt(position, Vector3.new(b.Position.X, position.Y, b.Position.Z) + (b.Position - a.Position) * 0.01)
+								task.wait(1 / 40)
+							end
+							UI.sound("Pop", 0.4, 0.8 + hop * 0.1)
 						end
-						model:ScaleTo(t.height * (0.1 + 0.9 * step / 10) * (1 + math.sin(step / 10 * math.pi) * 0.2))
-						task.wait(1 / 30)
-					end
-					if model.Parent then
-						model:ScaleTo(t.height)
-					end
-				end)
+						t.arriving = false
+					end)
+				else
+					-- grow in from nothing
+					task.spawn(function()
+						for step = 1, 10 do
+							if not model.Parent then
+								return
+							end
+							model:ScaleTo(t.height * (0.1 + 0.9 * step / 10) * (1 + math.sin(step / 10 * math.pi) * 0.2))
+							task.wait(1 / 30)
+						end
+						if model.Parent then
+							model:ScaleTo(t.height)
+						end
+					end)
+				end
 			else
 				t.home = home
 			end
@@ -1079,7 +1125,7 @@ RunService.RenderStepped:Connect(function(dt)
 			if refresh then
 				refreshThinglet(t, serverNow)
 			end
-			if near and (t.home.Position - camPos).Magnitude < ANIMATE_RANGE then
+			if near and not t.arriving and (t.home.Position - camPos).Magnitude < ANIMATE_RANGE then
 				animateThinglet(t, clock, heads)
 			end
 		end

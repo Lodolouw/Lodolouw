@@ -196,6 +196,42 @@ local function toast(text, color, seconds)
 end
 UI.on("Toast", toast)
 
+-- Coins burst out of a spot in the world and fly into the counter
+local function coinBurst(worldPosition, amount)
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local screen, onScreen = camera:WorldToViewportPoint(worldPosition)
+	if not onScreen then
+		return
+	end
+	local inset = game:GetService("GuiService"):GetGuiInset()
+	local from = Vector2.new(screen.X, screen.Y) - inset
+	local target = coinsLabel.AbsolutePosition + Vector2.new(20, coinsLabel.AbsoluteSize.Y / 2)
+	local count = math.clamp(math.floor(math.log10(math.max(amount, 1)) * 3) + 3, 3, 12)
+	for i = 1, count do
+		local coin = UI.icon(gui, "coin", {
+			AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(28, 28), Position = UDim2.fromOffset(from.X, from.Y), ZIndex = 30,
+		})
+		local burst = from + Vector2.new(math.random(-70, 70), math.random(-80, -10))
+		task.spawn(function()
+			local out = TweenService:Create(coin, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(burst.X, burst.Y) })
+			out:Play()
+			task.wait(0.25 + i * 0.03)
+			local home = TweenService:Create(coin, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = UDim2.fromOffset(target.X, target.Y), Size = UDim2.fromOffset(18, 18),
+			})
+			home:Play()
+			home.Completed:Wait()
+			coin:Destroy()
+			UI.pop(coinsLabel, 0.12)
+			UI.sound("Coin", 0.25, 1.3 + i * 0.03)
+		end)
+	end
+end
+UI.on("CoinBurst", coinBurst)
+
 ----------------------------------------------------------------------
 -- Side buttons: Shop and Index on the left, Daily and Upgrades on the right
 ----------------------------------------------------------------------

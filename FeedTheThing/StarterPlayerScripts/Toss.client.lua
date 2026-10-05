@@ -549,21 +549,30 @@ local function showResult(result)
 		color = mutation and mutation.color or color
 	end
 	UI.fire("FloatingText", cf.Position + Vector3.new(0, 3, 0), "+" .. Rules.short(result.coins), color, result.craving and 44 or 34, 6)
+	-- a cartoon word over the hatch, and the coins fly into your counter
+	local words = result.perfect and { "PERFECT!" } or { "CHOMP!", "YUM!", "GULP!", "NOM!", "CRUNCH!" }
+	UI.fire("FloatingText", cf.Position + Vector3.new(math.random(-3, 3), 6, 0), words[math.random(1, #words)], Color3.fromRGB(255, 255, 255), 30, 5)
+	UI.fire("CoinBurst", cf.Position + Vector3.new(0, 2, 0), result.coins)
 	UI.sound("Coin", 0.7, 1 + math.min(streak, 6) * 0.08)
 	if result.perfect then
 		showBig("PERFECT!", UI.Colors.Gold)
 		UI.sound("Perfect", 0.8)
 		UI.fire("CameraShake", 0.25)
+		UI.fire("Shockwave", cf.Position, UI.Colors.Gold)
 	end
 	if result.craving then
+		-- the combo heats up: white, yellow, orange, red
+		local heat = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 230, 60), Color3.fromRGB(255, 150, 30), Color3.fromRGB(255, 60, 60) }
 		if streak >= 2 then
-			comboLabel.Text = "COMBO x" .. result.combo
+			comboLabel.Text = "COMBO x" .. result.combo .. "!"
 			UI.sound("Combo", 0.7, 1 + streak * 0.1)
 		else
 			comboLabel.Text = "CRAVING x" .. Config.Toss.CravingMult
 		end
+		comboLabel.TextColor3 = heat[math.clamp(streak, 1, #heat)]
+		comboLabel.Rotation = math.random(-8, 8)
 		comboLabel.TextTransparency = 0
-		UI.pop(comboLabel, 0.35)
+		UI.pop(comboLabel, 0.25 + math.min(streak, 4) * 0.1)
 	else
 		comboLabel.Text = ""
 	end
@@ -613,6 +622,23 @@ local function throwFood()
 	-- the food flies in an arc into the hatch
 	local fruit = Looks.fruit(food, mut, false)
 	fruit:ScaleTo(1.4)
+	-- a streak behind it as it flies
+	local crop = Rules.crop(food)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0.9, 0)
+	a0.Parent = fruit.PrimaryPart
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, 0.2, 0)
+	a1.Parent = fruit.PrimaryPart
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Lifetime = 0.25
+	trail.Color = ColorSequence.new(crop and crop.color or Color3.fromRGB(255, 255, 255))
+	trail.Transparency = NumberSequence.new(0.2, 1)
+	trail.LightEmission = 0.5
+	trail.FaceCamera = true
+	trail.Parent = fruit.PrimaryPart
 	local from = root.Position + root.CFrame.RightVector * 1.2 + Vector3.new(0, 1.5, 0)
 	local to = cf.Position + Vector3.new(0, -1, 0)
 	local height = 5 + (from - to).Magnitude * 0.12
