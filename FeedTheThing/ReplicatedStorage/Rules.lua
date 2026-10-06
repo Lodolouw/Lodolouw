@@ -1,10 +1,10 @@
 --[[
 	Rules  (ModuleScript, parent: ReplicatedStorage, name: "Rules")
 
-	The game's rules as plain functions: what hatches, the mutation odds,
-	coins per toss, how grown a Thinglet is, what it has earned, the shop's
-	stock and the weather. The server decides with these and the HUD shows
-	the same answers, so they can never disagree.
+	The game's rules as plain functions: what an egg hatches into (food odds,
+	luck, weather), how long it takes, how grown a Thinglet is, what it has
+	earned, the upgrades and the weather. The server decides with these and
+	the HUD shows the same answers, so they can never disagree.
 
 	Nothing in here touches Roblox objects (except plotCFrame at the bottom),
 	so the rules can be tested outside Studio: see Tests/RulesTest.luau.
@@ -13,10 +13,18 @@
 local Rules = {}
 
 local Config
-local cropById, cropRank, mutationById, upgradeById
+local cropById, cropRank, mutationById, upgradeById, byRarity
 
 local function index()
-	cropById, cropRank, mutationById, upgradeById = {}, {}, {}, {}
+	cropById, cropRank, mutationById, upgradeById, byRarity = {}, {}, {}, {}, {}
+	-- the (non-secret) Thinglets of each rarity, in dex order
+	for _, kind in ipairs(Config.ThingletOrder) do
+		local def = Config.Thinglets[kind]
+		if def and not def.secret then
+			byRarity[def.rarity] = byRarity[def.rarity] or {}
+			table.insert(byRarity[def.rarity], kind)
+		end
+	end
 	for _, upgrade in ipairs(Config.Upgrades or {}) do
 		upgradeById[upgrade.id] = upgrade
 	end
@@ -87,134 +95,120 @@ function Rules.size(growth)
 end
 
 ----------------------------------------------------------------------
--- What hatches. `belly` is a list of { f = food id, m = mutation id or "",
--- p = was it a PERFECT toss }. `capacity` is how many slots the belly has.
---   1. a full belly of the secret food, every toss PERFECT -> the secret one
---   2. MishmashKinds or more different foods                -> Mishmash
---   3. otherwise the food fed most wins; on a tie the rarer food wins
+-- What an egg hatches into. Every food can hatch every rarity; better
+-- food has better odds (Config.Crops[].odds). Luck (a bigger Thing, the
+-- Lucky Thing upgrade) makes the rarer ones more likely: 0.5 = +50%.
+-- It helps the rarest most: Rare x(1 + luck), Epic x(1 + 2 luck),
+-- Legendary x(1 + 3 luck), and then the odds are shared out again so
+-- they still add up to 1. (So luck still matters with the best food.)
 ----------------------------------------------------------------------
-function Rules.resolveHatch(belly, capacity)
-	if #belly == 0 then
-		return nil
-	end
-	if #belly >= capacity then
-		local secret = true
-		for _, item in ipairs(belly) do
-			if item.f ~= Config.SecretFood or not item.p then
-				secret = false
-				break
-			end
-		end
-		if secret then
-			return Config.SecretThinglet
-		end
-	end
-
-	local counts, kinds = {}, 0
-	for _, item in ipairs(belly) do
-		if not counts[item.f] then
-			counts[item.f] = 0
-			kinds += 1
-		end
-		counts[item.f] += 1
-	end
-	if kinds >= Config.MishmashKinds then
-		return Config.MishmashThinglet
-	end
-
-	local best, bestCount = nil, 0
-	for food, count in pairs(counts) do
-		if count > bestCount or (count == bestCount and Rules.cropRank(food) > Rules.cropRank(best)) then
-			best, bestCount = food, count
-		end
-	end
-	local crop = best and cropById[best]
-	return crop and crop.thinglet or nil
+-- All your luck: the Thing's size plus the Lucky Thing upgrade
+function Rules.luck(data, sizeIndex)
+	local size = Config.Thing.Sizes[sizeIndex or 1] or Config.Thing.Sizes[1]
+	return (size.luck or 0) + Rules.upgradeEffect(data, "luck")
 end
 
-----------------------------------------------------------------------
--- Mutation odds for an egg from this belly. Returns { Frozen = 0.05, ... ,
--- None = 0.91 }. If the chances add up past 100% they're scaled down to fit.
-----------------------------------------------------------------------
-function Rules.mutationOdds(belly, sizeIndex)
+-- { Common = 0.9, Rare = 0.095, ... } for this food with this luck
+function Rules.hatchOdds(foodId, luck)
+	local crop = cropById[foodId] or Config.Crops[1]
+	luck = math.max(0, luck or 0)
 	local odds, total = {}, 0
-	for _, mutation in ipairs(Config.Mutations) do
-		local chance = mutation.base + Config.SizeLuckBonus * ((sizeIndex or 1) - 1)
-		for _, item in ipairs(belly) do
-			if item.m == mutation.id then
-				chance += Config.MutatedFoodBonus
-			end
-			if item.p then
-				chance += Config.PerfectBonus
-			end
-		end
-		odds[mutation.id] = chance
-		total += chance
+	for i, rarity in ipairs(Config.RarityOrder) do
+		odds[rarity] = (crop.odds[rarity] or 0) * (1 + luck * (i - 1))
+		total += odds[rarity]
 	end
-	if total > 1 then
-		for id, chance in pairs(odds) do
-			odds[id] = chance / total
-		end
-		total = 1
+	for rarity, weight in pairs(odds) do
+		odds[rarity] = total > 0 and weight / total or 0
 	end
-	odds.None = math.max(0, 1 - total)
 	return odds
 end
 
--- roll = a random number from 0 up to (not including) 1
-function Rules.rollMutation(odds, roll)
-	local acc = 0
+-- { Frozen = 0.04, Glowing = 0.02, Gold = 0.005 }: luck raises them all,
+-- the weather multiplies its own mutation
+function Rules.mutationChances(luck, weatherId)
+	local weather
+	for _, w in ipairs(Config.Weather.Types) do
+		if w.id == weatherId then
+			weather = w
+		end
+	end
+	local chances = {}
 	for _, mutation in ipairs(Config.Mutations) do
-		acc += odds[mutation.id] or 0
-		if roll < acc then
-			return mutation.id
+		local chance = mutation.base * (1 + math.max(0, luck or 0))
+		if weather and weather.mutation == mutation.id then
+			chance *= weather.boost or 1
+		end
+		chances[mutation.id] = chance
+	end
+	return chances
+end
+
+-- What hatches. The r's are random numbers from 0 up to 1 (the server
+-- rolls them; the tests pass their own). Returns kind, mutation ("" for
+-- none), rarity.
+function Rules.rollHatch(foodId, luck, weatherId, rSecret, rRarity, rKind, rMutation)
+	local crop = cropById[foodId] or Config.Crops[1]
+	local boost = 1 + math.max(0, luck or 0)
+	local kind
+	if rSecret < (crop.secret or 0) * boost then
+		kind = Config.SecretThinglet
+	else
+		local odds = Rules.hatchOdds(foodId, luck)
+		local rarity = Config.RarityOrder[1]
+		local total = 0
+		for _, r in ipairs(Config.RarityOrder) do
+			total += odds[r]
+			if rRarity < total then
+				rarity = r
+				break
+			end
+		end
+		local kinds = byRarity[rarity] or { Config.ThingletOrder[1] }
+		local favourite = crop.thinglet
+		local leans = Config.Thinglets[favourite] and Config.Thinglets[favourite].rarity == rarity
+		if leans and rKind < Config.FavouriteChance then
+			kind = favourite
+		else
+			local u = leans and (rKind - Config.FavouriteChance) / (1 - Config.FavouriteChance) or rKind
+			kind = kinds[math.clamp(math.floor(u * #kinds) + 1, 1, #kinds)]
+		end
+	end
+	-- a mutation? (rarest first)
+	local chances = Rules.mutationChances(luck, weatherId)
+	local mutation, total = "", 0
+	for i = #Config.Mutations, 1, -1 do
+		local id = Config.Mutations[i].id
+		total += chances[id]
+		if rMutation < total then
+			mutation = id
+			break
+		end
+	end
+	return kind, mutation, Config.Thinglets[kind].rarity
+end
+
+-- Seconds this food's egg takes (speed = the Quick eggs upgrade, 1.2 = 20% faster)
+function Rules.eggSeconds(foodId, speed, first)
+	if first then
+		return Config.Eggs.FirstEgg
+	end
+	local crop = cropById[foodId] or Config.Crops[1]
+	return crop.egg / math.max(1, speed or 1)
+end
+
+-- The first empty nest (eggs = { { nest = 2, ... } ... }), or nil when
+-- all `nests` are taken
+function Rules.freeNest(eggs, nests)
+	local used = {}
+	for _, egg in ipairs(eggs) do
+		used[egg.nest or 0] = true
+	end
+	for nest = 1, math.min(nests, #Config.Eggs.NestSpots) do
+		if not used[nest] then
+			return nest
 		end
 	end
 	return nil
-end
-
-----------------------------------------------------------------------
--- The toss
-----------------------------------------------------------------------
--- Where the ring is at time `t`: 0 = start of a cycle, 0.5 = smallest
-function Rules.ringPhase(t)
-	local cycle = Config.Toss.RingCycle
-	return (t % cycle) / cycle
-end
-
--- window = share of the cycle that counts (the Sweet spot upgrade widens it)
-function Rules.isPerfect(t, window)
-	return math.abs(Rules.ringPhase(t) - 0.5) <= (window or Config.Toss.PerfectWindow) / 2
-end
-
--- How big the ring is at time t: 0 = smallest, 1 = biggest
-function Rules.ringOpen(t)
-	return math.abs(math.cos(math.pi * Rules.ringPhase(t)))
-end
-
--- streak = craving hits in a row, counting this one (0 if it wasn't one)
-function Rules.comboMult(streak)
-	if streak <= 0 then
-		return 1
-	end
-	local combo = Config.Toss.Combo
-	return combo[math.min(streak, #combo)]
-end
-
--- bonus = extra share from friends (0.1 = +10%); mult = the Tasty tosses upgrade
-function Rules.tossCoins(foodId, mutationId, sizeIndex, cravingHit, streak, bonus, mult)
-	local crop = cropById[foodId]
-	if not crop then
-		return 0
-	end
-	local value = crop.coins
-		* Rules.mutationMult(mutationId)
-		* Config.Thing.Sizes[sizeIndex or 1].coinMult
-		* (cravingHit and Config.Toss.CravingMult or 1)
-		* Rules.comboMult(cravingHit and streak or 0)
-		* (1 + (bonus or 0))
-		* (mult or 1)
-	return math.floor(value + 0.5)
 end
 
 ----------------------------------------------------------------------
@@ -286,8 +280,8 @@ function Rules.earned(record, a, b)
 	return total
 end
 
--- What the whole yard earned while you were away (capped at Offline.MaxSeconds,
--- or maxSeconds with the Long nap upgrade; mult = the Comfy yard upgrade)
+-- What the whole yard earned while you were away (capped at Offline.MaxSeconds;
+-- mult = the Comfy yard upgrade and friends)
 function Rules.offlineCoins(yard, leftAt, now, maxSeconds, mult)
 	if not leftAt or leftAt <= 0 or now <= leftAt then
 		return 0
@@ -302,6 +296,26 @@ end
 
 function Rules.sellPrice(record)
 	return math.floor(Rules.fullIncome(record) * Config.Yard.SellSeconds)
+end
+
+-- Where a new Thinglet goes: "add" (there's room), "replace" (the yard is
+-- full and it's better than the weakest one there: also returns that one's
+-- index) or "sell" (the yard is full of better ones)
+function Rules.yardPlace(yard, cap, record)
+	if #yard < cap then
+		return "add", nil
+	end
+	local weakest, lowest = nil, math.huge
+	for i, other in ipairs(yard) do
+		local income = Rules.fullIncome(other)
+		if income < lowest then
+			weakest, lowest = i, income
+		end
+	end
+	if weakest and Rules.fullIncome(record) > lowest then
+		return "replace", weakest
+	end
+	return "sell", nil
 end
 
 ----------------------------------------------------------------------
@@ -320,36 +334,6 @@ function Rules.random(seed)
 end
 
 ----------------------------------------------------------------------
--- Seed shop
-----------------------------------------------------------------------
-function Rules.restockIndex(now)
-	return math.floor(now / Config.Shop.RestockEvery)
-end
-
-function Rules.nextRestockAt(now)
-	return (Rules.restockIndex(now) + 1) * Config.Shop.RestockEvery
-end
-
--- What this player's shop holds this restock: { Tomato = -1 (always), Eyeberry = 2, ... }
-function Rules.stockFor(userId, restockIndex)
-	local rand = Rules.random((userId % 1000003) * 7919 + restockIndex * 104729)
-	local stock = {}
-	for _, crop in ipairs(Config.Crops) do
-		if crop.stockChance >= 1 then
-			stock[crop.id] = -1
-		elseif rand() < crop.stockChance then
-			stock[crop.id] = crop.stockMin + math.floor(rand() * (crop.stockMax - crop.stockMin + 1))
-		else
-			stock[crop.id] = 0
-		end
-	end
-	if restockIndex % Config.Shop.MoonGuaranteeEvery == 0 then
-		stock[Config.SecretFood] = math.max(stock[Config.SecretFood] or 0, 1)
-	end
-	return stock
-end
-
-----------------------------------------------------------------------
 -- Weather: the same for everyone, worked out from the clock.
 -- Returns the weather type (or nil) and the time it next changes.
 ----------------------------------------------------------------------
@@ -363,26 +347,6 @@ function Rules.weatherAt(now)
 		return w.Types[1 + math.floor(rand() * #w.Types)], cycleStart + w.Every
 	end
 	return nil, startsAt
-end
-
-----------------------------------------------------------------------
--- Daily craving: one of the foods you grow, picked fresh each UTC day
-----------------------------------------------------------------------
-function Rules.dayIndex(now)
-	return math.floor(now / 86400)
-end
-
--- grown = list of crop ids the player has planted (any order)
-function Rules.dailyFood(userId, day, grown)
-	if #grown == 0 then
-		return Config.Crops[1].id
-	end
-	local sorted = table.clone(grown)
-	table.sort(sorted, function(a, b)
-		return Rules.cropRank(a) < Rules.cropRank(b)
-	end)
-	local rand = Rules.random((userId % 1000003) * 31 + day * 7477)
-	return sorted[1 + math.floor(rand() * #sorted)]
 end
 
 ----------------------------------------------------------------------
@@ -436,25 +400,21 @@ end
 
 ----------------------------------------------------------------------
 -- Upgrades (Config.Upgrades). `data` is a save (or the HUD's copy of it):
--- plots, yardCap and upgrades = { [id] = level }.
+-- yardCap and upgrades = { [id] = level }.
 ----------------------------------------------------------------------
 function Rules.upgradeDef(id)
 	return upgradeById[id]
 end
 
 function Rules.upgradeLevel(data, id)
-	if id == "plots" then
-		return (data.plots or Config.Garden.StartPlots) - Config.Garden.StartPlots
-	elseif id == "yard" then
+	if id == "yard" then
 		return (data.yardCap or Config.Yard.StartCap) - Config.Yard.StartCap
 	end
 	return data.upgrades and data.upgrades[id] or 0
 end
 
 function Rules.upgradeMax(id)
-	if id == "plots" then
-		return Config.Garden.MaxPlots - Config.Garden.StartPlots
-	elseif id == "yard" then
+	if id == "yard" then
 		return Config.Yard.MaxCap - Config.Yard.StartCap
 	end
 	local def = upgradeById[id]
@@ -475,9 +435,7 @@ function Rules.upgradeCost(id, level)
 	if level >= Rules.upgradeMax(id) then
 		return nil
 	end
-	if id == "plots" then
-		return Config.Garden.PlotPrices[Config.Garden.StartPlots + level + 1]
-	elseif id == "yard" then
+	if id == "yard" then
 		return Config.Yard.Prices[Config.Yard.StartCap + level + 1]
 	end
 	local def = upgradeById[id]
@@ -502,62 +460,44 @@ end
 -- The number an upgrade gives at `level`
 function Rules.upgradeValue(id, level)
 	local def = upgradeById[id]
-	if id == "plots" then
-		return Config.Garden.StartPlots + level
-	elseif id == "yard" then
-		return Config.Yard.StartCap + level
-	elseif id == "reach" then
-		return Config.Garden.HarvestRange + def.per * level -- studs
-	elseif id == "perfect" then
-		return Config.Toss.PerfectWindow + def.per * level -- share of the ring cycle
-	elseif id == "bumper" then
-		return def.per * level -- chance each picked fruit is doubled
-	elseif id == "nap" then
-		return Config.Offline.MaxSeconds + def.per * level -- seconds
+	if id == "yard" then
+		return Config.Yard.StartCap + level -- Thinglets
+	elseif id == "nests" then
+		return Config.Eggs.StartNests + level -- nests
+	elseif id == "luck" then
+		return (def and def.per or 0) * level -- extra luck (0.3 = +30%)
 	end
-	return 1 + (def and def.per or 0) * level -- toss, growth, income, luck: multipliers
+	return 1 + (def and def.per or 0) * level -- income, speed: multipliers
+end
+
+local function percent(x)
+	return math.floor(x * 100 + 0.5)
 end
 
 -- The same, in words for the menu
 function Rules.upgradeText(id, level)
 	local value = Rules.upgradeValue(id, level)
-	if id == "plots" then
-		return value .. " plots"
-	elseif id == "yard" then
+	if id == "yard" then
 		return value .. " Thinglets"
-	elseif id == "reach" then
-		return value .. " studs"
-	elseif id == "perfect" then
-		return math.floor(value * 100 + 0.5) .. "% zone"
-	elseif id == "bumper" then
-		return math.floor(value * 100 + 0.5) .. "% chance"
-	elseif id == "nap" then
-		local hours = value / 3600
-		return (hours == math.floor(hours) and string.format("%d", hours) or string.format("%.1f", hours)) .. "h away"
-	elseif id == "growth" then
-		return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% speed"
+	elseif id == "nests" then
+		return value .. " nests"
 	elseif id == "luck" then
-		return "x" .. string.format("%.1f", value) .. " luck"
-	elseif id == "income" then
-		return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% income"
+		return "+" .. percent(value) .. "% luck"
+	elseif id == "speed" then
+		return "+" .. percent(value - 1) .. "% faster"
 	end
-	return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% coins"
+	return "+" .. percent(value - 1) .. "% coins"
 end
 
--- Just the number, short, for small cards: "5", "+30%", "19", "1.5h", "x1.2"
+-- Just the number, short, for small cards: "9", "+30%"
 function Rules.upgradeShort(id, level)
 	local value = Rules.upgradeValue(id, level)
-	if id == "plots" or id == "yard" or id == "reach" then
+	if id == "yard" or id == "nests" then
 		return tostring(value)
-	elseif id == "perfect" or id == "bumper" then
-		return math.floor(value * 100 + 0.5) .. "%"
-	elseif id == "nap" then
-		local hours = value / 3600
-		return (hours == math.floor(hours) and string.format("%d", hours) or string.format("%.1f", hours)) .. "h"
 	elseif id == "luck" then
-		return "x" .. string.format("%.1f", value)
+		return "+" .. percent(value) .. "%"
 	end
-	return "+" .. math.floor((value - 1) * 100 + 0.5) .. "%"
+	return "+" .. percent(value - 1) .. "%"
 end
 
 -- The effect for a save, in one call (the server and the HUD both use it)
@@ -585,8 +525,8 @@ function Rules.plotCFrame(i)
 	return CFrame.lookAt(Vector3.new(x, 0, z), Vector3.new(x, 0, 0))
 end
 
--- A seed delivery's timeline for plot i, in seconds after the truck sets off.
--- The server plants the seed at `total`; every client plays the same show.
+-- The coin truck's timeline for plot i, in seconds after it sets off.
+-- The server pays out at `total`; every client plays the same show.
 function Rules.deliveryTimes(i)
 	local d = Config.Delivery
 	local x = Rules.plotSpot(i)

@@ -3,20 +3,20 @@
 
 	Puts the world together.
 
-	The map itself - the street, the plots, houses, fences, trees, the seed
-	stand and the two tunnels - is a model made in Blender (FeedTheThing/Blender,
+	The map itself - the street, the plots, houses, fences, planters, trees,
+	the old seed stand and the two tunnels - is a model made in Blender (FeedTheThing/Blender,
 	exported as FeedTheThing_Map.fbx). Import it into Studio, name it "Map"
 	and put it in ServerStorage (see the README). This script then:
 	  * lines it up by its three marker blocks (so the import's size and
 	    position don't matter), and makes it glow where it should
 	  * adds invisible floors, walls and house blocks to walk on and bump into
 	    (cheaper and more reliable than mesh collisions on phones)
-	  * adds the parts that change while you play: the dirt in each planter,
-	    the name sign over each plot, the seed stand's "Shop" prompt
+	  * adds the dirt in each planter (the nests sit on it) and the name
+	    sign over each plot
 
 	No Map yet? It builds a plain stand-in from blocks, so the game still runs.
 
-	The Thing, the plants, the fruit and the Thinglets are drawn by each
+	The Thing, the nests, the eggs and the Thinglets are drawn by each
 	player's own client (StarterPlayerScripts/World).
 ]]
 
@@ -52,7 +52,7 @@ local MARKERS = {
 	MapMarkZ = Vector3.new(0, -30, 100),
 }
 
-local plots = {} -- [i] = { cframe, hatchCF, dirt = {}, sign = {...} }
+local plots = {} -- [i] = { cframe, hatchCF, sign = {...} }
 local worldFolder
 local hasMap = false
 
@@ -418,11 +418,10 @@ local function buildPlotSolids(i, cf, folder)
 	end
 end
 
--- the dirt in each planter box: shown once you own that plot spot
+-- the dirt in each planter box (the nests sit on it)
 local function buildDirt(cf, folder)
-	local dirt = {}
 	for spot, position in ipairs(W.PlantSpots) do
-		dirt[spot] = part({
+		local dirt = part({
 			Name = "Dirt" .. spot,
 			Size = Vector3.new(6, 0.3, 6),
 			CFrame = cf * CFrame.new(position + Vector3.new(0, 0.45, 0)),
@@ -432,10 +431,9 @@ local function buildDirt(cf, folder)
 			CanQuery = false,
 		}, folder)
 		if W.Studs then
-			dirt[spot].TopSurface = Enum.SurfaceType.Studs
+			dirt.TopSurface = Enum.SurfaceType.Studs
 		end
 	end
-	return dirt
 end
 
 -- a floating sign over the gate: the owner's avatar, name and Thing size
@@ -498,30 +496,14 @@ local function buildPlot(i, solids)
 	folder.Name = "Plot" .. i
 	folder.Parent = worldFolder
 	buildPlotSolids(i, cf, solids)
+	buildDirt(cf, folder)
 	plots[i] = {
 		cframe = cf,
 		hatchCF = cf * CFrame.new(W.Hatch),
-		dirt = buildDirt(cf, folder),
 		sign = buildSign(cf, folder),
 		userId = 0,
 	}
-	WorldBuilder.setPlotsOwned(i, 0)
 	WorldBuilder.setSign(i, "Free plot", "", 0)
-end
-
-local function buildShopPrompt()
-	local spot = part({
-		Name = "SeedShopSpot", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(STAND_X + 3.5, 3, STAND_Z),
-		Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false,
-	}, worldFolder)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "SeedShopPrompt"
-	prompt.ActionText = "Open the shop"
-	prompt.ObjectText = "Seed Stand"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = spot
 end
 
 local function setLighting()
@@ -619,23 +601,11 @@ function WorldBuilder.build()
 	for i = 1, W.Plots do
 		buildPlot(i, solids)
 	end
-	buildShopPrompt()
 	setLighting()
 end
 
 function WorldBuilder.plot(i)
 	return plots[i]
-end
-
--- Planters you own get dirt; the rest stay empty until you buy them
-function WorldBuilder.setPlotsOwned(i, owned)
-	local plot = plots[i]
-	if not plot then
-		return
-	end
-	for spot, dirt in ipairs(plot.dirt) do
-		dirt.Transparency = spot <= owned and 0 or 1
-	end
 end
 
 -- The sign over the gate. userId > 0 shows that player's avatar.

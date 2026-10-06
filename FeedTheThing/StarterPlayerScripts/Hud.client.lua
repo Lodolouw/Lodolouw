@@ -1,19 +1,19 @@
 --[[
 	Hud  (LocalScript, parent: StarterPlayer > StarterPlayerScripts, name: "Hud")
 
-	Everything on screen except the throw pad:
-	  * coins (top centre) with coins per second, and the weather
-	  * three big buttons on the left: Shop, Dex, Upgrades
+	Everything on screen except the food bar:
+	  * coins (bottom left) with coins per second, and the weather
+	  * two big buttons on the left: Upgrades and Index
 	  * the panels they open
-	  * the hatch reveal, "Welcome back", "Your yard is full", a Thinglet's
-	    card, the size-up banner, server announcements, and first-time hints
+	  * the hatch reveal (big for something special, a small pop for the
+	    rest), "Welcome back", a Thinglet's card, the size-up banner, the
+	    coin truck and server announcements
 
 	Built for phones first: big buttons, few of them, nothing in the corners
 	Roblox uses (top bar, thumbstick, jump button).
 ]]
 
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -233,7 +233,7 @@ end
 UI.on("CoinBurst", coinBurst)
 
 ----------------------------------------------------------------------
--- Side buttons: Shop and Index on the left, Daily and Upgrades on the right
+-- Side buttons: Upgrades and Index, on the left
 ----------------------------------------------------------------------
 local function sideColumn(name, anchorX, positionX, width)
 	local column = UI.new("Frame", {
@@ -255,13 +255,12 @@ local function sideColumn(name, anchorX, positionX, width)
 	end
 	return column
 end
-local leftBar = sideColumn("LeftButtons", 0, 0, 200)
-local rightBar = sideColumn("RightButtons", 1, 1, 80)
+local leftBar = sideColumn("LeftButtons", 0, 0, 220)
 
 local sideButtons = {}
--- wide = a long button with an icon and a word (left); else a square icon button (right)
+-- wide = a long button with an icon and a word; else a square icon button
 local function sideButton(name, label, order, icon, color, wide, onClick)
-	local parent = wide and leftBar or rightBar
+	local parent = leftBar
 	local button = UI.button(parent, "", {
 		Name = name, LayoutOrder = order, Size = wide and UDim2.fromOffset(196, 74) or UDim2.fromOffset(76, 76), BackgroundColor3 = color,
 	}, onClick)
@@ -283,7 +282,7 @@ local function sideButton(name, label, order, icon, color, wide, onClick)
 	end
 	local dot = UI.badge(button)
 	local hint = UI.label(button, {
-		Size = UDim2.fromOffset(220, 30), AnchorPoint = Vector2.new(wide and 0 or 1, 0.5),
+		Size = UDim2.fromOffset(260, 30), AnchorPoint = Vector2.new(wide and 0 or 1, 0.5),
 		Position = wide and UDim2.new(1, 14, 0.5, 0) or UDim2.new(0, -14, 0.5, 0), Text = "",
 		TextXAlignment = wide and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, TextColor3 = C.Gold, Visible = false,
 	})
@@ -363,31 +362,6 @@ local function showPanel(name)
 end
 
 ----------------------------------------------------------------------
--- Generic "are you sure?" dialog
-----------------------------------------------------------------------
-local function confirm(text, yesText, onYes)
-	local back = UI.new("TextButton", {
-		Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Text = "", AutoButtonColor = false, ZIndex = 60,
-	}, overlayGui)
-	local box = UI.new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(400, 200), BackgroundColor3 = C.Panel, ZIndex = 61, Active = true,
-	}, back)
-	UI.fit(box, 400, 200)
-	UI.chunky(box, C.Panel, UDim.new(0, 18), 4)
-	UI.studs(box)
-	UI.label(box, { Size = UDim2.new(1, -30, 0, 90), Position = UDim2.fromOffset(15, 15), Text = text, ZIndex = 62 })
-	UI.button(box, yesText, { Position = UDim2.new(0.5, 8, 1, -72), Size = UDim2.fromOffset(170, 56), BackgroundColor3 = C.Bad, ZIndex = 62 }, function()
-		back:Destroy()
-		onYes()
-	end)
-	UI.button(box, "Keep it", { Position = UDim2.new(0.5, -178, 1, -72), Size = UDim2.fromOffset(170, 56), BackgroundColor3 = C.Grey, ZIndex = 62 }, function()
-		back:Destroy()
-	end)
-end
-
-----------------------------------------------------------------------
--- Shop
-----------------------------------------------------------------------
 -- Every menu uses the same small cards in a 3-wide grid: compact panels,
 -- so you still see the game around them
 local CARD_W, CARD_H, GAP = 148, 164, 8
@@ -399,89 +373,15 @@ local function cardGrid(body)
 	UI.new("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 2), PaddingBottom = UDim.new(0, 6) }, body)
 end
 
-local shop = makePanel("Shop", "Seed Shop", COMPACT_W, COMPACT_H, C.Green, 56)
-cardGrid(shop.body)
-local shopRows = {}
-
-local function buySeed(cropId, replace)
-	local result = act("buySeed", cropId, replace)
-	if result.needReplace then
-		confirm(result.msg, "Replace", function()
-			buySeed(cropId, true)
-		end)
-		return
-	end
-	if result.ok then
-		UI.sound("Buy")
-		toast(result.msg, C.Good, 3)
-		-- close the shop so you can watch the delivery truck pull up
-		if openPanel == "Shop" then
-			showPanel("Shop")
-		end
-	else
-		UI.sound("Error", 0.6)
-		toast(result.msg, C.Bad, 2.5)
-	end
-end
-
-for i, crop in ipairs(Config.Crops) do
-	local card = UI.new("Frame", { Name = crop.id, LayoutOrder = i, BackgroundColor3 = C.PanelLight, ZIndex = 22 }, shop.body)
-	UI.corner(card, UDim.new(0, 12))
-	local stroke = UI.stroke(card, 3)
-	UI.viewport(card, Looks.fruit(crop.id, "", false), {
-		AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(64, 56), Position = UDim2.new(0.5, 0, 0, 4), ZIndex = 23,
-	})
-	UI.label(card, {
-		Position = UDim2.fromOffset(6, 60), Size = UDim2.new(1, -12, 0, 24), Text = crop.name,
-		TextColor3 = Config.Rarities[crop.rarity].color, ZIndex = 23,
-	})
-	local info = UI.label(card, {
-		Position = UDim2.fromOffset(6, 86), Size = UDim2.new(1, -12, 0, 20), Text = "+" .. Rules.short(crop.coins) .. " coins a toss",
-		TextColor3 = C.Dim, ZIndex = 23,
-	})
-	-- how many are left this restock (only shown when it's limited)
-	local stockTag = UI.label(card, {
-		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(56, 20), Text = "",
-		TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 24,
-	})
-	local buy = UI.button(card, "", {
-		AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -8), Size = UDim2.new(1, -16, 0, 42), ZIndex = 23,
-	}, function()
-		buySeed(crop.id, false)
-	end)
-	local coin = UI.icon(buy, "coin", { Size = UDim2.fromOffset(24, 24), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 2, 0.5, 0) })
-	local price = UI.number(buy, { Position = UDim2.fromOffset(30, 0), Size = UDim2.new(1, -32, 1, 0), Text = Rules.short(crop.seed), ZIndex = 24 })
-	shopRows[crop.id] = { row = card, stroke = stroke, stock = stockTag, buy = buy, coin = coin, price = price, info = info }
-end
-
-local function refreshShop()
-	if not state then
-		return
-	end
-	shop.subtitle.Text = "New stock in " .. Rules.clock((state.restockAt or 0) - serverNow())
-	for _, crop in ipairs(Config.Crops) do
-		local r = shopRows[crop.id]
-		local left = state.stock and state.stock[crop.id] or 0
-		local soldOut = left == 0
-		r.stock.Text = left > 0 and (left .. " left") or ""
-		r.coin.Visible = not soldOut
-		r.price.Text = soldOut and "" or Rules.short(crop.seed)
-		r.buy.Text = soldOut and "Sold out" or ""
-		r.buy.BackgroundColor3 = (not soldOut and state.coins >= crop.seed) and C.Good or C.Well
-	end
-end
-
 ----------------------------------------------------------------------
 -- Upgrades, incremental style: every upgrade has levels that cost more
--- each time. Buy one, ten or as many as you can afford; more unlock as
--- your Thing grows. A small grid of cards (icon, name, now -> next,
--- price) so you see lots of them and still see the game.
+-- each time. Buy one, ten or as many as you can afford. A small grid of
+-- cards (icon, name, now -> next, price) so you still see the game.
 -- (The rules and prices live in Rules / Config.Upgrades.)
 ----------------------------------------------------------------------
 local upgrades = makePanel("Upgrades", "Upgrades", COMPACT_W, COMPACT_H, C.Accent, 56)
 cardGrid(upgrades.body)
 
-local LOCKED_CARD = Color3.fromRGB(205, 140, 80)
 local refreshUpgrades -- (defined below)
 
 -- x1 / x10 / MAX: how many levels a tap buys
@@ -540,8 +440,7 @@ local function upgradeCard(def)
 	}, card)
 	UI.corner(iconBox, UDim.new(0, 10))
 	UI.stroke(iconBox, 3)
-	local icon = UI.icon(iconBox, def.icon, { Size = UDim2.fromScale(0.8, 0.8), Position = UDim2.fromScale(0.1, 0.1) })
-	local lock = UI.icon(iconBox, "lock", { Size = UDim2.fromScale(0.7, 0.7), Position = UDim2.fromScale(0.15, 0.15), Visible = false })
+	UI.icon(iconBox, def.icon, { Size = UDim2.fromScale(0.8, 0.8), Position = UDim2.fromScale(0.1, 0.1) })
 	local name = UI.label(card, { Position = UDim2.fromOffset(6, 64), Size = UDim2.new(1, -12, 0, 24), Text = def.name, ZIndex = 23 })
 	local effect = UI.label(card, { Position = UDim2.fromOffset(6, 89), Size = UDim2.new(1, -12, 0, 22), Text = "", RichText = true, ZIndex = 23 })
 	local button = UI.button(card, "", {
@@ -554,7 +453,7 @@ local function upgradeCard(def)
 		Position = UDim2.fromOffset(30, 0), Size = UDim2.new(1, -32, 1, 0), Text = "", ZIndex = 24,
 	})
 	upgradeCards[def.id] = {
-		def = def, card = card, iconBox = iconBox, icon = icon, lock = lock, name = name, effect = effect,
+		def = def, card = card, iconBox = iconBox, name = name, effect = effect,
 		button = button, coin = coin, price = price,
 	}
 end
@@ -562,17 +461,15 @@ for _, def in ipairs(Config.Upgrades) do
 	upgradeCard(def)
 end
 
--- can you afford any unlocked upgrade right now? (the red dot on the button)
+-- can you afford an upgrade right now? (the red dot on the button)
 local function upgradeAffordable()
 	if not state then
 		return false
 	end
 	for _, def in ipairs(Config.Upgrades) do
-		if (state.size or 1) >= (def.unlock or 1) then
-			local cost = Rules.upgradeCost(def.id, Rules.upgradeLevel(state, def.id))
-			if cost and state.coins >= cost then
-				return true
-			end
+		local cost = Rules.upgradeCost(def.id, Rules.upgradeLevel(state, def.id))
+		if cost and state.coins >= cost then
+			return true
 		end
 	end
 	return false
@@ -587,18 +484,10 @@ function refreshUpgrades()
 	end
 	for i, def in ipairs(Config.Upgrades) do
 		local r = upgradeCards[def.id]
-		local unlocked = (state.size or 1) >= (def.unlock or 1)
 		local level = Rules.upgradeLevel(state, def.id)
 		local max = Rules.upgradeMax(def.id)
-		r.card.LayoutOrder = (unlocked and 0 or 100) + i
-		r.icon.Visible = unlocked
-		r.lock.Visible = not unlocked
-		r.button.Visible = unlocked
-		r.card.BackgroundColor3 = unlocked and C.PanelLight or LOCKED_CARD
-		r.name.TextColor3 = unlocked and C.Text or C.Dim
-		if not unlocked then
-			r.effect.Text = '<font color="#FFD23C">Unlocks at ' .. Config.Thing.Sizes[def.unlock].name .. "</font>"
-		elseif level >= max then
+		r.card.LayoutOrder = i
+		if level >= max then
 			r.effect.Text = Rules.upgradeShort(def.id, level)
 			r.button.BackgroundColor3 = C.Gold
 			r.coin.Visible = false
@@ -618,8 +507,49 @@ function refreshUpgrades()
 end
 
 ----------------------------------------------------------------------
--- Dex
+-- Dex: every Thinglet and its four looks. The ones you haven't found say
+-- which food gives the best chance of them.
 ----------------------------------------------------------------------
+-- the food most likely to hatch this kind (with no luck)
+local function bestFood(kind)
+	local def = Config.Thinglets[kind]
+	local sameRarity = 0
+	for _, other in pairs(Config.Thinglets) do
+		if other.rarity == def.rarity and not other.secret then
+			sameRarity += 1
+		end
+	end
+	local best, bestChance = nil, -1
+	for _, crop in ipairs(Config.Crops) do
+		local chance
+		if def.secret then
+			chance = crop.secret or 0
+		else
+			local odds = Rules.hatchOdds(crop.id, 0)
+			local favourite = Config.Thinglets[crop.thinglet]
+			local share = 1 / sameRarity
+			if favourite and favourite.rarity == def.rarity then
+				share = crop.thinglet == kind and (Config.FavouriteChance + (1 - Config.FavouriteChance) / sameRarity)
+					or (1 - Config.FavouriteChance) / sameRarity
+			end
+			chance = odds[def.rarity] * share
+		end
+		if chance > bestChance then
+			best, bestChance = crop, chance
+		end
+	end
+	return best
+end
+
+local function dexHint(kind)
+	local def = Config.Thinglets[kind]
+	local crop = bestFood(kind)
+	if def.secret then
+		return "A secret! Any egg might hold it..."
+	end
+	return crop and ("Most often from " .. crop.name) or ""
+end
+
 local dex = makePanel("Dex", "Thinglet Index", COMPACT_W, COMPACT_H, C.Cyan, 56)
 cardGrid(dex.body)
 local dexCards = {}
@@ -631,7 +561,7 @@ for i, kind in ipairs(Config.ThingletOrder) do
 	local view = UI.viewport(card, nil, { Size = UDim2.new(1, -16, 0, 70), Position = UDim2.fromOffset(8, 4), ZIndex = 23 })
 	local name = UI.label(card, { Size = UDim2.new(1, -10, 0, 22), Position = UDim2.fromOffset(5, 76), Text = "???", ZIndex = 23 })
 	local hint = UI.label(card, {
-		Size = UDim2.new(1, -12, 0, 34), Position = UDim2.fromOffset(6, 99), Text = def.hint, TextColor3 = C.Dim, TextWrapped = true, ZIndex = 23,
+		Size = UDim2.new(1, -12, 0, 34), Position = UDim2.fromOffset(6, 99), Text = dexHint(kind), TextColor3 = C.Dim, TextWrapped = true, ZIndex = 23,
 	})
 	local dots = {}
 	for j, look in ipairs({ "Normal", "Frozen", "Glowing", "Gold" }) do
@@ -667,7 +597,7 @@ local function refreshDex()
 		end
 		c.name.Text = known and def.name or "???"
 		c.name.TextColor3 = known and Config.Rarities[def.rarity].color or C.Text
-		c.hint.Text = known and (def.rarity .. "  |  " .. Rules.short(def.cps) .. "/s grown") or def.hint
+		c.hint.Text = known and (def.rarity .. "  |  " .. Rules.short(def.cps) .. "/s grown") or dexHint(kind)
 		for look, dot in pairs(c.dots) do
 			local has = entry and entry[look] == true
 			dot.BackgroundTransparency = has and 0 or 0.8
@@ -679,77 +609,18 @@ local function refreshDex()
 	dex.subtitle.Text = string.format("Found %d of %d looks", found, total)
 end
 
-----------------------------------------------------------------------
--- Daily: today's craving, its bonus egg, and the other "come back" perks
-----------------------------------------------------------------------
-local daily = makePanel("Daily", "Daily Craving", COMPACT_W, 300, C.Red, 56)
-local dailyView = UI.viewport(daily.body, nil, { Size = UDim2.fromOffset(100, 100), Position = UDim2.fromOffset(4, 4), ZIndex = 22 })
-local dailyTitle = UI.label(daily.body, {
-	Size = UDim2.new(1, -124, 0, 32), Position = UDim2.fromOffset(116, 8), Text = "", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22,
-})
-local dailyBarBack = UI.new("Frame", {
-	Size = UDim2.new(1, -130, 0, 24), Position = UDim2.fromOffset(118, 48), BackgroundColor3 = C.Well, ZIndex = 22,
-}, daily.body)
-UI.corner(dailyBarBack, UDim.new(0, 8))
-UI.stroke(dailyBarBack, 3)
-local dailyBar = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.Gold, ZIndex = 23 }, dailyBarBack)
-UI.corner(dailyBar, UDim.new(0, 8))
-local dailyCount = UI.label(dailyBarBack, { Size = UDim2.fromScale(1, 1), Text = "", ZIndex = 24 })
-UI.label(daily.body, {
-	Size = UDim2.new(1, -124, 0, 22), Position = UDim2.fromOffset(116, 80), Text = "Reward: a bonus egg that's always mutated!",
-	TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Gold, ZIndex = 22,
-})
-local dailyPerks = UI.label(daily.body, {
-	Size = UDim2.new(1, -16, 0, 70), Position = UDim2.fromOffset(8, 118), TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
-	TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Dim, ZIndex = 22, Text = "",
-})
-local dailyFood = nil
-local function refreshDaily()
-	if not state or not state.daily then
-		return
-	end
-	local d = state.daily
-	local crop = Rules.crop(d.food)
-	if crop and d.food ~= dailyFood then
-		dailyFood = d.food
-		UI.setViewportModel(dailyView, Looks.fruit(d.food, "", false), 200)
-	end
-	daily.subtitle.Text = "New craving in " .. Rules.clock((d.resetAt or 0) - serverNow())
-	if d.done then
-		dailyTitle.Text = "Done for today!"
-		dailyBar.Size = UDim2.fromScale(1, 1)
-		dailyCount.Text = "Bonus egg hatched"
-	else
-		dailyTitle.Text = crop and ("Feed it " .. d.need .. " " .. crop.name) or ""
-		dailyBar.Size = UDim2.fromScale(math.clamp(d.fed / math.max(1, d.need), 0, 1), 1)
-		dailyCount.Text = d.fed .. " / " .. d.need
-	end
-	local friends = math.floor((state.friendBonus or 0) * 100 + 0.5)
-	local away = Rules.upgradeText("nap", Rules.upgradeLevel(state, "nap")):gsub(" away", "")
-	dailyPerks.Text = "Your Thinglets earn for up to " .. away .. " while you're away.\n"
-		.. "Friends here: +" .. friends .. "% coins (+10% each, up to +30%)."
-end
-
 -- the buttons themselves
-sideButton("Shop", "Shop", 1, "sprout", C.Green, true, function()
-	showPanel("Shop")
-	refreshShop()
+sideButton("Upgrades", "Upgrades", 1, "upgrade", C.Accent, true, function()
+	showPanel("Upgrades")
+	refreshUpgrades()
 end)
 sideButton("Dex", "Index", 2, "book", C.Cyan, true, function()
 	showPanel("Dex")
 	refreshDex()
 end)
-sideButton("Daily", "Daily", 1, "egg", C.Red, false, function()
-	showPanel("Daily")
-	refreshDaily()
-end)
-sideButton("Upgrades", "Upgrades", 2, "upgrade", C.Accent, false, function()
-	showPanel("Upgrades")
-	refreshUpgrades()
-end)
 
 ----------------------------------------------------------------------
--- Popups: Thinglet card, welcome back, yard full, size up
+-- Popups: Thinglet card, welcome back, size up
 ----------------------------------------------------------------------
 local function modal(width, height)
 	local back = UI.new("TextButton", {
@@ -832,16 +703,20 @@ local function showCard(info)
 end
 UI.on("ThingletTapped", showCard)
 
-local function showWelcome(coins, away)
-	local back, box = modal(420, 280)
+local function showWelcome(coins, away, eggs)
+	local back, box = modal(420, 270)
 	UI.label(box, { Size = UDim2.new(1, -30, 0, 44), Position = UDim2.fromOffset(15, 16), Text = "Welcome back!", TextColor3 = Config.Thing.EyeColor, ZIndex = 42 })
 	UI.label(box, { Size = UDim2.new(1, -30, 0, 28), Position = UDim2.fromOffset(15, 66), Text = "While you were away, your Thinglets earned", TextColor3 = C.Dim, ZIndex = 42 })
-	coinIcon(box, 40, UDim2.new(0.5, -110, 0, 108)).ZIndex = 42
-	UI.label(box, { Size = UDim2.fromOffset(200, 50), Position = UDim2.new(0.5, -60, 0, 103), Text = "+" .. Rules.short(coins), TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42 })
-	local cap = state and Rules.upgradeEffect(state, "nap") or Config.Offline.MaxSeconds
-	if away > cap then
-		local hours = Rules.upgradeText("nap", state and Rules.upgradeLevel(state, "nap") or 0):gsub(" away", "")
-		UI.label(box, { Size = UDim2.new(1, -30, 0, 20), Position = UDim2.fromOffset(15, 158), Text = "(they earn for up to " .. hours .. " while you're away: Long nap makes it longer)", TextColor3 = C.Dim, ZIndex = 42 })
+	coinIcon(box, 40, UDim2.new(0.5, -110, 0, 104)).ZIndex = 42
+	UI.label(box, { Size = UDim2.fromOffset(200, 50), Position = UDim2.new(0.5, -60, 0, 99), Text = "+" .. Rules.short(coins), TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42 })
+	local note = nil
+	if eggs > 0 then
+		note = eggs == 1 and "...and an egg is ready to hatch!" or ("...and " .. eggs .. " eggs are ready to hatch!")
+	elseif away > Config.Offline.MaxSeconds then
+		note = "(they earn for up to " .. math.floor(Config.Offline.MaxSeconds / 3600 + 0.5) .. " hours while you're away)"
+	end
+	if note then
+		UI.label(box, { Size = UDim2.new(1, -30, 0, 22), Position = UDim2.fromOffset(15, 152), Text = note, TextColor3 = C.Dim, ZIndex = 42 })
 	end
 	UI.button(box, "Collect", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -18), Size = UDim2.fromOffset(220, 62), ZIndex = 42 }, function()
 		back:Destroy()
@@ -849,68 +724,6 @@ local function showWelcome(coins, away)
 		UI.pop(coinsBox, 0.25)
 	end)
 end
-
-local yardFullInfo = nil
-local yardFullOpen = nil
-local revealing = false
-local function showYardFull()
-	local info = yardFullInfo
-	if not info or yardFullOpen or revealing then
-		return
-	end
-	local back, box = modal(560, 330)
-	yardFullOpen = back
-	UI.label(box, { Size = UDim2.new(1, -30, 0, 40), Position = UDim2.fromOffset(15, 12), Text = "Your yard is full!", ZIndex = 42 })
-	-- "Later" closes it so you can buy yard space; tossing asks again
-	UI.button(box, "Later", {
-		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.fromOffset(100, 44), BackgroundColor3 = C.PanelLight, ZIndex = 43,
-	}, function()
-		back:Destroy()
-		yardFullOpen = nil
-	end)
-	UI.label(box, { Size = UDim2.new(1, -30, 0, 22), Position = UDim2.fromOffset(15, 52), Text = "Get more yard space in Upgrades.", TextColor3 = C.Dim, ZIndex = 42 })
-	local function side(x, title, kind, mut, buttonText, color, choice, rank)
-		UI.label(box, { Size = UDim2.fromOffset(250, 24), Position = UDim2.fromOffset(x, 84), Text = title, TextColor3 = C.Dim, ZIndex = 42 })
-		UI.viewport(box, Looks.thinglet(kind, mut, false), { Size = UDim2.fromOffset(250, 110), Position = UDim2.fromOffset(x, 108), ZIndex = 42 })
-		UI.label(box, { Size = UDim2.fromOffset(250, 26), Position = UDim2.fromOffset(x, 216), Text = thingletName(kind, mut), TextColor3 = rarityColor(kind), ZIndex = 42 })
-		local armed = false
-		local button
-		button = UI.button(box, buttonText, { Position = UDim2.fromOffset(x + 15, 250), Size = UDim2.fromOffset(220, 60), BackgroundColor3 = color, ZIndex = 42 }, function()
-			if rank >= Config.Yard.ConfirmRank and not armed then
-				armed = true
-				button.Text = "Tap again to sell it"
-				return
-			end
-			local result = act("yardChoice", choice)
-			back:Destroy()
-			yardFullOpen = nil
-			-- the server may already have asked about the next egg: keep that one
-			if result.ok and yardFullInfo == info then
-				yardFullInfo = nil
-			end
-			if result.ok and result.msg ~= "" then
-				UI.sound("Coin")
-				toast(result.msg, C.Gold, 2.5)
-			end
-			if yardFullInfo then
-				showYardFull()
-			end
-		end)
-	end
-	local newDef = Config.Thinglets[info.kind]
-	local oldDef = Config.Thinglets[info.weakestKind]
-	side(20, "New", info.kind, info.mut, "Sell new +" .. Rules.short(info.sellNew), C.Bad, "sellNew", newDef and Rules.rarityRank(newDef.rarity) or 0)
-	if oldDef then
-		side(290, "Weakest in your yard", info.weakestKind, info.weakestMut, "Swap it +" .. Rules.short(info.sellWeakest), C.Good, "swap", Rules.rarityRank(oldDef.rarity))
-	end
-end
-UI.on("ShowYardFull", function()
-	if yardFullInfo then
-		showYardFull()
-	else
-		act("askYardFull") -- the server sends it again
-	end
-end)
 
 local function showSizeUp(size, name, grew)
 	local banner = UI.new("Frame", {
@@ -928,24 +741,87 @@ local function showSizeUp(size, name, grew)
 	task.delay(3.2, function()
 		banner:Destroy()
 	end)
-	if size == 2 then
-		task.delay(3.4, function()
-			toast("The belly holds 5 now. What you feed it decides what hatches!", Config.Thing.EyeColor, 7)
-		end)
-	end
 end
 
 ----------------------------------------------------------------------
--- The hatch reveal
+-- Hatching. Something special (a new kind, a mutation, Epic or better)
+-- gets the big reveal; everything else pops up small on the right, so
+-- you can keep feeding.
 ----------------------------------------------------------------------
+-- what happened in the yard, in words
+local function outcome(info)
+	if info.how == "replace" and info.soldKind then
+		return "Took your " .. thingletName(info.soldKind, info.soldMut) .. "'s spot  +" .. Rules.short(info.sold or 0), C.Gold
+	elseif info.how == "sell" then
+		return "Yard full of better ones: sold  +" .. Rules.short(info.sold or 0), C.Dim
+	end
+	return "Off to your yard!", C.Dim
+end
+
+local popList = UI.new("Frame", {
+	Name = "Hatches", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.42, 0),
+	Size = UDim2.fromOffset(280, 3 * 82), BackgroundTransparency = 1,
+}, gui)
+UI.new("UIListLayout", {
+	VerticalAlignment = Enum.VerticalAlignment.Bottom, HorizontalAlignment = Enum.HorizontalAlignment.Right,
+	Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder,
+}, popList)
+local popOrder = 0
+
+local function smallPop(info)
+	local def = Config.Thinglets[info.kind]
+	popOrder += 1
+	local box = UI.new("Frame", {
+		LayoutOrder = popOrder, Size = UDim2.fromOffset(270, 76), BackgroundColor3 = C.PanelLight,
+	}, popList)
+	UI.chunky(box, C.PanelLight, UDim.new(0, 14), 3)
+	local stroke = box:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = Config.Rarities[def.rarity].color
+	end
+	UI.viewport(box, Looks.thinglet(info.kind, info.mut, false), { Size = UDim2.fromOffset(66, 66), Position = UDim2.fromOffset(5, 5) })
+	UI.label(box, {
+		Size = UDim2.new(1, -84, 0, 30), Position = UDim2.fromOffset(76, 8), Text = thingletName(info.kind, info.mut),
+		TextColor3 = rarityColor(info.kind), TextXAlignment = Enum.TextXAlignment.Left,
+	})
+	local text, color = outcome(info)
+	UI.label(box, {
+		Size = UDim2.new(1, -84, 0, 22), Position = UDim2.fromOffset(76, 42), Text = text, TextColor3 = color,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	})
+	UI.pop(box, 0.2)
+	UI.sound("Hatch", 0.5)
+	local boxes = {}
+	for _, child in ipairs(popList:GetChildren()) do
+		if child:IsA("Frame") then
+			table.insert(boxes, child)
+		end
+	end
+	table.sort(boxes, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	if #boxes > 3 then
+		boxes[1]:Destroy()
+	end
+	task.delay(2.2, function()
+		if box.Parent then
+			tween(box, 0.25, { BackgroundTransparency = 1 })
+			task.wait(0.25)
+			box:Destroy()
+		end
+	end)
+end
+
 local revealQueue = {}
+local revealing = false
 
 local function playReveal(info)
 	revealing = true
 	local def = Config.Thinglets[info.kind]
 	local rarity = Config.Rarities[def.rarity]
 	local rank = Rules.rarityRank(def.rarity)
-	local slow = info.newLook or rank >= 3
+	local crop = Rules.crop(info.food)
+	local slow = info.newKind or rank >= 3
 	local back = UI.new("TextButton", {
 		Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(10, 5, 20), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 50,
 	}, overlayGui)
@@ -966,13 +842,16 @@ local function playReveal(info)
 	})
 	local title = UI.label(stage, {
 		AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(260, 0), Size = UDim2.fromOffset(500, 40), ZIndex = 53,
-		Text = info.source == "daily" and "Daily craving bonus egg!" or "A new egg!", TextColor3 = C.Dim,
+		Text = crop and ("Your " .. crop.name .. " egg is hatching!") or "Your egg is hatching!", TextColor3 = C.Dim,
 	})
 	local nameLabel = UI.label(stage, {
 		AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(260, 390), Size = UDim2.fromOffset(500, 56), ZIndex = 53, Text = "", TextColor3 = rarity.color,
 	})
 	local subLabel = UI.label(stage, {
-		AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(260, 450), Size = UDim2.fromOffset(500, 30), ZIndex = 53, Text = "", TextColor3 = C.Dim,
+		AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(260, 446), Size = UDim2.fromOffset(500, 30), ZIndex = 53, Text = "", TextColor3 = C.Dim,
+	})
+	local outcomeLabel = UI.label(stage, {
+		AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(260, 480), Size = UDim2.fromOffset(500, 26), ZIndex = 53, Text = "", TextColor3 = C.Dim,
 	})
 
 	local skip = false
@@ -982,7 +861,7 @@ local function playReveal(info)
 			skip = true
 		end
 	end)
-	task.delay(1, function()
+	task.delay(0.6, function()
 		canSkip = true
 	end)
 	local function wait(seconds)
@@ -992,11 +871,11 @@ local function playReveal(info)
 		end
 	end
 
-	-- 1. the egg wobbles
-	local egg = Looks.egg(def.rarity)
+	-- 1. the egg (speckled in its food's colour) wobbles
+	local egg = Looks.egg(def.rarity, crop and crop.color)
 	UI.setViewportModel(view, egg, 180)
 	local eggPivot = egg:GetPivot()
-	local wobbleTime = slow and 1.2 or 0.6
+	local wobbleTime = slow and 1.1 or 0.6
 	local start = os.clock()
 	while os.clock() - start < wobbleTime and not skip do
 		local k = (os.clock() - start) / wobbleTime
@@ -1004,7 +883,7 @@ local function playReveal(info)
 		RunService.RenderStepped:Wait()
 	end
 
-	-- 2. crack! a flash, then (for something new) its shadow first
+	-- 2. crack! a flash in its rarity's colour, then (for something new) its shadow first
 	UI.sound("Crack")
 	glow.BackgroundTransparency = 0.1
 	tween(glow, 0.5, { BackgroundTransparency = 0.55 })
@@ -1026,7 +905,12 @@ local function playReveal(info)
 		sub = "NEW!  " .. sub
 	end
 	subLabel.Text = sub
-	title.Text = info.newKind and "You discovered a new Thinglet!" or title.Text
+	local text, color = outcome(info)
+	outcomeLabel.Text = text
+	outcomeLabel.TextColor3 = color
+	if info.newKind then
+		title.Text = "You discovered a new Thinglet!"
+	end
 	UI.pop(nameLabel, 0.5)
 	UI.sound(rank >= 3 and "HatchRare" or "Hatch")
 	if rank >= 3 or info.mut == "Gold" then
@@ -1034,16 +918,13 @@ local function playReveal(info)
 	end
 	local pivot = model:GetPivot()
 	local spinStart = os.clock()
-	local showFor = slow and 1.6 or 0.9
+	local showFor = slow and 1.6 or 1
 	while os.clock() - spinStart < showFor and not skip do
 		model:PivotTo(pivot * CFrame.Angles(0, (os.clock() - spinStart) * 1.5, 0))
 		RunService.RenderStepped:Wait()
 	end
 	back:Destroy()
 	revealing = false
-	if info.pending then
-		showYardFull()
-	end
 end
 
 local function nextReveal()
@@ -1061,14 +942,37 @@ HatchedRemote.OnClientEvent:Connect(function(info)
 	if type(info) ~= "table" or not Config.Thinglets[info.kind] then
 		return
 	end
-	table.insert(revealQueue, info)
-	-- give the egg a moment to pop out of the hatch first
-	task.delay(info.source == "daily" and 0 or 0.7, nextReveal)
+	if info.newKind or info.newLook then
+		sideButtons.Dex.dot.Visible = true
+	end
+	local def = Config.Thinglets[info.kind]
+	local special = info.newKind or (info.mut ~= nil and info.mut ~= "") or Rules.rarityRank(def.rarity) >= Config.Eggs.BigReveal
+	-- give the egg a moment to pop on its nest first
+	task.delay(0.35, function()
+		if special then
+			table.insert(revealQueue, info)
+			nextReveal()
+		else
+			smallPop(info)
+		end
+	end)
 end)
 
 ----------------------------------------------------------------------
 -- Messages from the server
 ----------------------------------------------------------------------
+local function myLandingSpot()
+	for _, folder in ipairs(ReplicatedStorage:WaitForChild("Plots"):GetChildren()) do
+		if folder:GetAttribute("Owner") == player.UserId then
+			local index = folder:GetAttribute("Index")
+			if type(index) == "number" then
+				return (Rules.plotCFrame(index) * CFrame.new(Config.Delivery.LandAt)).Position + Vector3.new(0, 1.5, 0)
+			end
+		end
+	end
+	return nil
+end
+
 NotifyRemote.OnClientEvent:Connect(function(payload)
 	if type(payload) ~= "table" then
 		return
@@ -1079,15 +983,18 @@ NotifyRemote.OnClientEvent:Connect(function(payload)
 	elseif payload.type == "weather" then
 		showBanner(payload.text, Color3.fromRGB(200, 230, 255), 8)
 	elseif payload.type == "welcome" then
-		showWelcome(payload.coins or 0, payload.away or 0)
-	elseif payload.type == "yardFull" then
-		yardFullInfo = payload
-		-- if its egg is still to be revealed, the reveal opens this when it ends
-		if not revealing and #revealQueue == 0 then
-			task.delay(0.1, showYardFull)
-		end
+		showWelcome(payload.coins or 0, payload.away or 0, payload.eggs or 0)
 	elseif payload.type == "sizeUp" then
 		showSizeUp(payload.size, payload.name, payload.grew)
+	elseif payload.type == "truckComing" then
+		toast("HONK! The coin truck is coming to your house!", C.Gold, 4)
+	elseif payload.type == "tip" then
+		toast("+" .. Rules.short(payload.coins or 0) .. " coins from the coin truck!", C.Gold, 3)
+		local spot = myLandingSpot()
+		if spot then
+			coinBurst(spot, payload.coins or 1)
+		end
+		UI.sound("Coin")
 	end
 end)
 
@@ -1112,50 +1019,17 @@ end)
 ----------------------------------------------------------------------
 -- State
 ----------------------------------------------------------------------
-local lastHatches = nil
 local function refreshHints()
 	if not state then
 		return
 	end
-	-- first hint after the first hatch: buy a Chili seed
-	local shopHint = sideButtons.Shop.hint
-	local hasChili = false
-	for _, crop in ipairs(state.plants or {}) do
-		if crop == "Chili" then
-			hasChili = true
-		end
-	end
-	local chili = Rules.crop("Chili")
-	local showChili = (state.stats.hatches or 0) >= 1 and not hasChili and chili ~= nil and state.coins >= chili.seed
-	shopHint.Visible = showChili
-	shopHint.Text = "Buy a Chili seed!"
-	shopRows.Chili.stroke.Color = showChili and C.Gold or C.Stroke
-	shopRows.Chili.stroke.Thickness = showChili and 4 or 2
-
-	-- red dots: something you can afford
-	local affordable = false
-	for _, crop in ipairs(Config.Crops) do
-		local left = state.stock and state.stock[crop.id] or 0
-		if left ~= 0 and state.coins >= crop.seed and Rules.cropRank(crop.id) > 2 then
-			affordable = true
-		end
-	end
-	sideButtons.Shop.dot.Visible = affordable or showChili
-	sideButtons.Upgrades.dot.Visible = upgradeAffordable()
-	sideButtons.Daily.dot.Visible = state.daily ~= nil and not state.daily.done and (state.stats.hatches or 0) >= 1
-	if lastHatches and state.stats.hatches > lastHatches then
-		sideButtons.Dex.dot.Visible = true
-	end
-	lastHatches = state.stats.hatches
+	-- red dot (and, until you've bought one, a hint): an upgrade you can afford
+	local affordable = upgradeAffordable()
+	local boughtAny = (state.yardCap or Config.Yard.StartCap) > Config.Yard.StartCap or next(state.upgrades or {}) ~= nil
+	sideButtons.Upgrades.dot.Visible = affordable
+	sideButtons.Upgrades.hint.Text = "Get more nests!"
+	sideButtons.Upgrades.hint.Visible = affordable and not boughtAny
 end
-
--- the seed stand at the end of the street opens the shop too
-ProximityPromptService.PromptTriggered:Connect(function(prompt)
-	if prompt.Name == "SeedShopPrompt" and openPanel ~= "Shop" then
-		showPanel("Shop")
-		refreshShop()
-	end
-end)
 
 UI.on("PanelOpened", function(name)
 	if name == "Dex" then
@@ -1175,18 +1049,14 @@ StateRemote.OnClientEvent:Connect(function(newState)
 	end
 	incomeLabel.Text = "+" .. Rules.rate(state.income or 0) .. "/s"
 	refreshHints()
-	if openPanel == "Shop" then
-		refreshShop()
-	elseif openPanel == "Upgrades" then
+	if openPanel == "Upgrades" then
 		refreshUpgrades()
 	elseif openPanel == "Dex" then
 		refreshDex()
-	elseif openPanel == "Daily" then
-		refreshDaily()
 	end
 end)
 
--- coins count up smoothly; the shop timer and weather chip tick
+-- coins count up smoothly; the weather chip ticks
 local tick = 0
 RunService.RenderStepped:Connect(function(dt)
 	if state then
@@ -1201,12 +1071,6 @@ RunService.RenderStepped:Connect(function(dt)
 	tick += dt
 	if tick >= 0.5 then
 		tick = 0
-		if openPanel == "Shop" then
-			refreshShop()
-		end
-		if openPanel == "Daily" then
-			refreshDaily()
-		end
 		-- "Snow in 2m 31s", or "Full Moon! 1m 05s left"
 		local now = serverNow()
 		local current, changeAt = Rules.weatherAt(now)

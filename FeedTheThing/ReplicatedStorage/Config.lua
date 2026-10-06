@@ -2,10 +2,8 @@
 	Config  (ModuleScript, parent: ReplicatedStorage, name: "Config")
 
 	Every number you would want to tune lives here. The server and the client
-	both read this file, so the shop, the HUD and the server's checks always
-	agree. The economy numbers come from the simulation in
-	Docs/FeedTheThing/economy_sim.py - change them there first, rerun it, then
-	copy them here.
+	both read this file, so the food bar, the HUD and the server's checks
+	always agree.
 ]]
 
 local Config = {}
@@ -14,7 +12,7 @@ local Config = {}
 -- General
 ----------------------------------------------------------------------
 Config.GameName = "Feed the Thing in the Basement"
-Config.DataStoreName = "FeedTheThing_v1" -- change the _v1 to start everyone fresh
+Config.DataStoreName = "FeedTheThing_v2" -- change the _v2 to start everyone fresh (v2: the simple loop)
 Config.AutosaveEvery = 60 -- seconds
 Config.Font = Enum.Font.FredokaOne
 -- Images for the GUI (upload.bat fills these in; 0 = not uploaded yet)
@@ -34,59 +32,56 @@ Config.Rarities = {
 }
 
 ----------------------------------------------------------------------
--- Crops, cheapest first. The order IS the rarity order: on a tie in the
--- belly, the food further down this list wins.
---   seed   = price of the seed (the plant is permanent)
---   regrow = seconds per fruit (a plant holds up to Garden.FruitCap)
---   coins  = coins for one toss (before multipliers); also how much it
---            grows the Thing
---   stock  = chance a restock has it, and how many (min, max)
---   thinglet = what a belly full of mostly this food hatches
+-- The whole game: buy a food, feed it to the Thing, it burps out an egg,
+-- the egg hatches into a Thinglet that earns coins. Better food = better
+-- odds of a rare Thinglet. Then do it again.
+----------------------------------------------------------------------
+
+----------------------------------------------------------------------
+-- Foods, cheapest first (the food bar shows them in this order).
+--   price    = coins for one (Tomato is free, so you can always play)
+--   egg      = seconds its egg takes to hatch
+--   growth   = how much it grows the Thing
+--   odds     = the chance of each rarity. Any food can hatch any rarity;
+--              better food has better odds. (Must add up to 1.)
+--   secret   = the chance of the secret Thinglet instead
+--   thinglet = the Thinglet it leans towards, when it rolls that rarity
 ----------------------------------------------------------------------
 Config.Crops = {
 	{
-		id = "Tomato", name = "Tomato", rarity = "Common",
-		seed = 10, regrow = 15, coins = 3,
-		stockChance = 1, stockMin = 0, stockMax = 0, -- always in stock
-		thinglet = "Blorp",
-		color = Color3.fromRGB(235, 60, 55),
+		id = "Tomato", name = "Tomato", price = 0, egg = 6, growth = 1, secret = 0.00001,
+		odds = { Common = 0.927, Rare = 0.07, Epic = 0.0028, Legendary = 0.0002 },
+		thinglet = "Blorp", color = Color3.fromRGB(235, 60, 55),
 	},
 	{
-		id = "Chili", name = "Chili", rarity = "Common",
-		seed = 50, regrow = 20, coins = 8,
-		stockChance = 1, stockMin = 0, stockMax = 0,
-		thinglet = "Sizzle",
-		color = Color3.fromRGB(220, 35, 35),
+		id = "Chili", name = "Chili", price = 50, egg = 8, growth = 3, secret = 0.00003,
+		odds = { Common = 0.81, Rare = 0.177, Epic = 0.0124, Legendary = 0.0006 },
+		thinglet = "Sizzle", color = Color3.fromRGB(220, 35, 35),
 	},
 	{
-		id = "Eyeberry", name = "Eyeberry", rarity = "Rare",
-		seed = 750, regrow = 45, coins = 30,
-		stockChance = 0.8, stockMin = 1, stockMax = 3,
-		thinglet = "Peeper",
-		color = Color3.fromRGB(70, 95, 230),
+		id = "Eyeberry", name = "Eyeberry", price = 1000, egg = 12, growth = 10, secret = 0.0001,
+		odds = { Common = 0.63, Rare = 0.328, Epic = 0.04, Legendary = 0.002 },
+		thinglet = "Peeper", color = Color3.fromRGB(70, 95, 230),
 	},
 	{
-		id = "Glowshroom", name = "Glowshroom", rarity = "Rare",
-		seed = 7500, regrow = 75, coins = 100,
-		stockChance = 0.6, stockMin = 1, stockMax = 2,
-		thinglet = "Glumcap",
-		color = Color3.fromRGB(60, 220, 210),
+		id = "Glowshroom", name = "Glowshroom", price = 15000, egg = 18, growth = 30, secret = 0.0003,
+		odds = { Common = 0.42, Rare = 0.45, Epic = 0.12, Legendary = 0.01 },
+		thinglet = "Glumcap", color = Color3.fromRGB(60, 220, 210),
 	},
 	{
-		id = "Pumpkin", name = "Pumpkin", rarity = "Epic",
-		seed = 100000, regrow = 100, coins = 400,
-		stockChance = 0.4, stockMin = 1, stockMax = 1,
-		thinglet = "Gourdo",
-		color = Color3.fromRGB(255, 140, 30),
+		id = "Pumpkin", name = "Pumpkin", price = 200000, egg = 25, growth = 100, secret = 0.0008,
+		odds = { Common = 0.22, Rare = 0.49, Epic = 0.25, Legendary = 0.04 },
+		thinglet = "Gourdo", color = Color3.fromRGB(255, 140, 30),
 	},
 	{
-		id = "MoonMelon", name = "Moon Melon", rarity = "Legendary",
-		seed = 1000000, regrow = 180, coins = 2000,
-		stockChance = 0.2, stockMin = 1, stockMax = 1,
-		thinglet = "Moonmoth",
-		color = Color3.fromRGB(200, 245, 190),
+		id = "MoonMelon", name = "Moon Melon", price = 2500000, egg = 35, growth = 300, secret = 0.002,
+		odds = { Common = 0.08, Rare = 0.37, Epic = 0.40, Legendary = 0.15 },
+		thinglet = "Moonmoth", color = Color3.fromRGB(200, 245, 190),
 	},
 }
+-- the rarities, commonest first (luck moves chances along this list:
+-- see Rules.hatchOdds)
+Config.RarityOrder = { "Common", "Rare", "Epic", "Legendary" }
 
 ----------------------------------------------------------------------
 -- Thinglets (the creatures)
@@ -95,67 +90,49 @@ Config.Crops = {
 --   height = studs tall when fully grown (an avatar is about 5)
 ----------------------------------------------------------------------
 Config.Thinglets = {
-	Blorp = { name = "Blorp", rarity = "Common", cps = 1, grow = 120, height = 6,
-		hint = "It loves red and juicy..." },
-	Sizzle = { name = "Sizzle", rarity = "Common", cps = 3, grow = 180, height = 6,
-		hint = "Something spicy..." },
-	Peeper = { name = "Peeper", rarity = "Rare", cps = 10, grow = 600, height = 8,
-		hint = "Food that looks back..." },
-	Glumcap = { name = "Glumcap", rarity = "Rare", cps = 30, grow = 900, height = 8,
-		hint = "Something from the dark..." },
-	Gourdo = { name = "Gourdo", rarity = "Epic", cps = 100, grow = 1800, height = 11,
-		hint = "Something big and orange..." },
-	Mishmash = { name = "Mishmash", rarity = "Epic", cps = 175, grow = 2700, height = 11,
-		hint = "A bit of everything. 5 different!" },
-	Moonmoth = { name = "Moonmoth", rarity = "Legendary", cps = 500, grow = 7200, height = 14,
-		hint = "Fruit from the moon..." },
-	LilThing = { name = "Lil' Thing", rarity = "Legendary", cps = 1000, grow = 10800, height = 14,
-		hint = "Only Moon Melons. Only perfect throws." },
+	Blorp = { name = "Blorp", rarity = "Common", cps = 1, grow = 120, height = 6 },
+	Sizzle = { name = "Sizzle", rarity = "Common", cps = 2, grow = 180, height = 6 },
+	Peeper = { name = "Peeper", rarity = "Rare", cps = 5, grow = 600, height = 8 },
+	Glumcap = { name = "Glumcap", rarity = "Rare", cps = 8, grow = 900, height = 8 },
+	Gourdo = { name = "Gourdo", rarity = "Epic", cps = 25, grow = 1800, height = 11 },
+	Mishmash = { name = "Mishmash", rarity = "Epic", cps = 40, grow = 2700, height = 11 },
+	Moonmoth = { name = "Moonmoth", rarity = "Legendary", cps = 150, grow = 7200, height = 14 },
+	LilThing = { name = "Lil' Thing", rarity = "Legendary", cps = 600, grow = 10800, height = 14, secret = true },
 }
 -- the order of the dex
 Config.ThingletOrder = { "Blorp", "Sizzle", "Peeper", "Glumcap", "Gourdo", "Mishmash", "Moonmoth", "LilThing" }
-Config.HatchlingHeight = 1.5 -- studs tall at the moment it hatches (at size 1)
-
--- The two special hatch rules (checked before "most food wins")
-Config.SecretThinglet = "LilThing" -- a full belly of SecretFood, every toss PERFECT
-Config.SecretFood = "MoonMelon"
-Config.MishmashThinglet = "Mishmash" -- this many different foods in one belly
-Config.MishmashKinds = 5
+Config.HatchlingHeight = 1.5 -- studs tall at the moment it hatches
+Config.SecretThinglet = "LilThing"
+Config.FavouriteChance = 0.6 -- when a food rolls its Thinglet's rarity, how often it's that Thinglet
 
 ----------------------------------------------------------------------
--- Mutations (one per Thinglet; mutated food also pays more per toss)
---   base = chance on every egg; each mutated food of the same kind in the
---   belly adds MutatedFoodBonus, each PERFECT toss adds PerfectBonus to all,
---   each Thing size above 1 adds SizeLuckBonus to all.
+-- Mutations: a rare extra look on a hatch, worth more coins.
+--   base = the chance on every hatch (luck and weather raise it)
 ----------------------------------------------------------------------
 Config.Mutations = {
-	{ id = "Frozen", name = "Frozen", mult = 2, base = 0.05, color = Color3.fromRGB(150, 220, 255), letter = "F" },
-	{ id = "Glowing", name = "Glowing", mult = 3, base = 0.03, color = Color3.fromRGB(120, 255, 175), letter = "L" },
-	{ id = "Gold", name = "Gold", mult = 5, base = 0.01, color = Color3.fromRGB(255, 205, 60), letter = "G" },
+	{ id = "Frozen", name = "Frozen", mult = 2, base = 0.04, color = Color3.fromRGB(150, 220, 255), letter = "F" },
+	{ id = "Glowing", name = "Glowing", mult = 3, base = 0.02, color = Color3.fromRGB(120, 255, 175), letter = "L" },
+	{ id = "Gold", name = "Gold", mult = 5, base = 0.005, color = Color3.fromRGB(255, 205, 60), letter = "G" },
 }
-Config.MutatedFoodBonus = 0.08
-Config.PerfectBonus = 0.01
-Config.SizeLuckBonus = 0.01
 
 ----------------------------------------------------------------------
--- The Thing. It grows by eating: every toss adds the food's `coins` value.
---   growth    = total needed to reach this size
---   belly     = slots in the belly
---   coinMult  = multiplies toss coins
---   hatchStart= how grown a new Thinglet starts (share of size and income)
---   hole      = how wide the hatch is (studs)
+-- The Thing. It grows as it eats (every food adds its `growth`).
+--   growth     = total needed to reach this size
+--   luck       = extra luck at this size (better odds, see Rules.hatchOdds)
+--   hatchStart = how grown a new Thinglet starts (share of size and income)
+--   hole       = how wide the hatch is (studs)
 ----------------------------------------------------------------------
 Config.Thing = {
 	Sizes = {
-		{ name = "Lurker", growth = 0, belly = 3, coinMult = 1, hatchStart = 0.25, hole = 6, arms = 1 },
-		{ name = "Muncher", growth = 100, belly = 5, coinMult = 1.25, hatchStart = 0.30, hole = 8, arms = 2,
-			grew = "It grew a second arm!" },
-		{ name = "Gobbler", growth = 3000, belly = 5, coinMult = 1.5, hatchStart = 0.35, hole = 10, arms = 2, teeth = true,
-			grew = "It grew teeth!" },
-		{ name = "Glutton", growth = 50000, belly = 5, coinMult = 2, hatchStart = 0.45, hole = 12, arms = 4, teeth = true, horns = true,
-			grew = "It grew horns!" },
-		{ name = "Colossus", growth = 800000, belly = 5, coinMult = 3, hatchStart = 0.60, hole = 14, arms = 4, teeth = true, horns = true, cracks = true,
-			grew = "The ground is cracking!" },
+		{ name = "Lurker", growth = 0, luck = 0, hatchStart = 0.25, hole = 6, arms = 1 },
+		{ name = "Muncher", growth = 100, luck = 0.1, hatchStart = 0.30, hole = 8, arms = 2,
+			grew = "It grew a second arm! +10% luck" },
+		{ name = "Gobbler", growth = 2000, luck = 0.2, hatchStart = 0.35, hole = 10, arms = 2, teeth = true,
+			grew = "It grew teeth! +20% luck" },
+		{ name = "Glutton", growth = 25000, luck = 0.35, hatchStart = 0.45, hole = 12, arms = 4, teeth = true, horns = true,
+			grew = "It grew horns! +35% luck" },
+		{ name = "Colossus", growth = 250000, luck = 0.5, hatchStart = 0.60, hole = 14, arms = 4, teeth = true, horns = true, cracks = true,
+			grew = "The ground is cracking! +50% luck" },
 	},
 	EyeColor = Color3.fromRGB(215, 255, 90),
 	SkinColor = Color3.fromRGB(70, 35, 95), -- the arms
@@ -163,108 +140,81 @@ Config.Thing = {
 }
 
 ----------------------------------------------------------------------
--- The toss
+-- Feeding
 ----------------------------------------------------------------------
-Config.Toss = {
-	Range = 34, -- studs from your hatch to toss
-	RingCycle = 1.2, -- seconds for the ring to shrink and grow back
-	PerfectWindow = 0.30, -- share of the cycle that counts as PERFECT
-	FlightTime = 0.35,
-	MinInterval = 0.12, -- seconds between tosses (server check; the client waits 0.22)
-	CravingMult = 3,
-	Combo = { 1, 2, 3, 5 }, -- 1st, 2nd, 3rd, 4th+ craving hit in a row
-	ComboTimeout = 6, -- seconds without a toss before the combo drops back
-	MaxClockSkew = 1.5, -- how old a toss's release time may be
+Config.Feed = {
+	Range = 34, -- studs from your hatch to feed it
+	FlightTime = 0.35, -- the food's flight into the hatch
+	MinInterval = 0.2, -- seconds between feeds (server check)
 }
 
 ----------------------------------------------------------------------
--- Garden
+-- Eggs: they sit on nests in your yard and hatch by themselves
 ----------------------------------------------------------------------
-Config.Garden = {
-	StartPlots = 4,
-	MaxPlots = 10,
-	FruitCap = 3, -- ripe fruit a plant holds (also caps offline growth)
-	HarvestRange = 16, -- walk this close to a plant and its fruit jumps into your basket
-	PlotPrices = { [5] = 150, [6] = 1000, [7] = 5000, [8] = 25000, [9] = 150000, [10] = 750000 },
-	-- what a brand new player starts with (fruit already ripe)
-	StartPlants = { { crop = "Tomato", ripe = 2 }, { crop = "Tomato", ripe = 1 } },
+Config.Eggs = {
+	StartNests = 3, -- more with the Nests upgrade
+	-- where the nests are: in the planter boxes beside the hatch (plot-local,
+	-- the first of World.PlantSpots), so you see them while you feed
+	NestSpots = {
+		Vector3.new(-13, 0, 16), Vector3.new(13, 0, 16), Vector3.new(-13, 0, 26),
+		Vector3.new(13, 0, 26), Vector3.new(-21, 0, 16), Vector3.new(21, 0, 16),
+	},
+	Size = 2.4, -- studs tall on the nest
+	BigReveal = 3, -- from this rarity rank up (Epic), a hatch gets the big reveal
+	FirstEgg = 3, -- your very first egg hatches in 3 seconds
 }
 
 ----------------------------------------------------------------------
--- Yard
+-- Yard: where Thinglets live and earn. When it's full, a better new
+-- Thinglet takes the weakest one's place (the weaker one is sold).
 ----------------------------------------------------------------------
 Config.Yard = {
 	StartCap = 8,
 	MaxCap = 16,
-	Prices = { [9] = 2000, [10] = 8000, [11] = 30000, [12] = 100000, [13] = 300000, [14] = 1000000, [15] = 3000000, [16] = 10000000 },
-	SellSeconds = 30, -- a Thinglet sells for this many seconds of its full income
-	ConfirmRank = 3, -- Epic and up ask "are you sure?" before selling
+	Prices = {
+		[9] = 500, [10] = 2500, [11] = 10000, [12] = 40000,
+		[13] = 150000, [14] = 600000, [15] = 2500000, [16] = 10000000,
+	},
+	SellSeconds = 10, -- a Thinglet sells for this many seconds of its full income
+	ConfirmRank = 2, -- selling one this rare (or rarer) by hand asks "are you sure?"
 }
 
 ----------------------------------------------------------------------
 -- Upgrades (the Upgrades menu, incremental style). Every upgrade has
 -- levels and each level costs more than the last:
 --   cost = base * growth ^ level   (rounded to 2 digits)
--- Garden plots and Yard space use the price lists above instead.
---   per    = what one level adds (see Rules.upgradeValue for each one)
---   unlock = the Thing size that unlocks it (1 Lurker, 2 Muncher, ...)
+-- Yard space uses the price list above instead.
+--   per = what one level adds (see Rules.upgradeValue for each one)
 -- Everything is bought with coins. Nothing here is for Robux.
 ----------------------------------------------------------------------
 Config.Upgrades = {
-	{ id = "plots", name = "Garden plots", desc = "Grow more crops at once", icon = "sprout", unlock = 1 },
-	{ id = "yard", name = "Yard space", desc = "Room for more Thinglets", icon = "egg", unlock = 1 },
-	{ id = "toss", name = "Tasty tosses", desc = "Every toss pays more coins", icon = "coin", unlock = 1,
-		max = 25, base = 60, growth = 1.45, per = 0.10 },
-	{ id = "growth", name = "Green thumb", desc = "Plants regrow faster", icon = "sun", unlock = 1,
-		max = 20, base = 100, growth = 1.5, per = 0.10 },
-	{ id = "reach", name = "Long arms", desc = "Pick fruit from further away", icon = "magnet", unlock = 2,
-		max = 5, base = 300, growth = 2.2, per = 3 },
-	{ id = "perfect", name = "Sweet spot", desc = "A bigger PERFECT zone on the ring", icon = "target", unlock = 2,
-		max = 5, base = 400, growth = 2.5, per = 0.03 },
-	{ id = "bumper", name = "Bumper crop", desc = "Fruit you pick can come in twos", icon = "twins", unlock = 2,
-		max = 10, base = 500, growth = 1.9, per = 0.08 },
-	{ id = "income", name = "Comfy yard", desc = "Your Thinglets earn more", icon = "house", unlock = 3,
-		max = 25, base = 2000, growth = 1.5, per = 0.10 },
-	{ id = "luck", name = "Lucky soil", desc = "More Frozen, Glowing and Gold fruit", icon = "clover", unlock = 3,
-		max = 10, base = 5000, growth = 2, per = 0.20 },
-	{ id = "nap", name = "Long nap", desc = "Thinglets keep earning longer while you're away", icon = "moon", unlock = 4,
-		max = 6, base = 20000, growth = 2.5, per = 1800 },
+	{ id = "yard", name = "Yard space", desc = "Room for more Thinglets", icon = "house" },
+	{ id = "nests", name = "Nests", desc = "Hatch more eggs at once", icon = "egg", max = 3, base = 500, growth = 10, per = 1 },
+	{ id = "luck", name = "Lucky Thing", desc = "Better odds for rare Thinglets", icon = "clover", max = 20, base = 200, growth = 1.8, per = 0.05 },
+	{ id = "income", name = "Comfy yard", desc = "Your Thinglets earn more", icon = "coin", max = 25, base = 300, growth = 1.6, per = 0.1 },
+	{ id = "speed", name = "Quick eggs", desc = "Eggs hatch faster", icon = "clock", max = 10, base = 250, growth = 2, per = 0.1 },
 }
 
 ----------------------------------------------------------------------
--- Seed shop. Restocks on one server-wide timer; every player has their own
--- stock. The SecretFood (Moon Melon) is always in stock at the top of each hour.
-----------------------------------------------------------------------
-Config.Shop = {
-	RestockEvery = 300,
-	MoonGuaranteeEvery = 12, -- restocks (12 x 5 min = every hour, on the hour)
-}
-
-----------------------------------------------------------------------
--- Weather (server-wide; fruit that ripens during it may mutate)
+-- Weather (server-wide): while it lasts, one mutation is more likely
 ----------------------------------------------------------------------
 Config.Weather = {
 	Every = 720, -- a cycle is 12 minutes...
 	Duration = 180, -- ...and the last 3 of them have weather
 	Types = {
-		{ id = "Snow", name = "Snow", mutation = "Frozen", chance = 0.2,
-			banner = "SNOW! Crops that ripen now may freeze." },
-		{ id = "FullMoon", name = "Full Moon", mutation = "Glowing", chance = 0.2,
-			banner = "FULL MOON! Crops that ripen now may glow." },
+		{ id = "Snow", name = "Snow", mutation = "Frozen", boost = 3,
+			banner = "SNOW! Frozen Thinglets are 3x as likely." },
+		{ id = "FullMoon", name = "Full Moon", mutation = "Glowing", boost = 3,
+			banner = "FULL MOON! Glowing Thinglets are 3x as likely." },
 	},
-	GoldChance = 0.01, -- any time, online
 }
 
 ----------------------------------------------------------------------
--- Offline, daily craving, friends
+-- Offline, friends
 ----------------------------------------------------------------------
 Config.Offline = {
-	MaxSeconds = 3600, -- Thinglets earn up to this much while you're away
+	MaxSeconds = 7200, -- Thinglets earn up to 2 hours while you're away
 	ShowAfter = 60, -- only show "Welcome back" after at least this long away
-}
-Config.Daily = {
-	Need = 10, -- feed this many of today's food...
-	Odds = { Frozen = 0.6, Glowing = 0.3, Gold = 0.1 }, -- ...for an egg that is always mutated
 }
 Config.Friends = {
 	PerFriend = 0.10, -- +10% coins for every friend in the server
@@ -296,7 +246,7 @@ Config.World = {
 	BackYard = 15, -- room behind the plots, before the wall
 	WallHeight = 24,
 	TunnelRadius = 13, -- the tunnels the delivery truck uses (half as wide as the opening)
-	StandZ = -28, -- the seed stand stands beside the west tunnel, on the south side
+	StandZ = -28, -- the (old) seed stand stands beside the west tunnel, on the south side
 	-- The map itself is a model made in Blender (FeedTheThing/Blender). These
 	-- numbers must match build_map.py; the game adds invisible floors and
 	-- walls to match it.
@@ -308,7 +258,8 @@ Config.World = {
 	Hatch = Vector3.new(0, 0, 21),
 	Spawn = Vector3.new(0, 0, 9),
 	House = Vector3.new(0, 0, 42),
-	-- garden spots, in the order they're used (nearest the hatch first)
+	-- the planter boxes beside the hatch (in the Blender map). The nests sit
+	-- in the first ones (Config.Eggs.NestSpots); the rest just hold dirt.
 	PlantSpots = {
 		Vector3.new(-13, 0, 16), Vector3.new(13, 0, 16),
 		Vector3.new(-13, 0, 26), Vector3.new(13, 0, 26),
@@ -384,13 +335,15 @@ Config.AssetIds = {
 }
 
 ----------------------------------------------------------------------
--- Seed deliveries: buy a seed and a truck comes out of the tunnel at the
--- west end, drives down the street, stops at your plot and lobs the package
--- onto your lawn, then drives off into the tunnel at the east end (under
--- the FEED THE THING sign). The seed is planted the moment the package
--- bursts open.
+-- The coin truck: every couple of minutes a truck comes out of the tunnel
+-- at the west end, drives down the street, stops at someone's plot and
+-- lobs a package onto their lawn, then drives off into the tunnel at the
+-- east end (under the FEED THE THING sign). The package bursts into coins.
 ----------------------------------------------------------------------
 Config.Delivery = {
+	Every = 120, -- seconds between trucks (each one picks a random player)
+	TipSeconds = 15, -- the package holds this many seconds of that player's income...
+	MinTip = 25, -- ...and never less than this
 	StartX = -232, -- sets off inside the west tunnel...
 	EndX = 232, -- ...and is gone inside the east tunnel (the walls are at x = +-215)
 	Fade = 22, -- studs over which it fades in and out of the tunnels' darkness
@@ -398,8 +351,7 @@ Config.Delivery = {
 	Speed = 75, -- average studs per second on the way to you (it cruises, then brakes hard)
 	Brake = 0.5, -- seconds stopped before the throw
 	Throw = 1.1, -- seconds the package flies
-	Open = 1.0, -- bounce, burst open, the seed flies into the planter
-	Gap = 1.2, -- seconds between trucks to the same house
+	Open = 1.0, -- bounce, then it bursts into coins
 	Leave = 0.5, -- seconds after the throw before it pulls away
 	PullAway = 60, -- how fast it speeds up as it leaves (studs per second, per second)
 	LeaveSpeed = 50, -- top speed leaving (slow enough to watch it vanish into the tunnel)

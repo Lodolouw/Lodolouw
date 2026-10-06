@@ -1,13 +1,14 @@
 --[[
 	World  (LocalScript, parent: StarterPlayer > StarterPlayerScripts, name: "World")
 
-	Draws everything alive in the world, on your own screen: every plot's
-	plants and fruit, every Thing (eyes, arms, lid), every Thinglet (growing,
-	wandering, looking at you, with its name tag), the weather, and little
-	effects like fruit hopping into your basket.
+	Draws everything alive in the world, on your own screen: every Thing
+	(eyes, arms, lid), every plot's nests and eggs (with their countdowns),
+	every Thinglet (growing, wandering, looking at you, with its name tag),
+	the weather, the coin truck, and little effects like the egg the Thing
+	burps out and the poof when it hatches.
 
 	It reads the plot attributes the server keeps in ReplicatedStorage.Plots,
-	so all players see the same garden and yard - but the animation runs
+	so all players see the same eggs and yards - but the animation runs
 	here, which keeps it smooth on phones and costs the server nothing.
 ]]
 
@@ -37,7 +38,6 @@ end
 local Assets = require(waitForModule("Assets"))
 
 local remoteFolder = ReplicatedStorage:WaitForChild("Remotes")
-local HarvestedRemote = remoteFolder:WaitForChild("Harvested") :: RemoteEvent
 local HatchedRemote = remoteFolder:WaitForChild("Hatched") :: RemoteEvent
 local FxRemote = remoteFolder:WaitForChild("Fx") :: RemoteEvent
 local plotsFolder = ReplicatedStorage:WaitForChild("Plots")
@@ -45,13 +45,12 @@ local plotsFolder = ReplicatedStorage:WaitForChild("Plots")
 local player = Players.LocalPlayer
 local W = Config.World
 
-local LETTER_MUT = { N = "", F = "Frozen", L = "Glowing", G = "Gold" }
-local FRUIT_SCALE = { Tomato = 1.1, Chili = 1.1, Eyeberry = 1.1, Glowshroom = 1.3, Pumpkin = 1.7, MoonMelon = 1.7 }
 local ANIMATE_RANGE = 170 -- studs from the camera; further away things stand still
 
 local visuals = Instance.new("Folder")
 visuals.Name = "LocalWorld"
 visuals.Parent = workspace
+local NEST_Y = 0.6 -- the top of the dirt in the planters
 local thingletFolder = Instance.new("Folder")
 thingletFolder.Name = "Thinglets"
 thingletFolder.Parent = visuals
@@ -81,105 +80,6 @@ end
 ----------------------------------------------------------------------
 -- Plants and fruit
 ----------------------------------------------------------------------
-local function placeFruit(plant, index, cropId, letter)
-	local holder = plant.model.PrimaryPart
-	local attachment = holder and holder:FindFirstChild("Fruit" .. index)
-	if not holder or not attachment or not attachment:IsA("Attachment") then
-		return nil
-	end
-	local fruit = Looks.fruit(cropId, LETTER_MUT[letter] or "", false)
-	local scale = FRUIT_SCALE[cropId] or 1
-	fruit:ScaleTo(scale * 0.2)
-	fruit:PivotTo(holder.CFrame * CFrame.new(attachment.Position) * CFrame.Angles(0, index * 2.1, 0))
-	fruit.Parent = plant.model
-	-- pop in
-	task.spawn(function()
-		for step = 1, 8 do
-			if not fruit.Parent then
-				return
-			end
-			local k = step / 8
-			local bounce = 1 + math.sin(k * math.pi) * 0.25
-			fruit:ScaleTo(scale * math.max(0.2, k) * bounce)
-			task.wait(1 / 30)
-		end
-		if fruit.Parent then
-			fruit:ScaleTo(scale)
-		end
-	end)
-	return fruit
-end
-
-local updatePlants -- (it schedules itself for deliveries)
-function updatePlants(p)
-	local list = decode(p.folder:GetAttribute("Plants"))
-	for spot = 1, #W.PlantSpots do
-		local entry = list[spot]
-		local plant = p.plants[spot]
-		if not entry or type(entry.c) ~= "string" then
-			if plant then
-				plant.model:Destroy()
-				p.plants[spot] = nil
-			end
-		elseif type(entry.a) == "number" and entry.a > now() then
-			-- still on the delivery truck: show it when the package lands
-			if plant then
-				plant.model:Destroy()
-				p.plants[spot] = nil
-			end
-			task.delay(entry.a - now() + 0.05, function()
-				updatePlants(p)
-			end)
-		else
-			if not plant or plant.crop ~= entry.c then
-				if plant then
-					plant.model:Destroy()
-				end
-				local model = Looks.plant(entry.c)
-				local spotCF = p.cf * CFrame.new(W.PlantSpots[spot] + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, spot * 1.3, 0)
-				model:PivotTo(spotCF)
-				model.Parent = p.root
-				plant = { crop = entry.c, model = model, fruit = {} }
-				p.plants[spot] = plant
-				if p.ready then
-					-- a new plant springs up out of the dirt
-					task.spawn(function()
-						local steps = 12
-						for step = 1, steps do
-							if not model.Parent then
-								return
-							end
-							local k = step / steps
-							model:ScaleTo(math.max(0.05, k) * (1 + math.sin(k * math.pi) * 0.35))
-							task.wait(1 / 30)
-						end
-						if model.Parent then
-							model:ScaleTo(1)
-						end
-					end)
-				end
-			end
-			local letters = type(entry.f) == "string" and entry.f or ""
-			for index = 1, Config.Garden.FruitCap do
-				local letter = string.sub(letters, index, index)
-				local current = plant.fruit[index]
-				if (current and current.letter or "") ~= letter then
-					if current then
-						current.model:Destroy()
-					end
-					plant.fruit[index] = nil
-					if letter ~= "" then
-						local model = placeFruit(plant, index, entry.c, letter)
-						if model then
-							plant.fruit[index] = { letter = letter, model = model }
-						end
-					end
-				end
-			end
-		end
-	end
-end
-
 ----------------------------------------------------------------------
 -- The Thing
 ----------------------------------------------------------------------
@@ -213,7 +113,7 @@ local function setLid(thing, angle)
 	end
 end
 
-local function chomp(p, perfect)
+local function chomp(p)
 	local thing = p.thing
 	if not thing then
 		return
@@ -221,9 +121,6 @@ local function chomp(p, perfect)
 	local t = os.clock()
 	thing.chompStart = t
 	thing.squintUntil = t + 0.35
-	if perfect then
-		thing.flashUntil = t + 0.25
-	end
 	-- crumbs
 	local crumbs = Instance.new("Part")
 	crumbs.Anchored = true
@@ -243,7 +140,7 @@ local function chomp(p, perfect)
 	emitter.EmissionDirection = Enum.NormalId.Top
 	emitter.Rate = 0
 	emitter.Parent = crumbs
-	emitter:Emit(perfect and 24 or 12)
+	emitter:Emit(12)
 	task.delay(1, function()
 		crumbs:Destroy()
 	end)
@@ -304,7 +201,7 @@ local function floatingText(position, text, color, size, rise)
 end
 UI.on("FloatingText", floatingText)
 
--- a glowing ring that spreads out over the ground (PERFECT tosses)
+-- a glowing ring that spreads out over the ground (a rare hatch)
 UI.on("Shockwave", function(position, color)
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
@@ -325,38 +222,206 @@ UI.on("Shockwave", function(position, color)
 	end)
 end)
 
-local function burp(p, rarity)
-	local thing = p.thing
-	if not thing then
+local function heardHere(position)
+	local camera = workspace.CurrentCamera
+	return camera ~= nil and (camera.CFrame.Position - position).Magnitude < 80
+end
+
+local function poof(position, color, amount)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(1, 1, 1)
+	holder.Position = position
+	holder.Parent = visuals
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color = ColorSequence.new(color or Color3.fromRGB(255, 255, 255))
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+	emitter.Speed = NumberRange.new(6, 14)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Lifetime = NumberRange.new(0.4, 0.8)
+	emitter.Drag = 4
+	emitter.Rate = 0
+	emitter.Parent = holder
+	emitter:Emit(amount or 20)
+	task.delay(1.2, function()
+		holder:Destroy()
+	end)
+end
+
+----------------------------------------------------------------------
+-- Nests and eggs. The Thing burps each egg onto a nest; it sits there
+-- with its countdown, wobbling more and more, then pops and the Thinglet
+-- hops out to the yard.
+----------------------------------------------------------------------
+local function nestCF(p, n)
+	local spot = Config.Eggs.NestSpots[n]
+	return spot and p.cf * CFrame.new(spot + Vector3.new(0, NEST_Y, 0)) or nil
+end
+
+local function updateNests(p)
+	local count = math.min(p.folder:GetAttribute("Nests") or 0, #Config.Eggs.NestSpots)
+	for n = 1, #Config.Eggs.NestSpots do
+		local nest = p.nests[n]
+		if n <= count and not nest then
+			nest = Looks.nest()
+			nest:PivotTo((nestCF(p, n) :: CFrame) * CFrame.Angles(0, n * 1.3, 0))
+			nest.Parent = p.root
+			p.nests[n] = nest
+			if p.ready then
+				-- a new nest (the Nests upgrade): it pops in
+				poof(nest:GetPivot().Position + Vector3.new(0, 1, 0), Color3.fromRGB(225, 180, 95), 20)
+			end
+		elseif n > count and nest then
+			nest:Destroy()
+			p.nests[n] = nil
+		end
+	end
+end
+
+local function countdownTag(egg)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Countdown"
+	gui.Size = UDim2.fromOffset(90, 34)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, Config.Eggs.Size + 1.2, 0)
+	gui.LightInfluence = 0
+	gui.MaxDistance = 70
+	gui.Adornee = egg.model.PrimaryPart
+	gui.Parent = egg.model
+	egg.tag = gui
+	egg.label = UI.number(gui, { Size = UDim2.fromScale(1, 1), Text = "" })
+end
+
+local function makeEgg(p, e)
+	local crop = Rules.crop(e.f)
+	local model = Looks.egg("Common", crop and crop.color)
+	model:ScaleTo(Config.Eggs.Size)
+	local egg = {
+		id = e.id,
+		nest = e.n,
+		food = e.f,
+		laid = e.l,
+		ready = e.r,
+		model = model,
+		home = (nestCF(p, e.n) :: CFrame) * CFrame.new(0, 0.25, 0) * CFrame.Angles(0, math.random() * 6, 0),
+		landed = false,
+		seed = math.random() * 10,
+	}
+	model:PivotTo(egg.home)
+	countdownTag(egg)
+	return egg
+end
+
+local function arc(from, to, k, height)
+	return from:Lerp(to, k) + Vector3.new(0, math.sin(k * math.pi) * height, 0)
+end
+
+-- BURP! The egg comes out of the hatch and lands on its nest. Waits until
+-- just after the food has gone down (the owner's throw takes a moment).
+local function burpEgg(p, egg)
+	local at = (egg.laid or now()) + 0.7
+	if at > now() then
+		task.wait(at - now())
+	end
+	if not egg.model.Parent then
 		return
 	end
-	thing.chompStart = os.clock()
-	thing.squintUntil = os.clock() + 0.6
-	floatingText(p.hatchCF.Position + Vector3.new(0, 4, 0), "BURP!", Config.Thing.EyeColor, 44, 6)
-	UI.sound("Burp")
-	-- the egg pops out onto the lawn
-	local egg = Looks.egg(rarity)
-	egg:ScaleTo(2.6)
-	local from = p.hatchCF * CFrame.new(0, -1, 0)
-	local to = p.hatchCF * CFrame.new(0, 0, -11)
-	egg:PivotTo(from)
-	egg.Parent = visuals
-	task.spawn(function()
-		local duration = 0.55
-		local start = os.clock()
-		while os.clock() - start < duration do
-			local k = (os.clock() - start) / duration
-			local position = from.Position:Lerp(to.Position, k) + Vector3.new(0, math.sin(k * math.pi) * 7, 0)
-			egg:PivotTo(CFrame.new(position) * CFrame.Angles(k * 6, 0, k * 2))
-			RunService.RenderStepped:Wait()
+	local thing = p.thing
+	if thing then
+		thing.chompStart = os.clock()
+		thing.squintUntil = os.clock() + 0.6
+	end
+	local from = p.hatchCF.Position + Vector3.new(0, 1, 0)
+	if heardHere(from) then
+		UI.sound("Burp", 0.8, 0.9 + math.random() * 0.2)
+	end
+	floatingText(from + Vector3.new(0, 3, 0), "BURP!", Config.Thing.EyeColor, 40, 5)
+	local to = egg.home.Position
+	local duration = 0.6
+	local start = os.clock()
+	while os.clock() - start < duration do
+		if not egg.model.Parent then
+			return
 		end
-		egg:PivotTo(to)
-		for i = 1, 6 do
-			egg:PivotTo(to * CFrame.Angles(0, 0, math.sin(i * 1.7) * 0.25))
-			task.wait(0.08)
+		local k = (os.clock() - start) / duration
+		egg.model:PivotTo(CFrame.new(arc(from, to, k, 8)) * CFrame.Angles(k * 6, 0, k * 2))
+		RunService.RenderStepped:Wait()
+	end
+	if not egg.model.Parent then
+		return
+	end
+	egg.model:PivotTo(egg.home)
+	poof(to, Color3.fromRGB(225, 180, 95), 10)
+	if heardHere(to) then
+		UI.sound("Thud", 0.35, 1.4)
+	end
+	egg.landed = true
+end
+
+-- the egg pops: a flash of its food's colour (or, if it never hatched -
+-- its owner left - it just goes)
+local function popEgg(egg)
+	local position = egg.model:GetPivot().Position + Vector3.new(0, Config.Eggs.Size * 0.5, 0)
+	if now() >= egg.ready - 1 then
+		local crop = Rules.crop(egg.food)
+		poof(position, crop and crop.color or nil, 26)
+		poof(position, Color3.fromRGB(255, 250, 235), 14)
+		if heardHere(position) then
+			UI.sound("Crack", 0.7)
 		end
-		egg:Destroy()
-	end)
+	end
+	egg.model:Destroy()
+end
+
+local function updateEggs(p)
+	local list = decode(p.folder:GetAttribute("Eggs"))
+	local seen = {}
+	for _, e in ipairs(list) do
+		if type(e.id) == "string" and Rules.crop(e.f) and type(e.r) == "number" and nestCF(p, e.n) then
+			seen[e.id] = true
+			if not p.eggs[e.id] then
+				local egg = makeEgg(p, e)
+				p.eggs[e.id] = egg
+				if p.ready and type(e.l) == "number" and now() - e.l < 2 then
+					-- just laid: it hides in the Thing until the burp
+					egg.model:PivotTo(p.hatchCF * CFrame.new(0, -6, 0))
+					egg.model.Parent = p.root
+					task.spawn(burpEgg, p, egg)
+				else
+					egg.landed = true
+					egg.model.Parent = p.root
+				end
+			end
+		end
+	end
+	for id, egg in pairs(p.eggs) do
+		if not seen[id] then
+			p.eggs[id] = nil
+			popEgg(egg)
+		end
+	end
+end
+
+-- every frame, for the eggs near you: the countdown, and a wobble that
+-- gets wilder as it's about to hatch
+local function animateEgg(egg, t, clock)
+	local left = egg.ready - t
+	if egg.label then
+		local seconds = math.max(0, math.ceil(left))
+		egg.label.Text = seconds > 0 and (seconds .. "s") or "!"
+		egg.label.TextColor3 = seconds <= 3 and UI.Colors.Gold or UI.Colors.Text
+		egg.tag.Enabled = egg.landed
+	end
+	if not egg.landed then
+		return
+	end
+	local shake = left < 3 and (1 - math.max(0, left) / 3) or 0
+	local tilt = math.sin(clock * (6 + shake * 14) + egg.seed) * (0.04 + shake * 0.22)
+	local hop = left < 1 and math.abs(math.sin(clock * 18)) * 0.3 or 0
+	egg.model:PivotTo(egg.home * CFrame.new(0, hop, 0) * CFrame.Angles(tilt * 0.5, 0, tilt))
 end
 
 local function animateThing(p, t, camPos)
@@ -503,11 +568,12 @@ local function updateYard(p)
 				makeTag(t, mine)
 				refreshThinglet(t, now())
 				p.thinglets[r.id] = t
-				if p.ready and mine then
-					-- just hatched: it hops out of the hatch to its spot in the yard
+				local fromNest = type(r.n) == "number" and nestCF(p, r.n)
+				if p.ready and fromNest and type(r.b) == "number" and now() - r.b < 4 then
+					-- just hatched: it hops out of its nest to its spot in the yard
 					t.arriving = true
 					task.spawn(function()
-						local from = p.hatchCF * CFrame.new(0, 0, -9)
+						local from = fromNest
 						local to = home
 						local hops = 4
 						for hop = 1, hops do
@@ -633,16 +699,21 @@ local function setupPlot(folder)
 		cf = cf,
 		hatchCF = cf * CFrame.new(W.Hatch),
 		root = root,
-		plants = {},
+		nests = {},
+		eggs = {},
 		thinglets = {},
 	}
 	plots[index] = p
 	buildThing(p)
-	updatePlants(p)
+	updateNests(p)
+	updateEggs(p)
 	updateYard(p)
 	p.ready = true
-	folder:GetAttributeChangedSignal("Plants"):Connect(function()
-		updatePlants(p)
+	folder:GetAttributeChangedSignal("Nests"):Connect(function()
+		updateNests(p)
+	end)
+	folder:GetAttributeChangedSignal("Eggs"):Connect(function()
+		updateEggs(p)
 	end)
 	folder:GetAttributeChangedSignal("Yard"):Connect(function()
 		updateYard(p)
@@ -702,44 +773,12 @@ local function myPlot()
 end
 
 ----------------------------------------------------------------------
--- Messages from the server and the other client scripts
+-- The coin truck: out of the tunnel, a stop, the throw, the bounce, and
+-- the package bursts into coins
 ----------------------------------------------------------------------
-----------------------------------------------------------------------
--- Seed deliveries: the truck, the throw, the bounce, the burst
-----------------------------------------------------------------------
-local function poof(position, color, amount)
-	local holder = Instance.new("Part")
-	holder.Anchored = true
-	holder.CanCollide = false
-	holder.CanQuery = false
-	holder.CanTouch = false
-	holder.Transparency = 1
-	holder.Size = Vector3.new(1, 1, 1)
-	holder.Position = position
-	holder.Parent = visuals
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Color = ColorSequence.new(color or Color3.fromRGB(255, 255, 255))
-	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
-	emitter.Speed = NumberRange.new(6, 14)
-	emitter.SpreadAngle = Vector2.new(180, 180)
-	emitter.Lifetime = NumberRange.new(0.4, 0.8)
-	emitter.Drag = 4
-	emitter.Rate = 0
-	emitter.Parent = holder
-	emitter:Emit(amount or 20)
-	task.delay(1.2, function()
-		holder:Destroy()
-	end)
-end
-
-local function arc(from, to, k, height)
-	return from:Lerp(to, k) + Vector3.new(0, math.sin(k * math.pi) * height, 0)
-end
-
 local function runDelivery(payload)
 	local p = plots[payload.plot]
-	local spot = W.PlantSpots[payload.spot]
-	if not p or not spot or type(payload.start) ~= "number" then
+	if not p or type(payload.start) ~= "number" then
 		return
 	end
 	local D = Config.Delivery
@@ -801,8 +840,7 @@ local function runDelivery(payload)
 	truck.Parent = visuals
 
 	local landCF = p.cf * CFrame.new(D.LandAt)
-	local spotPos = (p.cf * CFrame.new(spot + Vector3.new(0, 1, 0))).Position
-	local package, packageStart, honked, landed, opened, packet = nil, nil, false, false, false, nil
+	local package, packageStart, honked, landed, opened = nil, nil, false, false, false
 	local lastX, spin = D.StartX, 0
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
@@ -819,7 +857,9 @@ local function runDelivery(payload)
 			lean = -math.sin(math.min(1, u / 0.35) * math.pi) * 0.05 -- and rocks back
 			if not honked then
 				honked = true
-				UI.sound("Honk", 0.8)
+				if heardHere(Vector3.new(plotX, 10, laneZ)) then
+					UI.sound("Honk", 0.8)
+				end
 				floatingText(Vector3.new(plotX, 10, laneZ), "HONK!", Color3.fromRGB(255, 220, 60), 40, 4)
 			end
 		else
@@ -865,26 +905,17 @@ local function runDelivery(payload)
 			local squash = since < 0.15 and (1 - math.sin(since / 0.15 * math.pi) * 0.35) or 1
 			package:PivotTo(landCF * CFrame.new(0, hop, 0) * CFrame.Angles(0, since * 2, math.sin(since * 30) * 0.08 * (1 - math.min(1, since))))
 			package:ScaleTo(math.max(0.3, squash))
-			-- ...then POP: it bursts and the seed packet flies into the planter
+			-- ...then POP: it bursts into coins
 			if since >= 0.55 then
 				opened = true
-				UI.sound("Poof", 0.8)
-				poof(landCF.Position + Vector3.new(0, 1.2, 0), Rules.crop(payload.crop) and Rules.crop(payload.crop).color or nil, 30)
+				local burst = landCF.Position + Vector3.new(0, 1.2, 0)
+				if heardHere(burst) then
+					UI.sound("Poof", 0.8)
+				end
+				poof(burst, UI.Colors.Gold, 40)
+				poof(burst, Color3.fromRGB(255, 250, 200), 16)
+				floatingText(burst + Vector3.new(0, 3, 0), "COINS!", UI.Colors.Gold, 40, 5)
 				package:Destroy()
-				packet = Looks.seedPacket(payload.crop)
-				packet.Parent = visuals
-			end
-		end
-		if packet then
-			local flyStart = times.landAt + 0.55
-			local k = math.clamp((t - flyStart) / (times.total - flyStart), 0, 1)
-			local position = arc(landCF.Position + Vector3.new(0, 1.2, 0), spotPos, k, 6)
-			packet:PivotTo(CFrame.new(position) * CFrame.Angles(0, k * 10, 0))
-			if k >= 1 then
-				poof(spotPos, Color3.fromRGB(150, 255, 120), 18)
-				UI.sound("Pop", 0.8, 1.2)
-				packet:Destroy()
-				packet = nil
 			end
 		end
 		if (t > times.total + 1 and not truck.Parent) or t > times.total + 20 then
@@ -892,35 +923,27 @@ local function runDelivery(payload)
 			if truck.Parent then
 				truck:Destroy()
 			end
-			if packet then
-				packet:Destroy()
+			if package and package.Parent then
+				package:Destroy()
 			end
 		end
 	end)
 end
 
+----------------------------------------------------------------------
+-- Messages from the server and the other client scripts
+----------------------------------------------------------------------
 FxRemote.OnClientEvent:Connect(function(payload)
-	if type(payload) ~= "table" then
-		return
-	end
-	if payload.type == "delivery" then
+	if type(payload) == "table" and payload.type == "delivery" then
 		task.spawn(runDelivery, payload)
-		return
-	end
-	if payload.type ~= "chomp" then
-		return
-	end
-	local p = plots[payload.plot]
-	local mine = myPlot()
-	if p and p ~= mine then
-		chomp(p, payload.perfect)
 	end
 end)
 
-UI.on("Chomp", function(perfect)
+-- your food went down the hatch
+UI.on("Chomp", function()
 	local p = myPlot()
 	if p then
-		chomp(p, perfect)
+		chomp(p)
 	end
 end)
 
@@ -931,56 +954,24 @@ UI.on("ArmCatch", function(delay)
 	end
 end)
 
+-- Your egg hatched. A rare one sends a ring out over the lawn; one that
+-- was sold straight away (your yard is full of better ones) turns into coins.
 HatchedRemote.OnClientEvent:Connect(function(info)
 	local p = myPlot()
 	local def = type(info) == "table" and Config.Thinglets[info.kind]
-	if p and def then
-		burp(p, def.rarity)
-	end
-end)
-
--- fruit hop from the plant into your basket
-HarvestedRemote.OnClientEvent:Connect(function(picked)
-	local p = myPlot()
-	if not p or type(picked) ~= "table" then
+	local cf = p and type(info.nest) == "number" and nestCF(p, info.nest)
+	if not def or not cf then
 		return
 	end
-	local count = 0
-	for _, entry in ipairs(picked) do
-		local spot = W.PlantSpots[entry.spot]
-		if spot then
-			for i = 1, #entry.fruit do
-				count += 1
-				local n = count
-				local letter = string.sub(entry.fruit, i, i)
-				local delay = n * 0.06
-				task.delay(delay, function()
-					local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-					if not root or not root:IsA("BasePart") then
-						return
-					end
-					local fruit = Looks.fruit(entry.crop, LETTER_MUT[letter] or "", false)
-					fruit:ScaleTo(FRUIT_SCALE[entry.crop] or 1)
-					local from = (p.cf * CFrame.new(spot + Vector3.new(0, 2, 0))).Position
-					fruit:PivotTo(CFrame.new(from))
-					fruit.Parent = visuals
-					UI.sound("Pop", 0.6, 1 + math.min(n, 10) * 0.05)
-					local duration = 0.45
-					local start = os.clock()
-					while os.clock() - start < duration do
-						local k = (os.clock() - start) / duration
-						local to = root.Position + Vector3.new(0, 1, 0)
-						local position = from:Lerp(to, k) + Vector3.new(0, math.sin(k * math.pi) * 5, 0)
-						fruit:PivotTo(CFrame.new(position) * CFrame.Angles(k * 5, k * 3, 0))
-						fruit:ScaleTo((FRUIT_SCALE[entry.crop] or 1) * (1 - k * 0.6))
-						RunService.RenderStepped:Wait()
-					end
-					fruit:Destroy()
-				end)
-			end
-		end
+	local position = cf.Position + Vector3.new(0, 1, 0)
+	if Rules.rarityRank(def.rarity) >= 3 then
+		UI.fire("Shockwave", position, Config.Rarities[def.rarity].color)
 	end
-	UI.fire("Harvested", picked)
+	if info.how == "sell" then
+		task.delay(0.3, function()
+			UI.fire("CoinBurst", position, info.sold or 1)
+		end)
+	end
 end)
 
 -- Tap a Thinglet to see its card
@@ -1181,6 +1172,9 @@ RunService.RenderStepped:Connect(function(dt)
 		local near = (p.cf.Position - camPos).Magnitude < ANIMATE_RANGE + 60
 		if near then
 			animateThing(p, clock, camPos)
+			for _, egg in pairs(p.eggs) do
+				animateEgg(egg, serverNow, clock)
+			end
 		end
 		for _, t in pairs(p.thinglets) do
 			if refresh then

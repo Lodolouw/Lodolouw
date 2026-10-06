@@ -27,31 +27,17 @@ local savesInFlight = 0 -- so a server shutting down waits for saves already sta
 
 -- A brand new player's progress
 function DataService.newProfile()
-	local plants = {}
-	for i, start in ipairs(Config.Garden.StartPlants) do
-		local fruit = {}
-		for _ = 1, start.ripe do
-			table.insert(fruit, "")
-		end
-		plants[i] = { crop = start.crop, fruit = fruit, timer = 0 }
-	end
 	return {
-		version = 1,
+		version = 2,
 		coins = 0,
 		growth = 0, -- how much the Thing has eaten (sets its size)
-		plots = Config.Garden.StartPlots,
 		yardCap = Config.Yard.StartCap,
-		upgrades = {}, -- [upgrade id] = level (Config.Upgrades; plots and yardCap are kept above)
-		plants = plants, -- [spot] = { crop = id, fruit = { mutation id or "" ... }, timer = seconds }
-		basket = {}, -- [crop id] = { [mutation id or "Normal"] = count }
-		belly = {}, -- { { f = crop id, m = mutation id or "", p = perfect } ... }
-		yard = {}, -- { { id, kind, mut, born, start, slot } ... }
-		pending = {}, -- hatched into a full yard, waiting for "sell new / swap"
+		upgrades = {}, -- [upgrade id] = level (Config.Upgrades; yard space is yardCap above)
+		eggs = {}, -- on the nests: { { id, nest, food, kind, mut, laid, ready } ... }
+		yard = {}, -- { { id, kind, mut, born, start, slot, nest } ... }
 		nextId = 1,
 		dex = {}, -- [kind] = { Normal = true, Gold = true, ... }
-		shop = { index = 0, bought = {} }, -- bought this restock: [crop id] = count
-		daily = { day = 0, food = "", fed = 0, done = false },
-		stats = { tosses = 0, hatches = 0, perfects = 0 },
+		stats = { feeds = 0, hatches = 0 },
 		lastOnline = 0,
 	}
 end

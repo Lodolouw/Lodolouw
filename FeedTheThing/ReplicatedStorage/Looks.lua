@@ -1,7 +1,7 @@
 --[[
 	Looks  (ModuleScript, parent: ReplicatedStorage, name: "Looks")
 
-	Builds every model in the game: fruit, plants, Thinglets, eggs and the
+	Builds every model in the game: food, Thinglets, eggs, nests and the
 	Thing's eyes, arms, teeth and horns. Thinglets and eggs come from the
 	Blender art when it's loaded (see Assets); everything else, and the
 	stand-ins until then, is built from plain Parts.
@@ -214,7 +214,7 @@ function Looks.applyMutation(model, mutationId)
 end
 
 ----------------------------------------------------------------------
--- Fruit (about 1 stud). Used on plants, in the toss and for icons.
+-- Food (about 1 stud). Thrown into the hatch, and used for icons.
 ----------------------------------------------------------------------
 local LEAF = Color3.fromRGB(70, 170, 60)
 local STEM = Color3.fromRGB(110, 75, 45)
@@ -257,7 +257,7 @@ FRUIT.MoonMelon = function(b)
 	b:add(blob(Vector3.new(0.12, 1.28, 1.28), Color3.fromRGB(120, 230, 160), { Material = Enum.Material.Neon }), CFrame.new(-0.25, 0.62, 0), "Accent", "Stripe")
 end
 
--- welded = true when it will be moved (tossed); false for plants and icons
+-- welded = true when it will be moved (thrown); false for icons
 function Looks.fruit(cropId, mutationId, welded)
 	local b = newBuilder(cropId)
 	local build = FRUIT[cropId] or FRUIT.Tomato
@@ -265,60 +265,6 @@ function Looks.fruit(cropId, mutationId, welded)
 	local model = b:finish(welded)
 	Looks.applyMutation(model, mutationId)
 	return model
-end
-
-----------------------------------------------------------------------
--- Plants (no fruit). Each has 3 Attachments "Fruit1..3" in the Root
--- where its fruit hang or sit.
-----------------------------------------------------------------------
-local function fruitSpots(b, spots)
-	for i, position in ipairs(spots) do
-		local a = Instance.new("Attachment")
-		a.Name = "Fruit" .. i
-		a.Position = position
-		a.Parent = b.root
-	end
-end
-
-local function bush(b, color, height)
-	b:add(blob(Vector3.new(3, height * 0.7, 3), color), CFrame.new(0, height * 0.35, 0), "Body", "Leaves")
-	b:add(blob(Vector3.new(2.2, height * 0.6, 2.2), lerpColor(color, WHITE, 0.12)), CFrame.new(0.3, height * 0.62, -0.2), "Body", "Leaves")
-	b:add(cylinder(0.4, height * 0.4, STEM), CFrame.new(0, height * 0.2, 0) * UPRIGHT, "Body", "Trunk")
-end
-
-local PLANT = {}
-PLANT.Tomato = function(b)
-	bush(b, Color3.fromRGB(70, 165, 65), 3)
-	fruitSpots(b, { Vector3.new(-1.2, 1.4, -0.9), Vector3.new(1.1, 1.8, -0.8), Vector3.new(0.1, 2.3, -1.3) })
-end
-PLANT.Chili = function(b)
-	bush(b, Color3.fromRGB(60, 150, 70), 3.2)
-	fruitSpots(b, { Vector3.new(-1.2, 1.3, -0.8), Vector3.new(1.2, 1.6, -0.8), Vector3.new(0, 2.2, -1.3) })
-end
-PLANT.Eyeberry = function(b)
-	bush(b, Color3.fromRGB(55, 120, 110), 3.4)
-	fruitSpots(b, { Vector3.new(-1.2, 1.5, -1), Vector3.new(1.2, 1.9, -0.9), Vector3.new(0, 2.5, -1.3) })
-end
-PLANT.Glowshroom = function(b)
-	b:add(blob(Vector3.new(4, 0.8, 4), Color3.fromRGB(90, 60, 45)), CFrame.new(0, 0.2, 0), "Body", "Mound")
-	fruitSpots(b, { Vector3.new(-1, 0.5, -0.8), Vector3.new(1, 0.5, -0.6), Vector3.new(0, 0.5, 0.9) })
-end
-PLANT.Pumpkin = function(b)
-	b:add(blob(Vector3.new(4.5, 0.5, 4.5), Color3.fromRGB(80, 160, 60)), CFrame.new(0, 0.2, 0), "Body", "Leaves")
-	b:add(blob(Vector3.new(2, 0.9, 2), Color3.fromRGB(95, 180, 70)), CFrame.new(0, 0.4, 0.8), "Body", "Leaves")
-	fruitSpots(b, { Vector3.new(-1.3, 0.1, -0.8), Vector3.new(1.3, 0.1, -0.8), Vector3.new(0, 0.1, -1.7) })
-end
-PLANT.MoonMelon = function(b)
-	b:add(blob(Vector3.new(4.5, 0.5, 4.5), Color3.fromRGB(150, 200, 170)), CFrame.new(0, 0.2, 0), "Body", "Leaves")
-	b:add(blob(Vector3.new(0.4, 2.4, 0.4), Color3.fromRGB(230, 250, 255), { Material = Enum.Material.Neon }), CFrame.new(0, 1.2, 1), "Accent", "Moonflower")
-	fruitSpots(b, { Vector3.new(-1.4, 0.1, -0.7), Vector3.new(1.4, 0.1, -0.7), Vector3.new(0, 0.1, -1.8) })
-end
-
-function Looks.plant(cropId)
-	local b = newBuilder(cropId .. "Plant")
-	local build = PLANT[cropId] or PLANT.Tomato
-	build(b)
-	return b:finish(false)
 end
 
 ----------------------------------------------------------------------
@@ -472,10 +418,12 @@ function Looks.silhouette(model)
 end
 
 ----------------------------------------------------------------------
--- Egg (1 stud tall), speckled in its rarity colour
+-- Egg (1 stud tall), speckled in its rarity colour, or in `color` (the
+-- eggs on the nests are speckled in their food's colour: what's inside
+-- is a surprise)
 ----------------------------------------------------------------------
-function Looks.egg(rarity)
-	local color = Config.Rarities[rarity] and Config.Rarities[rarity].color or WHITE
+function Looks.egg(rarity, color)
+	color = color or (Config.Rarities[rarity] and Config.Rarities[rarity].color) or WHITE
 	local model = fromBlender("Egg", true)
 	if model then
 		for _, p in ipairs(model:GetDescendants()) do
@@ -522,17 +470,17 @@ function Looks.package()
 	return b:finish(false)
 end
 
--- A little seed packet in the crop's colour (flies from the package into the planter)
-function Looks.seedPacket(cropId)
-	local color = Color3.fromRGB(120, 200, 80)
-	for _, crop in ipairs(Config.Crops) do
-		if crop.id == cropId then
-			color = crop.color
-		end
+-- A straw nest for an egg (about 4 studs across, its base at the pivot)
+function Looks.nest()
+	local b = newBuilder("Nest")
+	local straw, dark = Color3.fromRGB(225, 180, 95), Color3.fromRGB(165, 115, 55)
+	b:add(cylinder(3.4, 0.35, dark), CFrame.new(0, 0.18, 0) * UPRIGHT, "Body", "Bed")
+	local twigs = 10
+	for i = 1, twigs do
+		local angle = i / twigs * math.pi * 2
+		local color = i % 2 == 0 and straw or lerpColor(straw, dark, 0.35)
+		b:add(blob(Vector3.new(1.5, 0.75, 0.9), color), CFrame.Angles(0, angle, 0) * CFrame.new(0, 0.45, -1.55) * CFrame.Angles(0.15, 0, 0), "Body", "Straw")
 	end
-	local b = newBuilder("SeedPacket")
-	b:add(part({ Size = Vector3.new(1.3, 1.7, 0.15), Color = Color3.fromRGB(250, 248, 240) }), CFrame.new(0, 0.85, 0), "Body", "Paper")
-	b:add(ball(0.8, color), CFrame.new(0, 0.95, -0.12), "Body", "Picture")
 	return b:finish(false)
 end
 

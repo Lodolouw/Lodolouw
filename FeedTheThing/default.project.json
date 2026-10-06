@@ -45,8 +45,8 @@
         "World": {
           "$path": "StarterPlayerScripts/World.client.lua"
         },
-        "Toss": {
-          "$path": "StarterPlayerScripts/Toss.client.lua"
+        "Feed": {
+          "$path": "StarterPlayerScripts/Feed.client.lua"
         },
         "Hud": {
           "$path": "StarterPlayerScripts/Hud.client.lua"

@@ -1,20 +1,21 @@
 # Feed the Thing in the Basement — Design Doc
 
-> "Grow food, feed the thing in your basement, and see what hatches."
+> "Feed the thing in your basement, and see what hatches."
 
-A grow/idle tycoon with collecting. Creepy-cute and curious, never truly scary.
+An idle tycoon with collecting. Creepy-cute and curious, never truly scary.
 This is the single source of truth: paste it into a new chat to continue.
 
 ## Status
 
-All 8 sections are decided. **Prototype v0.1 (the 5-day test build) is in `FeedTheThing/`; see its README to set it up.** Numbers come from an economy simulation (`economy_sim.py`, see #3) and live in `FeedTheThing/ReplicatedStorage/Config.lua`, so tuning after the ad test is a one-file job.
+**v0.2, the simple loop, is in `FeedTheThing/` (see its README to set it up). Section 0 below is the current game; sections 1–4 describe v0.1 and are kept for history.** Numbers come from an economy simulation (`economy_sim.py`, see #3) and live in `FeedTheThing/ReplicatedStorage/Config.lua`, so tuning after the ad test is a one-file job.
 
 | # | Section | Status |
 |---|---|---|
-| 1 | Creature roster | ✅ |
-| 2 | Crops and diet rules | ✅ |
-| 3 | Economy numbers | ✅ (simulated) |
-| 4 | The toss | ✅ |
+| 0 | The simple loop (v0.2) | ✅ current |
+| 1 | Creature roster | ✅ (hatch rules replaced by #0) |
+| 2 | Crops and diet rules | replaced by #0 |
+| 3 | Economy numbers | replaced by #0 (simulated) |
+| 4 | The toss | replaced by #0 |
 | 5 | The Thing | ✅ |
 | 6 | Phone UI layout + world layout | ✅ |
 | 7 | Thumbnail, icon, creature group name | ✅ |
@@ -43,24 +44,25 @@ Big boss-fight game: 202 ad clicks → 17 plays, ~4.5 min per play, ~7% day-1 re
 
 ## Core chain
 
-**GROW 🌱 → FEED 🍖 → HATCH 🥚 → GROW BIG & EARN 💰 → better seeds → rarer creatures → repeat**
+**BUY FOOD 🍅 → FEED 🍖 → EGG 🥚 → HATCH → EARN 💰 → better food → rarer Thinglets → repeat**
 
-1. **Grow** food in the garden (real time, also offline).
-2. **Feed** it to the Thing by **swiping to toss** it down the basement hatch. A perfect toss gives a luck bonus.
-3. A full **belly** lays an egg. **What you fed it decides what hatches.** *(our twist)*
+1. **Buy** a food from the food bar (Tomato is free).
+2. **Feed** it to the Thing: tap FEED and it flies down the basement hatch.
+3. The Thing **burps out an egg** onto a nest. It hatches by itself after a short countdown.
 4. Thinglets move into the **yard**, **grow big over real time**, and **earn coins per second**, even offline.
-5. Coins buy seeds, plots and yard space.
+5. Coins buy better food (better odds) and upgrades.
 
 ## Loop at every timescale
 
 | When | What | Pull |
 |---|---|---|
-| ~10 s | Pick, toss, CHOMP, coins. Craving bubble = ×3 coins | Instant feedback |
-| 1–2 min | Belly full → egg → hatch reveal | "What did I get?" |
-| 5 min | Seed shop restock | Checking back |
-| ~12 min | Server weather → mutated crops | Shared moments |
-| 2 min → 4 h | The Thing grows a size (fast at first, slower later) | Visible long-term progress |
-| Daily | 1 hour of offline coins, grown Thinglets, Daily Craving bonus egg | Return tomorrow |
+| ~1 s | Tap FEED, CHOMP, BURP, an egg lands on a nest | Instant feedback |
+| 6–35 s | The egg's countdown, then it hatches (small pop, or the big reveal for something special) | "What did I get?" |
+| 1–40 min | The next food becomes affordable: much better odds | A clear next goal |
+| 2 min | The coin truck brings someone a package of coins | Little surprises |
+| ~12 min | Server weather → more Frozen / Glowing hatches | Shared moments |
+| 2 min → hours | The Thing grows a size (more luck) | Visible long-term progress |
+| Daily | 2 hours of offline coins, grown Thinglets, eggs waiting to hatch | Return tomorrow |
 | Weekly | Update every Saturday | Days 8–28 |
 | Week 3+ | Rebirth | Fresh start that feels powerful |
 
@@ -71,7 +73,7 @@ Big boss-fight game: 202 ad clicks → 17 plays, ~4.5 min per play, ~7% day-1 re
 
 ## Test plan
 
-1. Smallest playable version in ~5 days: garden, toss, Thing, hatch, yard income.
+1. Smallest playable version: feed, eggs, hatch, yard income.
 2. Small ad test with 2–3 thumbnail variants.
 3. Measure: plays per click (last: 17/202), 60-second bounce, session length (goal > 10 min; last 4.5), day-1 retention (goal: clearly beat 7%).
 4. Only expand if people stay and come back.
@@ -80,9 +82,101 @@ Big boss-fight game: 202 ad clicks → 17 plays, ~4.5 min per play, ~7% day-1 re
 
 # Part B — Design
 
+## 0. The simple loop (v0.2) — the current game
+
+> Playtest verdict on v0.1: "the main game kinda sucks", "way too complex". The rule since: a game you join and get straight away. **Do this, get this, do it again for cooler things.** This replaces the garden, the seed shop, the timing toss, the belly and diet rules, cravings, combos and the Daily Craving. All numbers live in `Config.lua`.
+
+**Buy food → feed the Thing → it burps an egg onto a nest → the egg hatches by itself → the Thinglet earns coins → buy better food → repeat.**
+
+### Feeding
+
+- **Food bar** at the bottom when you're near your hatch: 6 foods with their prices and a big **FEED** button (tap, or hold to keep feeding). PC: E feeds, 1–6 pick a food.
+- **Tomato is free**, so there's always something to do. Each slot you can't afford yet shows a small bar: how close you are.
+- Above the bar: the **chance of each rarity** with the food you picked, how long its egg takes and your luck.
+- Every food also grows the Thing (its `growth`).
+- A feed needs a **free nest**: 3 to start, up to 6 with the Nests upgrade. The nests sit in the planter boxes beside the hatch, so you see them while you feed.
+
+### Eggs
+
+- What's inside is rolled on the server **the moment the egg is laid** (the food's odds, your luck, the weather right then). On the nest it's speckled in its food's colour, so the inside stays a surprise.
+- Countdown: Tomato 6 s, Chili 8, Eyeberry 12, Glowshroom 18, Pumpkin 25, Moon Melon 35 (Quick eggs: up to 2× faster). **Your very first egg: 3 s.** It wobbles more and more as it gets close.
+- Eggs **hatch by themselves**, also while you're away (the ones that finished pop a few seconds after you come back).
+
+### What hatches
+
+| Food | Price | Common | Rare | Epic | Legendary | Secret | Leans to |
+|---|---|---|---|---|---|---|---|
+| Tomato | free | 92.7% | 7% | 0.28% | 0.02% | 1 in 100,000 | Blorp |
+| Chili | 50 | 81% | 17.7% | 1.24% | 0.06% | 1 in 33,000 | Sizzle |
+| Eyeberry | 1K | 63% | 32.8% | 4% | 0.2% | 1 in 10,000 | Peeper |
+| Glowshroom | 15K | 42% | 45% | 12% | 1% | 1 in 3,300 | Glumcap |
+| Pumpkin | 200K | 22% | 49% | 25% | 4% | 1 in 1,250 | Gourdo |
+| Moon Melon | 2.5M | 8% | 37% | 40% | 15% | 1 in 500 | Moonmoth |
+
+- **Any food can hatch any rarity; better food has much better odds.** Each food leans towards its own Thinglet: when it rolls that Thinglet's rarity, it's that one 60% of the time; otherwise it's shared evenly between the Thinglets of that rarity. (Mishmash has no food of its own: it comes from Epic rolls.)
+- **Luck** helps the rarest most: Rare ×(1 + L), Epic ×(1 + 2L), Legendary ×(1 + 3L), then the odds are shared out to add up to 1 again, so luck still matters with the best food. The secret and mutations are ×(1 + L). L = the Thing's size (0, +10%, +20%, +35%, +50%) + Lucky Thing (+5% a level, up to +100%).
+- **Mutations** on any hatch: Frozen 4% (×2 coins), Glowing 2% (×3), Gold 0.5% (×5). Snow makes Frozen 3× as likely, Full Moon does the same for Glowing.
+
+### Reveals
+
+The **big reveal** (the egg wobbles, cracks, the shadow, the name) plays for a new kind, any mutation, or Epic and better. Everything else is a **small pop** on the right ("Blorp — off to your yard!") so you can keep feeding. Legendary and Gold hatches get a server banner.
+
+### The yard
+
+8 spots to start, up to 16. **No choices to make:** when it's full, a new Thinglet that earns more than your weakest takes its spot (the weaker one is sold for 10 seconds of its full income); otherwise the new one is sold. You can still sell one by hand from its card.
+
+| Thinglet | Rarity | Coins/s grown | Grow time |
+|---|---|---|---|
+| Blorp | Common | 1 | 2 min |
+| Sizzle | Common | 2 | 3 min |
+| Peeper | Rare | 5 | 10 min |
+| Glumcap | Rare | 8 | 15 min |
+| Gourdo | Epic | 25 | 30 min |
+| Mishmash | Epic | 40 | 45 min |
+| Moonmoth | Legendary | 150 | 2 h |
+| Lil' Thing | Legendary (secret) | 600 | 3 h |
+
+### The Thing
+
+It grows by eating: size 2 at 100 growth, 3 at 2,000, 4 at 25,000, 5 at 250,000. Each size adds luck and makes new Thinglets hatch bigger (25% → 60% grown).
+
+### Upgrades (coins only)
+
+| Upgrade | Levels | Each level | Costs |
+|---|---|---|---|
+| Yard space | 8 → 16 | +1 Thinglet | 500 · 2.5K · 10K · 40K · 150K · 600K · 2.5M · 10M |
+| Nests | 3 → 6 | +1 nest | 500 · 5K · 50K |
+| Lucky Thing | 20 | +5% luck | 200 × 1.8^level |
+| Comfy yard | 25 | +10% coins | 300 × 1.6^level |
+| Quick eggs | 10 | eggs +10% faster | 250 × 2^level |
+
+### The coin truck
+
+Every 2 minutes a truck comes out of the west tunnel, stops at a random player's house, honks and throws a package onto the lawn that bursts into coins (15 seconds of that player's income, at least 25). Everyone on the street sees it.
+
+### Offline
+
+Thinglets earn up to **2 hours** of coins while you're away ("Welcome back" + Collect), and keep growing with no cap.
+
+### First hours (simulated: `economy_sim.py`, median of 20 runs, always active)
+
+| Milestone | Spends everything on the best food | Saves up for the next food |
+|---|---|---|
+| First Rare | ~45 s | ~40 s |
+| Eyeberry | ~3.5 min | ~2 min |
+| Thing size 2 | ~2 min | ~3 min |
+| First Epic | ~5 min | ~7 min |
+| Glowshroom | ~35 min | ~11 min |
+| First Legendary (Moonmoth) | ~18 min | ~35 min |
+| Pumpkin | ~5.5 h | ~45 min |
+| Moon Melon | over 8 h | ~3 h 50 |
+| Lil' Thing | ~4 h (19 of 20 runs) | about half the runs in 8 h |
+
+Real players are slower and spread this over days. After that, the chase is Gold Thinglets, Lil' Thing and the 32-slot dex until rebirth.
+
 ## 1. Thinglets (creatures)
 
-### Hatch rules
+### Hatch rules (v0.1, replaced by section 0)
 
 **Diet decides the Thinglet. Luck decides the mutation.**
 
@@ -134,7 +228,7 @@ Odds on each egg = base + **8%** per matching mutated food in the belly + **1%**
 
 Growing = scaling one model. Mutations = material swap + particles. Mishmash reuses other Thinglets' parts. Lil' Thing reuses the Thing's eyes and arms. ≈ **6 new models**, ≤ 10 parts each, tween animations (no rigs), Neon instead of lights.
 
-## 2. Crops and diet rules
+## 2. Crops and diet rules (v0.1, replaced by section 0)
 
 Plants are **permanent**: buy a seed once and the plant keeps producing. Each plant holds up to **3 ripe fruit**, so offline crop growth caps itself.
 
@@ -171,7 +265,7 @@ Plants are **permanent**: buy a seed once and the plant keeps producing. Each pl
 - **Prediction badge** above the belly: what the egg would hatch right now (icon if discovered, "???" if not).
 - **Dex hints:** Blorp "It loves red and juicy…", Sizzle "Something spicy…", Peeper "Food that looks back…", Glumcap "Something from the dark…", Gourdo "Something big and orange…", Mishmash "A bit of everything. 5 different!", Moonmoth "Fruit from the moon…", Lil' Thing "Only Moon Melons. Only perfect throws."
 
-## 3. Economy numbers
+## 3. Economy numbers (v0.1, replaced by section 0)
 
 ### Coins
 
@@ -230,7 +324,7 @@ Real players are slower and spread this over **days 1–3**. After that, the cha
 
 Once a day (resets at midnight UTC, countdown shown), the Thing craves one food you grow. **Feed it 10 of that food → a bonus egg that is always mutated** (Frozen 60% / Glowing 30% / Gold 10%). It's a daily reason to come back that can't be bought.
 
-## 4. The toss
+## 4. The toss (v0.1, replaced by section 0)
 
 **A timing toss, not an aiming toss.** Aiming by swipe strength feels different on every phone; timing feels the same everywhere.
 
@@ -377,6 +471,17 @@ Rebirth, Halloween event, NPC egg raids, trading, Robux cosmetics (see #8).
 
 | Date | Decision | Why |
 |---|---|---|
+| 10-06 | **The simple loop (v0.2):** buy food → feed → an egg on a nest → it hatches by itself → earn. Removed the garden, seed shop, timing toss, belly and diet rules, cravings, combos and the Daily Craving | Playtest: "kinda sucks", "way too complex". Join, get it in seconds, do it again for cooler things |
+| 10-06 | Food is bought from a food bar; Tomato is free | One action; never stuck with nothing to do |
+| 10-06 | The Thing burps the egg; eggs hatch by themselves after a short countdown (6–35 s; the first in 3 s); nests limit how many at once | Something to watch between feeds; nests are an obvious upgrade |
+| 10-06 | Any food can hatch any rarity; better food has better odds; each food leans to its own Thinglet | The player's ask; every food stays useful and the Index can still say which food is best for each Thinglet |
+| 10-06 | Luck weights the rarest most (Rare ×(1+L), Epic ×(1+2L), Legendary ×(1+3L)) | A flat ×(1+L) stopped mattering with the best food |
+| 10-06 | Full yard: a better Thinglet replaces the weakest by itself, a weaker one is sold | No popup ever interrupts the loop |
+| 10-06 | Big reveal only for new kinds, mutations and Epic+; a small pop for the rest | Reveals stay exciting and don't slow the loop down |
+| 10-06 | The delivery truck now brings a coin package to a random player every 2 minutes | Keeps the tunnels and truck; a small surprise everyone sees |
+| 10-06 | Egg stealing and the yard lock dropped for now | Too much for the simple version |
+| 10-06 | Economy retuned with a new `economy_sim.py` (prices ×15–20 a tier, slower luck, rarer secret) | The first numbers gave a Legendary in 3 minutes and the best food in an hour |
+| 10-06 | Saves moved to DataStore `FeedTheThing_v2` | v0.1 saves don't fit the new loop |
 | 10-05 | Diet decides the Thinglet, luck decides the mutation | Random creatures would make the diet twist pointless |
 | 10-05 | Full yard → "Sell new one / Swap with weakest"; dex keeps everything | Nothing lost forever |
 | 10-05 | Keep Lil' Thing; rule = all-PERFECT Moon Melon belly | A skill reward that doesn't make Moon Melon pointless |

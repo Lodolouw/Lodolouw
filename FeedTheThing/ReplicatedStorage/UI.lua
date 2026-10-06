@@ -168,7 +168,7 @@ end
 ----------------------------------------------------------------------
 -- Drawn icons (plain frames, so they're crisp at any size and need no
 -- uploaded images): cart, sprout, book, egg, upgrade, coin, snow, moon, sun,
--- magnet, target, twins, house, clover, lock, x
+-- magnet, target, twins, house, clover, lock, clock, x
 ----------------------------------------------------------------------
 local INK = Color3.fromRGB(18, 14, 26)
 local function shape(parent, props, stroke, radius)
@@ -298,6 +298,15 @@ ICONS.lock = function(c)
 	shape(c, at(0.5, 0.36, 0.26, 0.3, 0, UI.Colors.Well), nil, ROUND)
 	local body = shape(c, at(0.5, 0.66, 0.66, 0.48, 0, Color3.fromRGB(255, 205, 40)), 2.5, UDim.new(0.18, 0))
 	shape(body, at(0.5, 0.45, 0.16, 0.36, 0, INK), nil, ROUND)
+end
+ICONS.clock = function(c)
+	local face = shape(c, at(0.5, 0.54, 0.84, 0.84, 0, WHITE), 2.5, ROUND)
+	for k = 0, 3 do
+		shape(face, at(0.5 + math.sin(k * math.pi / 2) * 0.36, 0.5 - math.cos(k * math.pi / 2) * 0.36, 0.09, 0.09, 0, INK), nil, ROUND)
+	end
+	shape(face, at(0.5, 0.36, 0.08, 0.32, 0, INK), nil, ROUND) -- the minute hand
+	shape(face, at(0.6, 0.5, 0.24, 0.08, 0, Color3.fromRGB(235, 60, 60)), nil, ROUND) -- the hour hand
+	shape(c, at(0.5, 0.08, 0.22, 0.1, 0, Color3.fromRGB(255, 205, 40)), 2, ROUND) -- the button on top
 end
 ICONS.x = function(c)
 	shape(c, at(0.5, 0.5, 0.78, 0.2, 45), 2.5, ROUND)

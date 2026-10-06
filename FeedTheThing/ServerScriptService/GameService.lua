@@ -1,16 +1,24 @@
 --[[
 	GameService  (ModuleScript, parent: ServerScriptService, name: "GameService")
 
-	The server's side of the whole game: hands out plots, grows the garden,
-	harvests when you walk past, checks every toss, fills the belly, hatches
-	eggs, runs the yard and its income, the seed shop, the weather, the daily
-	craving, offline coins and the friend bonus.
+	The server's side of the whole game:
+
+	  buy a food -> feed it to the Thing -> it burps out an egg onto a nest
+	  -> the egg hatches by itself after a short countdown -> the Thinglet
+	  earns coins in your yard -> buy better food -> again
+
+	It checks every feed, rolls what each egg will hatch into (the food's
+	odds, your luck, the weather), hatches the eggs when they're ready, keeps
+	your best Thinglets in the yard (a better one takes the weakest one's
+	place, the other is sold), and runs the upgrades, the weather, the coin
+	truck, offline coins and the friend bonus.
 
 	The server decides everything; the clients only draw it. What a client
 	needs to draw lives in two places:
 	  * ReplicatedStorage.Plots.PlotN attributes - public (everyone sees
-	    your plants, your Thing's size and your Thinglets)
-	  * the "State" remote - private (your coins, basket, belly, shop...)
+	    your Thing's size, your eggs and your Thinglets)
+	  * the "State" remote - private (your coins, upgrades, dex...)
+	What an egg will hatch into stays on the server until it hatches.
 ]]
 
 local GameService = {}
@@ -24,12 +32,11 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Rules = require(ReplicatedStorage:WaitForChild("Rules"))
 local remoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local remotes = {
-	Toss = remoteFolder:WaitForChild("Toss") :: RemoteEvent,
-	TossResult = remoteFolder:WaitForChild("TossResult") :: RemoteEvent,
+	Feed = remoteFolder:WaitForChild("Feed") :: RemoteEvent,
+	FeedResult = remoteFolder:WaitForChild("FeedResult") :: RemoteEvent,
 	State = remoteFolder:WaitForChild("State") :: RemoteEvent,
 	Notify = remoteFolder:WaitForChild("Notify") :: RemoteEvent,
 	Hatched = remoteFolder:WaitForChild("Hatched") :: RemoteEvent,
-	Harvested = remoteFolder:WaitForChild("Harvested") :: RemoteEvent,
 	Fx = remoteFolder:WaitForChild("Fx") :: RemoteEvent,
 	Action = remoteFolder:WaitForChild("Action") :: RemoteFunction,
 }
@@ -42,70 +49,15 @@ local plotOwners = {} -- [plot index] = player
 local plotFolders = {} -- [plot index] = Folder in ReplicatedStorage.Plots
 local friendCache = {} -- ["a_b"] = true/false
 local currentWeather = ""
-
-local MUT_LETTER = { [""] = "N" }
-for _, mutation in ipairs(Config.Mutations) do
-	MUT_LETTER[mutation.id] = mutation.letter
-end
--- best variant first when tossing (it pays the most)
-local TOSS_ORDER = { "Gold", "Glowing", "Frozen", "Normal" }
+local serverRng = Random.new()
 
 local function now()
 	return workspace:GetServerTimeNow()
 end
 
-local function weatherNow()
-	return (Rules.weatherAt(now()))
-end
-
 ----------------------------------------------------------------------
 -- Small helpers
 ----------------------------------------------------------------------
-local function basketCount(data, cropId)
-	local variants = data.basket[cropId]
-	if not variants then
-		return 0
-	end
-	local total = 0
-	for _, count in pairs(variants) do
-		total += count
-	end
-	return total
-end
-
-local function basketAdd(data, cropId, mutation, amount)
-	local key = (mutation == nil or mutation == "") and "Normal" or mutation
-	data.basket[cropId] = data.basket[cropId] or {}
-	data.basket[cropId][key] = (data.basket[cropId][key] or 0) + (amount or 1)
-end
-
--- Takes one of this food out of the basket, best variant first.
--- Returns the mutation id ("" for normal), or nil if there's none.
-local function basketTake(data, cropId)
-	local variants = data.basket[cropId]
-	if not variants then
-		return nil
-	end
-	for _, key in ipairs(TOSS_ORDER) do
-		if (variants[key] or 0) > 0 then
-			variants[key] -= 1
-			return key == "Normal" and "" or key
-		end
-	end
-	return nil
-end
-
-local function plantedKinds(data)
-	local kinds, seen = {}, {}
-	for _, plant in ipairs(data.plants) do
-		if not seen[plant.crop] then
-			seen[plant.crop] = true
-			table.insert(kinds, plant.crop)
-		end
-	end
-	return kinds
-end
-
 local function character(player)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -120,8 +72,8 @@ local function hatchPosition(s)
 	return (Rules.plotCFrame(s.plot) * CFrame.new(W.Hatch)).Position
 end
 
-local function spotPosition(s, spot)
-	return (Rules.plotCFrame(s.plot) * CFrame.new(W.PlantSpots[spot])).Position
+local function nestCount(data)
+	return math.min(Rules.upgradeEffect(data, "nests"), #Config.Eggs.NestSpots)
 end
 
 local function notify(player, payload)
@@ -139,24 +91,20 @@ end
 ----------------------------------------------------------------------
 -- Publishing what everyone can see (plot attributes)
 ----------------------------------------------------------------------
-local function publishPlants(s)
+-- the eggs on the nests: which food, when it was laid and when it hatches
+-- (not what's inside: that's a surprise)
+local function publishEggs(s)
 	local list = {}
-	for i, plant in ipairs(s.data.plants) do
-		local letters = {}
-		for _, mutation in ipairs(plant.fruit) do
-			table.insert(letters, MUT_LETTER[mutation] or "N")
-		end
-		-- a = when its delivery lands (clients hide it until then)
-		local arriving = plant.arrive and plant.arrive > now() and plant.arrive or nil
-		list[i] = { c = plant.crop, f = table.concat(letters), a = arriving }
+	for _, egg in ipairs(s.data.eggs) do
+		table.insert(list, { id = egg.id, n = egg.nest, f = egg.food, l = egg.laid, r = egg.ready })
 	end
-	plotFolders[s.plot]:SetAttribute("Plants", HttpService:JSONEncode(list))
+	plotFolders[s.plot]:SetAttribute("Eggs", HttpService:JSONEncode(list))
 end
 
 local function publishYard(s)
 	local list = {}
 	for _, t in ipairs(s.data.yard) do
-		table.insert(list, { id = t.id, k = t.kind, m = t.mut, b = t.born, s = t.start, slot = t.slot })
+		table.insert(list, { id = t.id, k = t.kind, m = t.mut, b = t.born, s = t.start, slot = t.slot, n = t.nest })
 	end
 	plotFolders[s.plot]:SetAttribute("Yard", HttpService:JSONEncode(list))
 end
@@ -176,10 +124,9 @@ local function publishPlot(s)
 	folder:SetAttribute("Owner", s.player.UserId)
 	folder:SetAttribute("OwnerName", s.player.DisplayName)
 	folder:SetAttribute("ThingSize", s.size)
-	folder:SetAttribute("PlotsOwned", s.data.plots)
-	WorldBuilder.setPlotsOwned(s.plot, s.data.plots)
+	folder:SetAttribute("Nests", nestCount(s.data))
 	publishSign(s)
-	publishPlants(s)
+	publishEggs(s)
 	publishYard(s)
 	publishIncomeMult(s)
 end
@@ -189,49 +136,16 @@ local function clearPlot(i)
 	folder:SetAttribute("Owner", 0)
 	folder:SetAttribute("OwnerName", "")
 	folder:SetAttribute("ThingSize", 1)
-	folder:SetAttribute("PlotsOwned", 0)
+	folder:SetAttribute("Nests", 0)
 	folder:SetAttribute("IncomeMult", 1)
-	folder:SetAttribute("Plants", "[]")
+	folder:SetAttribute("Eggs", "[]")
 	folder:SetAttribute("Yard", "[]")
-	WorldBuilder.setPlotsOwned(i, 0)
 	WorldBuilder.setSign(i, "Free plot", "", 0)
 end
 
 ----------------------------------------------------------------------
 -- The private state each player's client draws its HUD from
 ----------------------------------------------------------------------
-local function refreshShop(s)
-	local index = Rules.restockIndex(now())
-	if s.data.shop.index ~= index then
-		s.data.shop = { index = index, bought = {} }
-	end
-	if s.stockIndex ~= index then
-		s.stockIndex = index
-		s.stock = Rules.stockFor(s.player.UserId, index)
-		return true
-	end
-	return false
-end
-
--- -1 = always in stock
-local function stockLeft(s, cropId)
-	local total = s.stock[cropId] or 0
-	if total < 0 then
-		return -1
-	end
-	return math.max(0, total - (s.data.shop.bought[cropId] or 0))
-end
-
-local function refreshDaily(s)
-	local day = Rules.dayIndex(now())
-	local daily = s.data.daily
-	if daily.day ~= day or daily.food == "" then
-		s.data.daily = { day = day, food = Rules.dailyFood(s.player.UserId, day, plantedKinds(s.data)), fed = 0, done = false }
-		return true
-	end
-	return false
-end
-
 local function yardIncome(s)
 	local t = now()
 	local total = 0
@@ -243,39 +157,20 @@ end
 
 local function buildState(s)
 	local data = s.data
-	local stock = {}
-	for _, crop in ipairs(Config.Crops) do
-		stock[crop.id] = stockLeft(s, crop.id)
-	end
-	local plants = {}
-	for _, plant in ipairs(data.plants) do
-		table.insert(plants, plant.crop)
-	end
 	return {
 		coins = data.coins,
 		income = s.income,
-		plots = data.plots,
-		plants = plants,
 		yardCap = data.yardCap,
 		yardCount = #data.yard,
 		upgrades = data.upgrades,
 		growth = data.growth,
 		size = s.size,
-		basket = data.basket,
-		belly = data.belly,
-		bellyCap = Rules.size(data.growth).belly,
-		craving = s.craving or "",
-		streak = s.streak,
-		stock = stock,
-		restockAt = Rules.nextRestockAt(now()),
+		luck = Rules.luck(data, s.size),
+		nests = nestCount(data),
+		eggs = #data.eggs,
 		dex = data.dex,
-		daily = {
-			food = data.daily.food, fed = data.daily.fed, need = Config.Daily.Need,
-			done = data.daily.done, resetAt = (data.daily.day + 1) * 86400,
-		},
 		friendBonus = s.friendBonus,
 		stats = data.stats,
-		pending = #data.pending,
 	}
 end
 
@@ -300,157 +195,8 @@ local function sendState(s)
 end
 
 ----------------------------------------------------------------------
--- Cravings
+-- The Thing grows as it eats
 ----------------------------------------------------------------------
-local function pickCraving(s, avoid)
-	local inBasket = {}
-	for _, crop in ipairs(Config.Crops) do
-		if basketCount(s.data, crop.id) > 0 then
-			table.insert(inBasket, crop.id)
-		end
-	end
-	-- something else in your basket; if you only have one kind, it keeps wanting that
-	local options = {}
-	for _, id in ipairs(inBasket) do
-		if id ~= avoid then
-			table.insert(options, id)
-		end
-	end
-	if #options == 0 then
-		options = #inBasket > 0 and inBasket or plantedKinds(s.data)
-	end
-	if #options == 0 then
-		s.craving = Config.Crops[1].id
-		return
-	end
-	s.craving = options[s.rng:NextInteger(1, #options)]
-end
-
-----------------------------------------------------------------------
--- Hatching
-----------------------------------------------------------------------
-local function freeSlot(data)
-	local used = {}
-	for _, t in ipairs(data.yard) do
-		used[t.slot or 0] = true
-	end
-	for slot = 1, #W.YardSlots do
-		if not used[slot] then
-			return slot
-		end
-	end
-	return 1
-end
-
-local function weakestIndex(data)
-	local best, bestIncome = nil, math.huge
-	for i, t in ipairs(data.yard) do
-		local income = Rules.fullIncome(t)
-		if income < bestIncome then
-			best, bestIncome = i, income
-		end
-	end
-	return best
-end
-
-local function sendYardFull(s)
-	local record = s.data.pending[1]
-	if not record then
-		return
-	end
-	local weakest = weakestIndex(s.data)
-	notify(s.player, {
-		type = "yardFull",
-		kind = record.kind,
-		mut = record.mut,
-		sellNew = Rules.sellPrice(record),
-		weakestId = weakest and s.data.yard[weakest].id or "",
-		weakestKind = weakest and s.data.yard[weakest].kind or "",
-		weakestMut = weakest and s.data.yard[weakest].mut or nil,
-		sellWeakest = weakest and Rules.sellPrice(s.data.yard[weakest]) or 0,
-	})
-end
-
--- Eggs waiting for room move into the yard as soon as there is room
--- (after buying yard space, selling, or choosing). Asks again if any still wait.
-local function drainPending(s)
-	local data = s.data
-	local moved = false
-	while data.pending[1] and #data.yard < data.yardCap do
-		local record = table.remove(data.pending, 1)
-		record.slot = freeSlot(data)
-		table.insert(data.yard, record)
-		moved = true
-	end
-	if moved then
-		publishYard(s)
-		markDirty(s)
-	end
-	if data.pending[1] then
-		sendYardFull(s)
-	end
-end
-
-local function hatch(s, kind, mutation, source)
-	local data = s.data
-	local record = {
-		id = "t" .. data.nextId,
-		kind = kind,
-		mut = mutation,
-		born = now(),
-		start = Rules.size(data.growth).hatchStart,
-		slot = 0,
-	}
-	data.nextId += 1
-	data.stats.hatches += 1
-
-	local newKind = data.dex[kind] == nil
-	data.dex[kind] = data.dex[kind] or {}
-	local look = mutation or "Normal"
-	local newLook = not data.dex[kind][look]
-	data.dex[kind][look] = true
-
-	local pending = false
-	if #data.pending == 0 and #data.yard < data.yardCap then
-		record.slot = freeSlot(data)
-		table.insert(data.yard, record)
-		publishYard(s)
-	else
-		table.insert(data.pending, record)
-		pending = true
-	end
-
-	remotes.Hatched:FireClient(s.player, {
-		kind = kind,
-		mut = mutation,
-		newKind = newKind,
-		newLook = newLook,
-		pending = pending,
-		source = source,
-	})
-	if pending and #data.pending == 1 then
-		sendYardFull(s)
-	end
-
-	local def = Config.Thinglets[kind]
-	local rank = Rules.rarityRank(def.rarity)
-	if rank >= 3 or mutation == "Gold" then
-		local name = (mutation and (mutation .. " ") or "") .. def.name
-		announce(s.player.DisplayName .. " hatched a " .. string.upper(def.rarity) .. " " .. name .. "!", Config.Rarities[def.rarity].color)
-	end
-	markDirty(s)
-end
-
-local function layEgg(s)
-	local data = s.data
-	local capacity = Rules.size(data.growth).belly
-	local kind = Rules.resolveHatch(data.belly, capacity) or Config.ThingletOrder[1]
-	local odds = Rules.mutationOdds(data.belly, s.size)
-	local mutation = Rules.rollMutation(odds, s.rng:NextNumber())
-	data.belly = {}
-	hatch(s, kind, mutation, "belly")
-end
-
 local function checkSizeUp(s)
 	local newSize = Rules.sizeIndex(s.data.growth)
 	if newSize <= s.size then
@@ -468,112 +214,174 @@ local function checkSizeUp(s)
 end
 
 ----------------------------------------------------------------------
--- The toss
+-- Feeding: pay for the food, the Thing eats it and burps out an egg
 ----------------------------------------------------------------------
-local function onToss(player, cropId, releaseTime)
+local function onFeed(player, foodId)
 	local s = sessions[player]
 	if not s or not s.ready then
 		return
 	end
-	if typeof(cropId) ~= "string" or typeof(releaseTime) ~= "number" or releaseTime ~= releaseTime then
+	if typeof(foodId) ~= "string" then
 		return
 	end
 	local data = s.data
 	local t = now()
-	local function reject(reason)
-		remotes.TossResult:FireClient(player, { ok = false, reason = reason, food = cropId })
+	local function reject(reason, code)
+		remotes.FeedResult:FireClient(player, { ok = false, reason = reason, code = code, food = foodId })
 	end
 
-	-- a small token bucket rather than a hard gap, so tosses that arrive
+	-- a small token bucket rather than a hard gap, so feeds that arrive
 	-- bunched up (a phone network catching up) still count
-	s.tossTokens = math.min(3, (s.tossTokens or 3) + (t - (s.tokensAt or t)) / Config.Toss.MinInterval)
+	s.feedTokens = math.min(3, (s.feedTokens or 3) + (t - (s.tokensAt or t)) / Config.Feed.MinInterval)
 	s.tokensAt = t
-	if s.tossTokens < 1 then
-		reject("slow")
+	if s.feedTokens < 1 then
+		reject("", "slow")
 		return
 	end
-	s.tossTokens -= 1
-	if #data.pending > 0 then
-		sendYardFull(s)
-		reject("Choose what to do with your new Thinglet first!")
+	s.feedTokens -= 1
+	local crop = Rules.crop(foodId)
+	if not crop then
+		reject("", "bad")
 		return
 	end
 	local root = character(player)
-	if not root or flatDistance(root.Position, hatchPosition(s)) > Config.Toss.Range + 8 then
-		reject("Get closer to your hatch!")
+	if not root or flatDistance(root.Position, hatchPosition(s)) > Config.Feed.Range + 8 then
+		reject("Get closer to your hatch!", "far")
 		return
 	end
-	local crop = Rules.crop(cropId)
-	if not crop then
-		reject("bad")
+	local nest = Rules.freeNest(data.eggs, nestCount(data))
+	if not nest then
+		reject("Your nests are full! Wait for an egg to hatch.", "nests")
 		return
 	end
-	local mutation = basketTake(data, cropId)
-	if not mutation then
-		reject("You don't have any " .. crop.name .. "!")
+	if data.coins < crop.price then
+		reject("Not enough coins for a " .. crop.name .. "!", "coins")
 		return
 	end
 
-	-- PERFECT is judged by the ring at the moment you let go
-	if releaseTime > t + 0.25 or releaseTime < t - Config.Toss.MaxClockSkew then
-		releaseTime = t
-	end
-	local perfect = Rules.isPerfect(releaseTime, Rules.upgradeEffect(data, "perfect"))
-
-	-- cravings and the combo
-	if t - s.lastTossAt > Config.Toss.ComboTimeout then
-		s.streak = 0
-	end
-	s.lastTossAt = t
-	local cravingHit = cropId == s.craving
-	if cravingHit then
-		s.streak += 1
-	else
-		s.streak = 0
-	end
-	local coins = Rules.tossCoins(cropId, mutation, s.size, cravingHit, s.streak, s.friendBonus, Rules.upgradeEffect(data, "toss"))
-	data.coins += coins
-	data.growth += crop.coins
-	data.stats.tosses += 1
-	if perfect then
-		data.stats.perfects += 1
-	end
-	table.insert(data.belly, { f = cropId, m = mutation, p = perfect })
-
+	data.coins -= crop.price
+	data.growth += crop.growth
+	data.stats.feeds += 1
 	local grew = checkSizeUp(s)
-	remotes.TossResult:FireClient(player, {
-		ok = true,
-		food = cropId,
+
+	-- what it will hatch into is decided now (luck and weather at feeding time)
+	local rng = s.rng
+	local luck = Rules.luck(data, s.size)
+	local kind, mutation = Rules.rollHatch(crop.id, luck, currentWeather, rng:NextNumber(), rng:NextNumber(), rng:NextNumber(), rng:NextNumber())
+	local first = data.stats.feeds == 1
+	local egg = {
+		id = "e" .. data.nextId,
+		nest = nest,
+		food = crop.id,
+		kind = kind,
 		mut = mutation,
-		coins = coins,
-		perfect = perfect,
-		craving = cravingHit,
-		streak = s.streak,
-		combo = Rules.comboMult(cravingHit and s.streak or 0),
-		grew = grew,
-	})
-	remotes.Fx:FireAllClients({ type = "chomp", plot = s.plot, perfect = perfect })
+		laid = t,
+		ready = t + Rules.eggSeconds(crop.id, Rules.upgradeEffect(data, "speed"), first),
+	}
+	data.nextId += 1
+	table.insert(data.eggs, egg)
+	publishEggs(s)
+	remotes.FeedResult:FireClient(player, { ok = true, food = crop.id, nest = nest, ready = egg.ready, grew = grew })
+	markDirty(s)
+end
 
-	if cravingHit or basketCount(data, s.craving or "") == 0 then
-		pickCraving(s, s.craving)
+----------------------------------------------------------------------
+-- Hatching: eggs hatch by themselves when their countdown ends
+----------------------------------------------------------------------
+local function freeSlot(data)
+	local used = {}
+	for _, t in ipairs(data.yard) do
+		used[t.slot or 0] = true
 	end
-
-	-- the belly's full: lay an egg
-	if #data.belly >= Rules.size(data.growth).belly then
-		layEgg(s)
-	end
-
-	-- the daily craving
-	local daily = data.daily
-	if not daily.done and cropId == daily.food then
-		daily.fed += 1
-		if daily.fed >= Config.Daily.Need then
-			daily.done = true
-			local roll = s.rng:NextNumber()
-			local mut = Rules.rollMutation(Config.Daily.Odds, roll) or "Frozen"
-			hatch(s, crop.thinglet, mut, "daily")
+	for slot = 1, #W.YardSlots do
+		if not used[slot] then
+			return slot
 		end
 	end
+	return 1
+end
+
+local function hatch(s, egg)
+	local data = s.data
+	local kind = Config.Thinglets[egg.kind] and egg.kind or Config.ThingletOrder[1]
+	local mutation = (type(egg.mut) == "string" and Rules.mutation(egg.mut)) and egg.mut or nil
+	local record = {
+		id = "t" .. data.nextId,
+		kind = kind,
+		mut = mutation,
+		born = now(),
+		start = Rules.size(data.growth).hatchStart,
+		slot = 0,
+		nest = egg.nest, -- where it hopped out from
+	}
+	data.nextId += 1
+	data.stats.hatches += 1
+
+	local newKind = data.dex[kind] == nil
+	data.dex[kind] = data.dex[kind] or {}
+	local look = mutation or "Normal"
+	local newLook = not data.dex[kind][look]
+	data.dex[kind][look] = true
+
+	-- into the yard; when it's full, a better one takes the weakest one's
+	-- place and the weaker one is sold (no choices to make)
+	local how, index = Rules.yardPlace(data.yard, data.yardCap, record)
+	local sold, soldKind, soldMut = 0, nil, nil
+	if how == "add" then
+		record.slot = freeSlot(data)
+		table.insert(data.yard, record)
+	elseif how == "replace" then
+		local old = data.yard[index]
+		sold, soldKind, soldMut = Rules.sellPrice(old), old.kind, old.mut
+		record.slot = old.slot
+		data.yard[index] = record
+	else
+		sold, soldKind, soldMut = Rules.sellPrice(record), kind, mutation
+	end
+	data.coins += sold
+
+	remotes.Hatched:FireClient(s.player, {
+		kind = kind,
+		mut = mutation,
+		newKind = newKind,
+		newLook = newLook,
+		how = how, -- "add", "replace" or "sell"
+		sold = sold,
+		soldKind = soldKind,
+		soldMut = soldMut,
+		nest = egg.nest,
+		food = egg.food,
+	})
+
+	local def = Config.Thinglets[kind]
+	if Rules.rarityRank(def.rarity) >= 4 or mutation == "Gold" then
+		local name = (mutation and (mutation .. " ") or "") .. def.name
+		announce(s.player.DisplayName .. " hatched a " .. string.upper(def.rarity) .. " " .. name .. "!", Config.Rarities[def.rarity].color)
+	end
+end
+
+local function hatchReady(s)
+	local t = now()
+	if t < (s.hatchAfter or 0) then
+		return
+	end
+	local ready, waiting = {}, {}
+	for _, egg in ipairs(s.data.eggs) do
+		table.insert(egg.ready <= t and ready or waiting, egg)
+	end
+	if #ready == 0 then
+		return
+	end
+	table.sort(ready, function(a, b)
+		return a.ready < b.ready
+	end)
+	s.data.eggs = waiting
+	publishEggs(s)
+	for _, egg in ipairs(ready) do
+		hatch(s, egg)
+	end
+	publishYard(s)
+	s.income = yardIncome(s)
 	markDirty(s)
 end
 
@@ -582,72 +390,11 @@ end
 ----------------------------------------------------------------------
 local actions = {}
 
-function actions.buySeed(s, cropId, replace)
-	local data = s.data
-	local crop = typeof(cropId) == "string" and Rules.crop(cropId)
-	if not crop then
-		return { ok = false, msg = "Unknown seed." }
-	end
-	refreshShop(s)
-	if stockLeft(s, crop.id) == 0 then
-		return { ok = false, msg = "Sold out! New stock in " .. Rules.clock(Rules.nextRestockAt(now()) - now()) .. "." }
-	end
-	if data.coins < crop.seed then
-		return { ok = false, msg = "Not enough coins yet." }
-	end
-
-	local spot
-	if #data.plants < data.plots then
-		spot = #data.plants + 1
-	else
-		-- every plot is full: replace the weakest plant, if it's weaker
-		local weakest, weakestRank = nil, math.huge
-		for i, plant in ipairs(data.plants) do
-			local rank = Rules.cropRank(plant.crop)
-			if rank < weakestRank then
-				weakest, weakestRank = i, rank
-			end
-		end
-		if not weakest or weakestRank >= Rules.cropRank(crop.id) then
-			return { ok = false, msg = "Your garden is full of better plants. Buy more plots in Upgrades!" }
-		end
-		local old = data.plants[weakest]
-		if replace ~= true then
-			return { ok = false, needReplace = true, msg = "Replace your " .. Rules.crop(old.crop).name .. " plant? You get its seed price back." }
-		end
-		-- pick its fruit first, and refund the seed
-		for _, mutation in ipairs(old.fruit) do
-			basketAdd(data, old.crop, mutation)
-		end
-		data.coins += Rules.crop(old.crop).seed
-		spot = weakest
-	end
-
-	data.coins -= crop.seed
-	-- a delivery truck brings it: the plant starts growing when the package lands
-	local t = now()
-	local start = math.max(t, s.deliveryFreeAt or 0)
-	s.deliveryFreeAt = start + Config.Delivery.Gap
-	local times = Rules.deliveryTimes(s.plot)
-	data.plants[spot] = { crop = crop.id, fruit = {}, timer = 0, arrive = start + times.total }
-	data.shop.bought[crop.id] = (data.shop.bought[crop.id] or 0) + 1
-	publishPlants(s)
-	remotes.Fx:FireAllClients({ type = "delivery", plot = s.plot, spot = spot, crop = crop.id, start = start })
-	if refreshDaily(s) then
-		markDirty(s)
-	end
-	markDirty(s)
-	return { ok = true, msg = "Your " .. crop.name .. " seeds are on their way!" }
-end
-
 -- Buy up to `want` levels of an upgrade (as many as you can afford)
 function actions.upgrade(s, id, want)
 	local def = typeof(id) == "string" and Rules.upgradeDef(id)
 	if not def then
 		return { ok = false, msg = "That's not an upgrade." }
-	end
-	if s.size < (def.unlock or 1) then
-		return { ok = false, msg = "Grow your Thing to " .. Config.Thing.Sizes[def.unlock].name .. " to unlock " .. def.name .. "." }
 	end
 	if typeof(want) ~= "number" or want ~= want then
 		want = 1
@@ -663,32 +410,20 @@ function actions.upgrade(s, id, want)
 		return { ok = false, msg = "Not enough coins yet." }
 	end
 	data.coins -= cost
-	if id == "plots" then
-		data.plots += n
-		plotFolders[s.plot]:SetAttribute("PlotsOwned", data.plots)
-		WorldBuilder.setPlotsOwned(s.plot, data.plots)
-	elseif id == "yard" then
+	if id == "yard" then
 		data.yardCap += n
-		drainPending(s)
 	else
 		data.upgrades[id] = level + n
 	end
-	if id == "income" then
+	if id == "nests" then
+		plotFolders[s.plot]:SetAttribute("Nests", nestCount(data))
+	elseif id == "income" then
 		s.income = yardIncome(s)
 		publishIncomeMult(s)
 	end
 	markDirty(s)
 	local msg = def.name .. (n > 1 and (" +" .. n .. " levels!") or " level up!")
 	return { ok = true, msg = msg, id = id, level = level + n, n = n }
-end
-
--- (older HUDs)
-function actions.buyPlot(s)
-	return actions.upgrade(s, "plots", 1)
-end
-
-function actions.buyYard(s)
-	return actions.upgrade(s, "yard", 1)
 end
 
 function actions.sell(s, id)
@@ -699,47 +434,12 @@ function actions.sell(s, id)
 			data.coins += price
 			table.remove(data.yard, i)
 			publishYard(s)
-			drainPending(s)
+			s.income = yardIncome(s)
 			markDirty(s)
 			return { ok = true, msg = "Sold for " .. Rules.short(price) .. " coins.", coins = price }
 		end
 	end
 	return { ok = false, msg = "That Thinglet isn't in your yard." }
-end
-
-function actions.yardChoice(s, choice)
-	local data = s.data
-	local record = data.pending[1]
-	if not record then
-		return { ok = false, msg = "" }
-	end
-	local price = 0
-	if choice == "swap" then
-		local weakest = weakestIndex(data)
-		if not weakest then
-			return { ok = false, msg = "" }
-		end
-		local old = data.yard[weakest]
-		price = Rules.sellPrice(old)
-		record.slot = old.slot
-		table.remove(data.yard, weakest)
-		table.insert(data.yard, record)
-		publishYard(s)
-	elseif choice == "sellNew" then
-		price = Rules.sellPrice(record)
-	else
-		return { ok = false, msg = "" }
-	end
-	data.coins += price
-	table.remove(data.pending, 1)
-	drainPending(s) -- the yard might have room again, or the next egg is waiting
-	markDirty(s)
-	return { ok = true, msg = "+" .. Rules.short(price) .. " coins", coins = price }
-end
-
-function actions.askYardFull(s)
-	drainPending(s)
-	return { ok = true, msg = "" }
 end
 
 local function onAction(player, name, a, b)
@@ -766,96 +466,32 @@ local function onAction(player, name, a, b)
 end
 
 ----------------------------------------------------------------------
--- The garden: growing and harvesting
+-- The coin truck: every so often it brings someone a package of coins
 ----------------------------------------------------------------------
-local function rollFruit(s)
-	local weather = weatherNow()
-	local luck = Rules.upgradeEffect(s.data, "luck")
-	if weather and s.rng:NextNumber() < weather.chance * luck then
-		return weather.mutation
-	end
-	if s.rng:NextNumber() < Config.Weather.GoldChance * luck then
-		return "Gold"
-	end
-	return ""
-end
-
-local function growPlants(s, dt)
-	local changed = false
-	local t = now()
-	dt *= Rules.upgradeEffect(s.data, "growth") -- Green thumb: time passes faster for plants
-	for _, plant in ipairs(s.data.plants) do
-		local crop = Rules.crop(plant.crop)
-		if plant.arrive and plant.arrive > t then
-			continue -- still on the delivery truck
-		end
-		if crop and #plant.fruit < Config.Garden.FruitCap then
-			plant.timer += dt
-			if plant.timer >= crop.regrow then
-				plant.timer -= crop.regrow
-				table.insert(plant.fruit, rollFruit(s))
-				changed = true
-			end
-		elseif crop then
-			plant.timer = 0
+local function sendTruck()
+	local list = {}
+	for _, s in pairs(sessions) do
+		if s.ready then
+			table.insert(list, s)
 		end
 	end
-	if changed then
-		publishPlants(s)
-	end
-end
-
--- While you were away: plants fill up (no weather, so nothing mutates)
-local function growPlantsOffline(data, seconds)
-	if seconds <= 0 then
+	if #list == 0 then
 		return
 	end
-	seconds *= Rules.upgradeEffect(data, "growth")
-	for _, plant in ipairs(data.plants) do
-		local crop = Rules.crop(plant.crop)
-		if crop then
-			plant.timer += seconds
-			while plant.timer >= crop.regrow and #plant.fruit < Config.Garden.FruitCap do
-				plant.timer -= crop.regrow
-				table.insert(plant.fruit, "")
-			end
-			if #plant.fruit >= Config.Garden.FruitCap then
-				plant.timer = 0
-			end
+	local s = list[serverRng:NextInteger(1, #list)]
+	local start = now() + 0.5
+	local times = Rules.deliveryTimes(s.plot)
+	remotes.Fx:FireAllClients({ type = "delivery", plot = s.plot, start = start })
+	notify(s.player, { type = "truckComing" })
+	task.delay(start - now() + times.total, function()
+		if sessions[s.player] ~= s or not s.ready then
+			return
 		end
-	end
-end
-
-local function harvest(s)
-	local root = character(s.player)
-	if not root then
-		return
-	end
-	local picked = {}
-	local reach = Rules.upgradeEffect(s.data, "reach")
-	local bumper = Rules.upgradeEffect(s.data, "bumper")
-	for spot, plant in ipairs(s.data.plants) do
-		if #plant.fruit > 0 and flatDistance(root.Position, spotPosition(s, spot)) <= reach then
-			local letters = {}
-			for _, mutation in ipairs(plant.fruit) do
-				-- Bumper crop: sometimes a fruit comes in twos
-				for _ = 1, (bumper > 0 and s.rng:NextNumber() < bumper) and 2 or 1 do
-					basketAdd(s.data, plant.crop, mutation)
-					table.insert(letters, MUT_LETTER[mutation] or "N")
-				end
-			end
-			plant.fruit = {}
-			table.insert(picked, { spot = spot, crop = plant.crop, fruit = table.concat(letters) })
-		end
-	end
-	if #picked > 0 then
-		publishPlants(s)
-		remotes.Harvested:FireClient(s.player, picked)
-		if not s.craving or basketCount(s.data, s.craving) == 0 then
-			pickCraving(s, nil)
-		end
+		local coins = math.max(Config.Delivery.MinTip, math.floor(s.income * Config.Delivery.TipSeconds))
+		s.data.coins += coins
+		notify(s.player, { type = "tip", coins = coins })
 		markDirty(s)
-	end
+	end)
 end
 
 ----------------------------------------------------------------------
@@ -922,6 +558,21 @@ local function makeLeaderstats(player)
 	stats.Parent = player
 end
 
+-- An older or hand-edited save could hold eggs that make no sense: keep the
+-- good ones, one per nest
+local function tidyEggs(data)
+	local kept, used = {}, {}
+	for _, egg in ipairs(data.eggs) do
+		if type(egg) == "table" and Rules.crop(egg.food) and Config.Thinglets[egg.kind]
+			and type(egg.nest) == "number" and not used[egg.nest] and Config.Eggs.NestSpots[egg.nest]
+			and type(egg.ready) == "number" then
+			used[egg.nest] = true
+			table.insert(kept, egg)
+		end
+	end
+	data.eggs = kept
+end
+
 local function onPlayerAdded(player)
 	local plot
 	for i = 1, W.Plots do
@@ -942,14 +593,9 @@ local function onPlayerAdded(player)
 		ready = false,
 		dirty = true,
 		lastSent = 0,
-		streak = 0,
-		lastTossAt = 0,
-		craving = nil,
 		friendBonus = 0,
 		income = 0,
 		size = 1,
-		stock = {},
-		stockIndex = -1,
 		rng = Random.new(),
 	}
 	sessions[player] = s
@@ -970,19 +616,24 @@ local function onPlayerAdded(player)
 		return
 	end
 	s.data = data
+	tidyEggs(data)
 
-	-- the time away: plants fill up, Thinglets earn (up to an hour)
+	-- the time away: Thinglets earned (up to Offline.MaxSeconds), and eggs
+	-- that finished meanwhile hatch a moment after you arrive
 	local t = now()
 	local away = data.lastOnline > 0 and (t - data.lastOnline) or 0
-	growPlantsOffline(data, away)
-	local offline = Rules.offlineCoins(data.yard, data.lastOnline, t, Rules.upgradeEffect(data, "nap"), Rules.upgradeEffect(data, "income"))
+	local offline = Rules.offlineCoins(data.yard, data.lastOnline, t, Config.Offline.MaxSeconds, Rules.upgradeEffect(data, "income"))
 	data.coins += offline
 	data.lastOnline = t
+	local readyEggs = 0
+	for _, egg in ipairs(data.eggs) do
+		if egg.ready <= t then
+			readyEggs += 1
+		end
+	end
+	s.hatchAfter = t + 3
 
 	s.size = Rules.sizeIndex(data.growth)
-	refreshShop(s)
-	refreshDaily(s)
-	pickCraving(s, nil)
 	s.income = yardIncome(s)
 	publishPlot(s)
 	s.ready = true
@@ -990,9 +641,8 @@ local function onPlayerAdded(player)
 	sendState(s)
 
 	if offline > 0 and away >= Config.Offline.ShowAfter then
-		notify(player, { type = "welcome", coins = offline, away = away })
+		notify(player, { type = "welcome", coins = offline, away = away, eggs = readyEggs })
 	end
-	drainPending(s)
 end
 
 local function onPlayerRemoving(player)
@@ -1032,6 +682,7 @@ end
 -- Studio-only test helpers: from the Command Bar while playing,
 --   game.Players.YourName:SetAttribute("GiveCoins", 1e6)
 --   game.Players.YourName:SetAttribute("GiveGrowth", 50000)   (feeds the Thing)
+--   game.Players.YourName:SetAttribute("HatchNow", true)      (every egg hatches now)
 local function studioHelpers(s)
 	local player = s.player
 	local coins = player:GetAttribute("GiveCoins")
@@ -1045,27 +696,33 @@ local function studioHelpers(s)
 		s.data.growth += growth
 		checkSizeUp(s)
 	end
+	if player:GetAttribute("HatchNow") then
+		player:SetAttribute("HatchNow", nil)
+		for _, egg in ipairs(s.data.eggs) do
+			egg.ready = now()
+		end
+		publishEggs(s)
+	end
 end
 
+local truckTimer = 60 -- the first truck comes a minute after the server starts
 local function tickSecond(dt)
 	tickWeather()
 	local studio = RunService:IsStudio()
 	for _, s in pairs(sessions) do
-		if s.ready and studio then
-			studioHelpers(s)
-		end
 		if s.ready then
-			growPlants(s, dt)
+			if studio then
+				studioHelpers(s)
+			end
 			s.income = yardIncome(s)
 			s.data.coins += s.income * dt
-			if refreshShop(s) then
-				markDirty(s)
-			end
-			if refreshDaily(s) then
-				markDirty(s)
-			end
 			markDirty(s) -- coins changed
 		end
+	end
+	truckTimer -= dt
+	if truckTimer <= 0 then
+		truckTimer = Config.Delivery.Every
+		sendTruck()
 	end
 end
 
@@ -1091,7 +748,7 @@ function GameService.start(dataService, worldBuilder)
 	end
 	ReplicatedStorage:SetAttribute("Weather", "")
 
-	remotes.Toss.OnServerEvent:Connect(onToss)
+	remotes.Feed.OnServerEvent:Connect(onFeed)
 	remotes.Action.OnServerInvoke = onAction
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
@@ -1100,15 +757,15 @@ function GameService.start(dataService, worldBuilder)
 		task.spawn(onPlayerAdded, player)
 	end
 
-	local secondTimer, harvestTimer = 0, 0
+	local secondTimer, hatchTimer = 0, 0
 	RunService.Heartbeat:Connect(function(dt)
 		secondTimer += dt
-		harvestTimer += dt
-		if harvestTimer >= 0.2 then
-			harvestTimer = 0
+		hatchTimer += dt
+		if hatchTimer >= 0.2 then
+			hatchTimer = 0
 			for _, s in pairs(sessions) do
 				if s.ready then
-					harvest(s)
+					hatchReady(s)
 				end
 			end
 		end

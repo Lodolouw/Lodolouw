@@ -25,77 +25,107 @@ local function near(name, got, want)
 		print("   ", got, want)
 	end
 end
-local function belly(spec)
-	-- "T T C*" -> tomato, tomato, perfect chili; "M*f" = perfect frozen melon
-	local names = { T = "Tomato", C = "Chili", E = "Eyeberry", G = "Glowshroom", P = "Pumpkin", M = "MoonMelon" }
-	local muts = { f = "Frozen", l = "Glowing", g = "Gold" }
-	local list = {}
-	for word in string.gmatch(spec, "%S+") do
-		local item = { f = names[string.sub(word, 1, 1)], m = "", p = false }
-		for i = 2, #word do
-			local c = string.sub(word, i, i)
-			if c == "*" then
-				item.p = true
-			elseif muts[c] then
-				item.m = muts[c]
-			end
-		end
-		table.insert(list, item)
+local function sum(odds)
+	local total = 0
+	for _, chance in pairs(odds) do
+		total += chance
 	end
-	return list
+	return total
 end
 
--- hatch rules
-check("3 tomatoes", Rules.resolveHatch(belly("T T T"), 3), "Blorp")
-check("most wins", Rules.resolveHatch(belly("T T C P E"), 5), "Blorp")
-check("tie -> rarer", Rules.resolveHatch(belly("T T C C E"), 5), "Sizzle")
-check("3-way tie -> rarest", Rules.resolveHatch(belly("T C E"), 3), "Peeper")
-check("2 melons + 3 others", Rules.resolveHatch(belly("M M T C E"), 5), "Moonmoth")
-check("5 different", Rules.resolveHatch(belly("T C E G P"), 5), "Mishmash")
-check("5 different incl melon", Rules.resolveHatch(belly("M C E G P"), 5), "Mishmash")
-check("secret", Rules.resolveHatch(belly("M* M* M*f M* M*"), 5), "LilThing")
-check("secret needs all perfect", Rules.resolveHatch(belly("M* M* M M* M*"), 5), "Moonmoth")
-check("secret needs a full belly", Rules.resolveHatch(belly("M* M* M*"), 5), "Moonmoth")
-check("secret at size 1", Rules.resolveHatch(belly("M* M* M*"), 3), "LilThing")
-check("empty", Rules.resolveHatch({}, 3), nil)
+-- the foods' odds in Config add up to 1, and better food is luckier
+do
+	local okSums, better = true, true
+	local previousRare = -1
+	for _, crop in ipairs(Config.Crops) do
+		if math.abs(sum(crop.odds) - 1) > 1e-9 then
+			okSums = false
+			print("   odds of " .. crop.id .. " add up to " .. sum(crop.odds))
+		end
+		local rare = 1 - crop.odds.Common
+		if rare <= previousRare then
+			better = false
+		end
+		previousRare = rare
+	end
+	check("every food's odds add up to 1", okSums, true)
+	check("each food is better than the one before", better, true)
+end
 
--- mutation odds
-local odds = Rules.mutationOdds(belly("T T T"), 1)
-near("base frozen", odds.Frozen, 0.05)
-near("base gold", odds.Gold, 0.01)
-near("base none", odds.None, 0.91)
-odds = Rules.mutationOdds(belly("Tf T* T"), 3)
-near("frozen food + perfect + size", odds.Frozen, 0.05 + 0.08 + 0.01 + 0.02)
-near("glowing gets perfect + size", odds.Glowing, 0.03 + 0.01 + 0.02)
-odds = Rules.mutationOdds(belly("Mg* Mg* Mg* Mg* Mg*"), 5)
-near("best possible gold", odds.Gold, 0.01 + 0.04 + 5 * 0.08 + 5 * 0.01)
-near("best possible none", odds.None, 0.24)
-local oldBonus = Config.MutatedFoodBonus
-Config.MutatedFoodBonus = 0.3
-odds = Rules.mutationOdds(belly("Mg* Mg* Mg* Mg* Mg*"), 5)
-near("capped at 100%", odds.Frozen + odds.Glowing + odds.Gold, 1)
-near("none is 0 when capped", odds.None, 0)
-Config.MutatedFoodBonus = oldBonus
-check("roll low -> Frozen", Rules.rollMutation({ Frozen = 0.05, Glowing = 0.03, Gold = 0.01 }, 0.01), "Frozen")
-check("roll mid -> Glowing", Rules.rollMutation({ Frozen = 0.05, Glowing = 0.03, Gold = 0.01 }, 0.06), "Glowing")
-check("roll -> Gold", Rules.rollMutation({ Frozen = 0.05, Glowing = 0.03, Gold = 0.01 }, 0.085), "Gold")
-check("roll high -> none", Rules.rollMutation({ Frozen = 0.05, Glowing = 0.03, Gold = 0.01 }, 0.5), nil)
+-- hatch odds
+local odds = Rules.hatchOdds("Tomato", 0)
+near("no luck: as in Config", odds.Legendary, Config.Crops[1].odds.Legendary)
+near("odds add up to 1", sum(odds), 1)
+local lucky = Rules.hatchOdds("Tomato", 0.5)
+near("lucky odds add up to 1", sum(lucky), 1)
+check("luck: more Rare", lucky.Rare > odds.Rare, true)
+check("luck: more Legendary", lucky.Legendary > odds.Legendary, true)
+check("luck: less Common", lucky.Common < odds.Common, true)
+check("luck helps Legendary most", lucky.Legendary / odds.Legendary > lucky.Rare / odds.Rare, true)
+local melon, luckyMelon = Rules.hatchOdds("MoonMelon", 0), Rules.hatchOdds("MoonMelon", 1.5)
+check("luck still matters with the best food", luckyMelon.Legendary > melon.Legendary + 0.05, true)
+near("best food, lots of luck: still adds up", sum(luckyMelon), 1)
+near("unknown food acts like the first", Rules.hatchOdds("Nope", 0).Common, Config.Crops[1].odds.Common)
+near("negative luck counts as none", Rules.hatchOdds("Chili", -3).Rare, Config.Crops[2].odds.Rare)
 
--- toss
-check("plain tomato", Rules.tossCoins("Tomato", "", 1, false, 0, 0), 3)
-check("craving tomato", Rules.tossCoins("Tomato", "", 1, true, 1, 0), 9)
-check("craving x combo 4", Rules.tossCoins("Tomato", "", 1, true, 4, 0), 45)
-check("combo caps", Rules.tossCoins("Tomato", "", 1, true, 9, 0), 45)
-check("gold chili size 3 + friend", Rules.tossCoins("Chili", "Gold", 3, false, 0, 0.1), math.floor(8 * 5 * 1.5 * 1.1 + 0.5))
-check("perfect at mid-cycle", Rules.isPerfect(Config.Toss.RingCycle * 0.5), true)
-check("not perfect at start", Rules.isPerfect(Config.Toss.RingCycle * 0.05), false)
-near("ring smallest at mid", Rules.ringOpen(Config.Toss.RingCycle * 0.5), 0)
+-- mutations
+local chances = Rules.mutationChances(0, "")
+near("base frozen", chances.Frozen, 0.04)
+near("base gold", chances.Gold, 0.005)
+near("luck raises gold", Rules.mutationChances(1, "").Gold, 0.01)
+near("snow: frozen x3", Rules.mutationChances(0, "Snow").Frozen, 0.12)
+near("snow: glowing stays", Rules.mutationChances(0, "Snow").Glowing, 0.02)
+near("full moon: glowing x3", Rules.mutationChances(0, "FullMoon").Glowing, 0.06)
+local maxed = Rules.mutationChances(1.5, "Snow")
+check("never more than 100% mutated", maxed.Frozen + maxed.Glowing + maxed.Gold < 1, true)
 
--- thing size
+-- rolling a hatch (the r's are the dice: 0 up to 1)
+local kind, mut, rarity = Rules.rollHatch("Tomato", 0, "", 0.5, 0.1, 0.1, 0.9)
+check("common roll", kind, "Blorp")
+check("common roll: rarity", rarity, "Common")
+check("no mutation", mut, "")
+check("its favourite most of the time", (Rules.rollHatch("Tomato", 0, "", 0.5, 0.1, 0.59, 0.9)), "Blorp")
+check("other commons the rest", (Rules.rollHatch("Tomato", 0, "", 0.5, 0.1, 0.99, 0.9)), "Sizzle")
+check("a rare from a tomato", select(3, Rules.rollHatch("Tomato", 0, "", 0.5, 0.95, 0.1, 0.9)), "Rare")
+check("rare kinds share it", (Rules.rollHatch("Tomato", 0, "", 0.5, 0.95, 0.99, 0.9)), "Glumcap")
+check("legendary from a tomato", (Rules.rollHatch("Tomato", 0, "", 0.5, 0.99999, 0.5, 0.9)), "Moonmoth")
+check("chili's favourite", (Rules.rollHatch("Chili", 0, "", 0.5, 0.1, 0.3, 0.9)), "Sizzle")
+check("eyeberry leans to Peeper", (Rules.rollHatch("Eyeberry", 0, "", 0.5, 0.9, 0.3, 0.9)), "Peeper")
+check("the secret", (Rules.rollHatch("MoonMelon", 0, "", 0.0001, 0.5, 0.5, 0.9)), "LilThing")
+check("the secret is rare", (Rules.rollHatch("MoonMelon", 0, "", 0.01, 0.01, 0.5, 0.9)) ~= "LilThing", true)
+check("the secret is never rolled as a normal Legendary", (Rules.rollHatch("MoonMelon", 0, "", 0.5, 0.999, 0.99, 0.9)), "Moonmoth")
+check("gold (rarest first)", select(2, Rules.rollHatch("Tomato", 0, "", 0.5, 0.1, 0.1, 0.004)), "Gold")
+check("glowing", select(2, Rules.rollHatch("Tomato", 0, "", 0.5, 0.1, 0.1, 0.01)), "Glowing")
+check("frozen", select(2, Rules.rollHatch("Tomato", 0, "", 0.5, 0.1, 0.1, 0.05)), "Frozen")
+check("snow makes frozen likely", select(2, Rules.rollHatch("Tomato", 0, "Snow", 0.5, 0.1, 0.1, 0.12)), "Frozen")
+do
+	-- roll lots with a fixed random generator: about the right share comes out
+	local rand = Rules.random(4242)
+	local counts, n = { Common = 0, Rare = 0, Epic = 0, Legendary = 0 }, 20000
+	for _ = 1, n do
+		local _, _, r = Rules.rollHatch("Glowshroom", 0, "", rand(), rand(), rand(), rand())
+		counts[r] += 1
+	end
+	check("about 45% rare from glowshrooms", math.abs(counts.Rare / n - 0.45) < 0.015, true)
+	check("about 12% epic from glowshrooms", math.abs(counts.Epic / n - 0.12) < 0.01, true)
+end
+
+-- eggs and nests
+check("a tomato egg", Rules.eggSeconds("Tomato", 1, false), 6)
+check("quick eggs", Rules.eggSeconds("Chili", 2, false), 4)
+check("the first egg is quick", Rules.eggSeconds("MoonMelon", 1, true), Config.Eggs.FirstEgg)
+check("first nest", Rules.freeNest({}, 3), 1)
+check("next free nest", Rules.freeNest({ { nest = 1 }, { nest = 3 } }, 3), 2)
+check("nests full", Rules.freeNest({ { nest = 1 }, { nest = 2 }, { nest = 3 } }, 3), nil)
+check("never more nests than spots", Rules.freeNest({}, 0), nil)
+check("as many spots as the max nests", #Config.Eggs.NestSpots >= Config.Eggs.StartNests + Rules.upgradeMax("nests"), true)
+
+-- the thing's size
 check("size 1", Rules.sizeIndex(0), 1)
-check("size 2", Rules.sizeIndex(100), 2)
-check("size 4", Rules.sizeIndex(60000), 4)
-check("size 5", Rules.sizeIndex(1e9), 5)
+check("size 2", Rules.sizeIndex(Config.Thing.Sizes[2].growth), 2)
+check("size 5", Rules.sizeIndex(1e12), 5)
+near("luck from size", Rules.luck({ upgrades = {} }, 2), Config.Thing.Sizes[2].luck)
+near("luck from size + upgrade", Rules.luck({ upgrades = { luck = 4 } }, 1), 4 * Rules.upgradeDef("luck").per)
 
 -- growth and income
 local blorp = { kind = "Blorp", born = 1000, start = 0.25 }
@@ -108,26 +138,22 @@ near("earned while growing", Rules.earned(blorp, 1000, 1120), (0.25 + 1) / 2 * 1
 near("earned after grown", Rules.earned(blorp, 2000, 2100), 100)
 near("earned across", Rules.earned(blorp, 1060, 1180), (0.625 + 1) / 2 * 60 + 60)
 local goldBlorp = { kind = "Blorp", mut = "Gold", born = 0, start = 1 }
-check("offline capped at an hour", Rules.offlineCoins({ goldBlorp }, 100, 100 + 86400), 5 * 3600)
+check("offline capped", Rules.offlineCoins({ goldBlorp }, 100, 100 + 86400, 3600), 5 * 3600)
 check("offline short", Rules.offlineCoins({ goldBlorp }, 100, 160), 300)
+check("offline with comfy yard", Rules.offlineCoins({ goldBlorp }, 100, 160, 3600, 1.5), 450)
 check("offline new player", Rules.offlineCoins({ goldBlorp }, 0, 160), 0)
-check("sell price", Rules.sellPrice(goldBlorp), 5 * 30)
+check("sell price", Rules.sellPrice(goldBlorp), 5 * Config.Yard.SellSeconds)
 
--- shop: same answer every time, commons always, moon on the hour
-local s1 = Rules.stockFor(12345, 777)
-local s2 = Rules.stockFor(12345, 777)
-check("stock is repeatable", s1.Eyeberry, s2.Eyeberry)
-check("tomato always", s1.Tomato, -1)
-check("moon on the hour", Rules.stockFor(12345, 12 * 500).MoonMelon >= 1, true)
-local seen, total = 0, 2000
-for i = 1, total do
-	if Rules.stockFor(98765, i).Pumpkin > 0 then
-		seen += 1
-	end
+-- the yard: room, then better ones take the weakest one's place
+do
+	local yard = { { kind = "Peeper" }, { kind = "Blorp" }, { kind = "Sizzle" } }
+	check("room in the yard", Rules.yardPlace(yard, 4, { kind = "Blorp" }), "add")
+	local how, index = Rules.yardPlace(yard, 3, { kind = "Glumcap" })
+	check("better: replaces...", how, "replace")
+	check("...the weakest", index, 2)
+	check("no better: sold", Rules.yardPlace(yard, 3, { kind = "Blorp" }), "sell")
+	check("a mutation counts", Rules.yardPlace(yard, 3, { kind = "Blorp", mut = "Frozen" }), "replace")
 end
-check("pumpkin about 40% of restocks", math.abs(seen / total - 0.4) < 0.04, true)
-local bigId = Rules.stockFor(9876543210, 5900000)
-check("huge ids work", bigId.Tomato, -1)
 
 -- weather
 local w, changeAt = Rules.weatherAt(0)
@@ -143,10 +169,6 @@ for c = 0, 200 do
 end
 check("both weathers happen", kinds.Snow and kinds.FullMoon, true)
 
--- daily
-check("daily picks a grown food", Rules.dailyFood(5, 20000, { "Chili" }), "Chili")
-check("daily with nothing grown", Rules.dailyFood(5, 20000, {}), "Tomato")
-
 -- numbers
 check("short 999", Rules.short(999), "999")
 check("short 1000", Rules.short(1000), "1K")
@@ -160,16 +182,16 @@ check("rate tens", Rules.rate(12.7), "12")
 check("rate big", Rules.rate(1500), "1.5K")
 check("clock", Rules.clock(125), "2:05")
 
--- plots and deliveries
+-- plots and the coin truck
 local x1, z1, side1 = Rules.plotSpot(1)
 check("plot 1 is north of the street", side1, 1)
 check("plot 1 faces the road from the north", z1 > 0, true)
 local _, z2, side2 = Rules.plotSpot(2)
 check("plot 2 is across the street", side2 == -1 and z2 < 0, true)
 check("plots 1 and 2 face each other", x1, (Rules.plotSpot(2)))
-local near, far = Rules.deliveryTimes(5), Rules.deliveryTimes(7) -- west end vs east end
-check("the far end takes longer", far.total > near.total, true)
-check("timeline in order", near.drive < near.throwAt and near.throwAt < near.landAt and near.landAt < near.total, true)
+local west, far = Rules.deliveryTimes(5), Rules.deliveryTimes(7) -- west end vs east end
+check("the far end takes longer", far.total > west.total, true)
+check("timeline in order", west.drive < west.throwAt and west.throwAt < west.landAt and west.landAt < west.total, true)
 check("a delivery takes a few seconds", far.total > 3 and far.total < 10, true)
 check("cruiseBrake starts at 0", Rules.cruiseBrake(0), 0)
 check("cruiseBrake ends at 1", math.abs(Rules.cruiseBrake(1) - 1) < 1e-9, true)
@@ -212,44 +234,51 @@ check("clock hours", Rules.clock(3725), "1:02:05")
 
 -- upgrades
 do
-	local fresh = { plots = Config.Garden.StartPlots, yardCap = Config.Yard.StartCap, upgrades = {} }
-	check("new save: no levels", Rules.upgradeLevel(fresh, "toss"), 0)
-	check("plots level from the save", Rules.upgradeLevel({ plots = 6 }, "plots"), 2)
-	check("plots use their price list", Rules.upgradeCost("plots", 0), Config.Garden.PlotPrices[5])
+	local fresh = { yardCap = Config.Yard.StartCap, upgrades = {} }
+	check("new save: no levels", Rules.upgradeLevel(fresh, "luck"), 0)
+	check("yard level from the save", Rules.upgradeLevel({ yardCap = 10 }, "yard"), 2)
 	check("yard uses its price list", Rules.upgradeCost("yard", 0), Config.Yard.Prices[9])
-	check("plots max", Rules.upgradeMax("plots"), 6)
-	check("maxed costs nothing (nil)", Rules.upgradeCost("plots", 6), nil)
-	check("first toss level", Rules.upgradeCost("toss", 0), 60)
-	check("prices are tidy", Rules.upgradeCost("toss", 7) % 10, 0)
+	check("yard max", Rules.upgradeMax("yard"), Config.Yard.MaxCap - Config.Yard.StartCap)
+	check("maxed costs nothing (nil)", Rules.upgradeCost("nests", 3), nil)
+	check("first nest", Rules.upgradeCost("nests", 0), 500)
+	check("prices are tidy", Rules.upgradeCost("income", 7) % 10, 0)
 	local rising = true
 	for _, def in ipairs(Config.Upgrades) do
 		for level = 1, Rules.upgradeMax(def.id) - 1 do
 			if Rules.upgradeCost(def.id, level) <= Rules.upgradeCost(def.id, level - 1) then
 				rising = false
+				print("   " .. def.id .. " level " .. level)
 			end
 		end
 	end
 	check("every level costs more than the last", rising, true)
-	local n, cost = Rules.upgradeBuy("toss", 0, 1000, 10)
-	check("buy as many as you can afford", n > 1 and n < 10 and cost <= 1000, true)
-	check("buy x1", (Rules.upgradeBuy("toss", 0, 1000, 1)), 1)
-	check("can't afford any", (Rules.upgradeBuy("toss", 0, 10, 10)), 0)
-	check("buy max stops at max", (Rules.upgradeBuy("reach", 3, 1e12, 999)), 2)
-	check("toss +10% a level", Rules.upgradeValue("toss", 3), 1.3)
-	check("reach in studs", Rules.upgradeValue("reach", 2), Config.Garden.HarvestRange + 6)
-	check("perfect window grows", Rules.upgradeValue("perfect", 0), Config.Toss.PerfectWindow)
-	check("bumper starts at 0", Rules.upgradeValue("bumper", 0), 0)
-	check("text: toss", Rules.upgradeText("toss", 3), "+30% coins")
-	check("text: plots", Rules.upgradeText("plots", 1), "5 plots")
-	check("text: nap", Rules.upgradeText("nap", 1), "1.5h away")
-	check("text: perfect", Rules.upgradeText("perfect", 1), "33% zone")
-	check("short: plots", Rules.upgradeShort("plots", 1), "5")
-	check("short: toss", Rules.upgradeShort("toss", 3), "+30%")
-	check("short: nap", Rules.upgradeShort("nap", 2), "2h")
-	check("short: luck", Rules.upgradeShort("luck", 1), "x1.2")
-	check("effect from a save", Rules.upgradeEffect({ upgrades = { toss = 2 } }, "toss"), 1.2)
-	check("tasty tosses pay more", Rules.tossCoins("Chili", "", 1, false, 0, 0, 1.5), 12)
-	check("wider window: more perfect", Rules.isPerfect(Config.Toss.RingCycle * 0.66, 0.4) and not Rules.isPerfect(Config.Toss.RingCycle * 0.66), true)
+	local n, cost = Rules.upgradeBuy("income", 0, 3000, 10)
+	check("buy as many as you can afford", n > 1 and n < 10 and cost <= 3000, true)
+	check("buy x1", (Rules.upgradeBuy("income", 0, 3000, 1)), 1)
+	check("can't afford any", (Rules.upgradeBuy("income", 0, 10, 10)), 0)
+	check("buy max stops at max", (Rules.upgradeBuy("nests", 1, 1e12, 999)), 2)
+	check("nests count", Rules.upgradeValue("nests", 2), Config.Eggs.StartNests + 2)
+	check("yard count", Rules.upgradeValue("yard", 3), Config.Yard.StartCap + 3)
+	near("income +10% a level", Rules.upgradeValue("income", 3), 1.3)
+	near("speed", Rules.upgradeValue("speed", 5), 1.5)
+	near("luck from 0", Rules.upgradeValue("luck", 0), 0)
+	check("text: income", Rules.upgradeText("income", 3), "+30% coins")
+	check("text: speed", Rules.upgradeText("speed", 2), "+20% faster")
+	check("text: luck", Rules.upgradeText("luck", 4), "+20% luck")
+	check("text: nests", Rules.upgradeText("nests", 1), "4 nests")
+	check("text: yard", Rules.upgradeText("yard", 1), "9 Thinglets")
+	check("short: nests", Rules.upgradeShort("nests", 1), "4")
+	check("short: income", Rules.upgradeShort("income", 3), "+30%")
+	check("short: luck", Rules.upgradeShort("luck", 2), "+10%")
+	near("effect from a save", Rules.upgradeEffect({ upgrades = { income = 2 } }, "income"), 1.2)
+	check("every upgrade has an icon", (function()
+		for _, def in ipairs(Config.Upgrades) do
+			if type(def.icon) ~= "string" then
+				return false
+			end
+		end
+		return true
+	end)(), true)
 end
 
 print(string.format("%d passed, %d failed", passed, failed))

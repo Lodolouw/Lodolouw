@@ -2,7 +2,7 @@
 
 ![overview](Previews/overview.jpg)
 
-`build_map.py` builds the whole neighbourhood: the street, 8 plots with houses, fences, planters and hatch pits, trees, hedges, lamps, the seed stand and the two tunnels the delivery truck uses (SEED EXPRESS and FEED THE THING). It's a script, so the map can be rebuilt or changed any time.
+`build_map.py` builds the whole neighbourhood: the street, 8 plots with houses, fences, planters and hatch pits, trees, hedges, lamps, the old seed stand and the two tunnels the coin truck uses (SEED EXPRESS and FEED THE THING). It's a script, so the map can be rebuilt or changed any time.
 
 | File | What it is |
 |---|---|

@@ -13,7 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 -- The remotes the client and server talk through
-local REMOTE_EVENTS = { "Toss", "TossResult", "State", "Notify", "Hatched", "Harvested", "Fx" }
+local REMOTE_EVENTS = { "Feed", "FeedResult", "State", "Notify", "Hatched", "Fx" }
 local REMOTE_FUNCTIONS = { "Action" }
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
