@@ -5,6 +5,7 @@ itself:
     Sounds/SoundSheet.ogg               -> ReplicatedStorage/SoundSheet.lua (Id)
     Blender/Export/FeedTheThing_Map.fbx   -> Config.AssetIds.Map
     Blender/Export/FeedTheThing_Props.fbx -> Config.AssetIds.Props
+    GUI/studs.png                       -> Config.AssetIds.StudsImage (or StudsDecal)
 
 On Windows, just double-click upload.bat (next to serve.bat): it asks for
 your API key and user id and runs this. Otherwise:
@@ -59,7 +60,20 @@ FILES = [
     ("Sounds/SoundSheet.ogg", "Audio", "audio/ogg", (SHEET_LUA, "Id")),
     ("Blender/Export/FeedTheThing_Map.fbx", "Model", "model/fbx", (CONFIG, "Map")),
     ("Blender/Export/FeedTheThing_Props.fbx", "Model", "model/fbx", (CONFIG, "Props")),
+    # an image for the GUI. Uploaded as an Image if Roblox allows it, else as
+    # a Decal (the game shows a Decal through its thumbnail instead)
+    ("GUI/studs.png", "Image", "image/png", (CONFIG, "StudsImage")),
 ]
+DECAL_FIELD = {"StudsImage": "StudsDecal"}
+
+
+def id_fields(field, kind):
+    """Where an id goes, and which field to clear: an image that went up as a
+    Decal fills the Decal field instead."""
+    if field in DECAL_FIELD:
+        image, decal = field, DECAL_FIELD[field]
+        return (decal, image) if kind == "Decal" else (image, decal)
+    return field, None
 
 
 def sha256(path):
@@ -127,6 +141,19 @@ def wait_for(op, key, name, same_id=None):
 
 
 def create(key, creator, path, asset_type, content_type):
+    """Uploads a new asset. Returns (id, the asset type it went up as)."""
+    if asset_type == "Image":
+        try:
+            return create_as(key, creator, path, "Image", content_type), "Image"
+        except RuntimeError as e:
+            if re.search(r"HTTP 40[13]", str(e)):
+                raise
+            print(f"  (Roblox didn't take it as an Image, so it goes up as a Decal: {str(e)[:120]})")
+            return create_as(key, creator, path, "Decal", content_type), "Decal"
+    return create_as(key, creator, path, asset_type, content_type), asset_type
+
+
+def create_as(key, creator, path, asset_type, content_type):
     name = "FeedTheThing " + os.path.splitext(os.path.basename(path))[0].replace("FeedTheThing_", "")
     meta = {
         "assetType": asset_type,
@@ -257,7 +284,10 @@ def main():
     for rel, path, digest, known, asset_type, content_type, target, field in done:
         print(f"  already up      {rel} -> {known['assetId']}")
         if not DRY_RUN:
-            write_id(target, field, known["assetId"])
+            put, clear = id_fields(field, known.get("type", asset_type))
+            write_id(target, put, known["assetId"])
+            if clear:
+                write_id(target, clear, 0)
     if not todo:
         print("Everything is already uploaded. Nothing to do.")
         return
@@ -284,7 +314,7 @@ def main():
     for rel, path, digest, known, asset_type, content_type, target, field in todo:
         print(f"  uploading       {rel} ...")
         try:
-            asset_id, what = None, ""
+            asset_id, what, kind = None, "", asset_type
             if known.get("assetId") and asset_type == "Model":
                 try:
                     asset_id, what = update(key, creator, path, asset_type, content_type, known["assetId"]), "new version"
@@ -293,7 +323,7 @@ def main():
                         raise
                     print(f"  couldn't update it ({e}), uploading it as a new asset")
             if asset_id is None:
-                asset_id, what = create(key, creator, path, asset_type, content_type), "uploaded"
+                (asset_id, kind), what = create(key, creator, path, asset_type, content_type), "uploaded"
         except RuntimeError as e:
             text = str(e)
             if re.search(r"HTTP 40[13]", text):
@@ -313,14 +343,17 @@ def main():
             print(f"  FAILED          {rel}: {text}{hint}")
             failed.append(rel)
             continue
-        record[rel] = {"sha256": digest, "assetId": asset_id}
+        record[rel] = {"sha256": digest, "assetId": asset_id, "type": kind}
         with open(RECORD, "w", newline="\n") as f:
             json.dump(record, f, indent=2, sort_keys=True)
             f.write("\n")
         uploaded += 1
         print(f"  {what:15s} {rel} -> {asset_id}")
-        if not write_id(target, field, asset_id):
-            print(f"  ! couldn't find '{field} = ...' in {os.path.relpath(target, GAME)}: add {asset_id} by hand")
+        put, clear = id_fields(field, kind)
+        if not write_id(target, put, asset_id):
+            print(f"  ! couldn't find '{put} = ...' in {os.path.relpath(target, GAME)}: add {asset_id} by hand")
+        if clear:
+            write_id(target, clear, 0)
 
     print()
     if uploaded:

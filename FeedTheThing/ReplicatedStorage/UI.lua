@@ -21,12 +21,14 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local SoundSheet = require(ReplicatedStorage:WaitForChild("SoundSheet"))
 
 UI.Font = Config.Font
--- the chunky, bright "simulator" look: saturated colours, thick black outlines
+-- The stud look (like the map): studded toy-brick panels and buttons,
+-- saturated colours, one corner size, thick black outlines.
 UI.Colors = {
-	Panel = Color3.fromRGB(55, 140, 235), -- panel bodies
-	PanelLight = Color3.fromRGB(105, 180, 255), -- rows and cards inside panels
+	Panel = Color3.fromRGB(232, 160, 85), -- panel bodies: tan brick, like the map's walls
+	PanelLight = Color3.fromRGB(250, 196, 120), -- rows and cards inside panels
+	Well = Color3.fromRGB(160, 95, 45), -- sunk-in bits: icon boxes, level pills, "not yet" buttons
 	Text = Color3.fromRGB(255, 255, 255),
-	Dim = Color3.fromRGB(215, 235, 255),
+	Dim = Color3.fromRGB(255, 240, 215),
 	Good = Color3.fromRGB(80, 215, 60),
 	Bad = Color3.fromRGB(235, 60, 60),
 	Gold = Color3.fromRGB(255, 205, 40),
@@ -97,10 +99,46 @@ function UI.chunky(obj, color, radius, outline)
 	UI.corner(obj, radius or UDim.new(0, 12))
 	UI.new("UIGradient", {
 		Rotation = 90,
-		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 190, 190)),
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 200, 200)),
 	}, obj)
 	UI.stroke(obj, outline or 3.5)
+	UI.studs(obj)
 	return obj
+end
+
+-- The studs: one stud image (GUI/studs.png, see Config.GuiImages) tiled over
+-- a frame, under everything else in it. Not uploaded yet: plain frames.
+UI.StudSize = 26
+local function studsImage()
+	local images = Config.GuiImages or {}
+	if (images.StudsImage or 0) > 0 then
+		return "rbxassetid://" .. images.StudsImage
+	elseif (images.StudsDecal or 0) > 0 then
+		return "rbxthumb://type=Asset&id=" .. images.StudsDecal .. "&w=150&h=150"
+	end
+	return nil
+end
+function UI.studs(frame, size)
+	local image = studsImage()
+	if not image or frame:FindFirstChild("Studs") or frame:FindFirstChildWhichIsA("UIGridStyleLayout") then
+		return nil
+	end
+	-- cover the whole frame, padding included
+	local pad = frame:FindFirstChildOfClass("UIPadding")
+	local l, r, t, b = 0, 0, 0, 0
+	if pad then
+		l, r, t, b = pad.PaddingLeft.Offset, pad.PaddingRight.Offset, pad.PaddingTop.Offset, pad.PaddingBottom.Offset
+	end
+	local studs = UI.new("ImageLabel", {
+		Name = "Studs", BackgroundTransparency = 1, Image = image, ScaleType = Enum.ScaleType.Tile,
+		TileSize = UDim2.fromOffset(size or UI.StudSize, size or UI.StudSize),
+		Position = UDim2.fromOffset(-l, -t), Size = UDim2.new(1, l + r, 1, t + b), ZIndex = 0,
+	}, frame)
+	local corner = frame:FindFirstChildOfClass("UICorner")
+	if corner then
+		UI.corner(studs, corner.CornerRadius)
+	end
+	return studs
 end
 
 -- Big italic numbers with a thick outline
@@ -217,7 +255,7 @@ ICONS.magnet = function(c)
 	-- a horseshoe magnet: red U, silver tips
 	local red = Color3.fromRGB(235, 60, 60)
 	shape(c, at(0.5, 0.58, 0.72, 0.62, 0, red), 2.5, UDim.new(0.5, 0))
-	shape(c, at(0.5, 0.48, 0.3, 0.6, 0, Color3.fromRGB(55, 140, 235)), nil, UDim.new(0.5, 0)) -- the gap (panel blue)
+	shape(c, at(0.5, 0.48, 0.3, 0.6, 0, UI.Colors.Well), nil, UDim.new(0.5, 0)) -- the gap (the icon box's colour)
 	for _, x in ipairs({ 0.25, 0.75 }) do
 		shape(c, at(x, 0.36, 0.22, 0.34, 0, red), 2.5, UDim.new(0.15, 0))
 		shape(c, at(x, 0.16, 0.22, 0.16, 0, Color3.fromRGB(225, 230, 240)), 2.5, UDim.new(0.15, 0))
@@ -256,7 +294,7 @@ ICONS.clover = function(c)
 end
 ICONS.lock = function(c)
 	shape(c, at(0.5, 0.34, 0.5, 0.5, 0, Color3.fromRGB(150, 150, 165)), 4, ROUND) -- the shackle
-	shape(c, at(0.5, 0.36, 0.26, 0.3, 0, Color3.fromRGB(55, 140, 235)), nil, ROUND)
+	shape(c, at(0.5, 0.36, 0.26, 0.3, 0, UI.Colors.Well), nil, ROUND)
 	local body = shape(c, at(0.5, 0.66, 0.66, 0.48, 0, Color3.fromRGB(255, 205, 40)), 2.5, UDim.new(0.18, 0))
 	shape(body, at(0.5, 0.45, 0.16, 0.36, 0, INK), nil, ROUND)
 end
@@ -292,21 +330,35 @@ function UI.button(parent, text, props, onClick)
 		TextScaled = true,
 		Size = UDim2.new(0, 160, 0, 56),
 	}, parent)
-	UI.chunky(button, nil, UDim.new(0, 12))
-	UI.new("UITextSizeConstraint", { MaxTextSize = 30, MinTextSize = 12 }, button)
 	UI.new("UIPadding", {
 		PaddingLeft = UDim.new(0, 8),
 		PaddingRight = UDim.new(0, 8),
 		PaddingTop = UDim.new(0, 6),
 		PaddingBottom = UDim.new(0, 6),
 	}, button)
-	UI.new("UIStroke", { Thickness = 2.5, Color = UI.Colors.Stroke, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual }, button)
+	UI.chunky(button, nil, UDim.new(0, 12))
+	-- the studs sit on top of the button's own text, so the text is shown by a
+	-- label above them instead (button.Text still works: it's copied over)
+	button.TextTransparency = 1
+	local caption = UI.label(button, { Name = "Caption", Size = UDim2.fromScale(1, 1), Text = text, ZIndex = 2 })
+	local limit = caption:FindFirstChildOfClass("UITextSizeConstraint")
+	if limit then
+		limit.MaxTextSize = 30
+	end
 	local scale = UI.new("UIScale", { Scale = 1 }, button)
 	if props then
 		for key, value in pairs(props) do
 			(button :: any)[key] = value
 		end
 	end
+	caption.Text = button.Text
+	caption.TextColor3 = button.TextColor3
+	button:GetPropertyChangedSignal("Text"):Connect(function()
+		caption.Text = button.Text
+	end)
+	button:GetPropertyChangedSignal("TextColor3"):Connect(function()
+		caption.TextColor3 = button.TextColor3
+	end)
 	button.MouseButton1Down:Connect(function()
 		TweenService:Create(scale, TweenInfo.new(0.06), { Scale = 0.92 }):Play()
 	end)

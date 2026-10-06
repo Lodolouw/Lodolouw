@@ -54,7 +54,7 @@ While Rojo is connected, any change to a file in `FeedTheThing/` shows up in Stu
 
 ### Sounds and Blender models: uploading them (upload.bat)
 
-All the sound effects are original. `Sounds/make_sounds.py` makes them, and also packs all of them into one file, `Sounds/SoundSheet.ogg`, so they cost a single audio upload instead of 18 (Roblox allows 10 audio uploads a month without ID verification). The Blender models are the `.fbx` files in `Blender/Export`.
+All the sound effects are original. `Sounds/make_sounds.py` makes them, and also packs all of them into one file, `Sounds/SoundSheet.ogg`, so they cost a single audio upload instead of 18 (Roblox allows 10 audio uploads a month without ID verification). The Blender models are the `.fbx` files in `Blender/Export`. The stud pattern on the menus and buttons is `GUI/studs.png`.
 
 **Double-click `upload.bat`** (next to `serve.bat`):
 1. **Copy your API key (Ctrl+C) and press Enter.** It reads the key straight from the clipboard, so nothing shows on screen.

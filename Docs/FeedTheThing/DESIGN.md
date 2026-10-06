@@ -397,6 +397,7 @@ Rebirth, Halloween event, NPC egg raids, trading, Robux cosmetics (see #8).
 | 10-05 | Sounds and Blender models upload with one double-click (upload.bat asks for the key and user id); all sounds ship as one sound sheet | No manual importing; one audio upload instead of 18 fits Roblox's 10-a-month limit |
 | 10-05 | Thinglets and the egg are made in Blender: smooth, flat-coloured pieces named by role (Body, Eye, Accent, Glow) instead of textures | Big readable faces; the Frozen, Glowing and Gold looks can still recolour them; the block-built versions stay as the fallback |
 | 10-06 | Upgrades became an incremental menu: 10 upgrades with levels, rising costs, buy x1/x10/MAX, unlocking as the Thing grows (Config.Upgrades) | Something to buy at every stage; the menu shows exactly what you get; everything stays coins-only |
+| 10-06 | GUI theme: stud style (studded tan panels like the map's walls, studded coloured buttons, one corner size), not a rounded 'slime' look | Matches the stud world and the genre's current look; the pill-and-blob style read as generic/AI |
 | 10-05 | Sound effects are made in code (`Sounds/make_sounds.py`) and uploaded with an Open Cloud key | 100% original (no licence or copyright risk), easy to tweak and re-upload |
 | 10-05 | Uploaded models load by asset id (InsertService) | No manual Studio import after every change |
 | 10-05 | Prototype: the server decides, clients draw (plants, Thing, Thinglets drawn locally from plot attributes) | Smooth animation on phones, light server |

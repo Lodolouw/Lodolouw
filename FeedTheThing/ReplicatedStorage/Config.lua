@@ -17,6 +17,11 @@ Config.GameName = "Feed the Thing in the Basement"
 Config.DataStoreName = "FeedTheThing_v1" -- change the _v1 to start everyone fresh
 Config.AutosaveEvery = 60 -- seconds
 Config.Font = Enum.Font.FredokaOne
+-- Images for the GUI (upload.bat fills these in; 0 = not uploaded yet)
+Config.GuiImages = {
+	StudsImage = 0, -- GUI/studs.png: the studs on menus and buttons...
+	StudsDecal = 0, -- ...or this, if Roblox only took it as a Decal
+}
 
 ----------------------------------------------------------------------
 -- Rarities (rank is used for ties, sorting and "are you sure?" prompts)

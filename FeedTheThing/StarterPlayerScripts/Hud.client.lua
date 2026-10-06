@@ -405,6 +405,7 @@ for i, crop in ipairs(Config.Crops) do
 	}, shop.body)
 	UI.corner(row, UDim.new(0, 14))
 	local stroke = UI.stroke(row, 3)
+	UI.studs(row)
 	UI.viewport(row, Looks.fruit(crop.id, "", false), { Size = UDim2.fromOffset(72, 72), Position = UDim2.fromOffset(8, 7), ZIndex = 23 })
 	UI.label(row, {
 		Size = UDim2.new(1, -270, 0, 32), Position = UDim2.fromOffset(88, 6), Text = crop.name,
@@ -457,15 +458,15 @@ end
 -- each time. Buy one, ten or as many as you can afford; more unlock as
 -- your Thing grows. (The rules and prices live in Rules / Config.Upgrades.)
 ----------------------------------------------------------------------
-local upgrades = makePanel("Upgrades", "Upgrades", 620, 480, C.Orange)
+local upgrades = makePanel("Upgrades", "Upgrades", 620, 480, C.Accent)
 upgrades.title.Size = UDim2.new(1, -300, 0, 44)
 upgrades.subtitle.Size = UDim2.new(1, -300, 0, 20)
 upgrades.subtitle.Text = "More unlock as your Thing grows"
 UI.new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, upgrades.body)
 UI.new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 2) }, upgrades.body)
 
-local DARK_BUTTON = Color3.fromRGB(40, 90, 165) -- "not yet": readable, not a broken-looking grey
-local LOCKED_ROW = Color3.fromRGB(75, 115, 175)
+local DARK_BUTTON = C.Well -- "not yet": readable, not a broken-looking grey
+local LOCKED_ROW = Color3.fromRGB(205, 140, 80)
 local refreshUpgrades -- (defined below)
 
 -- x1 / x10 / MAX: how many levels a tap buys
@@ -492,7 +493,7 @@ local upgradeRows = {}
 
 local function levelUpFlash(r, n)
 	local flash = UI.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.Gold, BackgroundTransparency = 0.3, ZIndex = 30 }, r.row)
-	UI.corner(flash, UDim.new(0, 16))
+	UI.corner(flash, UDim.new(0, 14))
 	tween(flash, 0.45, { BackgroundTransparency = 1 })
 	local text = UI.label(r.row, {
 		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0, 52, 0.5, 0), Size = UDim2.fromOffset(160, 40),
@@ -528,12 +529,13 @@ local function upgradeRow(def)
 	local row = UI.new("Frame", {
 		Name = def.id, Size = UDim2.new(1, -14, 0, 108), BackgroundColor3 = C.PanelLight, ZIndex = 22,
 	}, upgrades.body)
-	UI.corner(row, UDim.new(0, 16))
+	UI.corner(row, UDim.new(0, 14))
 	UI.stroke(row, 3)
+	UI.studs(row)
 	local iconBox = UI.new("Frame", {
-		Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(80, 80), BackgroundColor3 = C.Panel, ZIndex = 23,
+		Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(80, 80), BackgroundColor3 = C.Well, ZIndex = 23,
 	}, row)
-	UI.corner(iconBox, UDim.new(0, 16))
+	UI.corner(iconBox, UDim.new(0, 12))
 	UI.stroke(iconBox, 3)
 	local icon = UI.icon(iconBox, def.icon, { Size = UDim2.fromScale(0.78, 0.78), Position = UDim2.fromScale(0.11, 0.11) })
 	local lock = UI.icon(iconBox, "lock", { Size = UDim2.fromScale(0.7, 0.7), Position = UDim2.fromScale(0.15, 0.15), Visible = false })
@@ -544,9 +546,9 @@ local function upgradeRow(def)
 	})
 	local levelPill = UI.new("Frame", {
 		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -204, 0, 10), Size = UDim2.fromOffset(92, 28),
-		BackgroundColor3 = C.Panel, ZIndex = 23,
+		BackgroundColor3 = C.Well, ZIndex = 23,
 	}, row)
-	UI.corner(levelPill, UDim.new(1, 0))
+	UI.corner(levelPill, UDim.new(0, 8))
 	UI.stroke(levelPill, 2.5)
 	local levelLabel = UI.number(levelPill, { Size = UDim2.new(1, -10, 1, -4), Position = UDim2.fromOffset(5, 2), Text = "Lv 0", ZIndex = 24 })
 	local effect = UI.label(row, {
@@ -683,6 +685,7 @@ for i, kind in ipairs(Config.ThingletOrder) do
 	local card = UI.new("Frame", { Name = kind, LayoutOrder = i, BackgroundColor3 = C.PanelLight, ZIndex = 22 }, dex.body)
 	UI.corner(card, UDim.new(0, 14))
 	local stroke = UI.stroke(card, 3, Config.Rarities[def.rarity].color)
+	UI.studs(card)
 	local view = UI.viewport(card, nil, { Size = UDim2.new(1, -16, 0, 96), Position = UDim2.fromOffset(8, 6), ZIndex = 23 })
 	local name = UI.label(card, { Size = UDim2.new(1, -10, 0, 26), Position = UDim2.fromOffset(5, 102), Text = "???", ZIndex = 23 })
 	local hint = UI.label(card, { Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 128), Text = def.hint, TextColor3 = C.Dim, TextWrapped = true, ZIndex = 23 })
@@ -881,8 +884,10 @@ local function showWelcome(coins, away)
 	UI.label(box, { Size = UDim2.new(1, -30, 0, 28), Position = UDim2.fromOffset(15, 66), Text = "While you were away, your Thinglets earned", TextColor3 = C.Dim, ZIndex = 42 })
 	coinIcon(box, 40, UDim2.new(0.5, -110, 0, 108)).ZIndex = 42
 	UI.label(box, { Size = UDim2.fromOffset(200, 50), Position = UDim2.new(0.5, -60, 0, 103), Text = "+" .. Rules.short(coins), TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42 })
-	if away > Config.Offline.MaxSeconds then
-		UI.label(box, { Size = UDim2.new(1, -30, 0, 20), Position = UDim2.fromOffset(15, 158), Text = "(they earn for up to 1 hour while you're away)", TextColor3 = C.Dim, ZIndex = 42 })
+	local cap = state and Rules.upgradeEffect(state, "nap") or Config.Offline.MaxSeconds
+	if away > cap then
+		local hours = Rules.upgradeText("nap", state and Rules.upgradeLevel(state, "nap") or 0):gsub(" away", "")
+		UI.label(box, { Size = UDim2.new(1, -30, 0, 20), Position = UDim2.fromOffset(15, 158), Text = "(they earn for up to " .. hours .. " while you're away: Long nap makes it longer)", TextColor3 = C.Dim, ZIndex = 42 })
 	end
 	UI.button(box, "Collect", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -18), Size = UDim2.fromOffset(220, 62), ZIndex = 42 }, function()
 		back:Destroy()
