@@ -544,6 +544,22 @@ function Rules.upgradeText(id, level)
 	return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% coins"
 end
 
+-- Just the number, short, for small cards: "5", "+30%", "19", "1.5h", "x1.2"
+function Rules.upgradeShort(id, level)
+	local value = Rules.upgradeValue(id, level)
+	if id == "plots" or id == "yard" or id == "reach" then
+		return tostring(value)
+	elseif id == "perfect" or id == "bumper" then
+		return math.floor(value * 100 + 0.5) .. "%"
+	elseif id == "nap" then
+		local hours = value / 3600
+		return (hours == math.floor(hours) and string.format("%d", hours) or string.format("%.1f", hours)) .. "h"
+	elseif id == "luck" then
+		return "x" .. string.format("%.1f", value)
+	end
+	return "+" .. math.floor((value - 1) * 100 + 0.5) .. "%"
+end
+
 -- The effect for a save, in one call (the server and the HUD both use it)
 function Rules.upgradeEffect(data, id)
 	return Rules.upgradeValue(id, Rules.upgradeLevel(data, id))
