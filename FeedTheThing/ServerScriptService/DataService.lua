@@ -41,6 +41,7 @@ function DataService.newProfile()
 		growth = 0, -- how much the Thing has eaten (sets its size)
 		plots = Config.Garden.StartPlots,
 		yardCap = Config.Yard.StartCap,
+		upgrades = {}, -- [upgrade id] = level (Config.Upgrades; plots and yardCap are kept above)
 		plants = plants, -- [spot] = { crop = id, fruit = { mutation id or "" ... }, timer = seconds }
 		basket = {}, -- [crop id] = { [mutation id or "Normal"] = count }
 		belly = {}, -- { { f = crop id, m = mutation id or "", p = perfect } ... }

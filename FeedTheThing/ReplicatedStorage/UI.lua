@@ -128,7 +128,8 @@ end
 
 ----------------------------------------------------------------------
 -- Drawn icons (plain frames, so they're crisp at any size and need no
--- uploaded images): cart, book, egg, upgrade, coin, snow, moon, sun, x
+-- uploaded images): cart, sprout, book, egg, upgrade, coin, snow, moon, sun,
+-- magnet, target, twins, house, clover, lock, x
 ----------------------------------------------------------------------
 local INK = Color3.fromRGB(18, 14, 26)
 local function shape(parent, props, stroke, radius)
@@ -211,6 +212,53 @@ ICONS.sun = function(c)
 		shape(c, at(0.5, 0.5, 0.95, 0.11, k * 45, Color3.fromRGB(255, 170, 30)), nil, ROUND)
 	end
 	shape(c, at(0.5, 0.5, 0.56, 0.56, 0, Color3.fromRGB(255, 215, 50)), 2.5, ROUND)
+end
+ICONS.magnet = function(c)
+	-- a horseshoe magnet: red U, silver tips
+	local red = Color3.fromRGB(235, 60, 60)
+	shape(c, at(0.5, 0.58, 0.72, 0.62, 0, red), 2.5, UDim.new(0.5, 0))
+	shape(c, at(0.5, 0.48, 0.3, 0.6, 0, Color3.fromRGB(55, 140, 235)), nil, UDim.new(0.5, 0)) -- the gap (panel blue)
+	for _, x in ipairs({ 0.25, 0.75 }) do
+		shape(c, at(x, 0.36, 0.22, 0.34, 0, red), 2.5, UDim.new(0.15, 0))
+		shape(c, at(x, 0.16, 0.22, 0.16, 0, Color3.fromRGB(225, 230, 240)), 2.5, UDim.new(0.15, 0))
+	end
+end
+ICONS.target = function(c)
+	shape(c, at(0.5, 0.5, 0.9, 0.9, 0, Color3.fromRGB(235, 60, 60)), 2.5, ROUND)
+	shape(c, at(0.5, 0.5, 0.64, 0.64, 0, WHITE), nil, ROUND)
+	shape(c, at(0.5, 0.5, 0.4, 0.4, 0, Color3.fromRGB(235, 60, 60)), nil, ROUND)
+	shape(c, at(0.5, 0.5, 0.18, 0.18, 0, Color3.fromRGB(255, 205, 40)), 2, ROUND)
+end
+ICONS.twins = function(c)
+	-- two tomatoes
+	for _, p in ipairs({ { 0.34, 0.58, 0.52 }, { 0.64, 0.52, 0.56 } }) do
+		local tomato = shape(c, at(p[1], p[2], p[3], p[3], 0, Color3.fromRGB(235, 60, 55)), 2.5, ROUND)
+		shape(tomato, at(0.32, 0.32, 0.22, 0.16, -30, Color3.fromRGB(255, 160, 150)), nil, ROUND)
+		shape(c, at(p[1], p[2] - p[3] * 0.48, p[3] * 0.5, p[3] * 0.16, 0, Color3.fromRGB(90, 200, 60)), 2, ROUND)
+	end
+end
+ICONS.house = function(c)
+	shape(c, at(0.5, 0.36, 0.58, 0.58, 45, Color3.fromRGB(235, 70, 80)), 2.5, UDim.new(0.12, 0)) -- roof
+	local walls = shape(c, at(0.5, 0.66, 0.62, 0.46, 0, Color3.fromRGB(255, 225, 160)), 2.5, UDim.new(0.1, 0))
+	shape(walls, at(0.5, 0.66, 0.3, 0.68, 0, Color3.fromRGB(150, 90, 50)), 2, UDim.new(0.2, 0)) -- door
+	-- a little heart on the roof: it's comfy
+	shape(c, at(0.44, 0.32, 0.14, 0.14, 0, Color3.fromRGB(255, 120, 170)), nil, ROUND)
+	shape(c, at(0.56, 0.32, 0.14, 0.14, 0, Color3.fromRGB(255, 120, 170)), nil, ROUND)
+	shape(c, at(0.5, 0.38, 0.12, 0.12, 45, Color3.fromRGB(255, 120, 170)), nil, nil)
+end
+ICONS.clover = function(c)
+	local green = Color3.fromRGB(90, 210, 70)
+	shape(c, at(0.62, 0.78, 0.08, 0.34, -25, Color3.fromRGB(70, 160, 50)), 2, ROUND)
+	for _, p in ipairs({ { 0.5, 0.26 }, { 0.26, 0.5 }, { 0.74, 0.5 }, { 0.5, 0.74 } }) do
+		shape(c, at(p[1], p[2], 0.36, 0.36, 0, green), 2.5, ROUND)
+	end
+	shape(c, at(0.5, 0.5, 0.2, 0.2, 0, Color3.fromRGB(255, 225, 90)), nil, ROUND)
+end
+ICONS.lock = function(c)
+	shape(c, at(0.5, 0.34, 0.5, 0.5, 0, Color3.fromRGB(150, 150, 165)), 4, ROUND) -- the shackle
+	shape(c, at(0.5, 0.36, 0.26, 0.3, 0, Color3.fromRGB(55, 140, 235)), nil, ROUND)
+	local body = shape(c, at(0.5, 0.66, 0.66, 0.48, 0, Color3.fromRGB(255, 205, 40)), 2.5, UDim.new(0.18, 0))
+	shape(body, at(0.5, 0.45, 0.16, 0.36, 0, INK), nil, ROUND)
 end
 ICONS.x = function(c)
 	shape(c, at(0.5, 0.5, 0.78, 0.2, 45), 2.5, ROUND)

@@ -197,6 +197,36 @@ Config.Yard = {
 }
 
 ----------------------------------------------------------------------
+-- Upgrades (the Upgrades menu, incremental style). Every upgrade has
+-- levels and each level costs more than the last:
+--   cost = base * growth ^ level   (rounded to 2 digits)
+-- Garden plots and Yard space use the price lists above instead.
+--   per    = what one level adds (see Rules.upgradeValue for each one)
+--   unlock = the Thing size that unlocks it (1 Lurker, 2 Muncher, ...)
+-- Everything is bought with coins. Nothing here is for Robux.
+----------------------------------------------------------------------
+Config.Upgrades = {
+	{ id = "plots", name = "Garden plots", desc = "Grow more crops at once", icon = "sprout", unlock = 1 },
+	{ id = "yard", name = "Yard space", desc = "Room for more Thinglets", icon = "egg", unlock = 1 },
+	{ id = "toss", name = "Tasty tosses", desc = "Every toss pays more coins", icon = "coin", unlock = 1,
+		max = 25, base = 60, growth = 1.45, per = 0.10 },
+	{ id = "growth", name = "Green thumb", desc = "Plants regrow faster", icon = "sun", unlock = 1,
+		max = 20, base = 100, growth = 1.5, per = 0.10 },
+	{ id = "reach", name = "Long arms", desc = "Pick fruit from further away", icon = "magnet", unlock = 2,
+		max = 5, base = 300, growth = 2.2, per = 3 },
+	{ id = "perfect", name = "Sweet spot", desc = "A bigger PERFECT zone on the ring", icon = "target", unlock = 2,
+		max = 5, base = 400, growth = 2.5, per = 0.03 },
+	{ id = "bumper", name = "Bumper crop", desc = "Fruit you pick can come in twos", icon = "twins", unlock = 2,
+		max = 10, base = 500, growth = 1.9, per = 0.08 },
+	{ id = "income", name = "Comfy yard", desc = "Your Thinglets earn more", icon = "house", unlock = 3,
+		max = 25, base = 2000, growth = 1.5, per = 0.10 },
+	{ id = "luck", name = "Lucky soil", desc = "More Frozen, Glowing and Gold fruit", icon = "clover", unlock = 3,
+		max = 10, base = 5000, growth = 2, per = 0.20 },
+	{ id = "nap", name = "Long nap", desc = "Thinglets keep earning longer while you're away", icon = "moon", unlock = 4,
+		max = 6, base = 20000, growth = 2.5, per = 1800 },
+}
+
+----------------------------------------------------------------------
 -- Seed shop. Restocks on one server-wide timer; every player has their own
 -- stock. The SecretFood (Moon Melon) is always in stock at the top of each hour.
 ----------------------------------------------------------------------

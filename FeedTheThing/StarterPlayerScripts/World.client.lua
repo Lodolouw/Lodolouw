@@ -471,7 +471,10 @@ local function refreshThinglet(t, serverNow)
 		t.model:ScaleTo(height)
 	end
 	t.tag.gui.StudsOffsetWorldSpace = Vector3.new(0, t.height * (t.record.kind == "Moonmoth" and 1.5 or 1.05) + 1.4, 0)
-	t.tag.income.Text = "+" .. Rules.rate(Rules.income(t.record, serverNow)) .. "/s"
+	-- the owner's Comfy yard upgrade and friend bonus (published on the plot)
+	local p = plots[t.model:GetAttribute("Plot")]
+	local mult = p and p.folder:GetAttribute("IncomeMult") or 1
+	t.tag.income.Text = "+" .. Rules.rate(Rules.income(t.record, serverNow) * (tonumber(mult) or 1)) .. "/s"
 	local progress = Rules.progress(t.record, serverNow)
 	t.tag.bar.Visible = progress < 1
 	t.tag.fill.Size = UDim2.fromScale(progress, 1)

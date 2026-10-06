@@ -13,10 +13,13 @@
 local Rules = {}
 
 local Config
-local cropById, cropRank, mutationById
+local cropById, cropRank, mutationById, upgradeById
 
 local function index()
-	cropById, cropRank, mutationById = {}, {}, {}
+	cropById, cropRank, mutationById, upgradeById = {}, {}, {}, {}
+	for _, upgrade in ipairs(Config.Upgrades or {}) do
+		upgradeById[upgrade.id] = upgrade
+	end
 	for i, crop in ipairs(Config.Crops) do
 		cropById[crop.id] = crop
 		cropRank[crop.id] = i
@@ -179,8 +182,9 @@ function Rules.ringPhase(t)
 	return (t % cycle) / cycle
 end
 
-function Rules.isPerfect(t)
-	return math.abs(Rules.ringPhase(t) - 0.5) <= Config.Toss.PerfectWindow / 2
+-- window = share of the cycle that counts (the Sweet spot upgrade widens it)
+function Rules.isPerfect(t, window)
+	return math.abs(Rules.ringPhase(t) - 0.5) <= (window or Config.Toss.PerfectWindow) / 2
 end
 
 -- How big the ring is at time t: 0 = smallest, 1 = biggest
@@ -197,8 +201,8 @@ function Rules.comboMult(streak)
 	return combo[math.min(streak, #combo)]
 end
 
--- bonus = extra share from friends (0.1 = +10%)
-function Rules.tossCoins(foodId, mutationId, sizeIndex, cravingHit, streak, bonus)
+-- bonus = extra share from friends (0.1 = +10%); mult = the Tasty tosses upgrade
+function Rules.tossCoins(foodId, mutationId, sizeIndex, cravingHit, streak, bonus, mult)
 	local crop = cropById[foodId]
 	if not crop then
 		return 0
@@ -209,6 +213,7 @@ function Rules.tossCoins(foodId, mutationId, sizeIndex, cravingHit, streak, bonu
 		* (cravingHit and Config.Toss.CravingMult or 1)
 		* Rules.comboMult(cravingHit and streak or 0)
 		* (1 + (bonus or 0))
+		* (mult or 1)
 	return math.floor(value + 0.5)
 end
 
@@ -281,17 +286,18 @@ function Rules.earned(record, a, b)
 	return total
 end
 
--- What the whole yard earned while you were away (capped at Offline.MaxSeconds)
-function Rules.offlineCoins(yard, leftAt, now)
+-- What the whole yard earned while you were away (capped at Offline.MaxSeconds,
+-- or maxSeconds with the Long nap upgrade; mult = the Comfy yard upgrade)
+function Rules.offlineCoins(yard, leftAt, now, maxSeconds, mult)
 	if not leftAt or leftAt <= 0 or now <= leftAt then
 		return 0
 	end
-	local stop = leftAt + math.min(now - leftAt, Config.Offline.MaxSeconds)
+	local stop = leftAt + math.min(now - leftAt, maxSeconds or Config.Offline.MaxSeconds)
 	local total = 0
 	for _, record in ipairs(yard) do
 		total += Rules.earned(record, leftAt, stop)
 	end
-	return math.floor(total)
+	return math.floor(total * (mult or 1))
 end
 
 function Rules.sellPrice(record)
@@ -426,6 +432,121 @@ function Rules.clock(seconds)
 		return string.format("%d:%02d:%02d", seconds // 3600, (seconds % 3600) // 60, seconds % 60)
 	end
 	return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
+----------------------------------------------------------------------
+-- Upgrades (Config.Upgrades). `data` is a save (or the HUD's copy of it):
+-- plots, yardCap and upgrades = { [id] = level }.
+----------------------------------------------------------------------
+function Rules.upgradeDef(id)
+	return upgradeById[id]
+end
+
+function Rules.upgradeLevel(data, id)
+	if id == "plots" then
+		return (data.plots or Config.Garden.StartPlots) - Config.Garden.StartPlots
+	elseif id == "yard" then
+		return (data.yardCap or Config.Yard.StartCap) - Config.Yard.StartCap
+	end
+	return data.upgrades and data.upgrades[id] or 0
+end
+
+function Rules.upgradeMax(id)
+	if id == "plots" then
+		return Config.Garden.MaxPlots - Config.Garden.StartPlots
+	elseif id == "yard" then
+		return Config.Yard.MaxCap - Config.Yard.StartCap
+	end
+	local def = upgradeById[id]
+	return def and def.max or 0
+end
+
+-- prices look tidy: 2 significant digits (1234 -> 1200)
+local function tidy(x)
+	if x < 100 then
+		return math.floor(x + 0.5)
+	end
+	local step = 10 ^ (math.floor(math.log10(x)) - 1)
+	return math.floor(x / step + 0.5) * step
+end
+
+-- What the level after `level` costs (nil when it's maxed)
+function Rules.upgradeCost(id, level)
+	if level >= Rules.upgradeMax(id) then
+		return nil
+	end
+	if id == "plots" then
+		return Config.Garden.PlotPrices[Config.Garden.StartPlots + level + 1]
+	elseif id == "yard" then
+		return Config.Yard.Prices[Config.Yard.StartCap + level + 1]
+	end
+	local def = upgradeById[id]
+	return tidy(def.base * def.growth ^ level)
+end
+
+-- Buying up to `want` levels with `coins`: how many you get and what they
+-- cost. You always get as many as you can afford (0 if not even one).
+function Rules.upgradeBuy(id, level, coins, want)
+	local n, total = 0, 0
+	while n < want do
+		local cost = Rules.upgradeCost(id, level + n)
+		if not cost or total + cost > coins then
+			break
+		end
+		total += cost
+		n += 1
+	end
+	return n, total
+end
+
+-- The number an upgrade gives at `level`
+function Rules.upgradeValue(id, level)
+	local def = upgradeById[id]
+	if id == "plots" then
+		return Config.Garden.StartPlots + level
+	elseif id == "yard" then
+		return Config.Yard.StartCap + level
+	elseif id == "reach" then
+		return Config.Garden.HarvestRange + def.per * level -- studs
+	elseif id == "perfect" then
+		return Config.Toss.PerfectWindow + def.per * level -- share of the ring cycle
+	elseif id == "bumper" then
+		return def.per * level -- chance each picked fruit is doubled
+	elseif id == "nap" then
+		return Config.Offline.MaxSeconds + def.per * level -- seconds
+	end
+	return 1 + (def and def.per or 0) * level -- toss, growth, income, luck: multipliers
+end
+
+-- The same, in words for the menu
+function Rules.upgradeText(id, level)
+	local value = Rules.upgradeValue(id, level)
+	if id == "plots" then
+		return value .. " plots"
+	elseif id == "yard" then
+		return value .. " Thinglets"
+	elseif id == "reach" then
+		return value .. " studs"
+	elseif id == "perfect" then
+		return math.floor(value * 100 + 0.5) .. "% zone"
+	elseif id == "bumper" then
+		return math.floor(value * 100 + 0.5) .. "% chance"
+	elseif id == "nap" then
+		local hours = value / 3600
+		return (hours == math.floor(hours) and string.format("%d", hours) or string.format("%.1f", hours)) .. "h away"
+	elseif id == "growth" then
+		return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% speed"
+	elseif id == "luck" then
+		return "x" .. string.format("%.1f", value) .. " luck"
+	elseif id == "income" then
+		return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% income"
+	end
+	return "+" .. math.floor((value - 1) * 100 + 0.5) .. "% coins"
+end
+
+-- The effect for a save, in one call (the server and the HUD both use it)
+function Rules.upgradeEffect(data, id)
+	return Rules.upgradeValue(id, Rules.upgradeLevel(data, id))
 end
 
 ----------------------------------------------------------------------

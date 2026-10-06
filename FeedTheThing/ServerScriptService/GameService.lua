@@ -166,6 +166,11 @@ local function publishSign(s)
 	WorldBuilder.setSign(s.plot, s.player.DisplayName .. "'s Basement", "Size " .. s.size .. ": " .. size.name, s.player.UserId)
 end
 
+-- what each Thinglet's income is multiplied by (the name tags show it)
+local function publishIncomeMult(s)
+	plotFolders[s.plot]:SetAttribute("IncomeMult", Rules.upgradeEffect(s.data, "income") * (1 + s.friendBonus))
+end
+
 local function publishPlot(s)
 	local folder = plotFolders[s.plot]
 	folder:SetAttribute("Owner", s.player.UserId)
@@ -176,6 +181,7 @@ local function publishPlot(s)
 	publishSign(s)
 	publishPlants(s)
 	publishYard(s)
+	publishIncomeMult(s)
 end
 
 local function clearPlot(i)
@@ -184,6 +190,7 @@ local function clearPlot(i)
 	folder:SetAttribute("OwnerName", "")
 	folder:SetAttribute("ThingSize", 1)
 	folder:SetAttribute("PlotsOwned", 0)
+	folder:SetAttribute("IncomeMult", 1)
 	folder:SetAttribute("Plants", "[]")
 	folder:SetAttribute("Yard", "[]")
 	WorldBuilder.setPlotsOwned(i, 0)
@@ -231,7 +238,7 @@ local function yardIncome(s)
 	for _, record in ipairs(s.data.yard) do
 		total += Rules.income(record, t)
 	end
-	return total * (1 + s.friendBonus)
+	return total * (1 + s.friendBonus) * Rules.upgradeEffect(s.data, "income")
 end
 
 local function buildState(s)
@@ -251,6 +258,7 @@ local function buildState(s)
 		plants = plants,
 		yardCap = data.yardCap,
 		yardCount = #data.yard,
+		upgrades = data.upgrades,
 		growth = data.growth,
 		size = s.size,
 		basket = data.basket,
@@ -510,7 +518,7 @@ local function onToss(player, cropId, releaseTime)
 	if releaseTime > t + 0.25 or releaseTime < t - Config.Toss.MaxClockSkew then
 		releaseTime = t
 	end
-	local perfect = Rules.isPerfect(releaseTime)
+	local perfect = Rules.isPerfect(releaseTime, Rules.upgradeEffect(data, "perfect"))
 
 	-- cravings and the combo
 	if t - s.lastTossAt > Config.Toss.ComboTimeout then
@@ -523,7 +531,7 @@ local function onToss(player, cropId, releaseTime)
 	else
 		s.streak = 0
 	end
-	local coins = Rules.tossCoins(cropId, mutation, s.size, cravingHit, s.streak, s.friendBonus)
+	local coins = Rules.tossCoins(cropId, mutation, s.size, cravingHit, s.streak, s.friendBonus, Rules.upgradeEffect(data, "toss"))
 	data.coins += coins
 	data.growth += crop.coins
 	data.stats.tosses += 1
@@ -632,37 +640,55 @@ function actions.buySeed(s, cropId, replace)
 	return { ok = true, msg = "Your " .. crop.name .. " seeds are on their way!" }
 end
 
-function actions.buyPlot(s)
-	local data = s.data
-	if data.plots >= Config.Garden.MaxPlots then
-		return { ok = false, msg = "Your garden is as big as it gets!" }
+-- Buy up to `want` levels of an upgrade (as many as you can afford)
+function actions.upgrade(s, id, want)
+	local def = typeof(id) == "string" and Rules.upgradeDef(id)
+	if not def then
+		return { ok = false, msg = "That's not an upgrade." }
 	end
-	local price = Config.Garden.PlotPrices[data.plots + 1]
-	if data.coins < price then
+	if s.size < (def.unlock or 1) then
+		return { ok = false, msg = "Grow your Thing to " .. Config.Thing.Sizes[def.unlock].name .. " to unlock " .. def.name .. "." }
+	end
+	if typeof(want) ~= "number" or want ~= want then
+		want = 1
+	end
+	want = math.clamp(math.floor(want), 1, 1000)
+	local data = s.data
+	local level = Rules.upgradeLevel(data, id)
+	if level >= Rules.upgradeMax(id) then
+		return { ok = false, msg = def.name .. " is maxed out!" }
+	end
+	local n, cost = Rules.upgradeBuy(id, level, data.coins, want)
+	if n == 0 then
 		return { ok = false, msg = "Not enough coins yet." }
 	end
-	data.coins -= price
-	data.plots += 1
-	plotFolders[s.plot]:SetAttribute("PlotsOwned", data.plots)
-	WorldBuilder.setPlotsOwned(s.plot, data.plots)
+	data.coins -= cost
+	if id == "plots" then
+		data.plots += n
+		plotFolders[s.plot]:SetAttribute("PlotsOwned", data.plots)
+		WorldBuilder.setPlotsOwned(s.plot, data.plots)
+	elseif id == "yard" then
+		data.yardCap += n
+		drainPending(s)
+	else
+		data.upgrades[id] = level + n
+	end
+	if id == "income" then
+		s.income = yardIncome(s)
+		publishIncomeMult(s)
+	end
 	markDirty(s)
-	return { ok = true, msg = "New garden plot!" }
+	local msg = def.name .. (n > 1 and (" +" .. n .. " levels!") or " level up!")
+	return { ok = true, msg = msg, id = id, level = level + n, n = n }
+end
+
+-- (older HUDs)
+function actions.buyPlot(s)
+	return actions.upgrade(s, "plots", 1)
 end
 
 function actions.buyYard(s)
-	local data = s.data
-	if data.yardCap >= Config.Yard.MaxCap then
-		return { ok = false, msg = "Your yard is as big as it gets!" }
-	end
-	local price = Config.Yard.Prices[data.yardCap + 1]
-	if data.coins < price then
-		return { ok = false, msg = "Not enough coins yet." }
-	end
-	data.coins -= price
-	data.yardCap += 1
-	drainPending(s)
-	markDirty(s)
-	return { ok = true, msg = "More room in the yard!" }
+	return actions.upgrade(s, "yard", 1)
 end
 
 function actions.sell(s, id)
@@ -744,10 +770,11 @@ end
 ----------------------------------------------------------------------
 local function rollFruit(s)
 	local weather = weatherNow()
-	if weather and s.rng:NextNumber() < weather.chance then
+	local luck = Rules.upgradeEffect(s.data, "luck")
+	if weather and s.rng:NextNumber() < weather.chance * luck then
 		return weather.mutation
 	end
-	if s.rng:NextNumber() < Config.Weather.GoldChance then
+	if s.rng:NextNumber() < Config.Weather.GoldChance * luck then
 		return "Gold"
 	end
 	return ""
@@ -756,6 +783,7 @@ end
 local function growPlants(s, dt)
 	local changed = false
 	local t = now()
+	dt *= Rules.upgradeEffect(s.data, "growth") -- Green thumb: time passes faster for plants
 	for _, plant in ipairs(s.data.plants) do
 		local crop = Rules.crop(plant.crop)
 		if plant.arrive and plant.arrive > t then
@@ -782,6 +810,7 @@ local function growPlantsOffline(data, seconds)
 	if seconds <= 0 then
 		return
 	end
+	seconds *= Rules.upgradeEffect(data, "growth")
 	for _, plant in ipairs(data.plants) do
 		local crop = Rules.crop(plant.crop)
 		if crop then
@@ -803,12 +832,17 @@ local function harvest(s)
 		return
 	end
 	local picked = {}
+	local reach = Rules.upgradeEffect(s.data, "reach")
+	local bumper = Rules.upgradeEffect(s.data, "bumper")
 	for spot, plant in ipairs(s.data.plants) do
-		if #plant.fruit > 0 and flatDistance(root.Position, spotPosition(s, spot)) <= Config.Garden.HarvestRange then
+		if #plant.fruit > 0 and flatDistance(root.Position, spotPosition(s, spot)) <= reach then
 			local letters = {}
 			for _, mutation in ipairs(plant.fruit) do
-				basketAdd(s.data, plant.crop, mutation)
-				table.insert(letters, MUT_LETTER[mutation] or "N")
+				-- Bumper crop: sometimes a fruit comes in twos
+				for _ = 1, (bumper > 0 and s.rng:NextNumber() < bumper) and 2 or 1 do
+					basketAdd(s.data, plant.crop, mutation)
+					table.insert(letters, MUT_LETTER[mutation] or "N")
+				end
 			end
 			plant.fruit = {}
 			table.insert(picked, { spot = spot, crop = plant.crop, fruit = table.concat(letters) })
@@ -853,6 +887,9 @@ local function updateFriendBonuses()
 		local bonus = math.min(Config.Friends.Max, count * Config.Friends.PerFriend)
 		if bonus ~= s.friendBonus then
 			s.friendBonus = bonus
+			if s.ready then
+				publishIncomeMult(s)
+			end
 			markDirty(s)
 		end
 	end
@@ -938,7 +975,7 @@ local function onPlayerAdded(player)
 	local t = now()
 	local away = data.lastOnline > 0 and (t - data.lastOnline) or 0
 	growPlantsOffline(data, away)
-	local offline = Rules.offlineCoins(data.yard, data.lastOnline, t)
+	local offline = Rules.offlineCoins(data.yard, data.lastOnline, t, Rules.upgradeEffect(data, "nap"), Rules.upgradeEffect(data, "income"))
 	data.coins += offline
 	data.lastOnline = t
 

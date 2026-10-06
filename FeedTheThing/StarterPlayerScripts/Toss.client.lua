@@ -378,7 +378,7 @@ bellyAnchor.Parent = workspace
 local bellyGui = UI.new("BillboardGui", {
 	Name = "Belly",
 	Adornee = bellyAnchor,
-	Size = UDim2.fromScale(18, 9),
+	Size = UDim2.fromScale(18, 10.5),
 	LightInfluence = 0,
 	AlwaysOnTop = true,
 	MaxDistance = 90,
@@ -386,8 +386,8 @@ local bellyGui = UI.new("BillboardGui", {
 	ResetOnSpawn = false,
 }, playerGui)
 
-local predict = UI.label(bellyGui, { Size = UDim2.fromScale(1, 0.26), Text = "Feed me!", TextColor3 = Config.Thing.EyeColor })
-local slotsRow = UI.new("Frame", { Size = UDim2.fromScale(1, 0.42), Position = UDim2.fromScale(0, 0.28), BackgroundTransparency = 1 }, bellyGui)
+local predict = UI.label(bellyGui, { Size = UDim2.fromScale(1, 0.22), Text = "Feed me!", TextColor3 = Config.Thing.EyeColor })
+local slotsRow = UI.new("Frame", { Size = UDim2.fromScale(1, 0.36), Position = UDim2.fromScale(0, 0.24), BackgroundTransparency = 1 }, bellyGui)
 UI.new("UIListLayout", {
 	FillDirection = Enum.FillDirection.Horizontal,
 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -396,8 +396,17 @@ UI.new("UIListLayout", {
 	SortOrder = Enum.SortOrder.LayoutOrder,
 }, slotsRow)
 local oddsLabel = UI.label(bellyGui, {
-	Size = UDim2.fromScale(1, 0.22), Position = UDim2.fromScale(0, 0.74), Text = "", RichText = true, TextColor3 = UI.Colors.Dim,
+	Size = UDim2.fromScale(1, 0.18), Position = UDim2.fromScale(0, 0.62), Text = "", RichText = true, TextColor3 = UI.Colors.Dim,
 })
+-- how close the Thing is to its next size (it grows by eating)
+local sizeBack = UI.new("Frame", {
+	Size = UDim2.fromScale(0.84, 0.14), Position = UDim2.fromScale(0.08, 0.84), BackgroundColor3 = Color3.fromRGB(25, 15, 40),
+}, bellyGui)
+UI.corner(sizeBack, UDim.new(1, 0))
+UI.stroke(sizeBack, 2.5)
+local sizeFill = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = Config.Thing.EyeColor, BackgroundTransparency = 0.25 }, sizeBack)
+UI.corner(sizeFill, UDim.new(1, 0))
+local sizeText = UI.label(sizeBack, { Size = UDim2.fromScale(0.96, 0.9), Position = UDim2.fromScale(0.02, 0.05), Text = "", ZIndex = 2 })
 
 local slots = {}
 for i = 1, 5 do
@@ -457,6 +466,17 @@ end
 local function refreshBelly()
 	if not state then
 		return
+	end
+	local sizes = Config.Thing.Sizes
+	local size = sizes[state.size or 1] or sizes[1]
+	local nextSize = sizes[(state.size or 1) + 1]
+	if nextSize then
+		local k = math.clamp((state.growth - size.growth) / (nextSize.growth - size.growth), 0, 1)
+		sizeFill.Size = UDim2.fromScale(k, 1)
+		sizeText.Text = size.name .. "  >  " .. nextSize.name .. "  " .. percent(k)
+	else
+		sizeFill.Size = UDim2.fromScale(1, 1)
+		sizeText.Text = size.name .. ": fully grown!"
 	end
 	local capacity = state.bellyCap or 3
 	for i, slot in ipairs(slots) do
@@ -608,7 +628,7 @@ local function throwFood()
 	local food = selected
 	local mut = bestVariant(food)
 	local release = workspace:GetServerTimeNow()
-	local perfect = Rules.isPerfect(release)
+	local perfect = Rules.isPerfect(release, state and Rules.upgradeEffect(state, "perfect"))
 	lastThrow = os.clock()
 	local entry = { food = food, landed = false, result = nil }
 	table.insert(unconfirmed, entry)
@@ -794,7 +814,7 @@ RunService.RenderStepped:Connect(function()
 	-- the ring: same clock as the server uses to judge PERFECT
 	local t = workspace:GetServerTimeNow()
 	local open = Rules.ringOpen(t)
-	local perfect = Rules.isPerfect(t)
+	local perfect = Rules.isPerfect(t, state and Rules.upgradeEffect(state, "perfect"))
 	local ringColor = perfect and UI.Colors.Gold or Color3.fromRGB(235, 225, 255)
 	local ringSize = PAD + 12 + open * 46
 	ring.Size = UDim2.fromOffset(ringSize, ringSize)

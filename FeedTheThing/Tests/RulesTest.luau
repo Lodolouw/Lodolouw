@@ -210,6 +210,44 @@ do
 end
 check("clock hours", Rules.clock(3725), "1:02:05")
 
+-- upgrades
+do
+	local fresh = { plots = Config.Garden.StartPlots, yardCap = Config.Yard.StartCap, upgrades = {} }
+	check("new save: no levels", Rules.upgradeLevel(fresh, "toss"), 0)
+	check("plots level from the save", Rules.upgradeLevel({ plots = 6 }, "plots"), 2)
+	check("plots use their price list", Rules.upgradeCost("plots", 0), Config.Garden.PlotPrices[5])
+	check("yard uses its price list", Rules.upgradeCost("yard", 0), Config.Yard.Prices[9])
+	check("plots max", Rules.upgradeMax("plots"), 6)
+	check("maxed costs nothing (nil)", Rules.upgradeCost("plots", 6), nil)
+	check("first toss level", Rules.upgradeCost("toss", 0), 60)
+	check("prices are tidy", Rules.upgradeCost("toss", 7) % 10, 0)
+	local rising = true
+	for _, def in ipairs(Config.Upgrades) do
+		for level = 1, Rules.upgradeMax(def.id) - 1 do
+			if Rules.upgradeCost(def.id, level) <= Rules.upgradeCost(def.id, level - 1) then
+				rising = false
+			end
+		end
+	end
+	check("every level costs more than the last", rising, true)
+	local n, cost = Rules.upgradeBuy("toss", 0, 1000, 10)
+	check("buy as many as you can afford", n > 1 and n < 10 and cost <= 1000, true)
+	check("buy x1", (Rules.upgradeBuy("toss", 0, 1000, 1)), 1)
+	check("can't afford any", (Rules.upgradeBuy("toss", 0, 10, 10)), 0)
+	check("buy max stops at max", (Rules.upgradeBuy("reach", 3, 1e12, 999)), 2)
+	check("toss +10% a level", Rules.upgradeValue("toss", 3), 1.3)
+	check("reach in studs", Rules.upgradeValue("reach", 2), Config.Garden.HarvestRange + 6)
+	check("perfect window grows", Rules.upgradeValue("perfect", 0), Config.Toss.PerfectWindow)
+	check("bumper starts at 0", Rules.upgradeValue("bumper", 0), 0)
+	check("text: toss", Rules.upgradeText("toss", 3), "+30% coins")
+	check("text: plots", Rules.upgradeText("plots", 1), "5 plots")
+	check("text: nap", Rules.upgradeText("nap", 1), "1.5h away")
+	check("text: perfect", Rules.upgradeText("perfect", 1), "33% zone")
+	check("effect from a save", Rules.upgradeEffect({ upgrades = { toss = 2 } }, "toss"), 1.2)
+	check("tasty tosses pay more", Rules.tossCoins("Chili", "", 1, false, 0, 0, 1.5), 12)
+	check("wider window: more perfect", Rules.isPerfect(Config.Toss.RingCycle * 0.66, 0.4) and not Rules.isPerfect(Config.Toss.RingCycle * 0.66), true)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then
 	error("tests failed")
