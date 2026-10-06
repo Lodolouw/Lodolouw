@@ -304,6 +304,7 @@ local function makePanel(name, title, width, height, headerColor)
 		Active = true, -- taps on the panel don't fall through to the throw pad
 	}, gui)
 	UI.chunky(frame, C.Panel, UDim.new(0, 18), 4)
+	UI.studs(frame)
 	UI.fit(frame, width, height)
 	local header = UI.new("Frame", {
 		Name = "Header", Size = UDim2.new(1, 0, 0, 70), BackgroundColor3 = headerColor or C.Green, ZIndex = 21,
@@ -361,6 +362,7 @@ local function confirm(text, yesText, onYes)
 	}, back)
 	UI.fit(box, 400, 200)
 	UI.chunky(box, C.Panel, UDim.new(0, 18), 4)
+	UI.studs(box)
 	UI.label(box, { Size = UDim2.new(1, -30, 0, 90), Position = UDim2.fromOffset(15, 15), Text = text, ZIndex = 62 })
 	UI.button(box, yesText, { Position = UDim2.new(0.5, 8, 1, -72), Size = UDim2.fromOffset(170, 56), BackgroundColor3 = C.Bad, ZIndex = 62 }, function()
 		back:Destroy()
@@ -405,7 +407,6 @@ for i, crop in ipairs(Config.Crops) do
 	}, shop.body)
 	UI.corner(row, UDim.new(0, 14))
 	local stroke = UI.stroke(row, 3)
-	UI.studs(row)
 	UI.viewport(row, Looks.fruit(crop.id, "", false), { Size = UDim2.fromOffset(72, 72), Position = UDim2.fromOffset(8, 7), ZIndex = 23 })
 	UI.label(row, {
 		Size = UDim2.new(1, -270, 0, 32), Position = UDim2.fromOffset(88, 6), Text = crop.name,
@@ -456,16 +457,15 @@ end
 ----------------------------------------------------------------------
 -- Upgrades, incremental style: every upgrade has levels that cost more
 -- each time. Buy one, ten or as many as you can afford; more unlock as
--- your Thing grows. (The rules and prices live in Rules / Config.Upgrades.)
+-- your Thing grows. Kept simple: an icon, the name, what you get, a price.
+-- (The rules and prices live in Rules / Config.Upgrades.)
 ----------------------------------------------------------------------
-local upgrades = makePanel("Upgrades", "Upgrades", 620, 480, C.Accent)
-upgrades.title.Size = UDim2.new(1, -300, 0, 44)
-upgrades.subtitle.Size = UDim2.new(1, -300, 0, 20)
-upgrades.subtitle.Text = "More unlock as your Thing grows"
-UI.new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, upgrades.body)
-UI.new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 2) }, upgrades.body)
+local upgrades = makePanel("Upgrades", "Upgrades", 600, 470, C.Accent)
+upgrades.title.Size = UDim2.new(1, -300, 0, 48)
+upgrades.title.Position = UDim2.fromOffset(18, 11)
+UI.new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, upgrades.body)
+UI.new("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 2) }, upgrades.body)
 
-local DARK_BUTTON = C.Well -- "not yet": readable, not a broken-looking grey
 local LOCKED_ROW = Color3.fromRGB(205, 140, 80)
 local refreshUpgrades -- (defined below)
 
@@ -473,7 +473,7 @@ local refreshUpgrades -- (defined below)
 local buyAmount = 1
 local amountButtons = {}
 local amountBar = UI.new("Frame", {
-	AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -46, 0, 35), Size = UDim2.fromOffset(226, 46),
+	AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -46, 0, 35), Size = UDim2.fromOffset(222, 44),
 	BackgroundTransparency = 1, ZIndex = 23,
 }, upgrades.frame)
 UI.new("UIListLayout", {
@@ -482,7 +482,7 @@ UI.new("UIListLayout", {
 }, amountBar)
 for i, option in ipairs({ { 1, "x1" }, { 10, "x10" }, { 1000, "MAX" } }) do
 	local amount = option[1]
-	local button = UI.button(amountBar, option[2], { LayoutOrder = i, Size = UDim2.fromOffset(70, 44), ZIndex = 24 }, function()
+	local button = UI.button(amountBar, option[2], { LayoutOrder = i, Size = UDim2.fromOffset(70, 42), ZIndex = 24 }, function()
 		buyAmount = amount
 		refreshUpgrades()
 	end)
@@ -494,22 +494,13 @@ local upgradeRows = {}
 local function levelUpFlash(r, n)
 	local flash = UI.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.Gold, BackgroundTransparency = 0.3, ZIndex = 30 }, r.row)
 	UI.corner(flash, UDim.new(0, 14))
-	tween(flash, 0.45, { BackgroundTransparency = 1 })
-	local text = UI.label(r.row, {
-		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0, 52, 0.5, 0), Size = UDim2.fromOffset(160, 40),
-		Text = n > 1 and ("+" .. n .. " LEVELS!") or "LEVEL UP!", TextColor3 = C.Gold, Rotation = -8, ZIndex = 31,
-	})
-	tween(text, 0.8, { Position = UDim2.new(0, 52, 0.5, -46), TextTransparency = 1 })
-	local stroke = text:FindFirstChildOfClass("UIStroke")
-	if stroke then
-		tween(stroke, 0.8, { Transparency = 1 })
-	end
-	task.delay(0.85, function()
+	tween(flash, 0.4, { BackgroundTransparency = 1 })
+	task.delay(0.45, function()
 		flash:Destroy()
-		text:Destroy()
 	end)
-	UI.pop(r.levelPill, 0.5)
-	UI.pop(r.iconBox, 0.25)
+	UI.pop(r.iconBox, 0.3)
+	UI.pop(r.effect, 0.15)
+	toast(n > 1 and (r.def.name .. " +" .. n .. " levels!") or (r.def.name .. " level up!"), C.Gold, 1.5)
 end
 
 local function buyUpgrade(id)
@@ -517,79 +508,46 @@ local function buyUpgrade(id)
 	local result = act("upgrade", id, buyAmount)
 	if result.ok then
 		UI.sound("Buy")
-		UI.sound("Coin", 0.5, 1.2)
 		levelUpFlash(r, result.n or 1)
 	else
 		UI.sound("Error", 0.6)
-		toast(result.msg, C.Bad, 2.5)
+		toast(result.msg, C.Bad, 2)
 	end
 end
 
 local function upgradeRow(def)
 	local row = UI.new("Frame", {
-		Name = def.id, Size = UDim2.new(1, -14, 0, 108), BackgroundColor3 = C.PanelLight, ZIndex = 22,
+		Name = def.id, Size = UDim2.new(1, -14, 0, 84), BackgroundColor3 = C.PanelLight, ZIndex = 22,
 	}, upgrades.body)
 	UI.corner(row, UDim.new(0, 14))
 	UI.stroke(row, 3)
-	UI.studs(row)
 	local iconBox = UI.new("Frame", {
-		Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(80, 80), BackgroundColor3 = C.Well, ZIndex = 23,
+		Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(64, 64), BackgroundColor3 = C.Well, ZIndex = 23,
 	}, row)
 	UI.corner(iconBox, UDim.new(0, 12))
 	UI.stroke(iconBox, 3)
-	local icon = UI.icon(iconBox, def.icon, { Size = UDim2.fromScale(0.78, 0.78), Position = UDim2.fromScale(0.11, 0.11) })
+	local icon = UI.icon(iconBox, def.icon, { Size = UDim2.fromScale(0.8, 0.8), Position = UDim2.fromScale(0.1, 0.1) })
 	local lock = UI.icon(iconBox, "lock", { Size = UDim2.fromScale(0.7, 0.7), Position = UDim2.fromScale(0.15, 0.15), Visible = false })
-
 	local name = UI.label(row, {
-		Position = UDim2.fromOffset(104, 8), Size = UDim2.new(1, -404, 0, 32), Text = def.name,
+		Position = UDim2.fromOffset(88, 9), Size = UDim2.new(1, -278, 0, 32), Text = def.name,
 		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23,
 	})
-	local levelPill = UI.new("Frame", {
-		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -204, 0, 10), Size = UDim2.fromOffset(92, 28),
-		BackgroundColor3 = C.Well, ZIndex = 23,
-	}, row)
-	UI.corner(levelPill, UDim.new(0, 8))
-	UI.stroke(levelPill, 2.5)
-	local levelLabel = UI.number(levelPill, { Size = UDim2.new(1, -10, 1, -4), Position = UDim2.fromOffset(5, 2), Text = "Lv 0", ZIndex = 24 })
 	local effect = UI.label(row, {
-		Position = UDim2.fromOffset(104, 42), Size = UDim2.new(1, -308, 0, 26), Text = "", RichText = true,
+		Position = UDim2.fromOffset(88, 44), Size = UDim2.new(1, -278, 0, 28), Text = "", RichText = true,
 		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23,
 	})
-	UI.label(row, {
-		Position = UDim2.fromOffset(104, 68), Size = UDim2.new(1, -308, 0, 18), Text = def.desc, TextColor3 = C.Dim,
-		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 23,
-	})
-	-- how far along it is (level / max)
-	local levelBack = UI.new("Frame", {
-		Position = UDim2.new(0, 104, 1, -16), Size = UDim2.new(1, -308, 0, 8), BackgroundColor3 = Color3.fromRGB(25, 15, 40), ZIndex = 23,
-	}, row)
-	UI.corner(levelBack, UDim.new(1, 0))
-	local levelFill = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.Gold, ZIndex = 24 }, levelBack)
-	UI.corner(levelFill, UDim.new(1, 0))
-
 	local button = UI.button(row, "", {
-		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 12), Size = UDim2.fromOffset(176, 74), ZIndex = 23,
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(170, 60), ZIndex = 23,
 	}, function()
 		buyUpgrade(def.id)
 	end)
-	local coin = UI.icon(button, "coin", { Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(4, 2) })
+	local coin = UI.icon(button, "coin", { Size = UDim2.fromOffset(30, 30), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 6, 0.5, 0) })
 	local price = UI.number(button, {
-		Position = UDim2.fromOffset(38, 0), Size = UDim2.new(1, -40, 0, 34), Text = "", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 24,
+		Position = UDim2.fromOffset(42, 0), Size = UDim2.new(1, -46, 1, 0), Text = "", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 24,
 	})
-	local sub = UI.label(button, { Position = UDim2.new(0, 0, 1, -24), Size = UDim2.new(1, 0, 0, 22), Text = "", ZIndex = 24 })
-	-- under the button: how close you are to affording it
-	local needBack = UI.new("Frame", {
-		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -6), Size = UDim2.fromOffset(168, 7),
-		BackgroundColor3 = Color3.fromRGB(25, 15, 40), ZIndex = 23,
-	}, row)
-	UI.corner(needBack, UDim.new(1, 0))
-	local needFill = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.Good, ZIndex = 24 }, needBack)
-	UI.corner(needFill, UDim.new(1, 0))
-
 	upgradeRows[def.id] = {
-		row = row, iconBox = iconBox, icon = icon, lock = lock, name = name, levelPill = levelPill, levelLabel = levelLabel,
-		effect = effect, levelBack = levelBack, levelFill = levelFill, button = button, coin = coin, price = price, sub = sub,
-		needBack = needBack, needFill = needFill,
+		def = def, row = row, iconBox = iconBox, icon = icon, lock = lock, name = name, effect = effect,
+		button = button, coin = coin, price = price,
 	}
 end
 for _, def in ipairs(Config.Upgrades) do
@@ -617,7 +575,7 @@ function refreshUpgrades()
 		return
 	end
 	for amount, button in pairs(amountButtons) do
-		button.BackgroundColor3 = amount == buyAmount and C.Good or DARK_BUTTON
+		button.BackgroundColor3 = amount == buyAmount and C.Good or C.Well
 	end
 	for i, def in ipairs(Config.Upgrades) do
 		local r = upgradeRows[def.id]
@@ -627,46 +585,26 @@ function refreshUpgrades()
 		r.row.LayoutOrder = (unlocked and 0 or 100) + i
 		r.icon.Visible = unlocked
 		r.lock.Visible = not unlocked
-		r.levelPill.Visible = unlocked
-		r.levelBack.Visible = unlocked
 		r.button.Visible = unlocked
 		r.row.BackgroundColor3 = unlocked and C.PanelLight or LOCKED_ROW
 		r.name.TextColor3 = unlocked and C.Text or C.Dim
 		if not unlocked then
-			r.needBack.Visible = false
-			r.effect.Text = '<font color="#FFCD28">Unlocks when your Thing is a ' .. Config.Thing.Sizes[def.unlock].name .. "</font>"
+			r.effect.Text = '<font color="#FFD23C">Unlocks at ' .. Config.Thing.Sizes[def.unlock].name .. "</font>"
+		elseif level >= max then
+			r.effect.Text = Rules.upgradeText(def.id, level)
+			r.button.BackgroundColor3 = C.Gold
+			r.coin.Visible = false
+			r.price.Text = ""
+			r.button.Text = "MAX"
 		else
-			r.levelFill.Size = UDim2.fromScale(max > 0 and level / max or 1, 1)
-			if level >= max then
-				r.levelLabel.Text = "MAX"
-				r.effect.Text = Rules.upgradeText(def.id, level)
-				r.button.BackgroundColor3 = C.Gold
-				r.coin.Visible = false
-				r.price.Text = ""
-				r.sub.Text = ""
-				r.button.Text = "MAXED!"
-				r.needBack.Visible = false
-			else
-				r.levelLabel.Text = "Lv " .. level
-				local n, cost = Rules.upgradeBuy(def.id, level, state.coins, buyAmount)
-				local steps = math.max(n, 1)
-				local priceNow = n > 0 and cost or Rules.upgradeCost(def.id, level)
-				r.effect.Text = Rules.upgradeText(def.id, level)
-					.. '  <font color="#B4FF5A">→ ' .. Rules.upgradeText(def.id, math.min(max, level + steps)) .. "</font>"
-				r.button.Text = ""
-				r.coin.Visible = true
-				r.price.Text = Rules.short(priceNow)
-				if n > 0 then
-					r.button.BackgroundColor3 = C.Good
-					r.sub.Text = n > 1 and ("BUY " .. n .. " LEVELS") or "BUY"
-					r.needBack.Visible = false
-				else
-					r.button.BackgroundColor3 = DARK_BUTTON
-					r.sub.Text = "Need " .. Rules.short(priceNow - state.coins) .. " more"
-					r.needBack.Visible = true
-					r.needFill.Size = UDim2.fromScale(math.clamp(state.coins / priceNow, 0, 1), 1)
-				end
-			end
+			local n, cost = Rules.upgradeBuy(def.id, level, state.coins, buyAmount)
+			local priceNow = n > 0 and cost or Rules.upgradeCost(def.id, level)
+			r.effect.Text = Rules.upgradeText(def.id, level)
+				.. '  <font color="#C8FF64">→ ' .. Rules.upgradeText(def.id, math.min(max, level + math.max(n, 1))) .. "</font>"
+			r.button.Text = ""
+			r.coin.Visible = true
+			r.price.Text = Rules.short(priceNow)
+			r.button.BackgroundColor3 = n > 0 and C.Good or C.Well
 		end
 	end
 end
@@ -685,7 +623,6 @@ for i, kind in ipairs(Config.ThingletOrder) do
 	local card = UI.new("Frame", { Name = kind, LayoutOrder = i, BackgroundColor3 = C.PanelLight, ZIndex = 22 }, dex.body)
 	UI.corner(card, UDim.new(0, 14))
 	local stroke = UI.stroke(card, 3, Config.Rarities[def.rarity].color)
-	UI.studs(card)
 	local view = UI.viewport(card, nil, { Size = UDim2.new(1, -16, 0, 96), Position = UDim2.fromOffset(8, 6), ZIndex = 23 })
 	local name = UI.label(card, { Size = UDim2.new(1, -10, 0, 26), Position = UDim2.fromOffset(5, 102), Text = "???", ZIndex = 23 })
 	local hint = UI.label(card, { Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 128), Text = def.hint, TextColor3 = C.Dim, TextWrapped = true, ZIndex = 23 })
@@ -807,6 +744,7 @@ local function modal(width, height)
 		Active = true, -- taps inside the box don't fall through to the backdrop
 	}, back)
 	UI.chunky(box, C.Panel, UDim.new(0, 18), 4)
+	UI.studs(box)
 	UI.fit(box, width, height)
 	return back, box
 end

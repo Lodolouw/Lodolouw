@@ -102,12 +102,12 @@ function UI.chunky(obj, color, radius, outline)
 		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 200, 200)),
 	}, obj)
 	UI.stroke(obj, outline or 3.5)
-	UI.studs(obj)
 	return obj
 end
 
 -- The studs: one stud image (GUI/studs.png, see Config.GuiImages) tiled over
--- a frame, under everything else in it. Not uploaded yet: plain frames.
+-- a frame, under everything else in it. Only the big panels get them, and
+-- faintly: simple beats busy. Not uploaded yet: plain frames.
 UI.StudSize = 26
 local function studsImage()
 	local images = Config.GuiImages or {}
@@ -118,7 +118,7 @@ local function studsImage()
 	end
 	return nil
 end
-function UI.studs(frame, size)
+function UI.studs(frame, size, transparency)
 	local image = studsImage()
 	if not image or frame:FindFirstChild("Studs") or frame:FindFirstChildWhichIsA("UIGridStyleLayout") then
 		return nil
@@ -133,6 +133,7 @@ function UI.studs(frame, size)
 		Name = "Studs", BackgroundTransparency = 1, Image = image, ScaleType = Enum.ScaleType.Tile,
 		TileSize = UDim2.fromOffset(size or UI.StudSize, size or UI.StudSize),
 		Position = UDim2.fromOffset(-l, -t), Size = UDim2.new(1, l + r, 1, t + b), ZIndex = 0,
+		ImageTransparency = transparency or 0.5,
 	}, frame)
 	local corner = frame:FindFirstChildOfClass("UICorner")
 	if corner then
