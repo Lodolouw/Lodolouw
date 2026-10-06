@@ -320,9 +320,12 @@ local function makePanel(name, title, width, height, headerColor, headerHeight)
 	if titleStroke then
 		titleStroke.Thickness = 3
 	end
-	local subtitle = UI.label(header, {
-		Size = UDim2.new(1, -120, 0, 20), Position = UDim2.fromOffset(18, 46), Text = "", TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 22, Visible = h >= 70,
+	-- the subtitle: under the title, or on the right of a slim header
+	local subtitle = h >= 70 and UI.label(header, {
+		Size = UDim2.new(1, -120, 0, 20), Position = UDim2.fromOffset(18, 46), Text = "", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22,
+	}) or UI.label(header, {
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -34, 0.5, 0), Size = UDim2.fromOffset(230, 24), Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.Dim, ZIndex = 22,
 	})
 	local closeSize = h < 70 and 46 or 54
 	local close = UI.button(frame, "", {
@@ -385,7 +388,19 @@ end
 ----------------------------------------------------------------------
 -- Shop
 ----------------------------------------------------------------------
-local shop = makePanel("Shop", "Seed Shop", 560, 470, C.Green)
+-- Every menu uses the same small cards in a 3-wide grid: compact panels,
+-- so you still see the game around them
+local CARD_W, CARD_H, GAP = 148, 164, 8
+local COMPACT_W, COMPACT_H = 3 * CARD_W + 2 * GAP + 44, 2 * CARD_H + GAP + 86
+local function cardGrid(body)
+	UI.new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(CARD_W, CARD_H), CellPadding = UDim2.fromOffset(GAP, GAP), SortOrder = Enum.SortOrder.LayoutOrder,
+	}, body)
+	UI.new("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 2), PaddingBottom = UDim.new(0, 6) }, body)
+end
+
+local shop = makePanel("Shop", "Seed Shop", COMPACT_W, COMPACT_H, C.Green, 56)
+cardGrid(shop.body)
 local shopRows = {}
 
 local function buySeed(cropId, replace)
@@ -410,34 +425,33 @@ local function buySeed(cropId, replace)
 end
 
 for i, crop in ipairs(Config.Crops) do
-	local row = UI.new("Frame", {
-		Name = crop.id, Size = UDim2.new(1, -8, 0, 86), Position = UDim2.fromOffset(0, (i - 1) * 94),
-		BackgroundColor3 = C.PanelLight, ZIndex = 22,
-	}, shop.body)
-	UI.corner(row, UDim.new(0, 14))
-	local stroke = UI.stroke(row, 3)
-	UI.viewport(row, Looks.fruit(crop.id, "", false), { Size = UDim2.fromOffset(72, 72), Position = UDim2.fromOffset(8, 7), ZIndex = 23 })
-	UI.label(row, {
-		Size = UDim2.new(1, -270, 0, 32), Position = UDim2.fromOffset(88, 6), Text = crop.name,
-		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Config.Rarities[crop.rarity].color, ZIndex = 23,
+	local card = UI.new("Frame", { Name = crop.id, LayoutOrder = i, BackgroundColor3 = C.PanelLight, ZIndex = 22 }, shop.body)
+	UI.corner(card, UDim.new(0, 12))
+	local stroke = UI.stroke(card, 3)
+	UI.viewport(card, Looks.fruit(crop.id, "", false), {
+		AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(64, 56), Position = UDim2.new(0.5, 0, 0, 4), ZIndex = 23,
 	})
-	local def = Config.Thinglets[crop.thinglet]
-	local info = UI.label(row, {
-		Size = UDim2.new(1, -270, 0, 20), Position = UDim2.fromOffset(88, 38),
-		Text = string.format("%s coins a toss  |  regrows in %ds", Rules.short(crop.coins), crop.regrow),
-		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Dim, ZIndex = 23,
+	UI.label(card, {
+		Position = UDim2.fromOffset(6, 60), Size = UDim2.new(1, -12, 0, 24), Text = crop.name,
+		TextColor3 = Config.Rarities[crop.rarity].color, ZIndex = 23,
 	})
-	local stockLabel = UI.label(row, {
-		Size = UDim2.new(1, -270, 0, 20), Position = UDim2.fromOffset(88, 60), Text = "",
-		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Dim, ZIndex = 23,
+	local info = UI.label(card, {
+		Position = UDim2.fromOffset(6, 86), Size = UDim2.new(1, -12, 0, 20), Text = "+" .. Rules.short(crop.coins) .. " coins a toss",
+		TextColor3 = C.Dim, ZIndex = 23,
 	})
-	local buy = UI.button(row, Rules.short(crop.seed), {
-		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(150, 60), ZIndex = 23,
+	-- how many are left this restock (only shown when it's limited)
+	local stockTag = UI.label(card, {
+		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(56, 20), Text = "",
+		TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 24,
+	})
+	local buy = UI.button(card, "", {
+		AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -8), Size = UDim2.new(1, -16, 0, 42), ZIndex = 23,
 	}, function()
 		buySeed(crop.id, false)
 	end)
-	coinIcon(buy, 22, UDim2.fromOffset(8, 19)).ZIndex = 24
-	shopRows[crop.id] = { row = row, stroke = stroke, stock = stockLabel, buy = buy, info = info, def = def }
+	local coin = UI.icon(buy, "coin", { Size = UDim2.fromOffset(24, 24), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 2, 0.5, 0) })
+	local price = UI.number(buy, { Position = UDim2.fromOffset(30, 0), Size = UDim2.new(1, -32, 1, 0), Text = Rules.short(crop.seed), ZIndex = 24 })
+	shopRows[crop.id] = { row = card, stroke = stroke, stock = stockTag, buy = buy, coin = coin, price = price, info = info }
 end
 
 local function refreshShop()
@@ -448,18 +462,12 @@ local function refreshShop()
 	for _, crop in ipairs(Config.Crops) do
 		local r = shopRows[crop.id]
 		local left = state.stock and state.stock[crop.id] or 0
-		if left < 0 then
-			r.stock.Text = "Always in stock"
-		elseif left == 0 then
-			r.stock.Text = string.format("Sold out  (in stock %d%% of restocks)", math.floor(crop.stockChance * 100))
-		else
-			r.stock.Text = string.format("%d in stock!  (in stock %d%% of restocks)", left, math.floor(crop.stockChance * 100))
-		end
-		if crop.id == Config.SecretFood then
-			r.stock.Text ..= "  Always on the hour"
-		end
-		local canBuy = left ~= 0 and state.coins >= crop.seed
-		r.buy.BackgroundColor3 = canBuy and C.Good or C.Grey
+		local soldOut = left == 0
+		r.stock.Text = left > 0 and (left .. " left") or ""
+		r.coin.Visible = not soldOut
+		r.price.Text = soldOut and "" or Rules.short(crop.seed)
+		r.buy.Text = soldOut and "Sold out" or ""
+		r.buy.BackgroundColor3 = (not soldOut and state.coins >= crop.seed) and C.Good or C.Well
 	end
 end
 
@@ -470,12 +478,8 @@ end
 -- price) so you see lots of them and still see the game.
 -- (The rules and prices live in Rules / Config.Upgrades.)
 ----------------------------------------------------------------------
-local CARD_W, CARD_H, GAP = 148, 164, 8
-local upgrades = makePanel("Upgrades", "Upgrades", 3 * CARD_W + 2 * GAP + 44, 2 * CARD_H + GAP + 86, C.Accent, 56)
-UI.new("UIGridLayout", {
-	CellSize = UDim2.fromOffset(CARD_W, CARD_H), CellPadding = UDim2.fromOffset(GAP, GAP), SortOrder = Enum.SortOrder.LayoutOrder,
-}, upgrades.body)
-UI.new("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 2), PaddingBottom = UDim.new(0, 6) }, upgrades.body)
+local upgrades = makePanel("Upgrades", "Upgrades", COMPACT_W, COMPACT_H, C.Accent, 56)
+cardGrid(upgrades.body)
 
 local LOCKED_CARD = Color3.fromRGB(205, 140, 80)
 local refreshUpgrades -- (defined below)
@@ -616,25 +620,25 @@ end
 ----------------------------------------------------------------------
 -- Dex
 ----------------------------------------------------------------------
-local dex = makePanel("Dex", "Thinglet Index", 600, 500, C.Cyan)
-UI.new("UIGridLayout", {
-	CellSize = UDim2.fromOffset(170, 196), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder,
-	HorizontalAlignment = Enum.HorizontalAlignment.Center,
-}, dex.body)
+local dex = makePanel("Dex", "Thinglet Index", COMPACT_W, COMPACT_H, C.Cyan, 56)
+cardGrid(dex.body)
 local dexCards = {}
 for i, kind in ipairs(Config.ThingletOrder) do
 	local def = Config.Thinglets[kind]
 	local card = UI.new("Frame", { Name = kind, LayoutOrder = i, BackgroundColor3 = C.PanelLight, ZIndex = 22 }, dex.body)
-	UI.corner(card, UDim.new(0, 14))
+	UI.corner(card, UDim.new(0, 12))
 	local stroke = UI.stroke(card, 3, Config.Rarities[def.rarity].color)
-	local view = UI.viewport(card, nil, { Size = UDim2.new(1, -16, 0, 96), Position = UDim2.fromOffset(8, 6), ZIndex = 23 })
-	local name = UI.label(card, { Size = UDim2.new(1, -10, 0, 26), Position = UDim2.fromOffset(5, 102), Text = "???", ZIndex = 23 })
-	local hint = UI.label(card, { Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 128), Text = def.hint, TextColor3 = C.Dim, TextWrapped = true, ZIndex = 23 })
+	local view = UI.viewport(card, nil, { Size = UDim2.new(1, -16, 0, 70), Position = UDim2.fromOffset(8, 4), ZIndex = 23 })
+	local name = UI.label(card, { Size = UDim2.new(1, -10, 0, 22), Position = UDim2.fromOffset(5, 76), Text = "???", ZIndex = 23 })
+	local hint = UI.label(card, {
+		Size = UDim2.new(1, -12, 0, 34), Position = UDim2.fromOffset(6, 99), Text = def.hint, TextColor3 = C.Dim, TextWrapped = true, ZIndex = 23,
+	})
 	local dots = {}
 	for j, look in ipairs({ "Normal", "Frozen", "Glowing", "Gold" }) do
 		local color = look == "Normal" and C.Text or (Rules.mutation(look) and Rules.mutation(look).color or C.Text)
 		local dot = UI.new("Frame", {
-			Size = UDim2.fromOffset(18, 18), Position = UDim2.new(0.5, -48 + (j - 1) * 26, 1, -24), BackgroundColor3 = color, BackgroundTransparency = 0.8, ZIndex = 23,
+			Size = UDim2.fromOffset(16, 16), Position = UDim2.new(0.5, -44 + (j - 1) * 24, 1, -22), BackgroundColor3 = color,
+			BackgroundTransparency = 0.8, ZIndex = 23,
 		}, card)
 		UI.corner(dot, UDim.new(1, 0))
 		UI.stroke(dot, 2)
@@ -672,25 +676,32 @@ local function refreshDex()
 			end
 		end
 	end
-	dex.subtitle.Text = string.format("Discovered %d of %d looks", found, total)
+	dex.subtitle.Text = string.format("Found %d of %d looks", found, total)
 end
 
 ----------------------------------------------------------------------
 -- Daily: today's craving, its bonus egg, and the other "come back" perks
 ----------------------------------------------------------------------
-local daily = makePanel("Daily", "Daily Craving", 480, 380, C.Red)
-local dailyView = UI.viewport(daily.body, nil, { Size = UDim2.fromOffset(120, 120), Position = UDim2.fromOffset(4, 4), ZIndex = 22 })
-local dailyTitle = UI.label(daily.body, { Size = UDim2.new(1, -140, 0, 36), Position = UDim2.fromOffset(132, 10), Text = "", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22 })
-local dailyBarBack = UI.new("Frame", { Size = UDim2.new(1, -150, 0, 26), Position = UDim2.fromOffset(134, 54), BackgroundColor3 = Color3.fromRGB(20, 40, 80), ZIndex = 22 }, daily.body)
-UI.corner(dailyBarBack, UDim.new(1, 0))
+local daily = makePanel("Daily", "Daily Craving", COMPACT_W, 300, C.Red, 56)
+local dailyView = UI.viewport(daily.body, nil, { Size = UDim2.fromOffset(100, 100), Position = UDim2.fromOffset(4, 4), ZIndex = 22 })
+local dailyTitle = UI.label(daily.body, {
+	Size = UDim2.new(1, -124, 0, 32), Position = UDim2.fromOffset(116, 8), Text = "", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22,
+})
+local dailyBarBack = UI.new("Frame", {
+	Size = UDim2.new(1, -130, 0, 24), Position = UDim2.fromOffset(118, 48), BackgroundColor3 = C.Well, ZIndex = 22,
+}, daily.body)
+UI.corner(dailyBarBack, UDim.new(0, 8))
 UI.stroke(dailyBarBack, 3)
 local dailyBar = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.Gold, ZIndex = 23 }, dailyBarBack)
-UI.corner(dailyBar, UDim.new(1, 0))
+UI.corner(dailyBar, UDim.new(0, 8))
 local dailyCount = UI.label(dailyBarBack, { Size = UDim2.fromScale(1, 1), Text = "", ZIndex = 24 })
-UI.label(daily.body, { Size = UDim2.new(1, -140, 0, 24), Position = UDim2.fromOffset(132, 88), Text = "Reward: a bonus egg that is always mutated!", TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Gold, ZIndex = 22 })
+UI.label(daily.body, {
+	Size = UDim2.new(1, -124, 0, 22), Position = UDim2.fromOffset(116, 80), Text = "Reward: a bonus egg that's always mutated!",
+	TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Gold, ZIndex = 22,
+})
 local dailyPerks = UI.label(daily.body, {
-	Size = UDim2.new(1, -16, 0, 120), Position = UDim2.fromOffset(8, 140), TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
-	TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22, Text = "",
+	Size = UDim2.new(1, -16, 0, 70), Position = UDim2.fromOffset(8, 118), TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
+	TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Dim, ZIndex = 22, Text = "",
 })
 local dailyFood = nil
 local function refreshDaily()
@@ -714,8 +725,9 @@ local function refreshDaily()
 		dailyCount.Text = d.fed .. " / " .. d.need
 	end
 	local friends = math.floor((state.friendBonus or 0) * 100 + 0.5)
-	dailyPerks.Text = "Your Thinglets earn for up to 1 hour while you're away.\n"
-		.. "Play with friends: +10% coins each (up to +30%). Now: +" .. friends .. "%"
+	local away = Rules.upgradeText("nap", Rules.upgradeLevel(state, "nap")):gsub(" away", "")
+	dailyPerks.Text = "Your Thinglets earn for up to " .. away .. " while you're away.\n"
+		.. "Friends here: +" .. friends .. "% coins (+10% each, up to +30%)."
 end
 
 -- the buttons themselves
@@ -731,7 +743,7 @@ sideButton("Daily", "Daily", 1, "egg", C.Red, false, function()
 	showPanel("Daily")
 	refreshDaily()
 end)
-sideButton("Upgrades", "Upgrades", 2, "upgrade", C.Orange, false, function()
+sideButton("Upgrades", "Upgrades", 2, "upgrade", C.Accent, false, function()
 	showPanel("Upgrades")
 	refreshUpgrades()
 end)
